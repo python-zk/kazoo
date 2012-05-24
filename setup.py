@@ -1,4 +1,4 @@
-__version__ = '0.1'
+__version__ = '0.2'
 
 import os
 
@@ -40,7 +40,7 @@ setup(
     url="http://kazoo.readthedocs.org/",
     license="Apache 2.0",
     packages=find_packages(),
-    test_suite="zktools.tests",
+    test_suite="kazoo.tests",
     include_package_data=True,
     zip_safe=False,
     tests_require=['pkginfo', 'Mock>=0.7', 'nose'],

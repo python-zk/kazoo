@@ -18,3 +18,5 @@ eggs/
 parts/
 develop-eggs/
 .idea
+docs/_build
+
