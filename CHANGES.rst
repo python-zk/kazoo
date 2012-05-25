@@ -7,3 +7,5 @@ Changelog
 Features
 ********
 
+- Base client library with handler support for threading and gevent async
+  environments.
