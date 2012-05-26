@@ -7,28 +7,7 @@ from functools import partial
 
 import zookeeper
 
-from zookeeper import (
-    SystemErrorException,
-    RuntimeInconsistencyException,
-    DataInconsistencyException,
-    ConnectionLossException,
-    MarshallingErrorException,
-    UnimplementedException,
-    OperationTimeoutException,
-    BadArgumentsException,
-    ApiErrorException,
-    NoNodeException,
-    NoAuthException,
-    BadVersionException,
-    NoChildrenForEphemeralsException,
-    NodeExistsException,
-    InvalidACLException,
-    AuthFailedException,
-    NotEmptyException,
-    SessionExpiredException,
-    InvalidCallbackException
-)
-
+from kazoo.exceptions import err_to_exception
 from kazoo.retry import KazooRetry
 from kazoo.handlers.threading import SequentialThreadingHandler
 
@@ -41,6 +20,29 @@ ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
 def validate_path(path):
     if not path.startswith('/'):
         raise ValueError("invalid path '%s'. must start with /" % path)
+
+
+def _generic_callback(async_result, handle, code, *args):
+    if code != zookeeper.OK:
+        exc = err_to_exception(code)
+        async_result.set_exception(exc)
+    else:
+        if not args:
+            result = None
+        elif len(args) == 1:
+            result = args[0]
+        else:
+            result = tuple(args)
+
+        async_result.set(result)
+
+
+def _exists_callback(async_result, handle, code, stat):
+    if code not in (zookeeper.OK, zookeeper.NONODE):
+        exc = err_to_exception(code)
+        async_result.set_exception(exc)
+    else:
+        async_result.set(stat)
 
 
 class KazooState(object):
@@ -78,10 +80,21 @@ class EventType(object):
 
 
 class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
-    """ A change on ZooKeeper that a Watcher is able to respond to.
+    """A change on ZooKeeper that a Watcher is able to respond to.
 
     The WatchedEvent includes exactly what happened, the current state of the
     ZooKeeper, and the path of the znode that was involved in the event.
+
+    """
+
+
+class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
+    """A callback being triggered
+
+    :param type: Type of the callback, can be 'completion' or 'watcher'
+    :param func: Callback function
+    :param args: Argument list for the callback function
+
     """
 
 
@@ -97,7 +110,7 @@ class KazooClient(object):
     """
     def __init__(self, hosts, namespace=None, watcher=None, timeout=10.0,
                  client_id=None, max_retries=None,
-                 handler=SequentialThreadingHandler):
+                 handler=None):
         """Create a KazooClient instance
 
         :param hosts: List of hosts to connect to
@@ -126,7 +139,7 @@ class KazooClient(object):
         # ZK uses milliseconds
         self._timeout = int(timeout * 1000)
 
-        self._handler = handler
+        self._handler = handler if handler else SequentialThreadingHandler()
 
         self._handle = None
         self._connected = False
@@ -171,6 +184,7 @@ class KazooClient(object):
         if self._needs_ensure_path:
             self.ensure_path('/')
             self._needs_ensure_path = False
+
     @property
     def connected(self):
         return self._connected
@@ -438,75 +452,3 @@ class KazooClient(object):
         @param version: version of node to delete, or -1 for any
         """
         self.delete_async(path, version).get()
-
-
-def _generic_callback(async_result, handle, code, *args):
-    if code != zookeeper.OK:
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        if not args:
-            result = None
-        elif len(args) == 1:
-            result = args[0]
-        else:
-            result = tuple(args)
-
-        async_result.set(result)
-
-
-def _exists_callback(async_result, handle, code, stat):
-    if code not in (zookeeper.OK, zookeeper.NONODE):
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        async_result.set(stat)
-
-
-# this dictionary is a port of err_to_exception() from zkpython zookeeper.c
-_ERR_TO_EXCEPTION = {
-    zookeeper.SYSTEMERROR: SystemErrorException,
-    zookeeper.RUNTIMEINCONSISTENCY: RuntimeInconsistencyException,
-    zookeeper.DATAINCONSISTENCY: DataInconsistencyException,
-    zookeeper.CONNECTIONLOSS: ConnectionLossException,
-    zookeeper.MARSHALLINGERROR: MarshallingErrorException,
-    zookeeper.UNIMPLEMENTED: UnimplementedException,
-    zookeeper.OPERATIONTIMEOUT: OperationTimeoutException,
-    zookeeper.BADARGUMENTS: BadArgumentsException,
-    zookeeper.APIERROR: ApiErrorException,
-    zookeeper.NONODE: NoNodeException,
-    zookeeper.NOAUTH: NoAuthException,
-    zookeeper.BADVERSION: BadVersionException,
-    zookeeper.NOCHILDRENFOREPHEMERALS: NoChildrenForEphemeralsException,
-    zookeeper.NODEEXISTS: NodeExistsException,
-    zookeeper.INVALIDACL: InvalidACLException,
-    zookeeper.AUTHFAILED: AuthFailedException,
-    zookeeper.NOTEMPTY: NotEmptyException,
-    zookeeper.SESSIONEXPIRED: SessionExpiredException,
-    zookeeper.INVALIDCALLBACK: InvalidCallbackException,
-}
-
-def err_to_exception(error_code, msg=None):
-    """Return an exception object for a Zookeeper error code
-    """
-    try:
-        zkmsg = zookeeper.zerror(error_code)
-    except Exception:
-        zkmsg = ""
-
-    if msg:
-        if zkmsg:
-            msg = "%s: %s" % (zkmsg, msg)
-    else:
-        msg = zkmsg
-
-    exc = _ERR_TO_EXCEPTION.get(error_code)
-    if exc is None:
-
-        # double check that it isn't an ok resonse
-        if error_code == zookeeper.OK:
-            return None
-
-        # otherwise generic exception
-        exc = Exception
-    return exc(msg)
