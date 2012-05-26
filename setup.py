@@ -10,12 +10,19 @@ with open(os.path.join(here, 'README.rst')) as f:
 with open(os.path.join(here, 'CHANGES.rst')) as f:
     CHANGES = f.read()
 
-reqs = [
+install_requires = [
+    'zope.interface >= 3.8.0',  # has zope.interface.registry
 ]
+
+tests_require = install_requires + [
+    'Sphinx',
+    'docutils',
+    'repoze.sphinx.autointerface',
+    ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if not on_rtd:
-    reqs.extend([
+    install_requires.extend([
     ])
 
 setup(
@@ -43,8 +50,8 @@ setup(
     test_suite="kazoo.tests",
     include_package_data=True,
     zip_safe=False,
-    tests_require=['pkginfo', 'Mock>=0.7', 'nose'],
-    install_requires=reqs,
+    install_requires=install_requires,
+    tests_require=tests_require,
     extras_require={
     },
     entry_points="""
