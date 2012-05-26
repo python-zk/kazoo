@@ -10,8 +10,9 @@ from zope.interface import (
 class IHandler(Interface):
     """A Callback Handler for Zookeeper completion and watcher callbacks
 
-    This object must implement several methods responsible for determinig
-    how completion and watch callbacks are handled.
+    This object must implement several methods responsible for determining
+    how completion / watch callbacks are handled as well as the method for
+    calling :class:`IAsyncResult` callback functions.
 
     """
     name = Attribute(
@@ -26,8 +27,7 @@ class IHandler(Interface):
         interface appropriate for this handler"""
 
     def dispatch_callback(callback):
-        """Dispatch a function callback of the given `callback_type` with
-        args
+        """Dispatch to the callback object
 
         :param callback: A :class:`~kazoo.client.Callback` object to be
                          called
@@ -43,7 +43,7 @@ class IAsyncResult(Interface):
 
     """
     value = Attribute(
-        """Holds the value passed to `set` if `set was called. Otherwise
+        """Holds the value passed to `set` if `set` was called. Otherwise
         `None`""")
 
     exception = Attribute(
