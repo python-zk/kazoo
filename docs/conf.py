@@ -39,7 +39,7 @@ for mod_name in MOCK_MODULES:
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.viewcode',
     'repoze.sphinx.autointerface',
     ]
 
