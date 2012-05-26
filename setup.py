@@ -24,8 +24,6 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if not on_rtd:
     install_requires.extend([
     ])
-else:
-    install_requires = tests_require
 
 setup(
     name='kazoo',
