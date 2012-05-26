@@ -6,6 +6,6 @@ Comprehensive reference material for every public API exposed by
 organized alphabetically by module name.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
    api/interfaces
