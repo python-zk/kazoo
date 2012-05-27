@@ -53,7 +53,6 @@ class SequentialGeventHandler(object):
             while self._running:
                 try:
                     func = queue.get(timeout=1)
-                    print "Got a function, calling it"
                     func()
                 except gevent.queue.Empty:
                     continue
