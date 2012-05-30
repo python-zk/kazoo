@@ -17,9 +17,9 @@ class IHandler(Interface):
     The Handler should document how callbacks are called for:
 
     * :class:`IAsyncResult` callbacks registered via
-      :meth:`IAsyncResult.rawlink`
+      :meth:`~IAsyncResult.rawlink`
     * :class:`~kazoo.client.Callback` objects dispatched via
-      :meth:`IHandler.dispatch_callback`, including whether session callbacks
+      :meth:`dispatch_callback`, including whether session callbacks
       are handled differently than watcher callbacks
 
     """
@@ -51,41 +51,44 @@ class IAsyncResult(Interface):
 
     The implementation must account for the fact that the :meth:`set` and
     :meth:`set_exception` methods will be called from within the Zookeeper
-    thread.
+    thread which may require extra care under asynchronous environments.
 
     """
     value = Attribute(
-        """Holds the value passed to `set` if `set` was called. Otherwise
-        `None`""")
+        """Holds the value passed to :meth:`set` if :meth:`set` was called.
+        Otherwise `None`""")
 
     exception = Attribute(
-        """Holds the exception instance passed to `set_exception` if
-        `set_exception` was called. Otherwise `None`""")
+        """Holds the exception instance passed to :meth:`set_exception` if
+        :meth:`set_exception` was called. Otherwise `None`""")
 
     def ready():
         """Return `True` if and only if it holds a value or an exception"""
 
     def successful():
-        """Return true if and only if it is ready and holds a value"""
+        """Return `True` if and only if it is ready and holds a value"""
 
     def set(value=None):
         """Store the value. Wake up the waiters.
 
-        Any waiters blocking on `get` or `wait` are woken up. Sequential calls
-        to `wait` and `get` will not block at all."""
+        Any waiters blocking on :meth:`get` or :meth:`wait` are woken up.
+        Sequential calls to :meth:`wait` and :meth:`get` will not block at
+        all."""
 
     def set_exception(exception):
         """Store the exception. Wake up the waiters.
 
-        Any waiters blocking on `get` or `wait` are woken up. Sequential calls
-        to `wait` and `get` will not block at all."""
+        Any waiters blocking on :meth:`get` or :meth:`wait` are woken up.
+        Sequential calls to :meth:`wait` and :meth:`get` will not block at
+        all."""
 
     def get(block=True, timeout=None):
         """Return the stored value or raise the exception
 
         If this instance already holds a value / an exception, return / raise
-        it immediately. Otherwise, block until `set` or `set_exception` has
-        been called or until the optional timeout occurs.
+        it immediately. Otherwise, block until :meth:`set` or
+        :meth:`set_exception` has been called or until the optional timeout
+        occurs.
 
         When the `timeout` argument is present and not `None`, it should be a
         float specifying a timeout for the operation in seconds (or fractions
@@ -101,8 +104,9 @@ class IAsyncResult(Interface):
         """Block until the instance is ready.
 
         If this instance already holds a value / an exception, return / raise
-        it immediately. Otherwise, block until `set` or `set_exception` has
-        been called or until the optional timeout occurs.
+        it immediately. Otherwise, block until :meth:`set` or
+        :meth:`set_exception` has been called or until the optional timeout
+        occurs.
 
         When the `timeout` argument is present and not `None`, it should be a
         float specifying a timeout for the operation in seconds (or fractions
@@ -116,4 +120,4 @@ class IAsyncResult(Interface):
         this instance."""
 
     def unlink(callback):
-        """Remove the callback set by `rawlink`"""
+        """Remove the callback set by :meth:`rawlink`"""
