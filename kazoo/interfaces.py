@@ -71,12 +71,16 @@ class IAsyncResult(Interface):
     def set(value=None):
         """Store the value. Wake up the waiters.
 
+        :param value: Value to store as the result
+
         Any waiters blocking on :meth:`get` or :meth:`wait` are woken up.
         Sequential calls to :meth:`wait` and :meth:`get` will not block at
         all."""
 
     def set_exception(exception):
         """Store the exception. Wake up the waiters.
+
+        :param exception: Exception to raise when fetching the value
 
         Any waiters blocking on :meth:`get` or :meth:`wait` are woken up.
         Sequential calls to :meth:`wait` and :meth:`get` will not block at
@@ -85,14 +89,15 @@ class IAsyncResult(Interface):
     def get(block=True, timeout=None):
         """Return the stored value or raise the exception
 
+        :param block: Whether this method should block or return immediately
+        :type block: bool
+        :param timeout: How long to wait for a value when `block` is `True`
+        :type timeout: float
+
         If this instance already holds a value / an exception, return / raise
         it immediately. Otherwise, block until :meth:`set` or
         :meth:`set_exception` has been called or until the optional timeout
-        occurs.
-
-        When the `timeout` argument is present and not `None`, it should be a
-        float specifying a timeout for the operation in seconds (or fractions
-        thereof)."""
+        occurs."""
 
     def get_nowait():
         """Return the value or raise the exception without blocking.
@@ -103,21 +108,28 @@ class IAsyncResult(Interface):
     def wait(timeout=None):
         """Block until the instance is ready.
 
+        :param timeout: How long to wait for a value when `block` is `True`
+        :type timeout: float
+
         If this instance already holds a value / an exception, return / raise
         it immediately. Otherwise, block until :meth:`set` or
         :meth:`set_exception` has been called or until the optional timeout
-        occurs.
-
-        When the `timeout` argument is present and not `None`, it should be a
-        float specifying a timeout for the operation in seconds (or fractions
-        thereof)."""
+        occurs."""
 
     def rawlink(callback):
         """Register a callback to call when a value or an exception is set
 
-        ``callback`` will be called per the calling system of the associated
-        :class:`IHandler` interface. ``callback`` will be passed one argument:
-        this instance."""
+        :param callback: A callback function to call after :meth:`set` or
+                         :meth:`set_exception` has been called. This function
+                         will be passed a single argument, this instance.
+        :type callback: func
+
+        """
 
     def unlink(callback):
-        """Remove the callback set by :meth:`rawlink`"""
+        """Remove the callback set by :meth:`rawlink`
+
+        :param callback: A callback function to remove
+        :type callback: func
+
+        """
