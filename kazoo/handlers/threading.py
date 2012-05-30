@@ -18,10 +18,12 @@ class TimeoutError(Exception):
 @implementer(IAsyncResult)
 class AsyncResult(object):
     """A one-time event that stores a value or an exception"""
-    def __init__(self):
+    def __init__(self, handler):
+        self._handler = handler
         self.value = None
         self._exception = _NONE
         self._condition = threading.Condition()
+        self._callbacks = []
 
     def ready(self):
         """Return true if and only if it holds a value or an exception"""
@@ -42,6 +44,10 @@ class AsyncResult(object):
             self.value = value
             self._exception = None
 
+            for callback in self._callbacks:
+                self._handler.completion_queue.put(
+                    lambda: callback(self)
+                )
             self._condition.notify_all()
 
     def set_exception(self, exception):
@@ -49,6 +55,10 @@ class AsyncResult(object):
         with self._condition:
             self._exception = exception
 
+            for callback in self._callbacks:
+                self._handler.completion_queue.put(
+                    lambda: callback(self)
+                )
             self._condition.notify_all()
 
     def get(self, block=True, timeout=None):
@@ -79,6 +89,16 @@ class AsyncResult(object):
 
         """
         return self.get(block=False)
+
+    def rawlink(self, callback):
+        """Register a callback to call when a value or an exception is set"""
+        if callback not in self._callbacks:
+            self._callbacks.append(callback)
+
+    def unlink(self, callback):
+        """Remove the callback set by :meth:`rawlink`"""
+        if callback in self._callbacks:
+            self._callbacks.remove(callback)
 
 
 @implementer(IHandler)
@@ -117,6 +137,7 @@ class SequentialThreadingHandler(object):
         """Create a :class:`SequentialThreadingHandler` instance"""
         self.callback_queue = Queue.Queue()
         self.session_queue = Queue.Queue()
+        self.completion_queue = Queue.Queue()
         self._running = True
 
         # Spawn our worker threads, we have
