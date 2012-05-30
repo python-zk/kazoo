@@ -8,4 +8,5 @@ organized alphabetically by module name.
 .. toctree::
    :maxdepth: 1
    
+   api/client
    api/interfaces
