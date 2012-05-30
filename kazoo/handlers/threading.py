@@ -37,8 +37,7 @@ class AsyncResult(object):
             return self._exception
 
     def set(self, value=None):
-        """Store the value. Wake up the waiters.
-        """
+        """Store the value. Wake up the waiters."""
         with self._condition:
             self.value = value
             self._exception = None
@@ -46,8 +45,7 @@ class AsyncResult(object):
             self._condition.notify_all()
 
     def set_exception(self, exception):
-        """Store the exception. Wake up the waiters.
-        """
+        """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
 
@@ -56,7 +54,8 @@ class AsyncResult(object):
     def get(self, block=True, timeout=None):
         """Return the stored value or raise the exception.
 
-        If there is no value raises Timeout
+        If there is no value raises TimeoutError.
+
         """
         with self._condition:
             if self._exception is not _NONE:
@@ -77,16 +76,45 @@ class AsyncResult(object):
         """Return the value or raise the exception without blocking.
 
         If nothing is available, raises TimeoutError
+
         """
         return self.get(block=False)
 
 
 @implementer(IHandler)
 class SequentialThreadingHandler(object):
+    """threading Handler for sequentially executing callbacks
+
+    This handler executes callbacks in a sequential manner from the Zookeeper
+    thread. A queue is created for each of the callback events, so that each
+    type of event has its callback type run sequentially. These are split into
+    three queues, therefore it's possible that a session event arriving after a
+    watch event may have its callback executed at the same time or slightly
+    before the watch event callback.
+
+    Each queue type has a thread worker that pulls the callback event off the
+    queue and runs it in the order Zookeeper sent it.
+
+    This split helps ensure that watch callbacks won't block session
+    re-establishment should the connection be lost during a Zookeeper client
+    call.
+
+    Watch, session, and completion callbacks should avoid blocking behavior as
+    the next callback of that type won't be run until it completes. If you need
+    to block, spawn a new thread and return immediately so callbacks can
+    proceed.
+
+    ... note::
+
+        Completion callbacks can block to wait on Zookeeper calls, but no
+        other completion callbacks will execute until the callback returns.
+
+    """
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
 
     def __init__(self):
+        """Create a :class:`SequentialThreadingHandler` instance"""
         self.callback_queue = Queue.Queue()
         self.session_queue = Queue.Queue()
         self._running = True
@@ -109,9 +137,16 @@ class SequentialThreadingHandler(object):
         thread.start()
 
     def async_result(self):
+        """Create a :class:`AsyncResult` instance"""
         return AsyncResult(self)
 
     def dispatch_callback(self, callback):
+        """Dispatch to the callback object
+
+        The callback is put on separate queues to run depending on the type
+        as documented for the :class:`SequentialThreadingHandler`.
+
+        """
         if callback.type == 'session':
             self.session_queue.put(lambda: callback.func(*callback.args))
         else:

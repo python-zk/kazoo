@@ -8,7 +8,7 @@ from zope.interface import (
 
 
 class IHandler(Interface):
-    """A Callback Handler for Zookeeper completion and watcher callbacks
+    """A Callback Handler for Zookeeper completion and watch callbacks
 
     This object must implement several methods responsible for determining
     how completion / watch callbacks are handled as well as the method for
@@ -16,11 +16,9 @@ class IHandler(Interface):
 
     The Handler should document how callbacks are called for:
 
-    * :class:`IAsyncResult` callbacks registered via
-      :meth:`~IAsyncResult.rawlink`
-    * :class:`~kazoo.client.Callback` objects dispatched via
-      :meth:`dispatch_callback`, including whether session callbacks
-      are handled differently than watcher callbacks
+    * Zookeeper completion events
+    * Zookeeper session events
+    * Zookeeper watch events
 
     """
     name = Attribute(
