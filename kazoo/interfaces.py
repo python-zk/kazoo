@@ -14,6 +14,14 @@ class IHandler(Interface):
     how completion / watch callbacks are handled as well as the method for
     calling :class:`IAsyncResult` callback functions.
 
+    The Handler should document how callbacks are called for:
+
+    * :class:`IAsyncResult` callbacks registered via
+      :meth:`IAsyncResult.rawlink`
+    * :class:`~kazoo.client.Callback` objects dispatched via
+      :meth:`IHandler.dispatch_callback`, including whether session callbacks
+      are handled differently than watcher callbacks
+
     """
     name = Attribute(
         """Human readable name of the Handler interface""")
@@ -40,6 +48,10 @@ class IAsyncResult(Interface):
     set asyncronously
 
     This object is modeled on the ``gevent`` AsyncResult object.
+
+    The implementation must account for the fact that the :meth:`set` and
+    :meth:`set_exception` methods will be called from within the Zookeeper
+    thread.
 
     """
     value = Attribute(
