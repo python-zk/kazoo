@@ -10,6 +10,7 @@ Public API
 
     .. autoclass:: KazooClient
         :members:
+        :special-members:
 
     .. autoclass:: KazooState
 

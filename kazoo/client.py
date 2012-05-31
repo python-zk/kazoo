@@ -143,6 +143,7 @@ class KazooClient(object):
     handlers and high-level functionality
 
     TODO lots to do:
+
     * better handling of ZK client session events
     * disconnected state handling
     * the rest of the operations
@@ -236,8 +237,7 @@ class KazooClient(object):
         self.state_listeners.add(listener)
 
     def remove_listener(self, listener):
-        """Remove a listener function
-        """
+        """Remove a listener function"""
         self.state_listeners.discard(listener)
 
     @property
@@ -287,10 +287,10 @@ class KazooClient(object):
     def connect_async(self):
         """Asynchronously initiate connection to ZK
 
-        @return: AsyncResult object set on connection success
-        @rtype AsyncResult
-        """
+        :returns: An AsyncResult instance for the configured handler
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
+        """
         cb = self._wrap_session_callback(self._session_callback)
         if self._provided_client_id:
             self._handle = zookeeper.init(self._hosts, cb, self._timeout,
@@ -303,7 +303,8 @@ class KazooClient(object):
     def connect(self, timeout=None):
         """Initiate connection to ZK
 
-        @param timeout: time in seconds to wait for connection to succeed
+        :param timeout: Time in seconds to wait for connection to succeed
+
         """
         async_result = self.connect_async()
         try:
@@ -313,8 +314,7 @@ class KazooClient(object):
             raise
 
     def close(self):
-        """Disconnect from ZooKeeper
-        """
+        """Disconnect from ZooKeeper"""
         if self._connected:
             code = zookeeper.close(self._handle)
             self._handle = None
@@ -326,10 +326,11 @@ class KazooClient(object):
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server
 
-        @param scheme: authentication scheme (default supported: "digest")
-        @param credential: the credential -- value depends on scheme
-        @return: AsyncResult object set on completion
-        @rtype AsyncResult
+        :param scheme: authentication scheme (default supported: "digest")
+        :param credential: the credential -- value depends on scheme
+        :returns: AsyncResult object set on completion
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
@@ -340,21 +341,26 @@ class KazooClient(object):
     def add_auth(self, scheme, credential):
         """Send credentials to server
 
-        @param scheme: authentication scheme (default supported: "digest")
-        @param credential: the credential -- value depends on scheme
+        :param scheme: authentication scheme (default supported: "digest")
+        :param credential: the credential -- value depends on scheme
+
         """
         return self.add_auth_async(scheme, credential).get()
 
     def create_async(self, path, value, acl=None, ephemeral=False, sequence=False):
         """Asynchronously create a ZNode
 
-        @param path: path of node
-        @param value: initial value of node
-        @param acl: permissions for node
-        @param ephemeral: boolean indicating whether node is ephemeral (tied to this session)
-        @param sequence: boolean indicating whether path is suffixed with a unique index
-        @return: AsyncResult object set on completion with the real path of the new node
-        @rtype AsyncResult
+        :param path: path of node
+        :param value: initial value of node
+        :param acl: permissions for node
+        :param ephemeral: boolean indicating whether node is ephemeral (tied
+                          to this session)
+        :param sequence: boolean indicating whether path is suffixed with a
+                         unique index
+        :returns: AsyncResult object set on completion with the real path of
+                  the new node
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         flags = 0
         if ephemeral:
@@ -373,21 +379,27 @@ class KazooClient(object):
     def create(self, path, value, acl=None, ephemeral=False, sequence=False):
         """Create a ZNode
 
-        @param path: path of node
-        @param value: initial value of node
-        @param acl: permissions for node
-        @param ephemeral: boolean indicating whether node is ephemeral (tied to this session)
-        @param sequence: boolean indicating whether path is suffixed with a unique index
-        @return: real path of the new node
+        :param path: path of node
+        :param value: initial value of node
+        :param acl: permissions for node
+        :param ephemeral: boolean indicating whether node is ephemeral (tied
+                          to this session)
+        :param sequence: boolean indicating whether path is suffixed with a
+                         unique index
+        :return: real path of the new node
+
         """
         return self.create_async(path, value, acl, ephemeral, sequence).get()
 
     def exists_async(self, path, watch=None):
         """Asynchronously check if a node exists
 
-        @param path: path of node
-        @param watch: optional watch callback to set for future changes to this path
-        @return stat of the node if it exists, else None
+        :param path: path of node
+        :param watch: optional watch callback to set for future changes to this
+                      path
+        :returns: stat of the node if it exists, else None
+        :rtype: `dict` or `None`
+
         """
         async_result = self._handler.async_result()
         callback = partial(_exists_callback, async_result)
@@ -399,19 +411,24 @@ class KazooClient(object):
     def exists(self, path, watch=None):
         """Check if a node exists
 
-        @param path: path of node
-        @param watch: optional watch callback to set for future changes to this path
-        @return stat of the node if it exists, else None
+        :param path: path of node
+        :param watch: optional watch callback to set for future changes to this
+                      path
+        :return: stat of the node if it exists, else None
+        :rtype: `dict` or `None`
+
         """
         return self.exists_async(path, watch).get()
 
     def get_async(self, path, watch=None):
         """Asynchronously get the value of a node
 
-        @param path: path of node
-        @param watch: optional watch callback to set for future changes to this path
-        @return AsyncResult set with tuple (value, stat) of node on success
-        @rtype AsyncResult
+        :param path: path of node
+        :param watch: optional watch callback to set for future changes to
+                      this path
+        :return AsyncResult set with tuple (value, stat) of node on success
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
@@ -423,19 +440,23 @@ class KazooClient(object):
     def get(self, path, watch=None):
         """Get the value of a node
 
-        @param path: path of node
-        @param watch: optional watch callback to set for future changes to this path
-        @return tuple (value, stat) of node
+        :param path: path of node
+        :param watch: optional watch callback to set for future changes to
+                      this path
+        :returns: tuple (value, stat) of node
+
         """
         return self.get_async(path, watch).get()
 
     def get_children_async(self, path, watch=None):
         """Asynchronously get a list of child nodes of a path
 
-        @param path: path of node to list
-        @param watch: optional watch callback to set for future changes to this path
-        @return: AsyncResult set with list of child node names on success
-        @rtype: AsyncResult
+        :param path: path of node to list
+        :param watch: optional watch callback to set for future changes to
+                      this path
+        :returns: AsyncResult set with list of child node names on success
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
@@ -447,9 +468,10 @@ class KazooClient(object):
     def get_children(self, path, watch=None):
         """Get a list of child nodes of a path
 
-        @param path: path of node to list
-        @param watch: optional watch callback to set for future changes to this path
-        @return: list of child node names
+        :param path: path of node to list
+        :param watch: optional watch callback to set for future changes to this path
+        :returns: list of child node names
+
         """
         return self.get_children_async(path, watch).get()
 
@@ -460,11 +482,12 @@ class KazooClient(object):
         version (and the supplied version is not -1), a BadVersionException
         will be raised.
 
-        @param path: path of node to set
-        @param data: new data value
-        @param version: version of node being updated, or -1
-        @return: AsyncResult set with new node stat on success
-        @rtype AsyncResult
+        :param path: path of node to set
+        :param data: new data value
+        :param version: version of node being updated, or -1
+        :returns: AsyncResult set with new node stat on success
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
@@ -479,20 +502,21 @@ class KazooClient(object):
         version (and the supplied version is not -1), a BadVersionException
         will be raised.
 
-        @param path: path of node to set
-        @param data: new data value
-        @param version: version of node being updated, or -1
-        @return: updated node stat
+        :param path: path of node to set
+        :param data: new data value
+        :param version: version of node being updated, or -1
+        :returns: updated node stat
+
         """
         return self.set_async(path, data, version).get()
 
     def delete_async(self, path, version=-1):
         """Asynchronously delete a node
 
-        @param path: path of node to delete
-        @param version: version of node to delete, or -1 for any
-        @return AyncResult set upon completion
-        @rtype AsyncResult
+        :param path: path of node to delete
+        :param version: version of node to delete, or -1 for any
+        :returns: AyncResult set upon completion
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
@@ -503,7 +527,8 @@ class KazooClient(object):
     def delete(self, path, version=-1):
         """Delete a node
 
-        @param path: path of node to delete
-        @param version: version of node to delete, or -1 for any
+        :param path: path of node to delete
+        :param version: version of node to delete, or -1 for any
+
         """
         self.delete_async(path, version).get()
