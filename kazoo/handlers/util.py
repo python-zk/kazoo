@@ -1,9 +1,9 @@
 """Handler utilities for getting non-monkey patched std lib stuff
 
-Allows one to get an unpatched threading and thread module.
+Allows one to get an unpatched threading and thread module, with a thread
+decorator that using the unpatching Thread.
 
 """
-
 _realthread = None
 _realthreading = None
 
@@ -44,3 +44,15 @@ def get_realthreading():
     finally:
         if fp:
             fp.close()
+
+
+def thread(func):
+    """Thread decorator
+
+    Takes a function and spawns it as a daemon thread using the
+    real OS thread regardless of monkey patching.
+
+    """
+    _thread = get_realthreading().Thread(target=func)
+    _thread.daemon = True
+    _thread.start()

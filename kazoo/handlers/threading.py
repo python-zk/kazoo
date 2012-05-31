@@ -2,11 +2,11 @@
 from __future__ import absolute_import
 
 import Queue
-import os
 import threading
 
 from zope.interface import implementer
 
+from kazoo.handlers.util import thread
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
@@ -150,6 +150,7 @@ class SequentialThreadingHandler(object):
         self._create_thread_worker(self.session_queue)
 
     def _create_thread_worker(self, queue):
+        @thread
         def thread_worker():
             while self._running:
                 try:
@@ -157,9 +158,6 @@ class SequentialThreadingHandler(object):
                     func()
                 except Queue.Empty:
                     continue
-        thread = threading.Thread(target=thread_worker)
-        thread.daemon = True
-        thread.start()
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance"""

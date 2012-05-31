@@ -11,7 +11,7 @@ import zookeeper
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.retry import KazooRetry
-from kazoo.handlers.util import get_realthreading
+from kazoo.handlers.util import thread
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +24,8 @@ _logging_pipe = os.pipe()
 zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
 
 
-def loggingthread():
+@thread
+def _loggingthread():
     r, w = _logging_pipe
     log = logging.getLogger('ZooKeeper').log
     f = os.fdopen(r)
@@ -52,9 +53,6 @@ def loggingthread():
                 log(level, message)
         except Exception, v:
             logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
-logthread = get_realthreading().Thread(target=loggingthread)
-logthread.daemon = True
-logthread.start()
 
 
 def validate_path(path):
@@ -150,6 +148,8 @@ class KazooClient(object):
     * the rest of the operations
 
     """
+    def __init__(self, hosts='127.0.0.1:2181', namespace=None, watcher=None,
+                 timeout=10.0, client_id=None, max_retries=None, handler=None):
         """Create a KazooClient instance
 
         :param hosts: List of hosts to connect to
@@ -211,11 +211,9 @@ class KazooClient(object):
         # skip if state is current
         if self.state == state:
             return
-
         self.state = state
 
-        listeners = list(self.state_listeners)
-        for listener in listeners:
+        for listener in self.state_listeners:
             try:
                 listener(state)
             except Exception:
@@ -225,6 +223,22 @@ class KazooClient(object):
         if self._needs_ensure_path:
             self.ensure_path('/')
             self._needs_ensure_path = False
+
+    def add_listener(self, listener):
+        """Add a function to be called for connection state changes
+
+        This function will be called with a :class:`KazooState` instance
+        indicating the new connection state.
+
+        """
+        if not (listener and callable(listener)):
+            raise ValueError("listener must be callable")
+        self.state_listeners.add(listener)
+
+    def remove_listener(self, listener):
+        """Remove a listener function
+        """
+        self.state_listeners.discard(listener)
 
     @property
     def connected(self):
@@ -238,23 +252,20 @@ class KazooClient(object):
             return zookeeper.client_id(self._handle)
         return None
 
-    def get_sync_strategy(self):
-        return self._sync
-
     def _wrap_session_callback(self, func):
         def wrapper(handle, type, state, path):
-
             event = WatchedEvent(type, state, path)
-            self._sync.dispatch_callback(func, event)
+            callback = Callback('session', func, (event,))
+            self._handler.dispatch_callback(callback)
         return wrapper
 
     def _wrap_watch_callback(self, func):
         def wrapper(handle, type, state, path):
-
             # don't send session events to all watchers
             if state != zookeeper.SESSION_EVENT:
                 event = WatchedEvent(type, state, path)
-                self._sync.dispatch_callback(func, event)
+                callback = Callback('watch', func, (event,))
+                self._handler.dispatch_callback(callback)
         return wrapper
 
     def _session_callback(self, event):
@@ -297,7 +308,7 @@ class KazooClient(object):
         async_result = self.connect_async()
         try:
             async_result.get(timeout=timeout)
-        except self._sync.timeout_error:
+        except self._handler.timeout_error:
             self._connection_timed_out = True
             raise
 
@@ -308,6 +319,7 @@ class KazooClient(object):
             code = zookeeper.close(self._handle)
             self._handle = None
             self._connected = False
+            self._connected_async_result = self._handler.async_result()
             if code != zookeeper.OK:
                 raise err_to_exception(code)
 
@@ -319,7 +331,7 @@ class KazooClient(object):
         @return: AsyncResult object set on completion
         @rtype AsyncResult
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         zookeeper.add_auth(self._handle, scheme, credential, callback)
@@ -352,7 +364,7 @@ class KazooClient(object):
         if acl is None:
             acl = (ZK_OPEN_ACL_UNSAFE,)
 
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         zookeeper.acreate(self._handle, path, value, list(acl), flags, callback)
@@ -377,7 +389,7 @@ class KazooClient(object):
         @param watch: optional watch callback to set for future changes to this path
         @return stat of the node if it exists, else None
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_exists_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -401,7 +413,7 @@ class KazooClient(object):
         @return AsyncResult set with tuple (value, stat) of node on success
         @rtype AsyncResult
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -425,7 +437,7 @@ class KazooClient(object):
         @return: AsyncResult set with list of child node names on success
         @rtype: AsyncResult
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -454,7 +466,7 @@ class KazooClient(object):
         @return: AsyncResult set with new node stat on success
         @rtype AsyncResult
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         zookeeper.aset(self._handle, path, data, version, callback)
@@ -482,7 +494,7 @@ class KazooClient(object):
         @return AyncResult set upon completion
         @rtype AsyncResult
         """
-        async_result = self._sync.async_result()
+        async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         zookeeper.adelete(self._handle, path, version, callback)
