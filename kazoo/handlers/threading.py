@@ -124,7 +124,7 @@ class SequentialThreadingHandler(object):
     to block, spawn a new thread and return immediately so callbacks can
     proceed.
 
-    ... note::
+    .. note::
 
         Completion callbacks can block to wait on Zookeeper calls, but no
         other completion callbacks will execute until the callback returns.
