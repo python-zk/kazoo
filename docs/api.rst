@@ -9,4 +9,6 @@ organized alphabetically by module name.
    :maxdepth: 1
    
    api/client
+   api/handlers/gevent
+   api/handlers/threading
    api/interfaces
