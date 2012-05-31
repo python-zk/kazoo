@@ -11,4 +11,5 @@ organized alphabetically by module name.
    api/client
    api/handlers/gevent
    api/handlers/threading
+   api/handlers/util
    api/interfaces

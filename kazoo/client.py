@@ -122,8 +122,10 @@ class EventType(object):
 class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
-    The WatchedEvent includes exactly what happened, the current state of the
-    ZooKeeper, and the path of the znode that was involved in the event.
+    The :class:`WatchedEvent` includes exactly what happened, the current state
+    of ZooKeeper, and the path of the znode that was involved in the event. An
+    instance of :class:`WatchedEvent` will be passed to registered watch
+    functions.
 
     """
 
@@ -131,7 +133,7 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
 class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """A callback being triggered
 
-    :param type: Type of the callback, can be 'session' or 'watcher'
+    :param type: Type of the callback, can be 'session' or 'watch'
     :param func: Callback function
     :param args: Argument list for the callback function
 
@@ -148,13 +150,13 @@ class KazooClient(object):
     * the rest of the operations
 
     """
-    def __init__(self, hosts, namespace=None, watcher=None, timeout=10.0,
-                 client_id=None, max_retries=None,
-                 handler=None):
         """Create a KazooClient instance
 
         :param hosts: List of hosts to connect to
-        :param watcher: Set a session watcher to be notified of session events
+        :param namespace: A Zookeeper namespace for nodes to be used under
+        :param watcher: Set a default watcher. This will be called by the
+                        actual default watcher that :class:`KazooClient`
+                        establishes.
         :param timeout: The longest to wait for a Zookeeper connection
         :param client_id: A Zookeeper client id, used when re-establishing a
                           prior session connection
@@ -194,7 +196,6 @@ class KazooClient(object):
     def _session_watcher(self, event):
         """called by the underlying ZK client when the connection state changes
         """
-
         if event.type != EventType.SESSION:
             return
 
@@ -227,10 +228,12 @@ class KazooClient(object):
 
     @property
     def connected(self):
+        """Returns whether the Zookeeper connection has been established"""
         return self._connected
 
     @property
     def client_id(self):
+        """Returns the client id for this Zookeeper session if connected"""
         if self._handle is not None:
             return zookeeper.client_id(self._handle)
         return None
