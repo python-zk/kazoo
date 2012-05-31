@@ -2,19 +2,59 @@
 
 """
 import logging
+import os
 from collections import namedtuple
 from functools import partial
 
 import zookeeper
 
 from kazoo.exceptions import err_to_exception
-from kazoo.retry import KazooRetry
 from kazoo.handlers.threading import SequentialThreadingHandler
+from kazoo.retry import KazooRetry
+from kazoo.handlers.util import get_realthreading
 
 log = logging.getLogger(__name__)
 
 ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
                        "id": "anyone"}
+
+
+# Setup Zookeeper logging thread
+_logging_pipe = os.pipe()
+zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
+
+
+def loggingthread():
+    r, w = _logging_pipe
+    log = logging.getLogger('ZooKeeper').log
+    f = os.fdopen(r)
+    levels = dict(ZOO_INFO=logging.INFO,
+                  ZOO_WARN=logging.WARNING,
+                  ZOO_ERROR=logging.ERROR,
+                  ZOO_DEBUG=logging.DEBUG,
+                  )
+    while 1:
+        line = f.readline().strip()
+        try:
+            if '@' in line:
+                level, message = line.split('@', 1)
+                level = levels.get(level.split(':')[-1])
+
+                if 'Exceeded deadline by' in line and level == logging.WARNING:
+                    level = logging.DEBUG
+
+            else:
+                level = None
+
+            if level is None:
+                log(logging.INFO, line)
+            else:
+                log(level, message)
+        except Exception, v:
+            logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
+logthread = get_realthreading().Thread(target=loggingthread)
+logthread.daemon = True
+logthread.start()
 
 
 def validate_path(path):

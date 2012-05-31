@@ -1,5 +1,8 @@
 """Threading Handler"""
+from __future__ import absolute_import
+
 import Queue
+import os
 import threading
 
 from zope.interface import implementer
@@ -155,6 +158,7 @@ class SequentialThreadingHandler(object):
                 except Queue.Empty:
                     continue
         thread = threading.Thread(target=thread_worker)
+        thread.daemon = True
         thread.start()
 
     def async_result(self):
