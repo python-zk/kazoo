@@ -26,6 +26,14 @@ zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
 
 @thread
 def _loggingthread():
+    """Zookeeper logging redirect
+
+    Zookeeper by default logs directly out. This thread handles reading off
+    the pipe that the above `set_log_stream` call designates so that the
+    Zookeeper logging output can be turned into Python logging statements
+    under the `Zookeeper` name.
+
+    """
     r, w = _logging_pipe
     log = logging.getLogger('ZooKeeper').log
     f = os.fdopen(r)
@@ -86,21 +94,56 @@ def _exists_callback(async_result, handle, code, stat):
 class KazooState(object):
     """High level connection state values
 
-    States inspired by Netflix Curator
+    States inspired by Netflix Curator.
+
+    .. attribute:: SUSPENDED
+
+        The connection has been lost but may be recovered.
+        We should operate in a "safe mode" until then.
+
+    .. attribute:: CONNECTED
+
+        The connection is alive and well.
+
+    .. attribute:: LOST
+
+        The connection has been confirmed dead. Any ephemeral nodes
+        will need to be recreated upon re-establishing a connection.
 
     """
-    # The connection has been lost but may be recovered.
-    # We should operate in a "safe mode" until then.
     SUSPENDED = "SUSPENDED"
-
-    # The connection is alive and well.
     CONNECTED = "CONNECTED"
-
-    # The connection has been confirmed dead.
     LOST = "LOST"
 
 
 class KeeperState(object):
+    """Zookeeper State
+
+    Represents the Zookeeper state. Watch functions will recieve a
+    :class:`KeeperState` attribute as their state argument.
+
+    .. attribute:: ASSOCIATING
+
+        The Zookeeper ASSOCIATING state
+
+    .. attribute:: AUTH_FAILED
+
+        Authentication has failed, this is an unrecoverable error.
+
+    .. attribute:: CONNECTED
+
+        Zookeeper is  connected
+
+    .. attribute:: CONNECTING
+
+        Zookeeper is currently attempting to establish a connection
+
+    .. attribute:: EXPIRED_SESSION
+
+        The prior session was invalid, all prior ephemeral nodes are
+        gone.
+
+    """
     ASSOCIATING = zookeeper.ASSOCIATING_STATE
     AUTH_FAILED = zookeeper.AUTH_FAILED_STATE
     CONNECTED = zookeeper.CONNECTED_STATE
@@ -109,6 +152,42 @@ class KeeperState(object):
 
 
 class EventType(object):
+    """Zookeeper Event
+
+    Represents a Zookeeper event. Events trigger watch functions which
+    will recieve a :class:`EventType` attribute as their event argument.
+
+    .. attribute:: NOTWATCHING
+
+        ### DOC
+
+    .. attribute:: SESSION
+
+        A Zookeeper session event. Watch functions do not recieve session
+        events. A session event watch can be registered with
+        :class:`KazooClient` during creation that can recieve these events.
+        It's recommended to add a listener for connection state changes
+        instead.
+
+    .. attribute:: CREATED
+
+        A node has been created.
+
+    .. attribute:: DELETED
+
+        A node has been deleted.
+
+    .. attribute:: CHANGED
+
+        The data for a node has changed.
+
+    .. attribute:: CHILD
+
+        The children under a node has changed (a child was added or removed).
+        This event does not indicate the data for a child node has changed,
+        which must have its own watch established.
+
+    """
     NOTWATCHING = zookeeper.NOTWATCHING_EVENT
     SESSION = zookeeper.SESSION_EVENT
     CREATED = zookeeper.CREATED_EVENT
@@ -124,6 +203,18 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
     of ZooKeeper, and the path of the znode that was involved in the event. An
     instance of :class:`WatchedEvent` will be passed to registered watch
     functions.
+
+    .. attribute:: type
+
+        A :class:`EventType` attribute indicating the event type.
+
+    .. attribute:: state
+
+        A :class:`KeeperState` attribute indicating the Zookeeper state.
+
+    .. attribute:: path
+
+        The path of the node for the watch event.
 
     """
 
