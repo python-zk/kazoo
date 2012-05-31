@@ -233,12 +233,6 @@ class KazooClient(object):
     """An Apache Zookeeper Python wrapper supporting alternate callback
     handlers and high-level functionality
 
-    TODO lots to do:
-
-    * better handling of ZK client session events
-    * disconnected state handling
-    * the rest of the operations
-
     """
     def __init__(self, hosts='127.0.0.1:2181', namespace=None, watcher=None,
                  timeout=10.0, client_id=None, max_retries=None, handler=None):
