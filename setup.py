@@ -22,8 +22,9 @@ tests_require = install_requires + [
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if not on_rtd:
+if on_rtd:
     install_requires.extend([
+        'gevent'
     ])
 
 setup(
