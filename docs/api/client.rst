@@ -9,8 +9,7 @@ Public API
 ++++++++++
 
     .. autoclass:: KazooClient
-        :members:
-        :special-members:
+        :members: __init__
 
     .. autoclass:: KazooState
 
