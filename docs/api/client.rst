@@ -9,18 +9,20 @@ Public API
 ++++++++++
 
     .. autoclass:: KazooClient
-        :members: __init__
+        :members:
+        :special-members:
+        :undoc-members:
 
     .. autoclass:: KazooState
 
     .. autoclass:: WatchedEvent
+
+    .. autoclass:: EventType 
+
+    .. autoclass:: KeeperState
 
 
 Private API
 +++++++++++
 
     .. autoclass:: Callback
-
-    .. autoclass:: EventType 
-
-    .. autoclass:: KeeperState
