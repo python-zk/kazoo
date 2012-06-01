@@ -22,7 +22,7 @@ Public API
 
     .. autoclass:: WatchedEvent
 
-    .. autoclass: ZnodeStat
+    .. autoclass:: ZnodeStat
 
 
 Private API
