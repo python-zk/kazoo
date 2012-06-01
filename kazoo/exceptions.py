@@ -40,12 +40,6 @@ class NeverConnectedError(KazooException):
     """Raised when the kazoo client is used without ever calling connect"""
 
 
-# Extend all the built-in zookeeper extensions to also inherit from our
-# base exception
-for name, exc in locals().items():
-    if name.endswith('Exception') and not name.startswith('Kazoo'):
-        exc.__bases__ = exc.__bases__ + (KazooException,)
-
 # this dictionary is a port of err_to_exception() from zkpython zookeeper.c
 _ERR_TO_EXCEPTION = {
     zookeeper.SYSTEMERROR: SystemErrorException,
