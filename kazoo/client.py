@@ -1,6 +1,7 @@
 """Kazoo Zookeeper Client
 
 """
+import inspect
 import logging
 import os
 from collections import namedtuple
@@ -8,6 +9,8 @@ from functools import partial
 
 import zookeeper
 
+from kazoo.exceptions import ConfigurationError
+from kazoo.exceptions import NeverConnectedError
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.retry import KazooRetry
@@ -332,6 +335,10 @@ class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """
 
 
+_conn_error = ("The client has not connected to zookeeper. You must call "
+               "the connect() method first.")
+
+
 class KazooClient(object):
     """An Apache Zookeeper Python wrapper supporting alternate callback
     handlers and high-level functionality
@@ -354,7 +361,7 @@ class KazooClient(object):
         :param timeout: The longest to wait for a Zookeeper connection
         :param client_id: A Zookeeper client id, used when re-establishing a
                           prior session connection
-        :param handler: An object implementing the
+        :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface for
                         callback handling
 
@@ -376,6 +383,9 @@ class KazooClient(object):
         self._timeout = int(timeout * 1000)
 
         self._handler = handler if handler else SequentialThreadingHandler()
+        if inspect.isclass(self._handler):
+            raise ConfigurationError("Handler must be an instance of a class, "
+                                     "not the class: %s" % self._handler)
 
         self._handle = None
         self._connected = False
@@ -426,7 +436,7 @@ class KazooClient(object):
 
         """
         if not (listener and callable(listener)):
-            raise ValueError("listener must be callable")
+            raise ConfigurationError("listener must be callable")
         self.state_listeners.add(listener)
 
     def remove_listener(self, listener):
@@ -525,6 +535,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
@@ -555,6 +568,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         flags = 0
         if ephemeral:
             flags |= zookeeper.EPHEMERAL
@@ -594,6 +610,9 @@ class KazooClient(object):
         :rtype: `dict` or `None`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_exists_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
@@ -624,6 +643,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
@@ -652,6 +674,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
@@ -683,6 +708,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
@@ -712,6 +740,9 @@ class KazooClient(object):
         :returns: AyncResult set upon completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
+        if self._handle is None:
+            raise NeverConnectedError(_conn_error)
+
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
