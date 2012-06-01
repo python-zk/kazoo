@@ -1,4 +1,4 @@
-"""Kazoo client
+"""Kazoo Zookeeper Client
 
 """
 import logging
