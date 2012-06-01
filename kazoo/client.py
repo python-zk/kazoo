@@ -235,8 +235,10 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
     properties and additional properties that are more readable and
     use Python time semantics (seconds since epoch instead of ms).
 
-    The original Zookeeper Stat name is in parens when it differs from
-    the conveinence attribute.
+    .. note::
+
+        The original Zookeeper Stat name is in parens when it differs from
+        the conveinence attribute.
 
     .. attribute:: creation_transaction_id (czxid)
 
