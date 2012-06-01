@@ -78,6 +78,10 @@ def _generic_callback(async_result, handle, code, *args):
         elif len(args) == 1:
             result = args[0]
         else:
+            # if there's two, the second is a stat object
+            args = list(args)
+            if len(args) == 2:
+                args[1] = ZnodeStat(**args[1])
             result = tuple(args)
 
         async_result.set(result)
@@ -219,6 +223,99 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
     """
 
 
+class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
+                                         'czxid', 'dataLength',
+                                         'ephemeralOwner', 'mtime', 'mzxid',
+                                         'numChildren', 'pzxid', 'version'))):
+    """A ZnodeStat structure with conveinence properties
+
+    When getting the value of a node from Zookeeper, the properties for the
+    node known as a "Stat structure" will be retrieved. The
+    :class:`ZnodeStat` object provides access to the standard Stat
+    properties and additional properties that are more readable and
+    use Python time semantics (seconds since epoch instead of ms).
+
+    The original Zookeeper Stat name is in parens when it differs from
+    the conveinence attribute.
+
+    .. attribute:: creation_transaction_id (czxid)
+
+        The transaction id of the change that caused this znode to be created.
+
+    .. attribute:: last_modified_transaction_id (mzxid)
+
+        The transaction id of the change that last modified this znode.
+
+    .. attribute:: created (ctime)
+
+        The time in seconds from epoch when this node was created. (ctime is
+        in milliseconds)
+
+    .. attribute:: last_modified (mtime)
+
+        The time in seconds from epoch when this znode was last modified.
+        (mtime is in milliseconds)
+
+    .. attribute:: version
+
+        The number of changes to the data of this znode.
+
+    .. attribute:: acl_version (aversion)
+
+        The number of changes to the ACL of this znode.
+
+    .. attribute:: owner_session_id (ephemeralOwner)
+
+        The session id of the owner of this znode if the znode is an
+        ephemeral node. If it is not an ephemeral node, it will be `None`.
+        (ephemeralOwner will be 0 if its not ephemeral)
+
+    .. attribute:: data_length (dataLength)
+
+        The length of the data field of this znode.
+
+    .. attribute:: children_count (numChildren)
+
+        The number of children of this znode.
+
+    """
+    @property
+    def acl_version(self):
+        return self.aversion
+
+    @property
+    def children_version(self):
+        return self.cversion
+
+    @property
+    def created(self):
+        return self.ctime / 1000.0
+
+    @property
+    def last_modified(self):
+        return self.mtime / 1000.0
+
+    @property
+    def owner_session_id(self):
+        return self.ephemeralOwner or None
+
+    @property
+    def creation_transaction_id(self):
+        return self.czxid
+
+    @property
+    def last_modified_transaction_id(self):
+        return self.mzxid
+
+    @property
+    def data_length(self):
+        return self.dataLength
+
+    @property
+    def children_count(self):
+        return self.numChildren
+
+
 class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """A callback being triggered
 
@@ -232,6 +329,11 @@ class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
 class KazooClient(object):
     """An Apache Zookeeper Python wrapper supporting alternate callback
     handlers and high-level functionality
+
+
+    Watch functions registered with this class will not get session
+    events, unlike the default Zookeeper watch's. They will also be
+    called with a single argument, a :class:`WatchedEvent` instance.
 
     """
     def __init__(self, hosts='127.0.0.1:2181', namespace=None, watcher=None,
@@ -511,7 +613,8 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to
                       this path
-        :return AsyncResult set with tuple (value, stat) of node on success
+        :return AsyncResult set with tuple (value, :class:`ZnodeStat:) of node
+                on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -528,7 +631,7 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to
                       this path
-        :returns: tuple (value, stat) of node
+        :returns: tuple (value, :class:`ZnodeStat:) of node
 
         """
         return self.get_async(path, watch).get()

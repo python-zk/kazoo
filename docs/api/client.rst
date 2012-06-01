@@ -8,6 +8,8 @@
 Public API
 ++++++++++
 
+    .. autoclass:: EventType 
+
     .. autoclass:: KazooClient
         :members:
 
@@ -16,11 +18,11 @@ Public API
 
     .. autoclass:: KazooState
 
+    .. autoclass:: KeeperState
+
     .. autoclass:: WatchedEvent
 
-    .. autoclass:: EventType 
-
-    .. autoclass:: KeeperState
+    .. autoclass: ZnodeStat
 
 
 Private API
