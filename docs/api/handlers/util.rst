@@ -10,6 +10,4 @@ Public API
 
     .. autofunction:: get_realthread
 
-    .. autofunction:: get_realthreading
-
     .. autofunction:: thread
