@@ -615,7 +615,7 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to
                       this path
-        :return AsyncResult set with tuple (value, :class:`ZnodeStat:) of node
+        :return AsyncResult set with tuple (value, :class:`ZnodeStat`) of node
                 on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
@@ -633,7 +633,7 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to
                       this path
-        :returns: tuple (value, :class:`ZnodeStat:) of node
+        :returns: tuple (value, :class:`ZnodeStat`) of node
 
         """
         return self.get_async(path, watch).get()
