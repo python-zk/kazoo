@@ -116,6 +116,10 @@ class SequentialGeventHandler(object):
                     continue
         gevent.spawn(greenlet_worker)
 
+    def event_object(self):
+        """Create an appropriate Event object"""
+        return gevent.event.Event()
+
     def async_result(self):
         """Create a :class:`AsyncResult` instance
 

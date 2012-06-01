@@ -1,4 +1,15 @@
-"""Threading Handler"""
+"""Threading Handler
+
+The :class:`SequentialThreadingHandler` is intended for regular Python
+environments that use threads.
+
+.. warning::
+
+    Do not use :class:`SequentialThreadingHandler` with applications using
+    asynchronous event loops (like gevent). Use the
+    :class:`~kazoo.handlers.gevent.SequentialGeventHandler` instead.
+
+"""
 from __future__ import absolute_import
 
 import Queue
@@ -158,6 +169,10 @@ class SequentialThreadingHandler(object):
                     func()
                 except Queue.Empty:
                     continue
+
+    def event_object(self):
+        """Create an appropriate Event object"""
+        return threading.Event()
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance"""

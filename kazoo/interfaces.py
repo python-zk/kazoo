@@ -28,6 +28,10 @@ class IHandler(Interface):
         """Exception class that should be thrown and captured if a result
         is not available within the given time""")
 
+    def event_object():
+        """Return an appropriate object that implements Python's
+        threading.Event API"""
+
     def async_result():
         """Return an instance that conforms to the :class:`~IAsyncResult`
         interface appropriate for this handler"""
