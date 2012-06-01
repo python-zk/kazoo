@@ -240,23 +240,24 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
 
     .. note::
 
-        The original Zookeeper Stat name is in italic next to the name when it
-        differs from the convenience attribute.
+        The original Zookeeper Stat name is in parens next to the name when it
+        differs from the convenience attribute. These are **not functions**,
+        just attributes.
 
-    .. attribute:: creation_transaction_id `czxid`
+    .. attribute:: creation_transaction_id (czxid)
 
         The transaction id of the change that caused this znode to be created.
 
-    .. attribute:: last_modified_transaction_id `mzxid
+    .. attribute:: last_modified_transaction_id (mzxid)
 
         The transaction id of the change that last modified this znode.
 
-    .. attribute:: created `ctime`
+    .. attribute:: created (ctime)
 
         The time in seconds from epoch when this node was created. (ctime is
         in milliseconds)
 
-    .. attribute:: last_modified `mtime`
+    .. attribute:: last_modified (mtime)
 
         The time in seconds from epoch when this znode was last modified.
         (mtime is in milliseconds)
@@ -265,21 +266,21 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
 
         The number of changes to the data of this znode.
 
-    .. attribute:: acl_version `aversion`
+    .. attribute:: acl_version (aversion)
 
         The number of changes to the ACL of this znode.
 
-    .. attribute:: owner_session_id `ephemeralOwner`
+    .. attribute:: owner_session_id (ephemeralOwner)
 
         The session id of the owner of this znode if the znode is an
         ephemeral node. If it is not an ephemeral node, it will be `None`.
         (ephemeralOwner will be 0 if its not ephemeral)
 
-    .. attribute:: data_length `dataLength`
+    .. attribute:: data_length (dataLength)
 
         The length of the data field of this znode.
 
-    .. attribute:: children_count `numChildren`
+    .. attribute:: children_count (numChildren)
 
         The number of children of this znode.
 
