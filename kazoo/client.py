@@ -163,7 +163,10 @@ class EventType(object):
 
     .. attribute:: NOTWATCHING
 
-        ### DOC
+        This event type was added to Zookeeper in the event that watches
+        get overloaded. It's never been used though and will likely be
+        removed in a future Zookeeper version. **This event will never
+        actually be set, don't bother testing for it.**
 
     .. attribute:: SESSION
 
