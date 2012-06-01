@@ -578,7 +578,7 @@ class KazooClient(object):
                           to this session)
         :param sequence: boolean indicating whether path is suffixed with a
                          unique index
-        :return: real path of the new node
+        :returns: real path of the new node
 
         """
         return self.create_async(path, value, acl, ephemeral, sequence).get()
@@ -606,7 +606,7 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to this
                       path
-        :return: stat of the node if it exists, else None
+        :returns: stat of the node if it exists, else None
         :rtype: `dict` or `None`
 
         """
@@ -618,7 +618,7 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes to
                       this path
-        :return AsyncResult set with tuple (value, :class:`ZnodeStat`) of node
+        :returns: AsyncResult set with tuple (value, :class:`ZnodeStat`) of node
                 on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
