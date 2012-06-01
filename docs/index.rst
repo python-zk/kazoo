@@ -2,6 +2,11 @@
 kazoo
 =====
 
+`kazoo` simplifies communication with `Apache Zookeeper`_ from Python making it
+easier to write code that's less error-prone than using the basic Python
+Zookeeper library. It implements patterns from `Netflix Curator`_, in a more
+Pythonic manner, and is compatible with async environments like `gevent`_.
+
 Installing
 ==========
 
@@ -61,3 +66,5 @@ the open-source community has been merged with code from `Mozilla`_ and the
 .. _Nimbus Project: http://www.nimbusproject.org/
 .. _Zope Corporation: http://zope.com/
 .. _Mozilla: http://www.mozilla.org/
+.. _Netflix Curator: https://github.com/Netflix/curator
+.. _gevent: http://gevent.org/
