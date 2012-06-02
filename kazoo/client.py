@@ -382,18 +382,26 @@ class KazooClient(object):
         # ZK uses milliseconds
         self._timeout = int(timeout * 1000)
 
+        # Record the handler strategy used
         self._handler = handler if handler else SequentialThreadingHandler()
+
         if inspect.isclass(self._handler):
             raise ConfigurationError("Handler must be an instance of a class, "
                                      "not the class: %s" % self._handler)
 
         self._handle = None
-        self._connected = False
-        self._connected_async_result = self._handler.async_result()
+
+        # We use events like twitter's client to track current and desired
+        # state (connected, and whether to shutdown)
+        self._live = self._handler.event_object()
+        self._stopped = self._handle.event_object()
+
         self._connection_timed_out = False
 
         self.retry = KazooRetry(max_retries)
 
+        # Curator like simplified state tracking, and listeners for state
+        # transitions
         self.state = KazooState.LOST
         self.state_listeners = set()
 
@@ -446,7 +454,7 @@ class KazooClient(object):
     @property
     def connected(self):
         """Returns whether the Zookeeper connection has been established"""
-        return self._connected
+        return self._live.is_set()
 
     @property
     def client_id(self):

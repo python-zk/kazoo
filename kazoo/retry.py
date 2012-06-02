@@ -2,6 +2,7 @@ from zookeeper import (
     ClosingException,
     ConnectionLossException,
     OperationTimeoutException,
+    SessionExpiredException
 )
 
 
@@ -15,6 +16,7 @@ class KazooRetry(object):
         ClosingException,
         ConnectionLossException,
         OperationTimeoutException,
+        SessionExpiredException,
         ForceRetryError
     )
 
