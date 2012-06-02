@@ -36,8 +36,8 @@ class ConfigurationError(KazooException):
     """Raised if the configuration arguments to an object are invalid"""
 
 
-class NeverConnectedError(KazooException):
-    """Raised when the kazoo client is used without ever calling connect"""
+class ZookeeperStoppedError(KazooException):
+    """Raised when the kazoo client stopped (and thus not connected)"""
 
 
 # this dictionary is a port of err_to_exception() from zkpython zookeeper.c

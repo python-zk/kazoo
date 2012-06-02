@@ -10,7 +10,7 @@ from functools import partial
 import zookeeper
 
 from kazoo.exceptions import ConfigurationError
-from kazoo.exceptions import NeverConnectedError
+from kazoo.exceptions import ZookeeperStoppedError
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.retry import KazooRetry
@@ -335,10 +335,6 @@ class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """
 
 
-_conn_error = ("The client has not connected to zookeeper. You must call "
-               "the connect() method first.")
-
-
 class KazooClient(object):
     """An Apache Zookeeper Python wrapper supporting alternate callback
     handlers and high-level functionality
@@ -394,7 +390,8 @@ class KazooClient(object):
         # We use events like twitter's client to track current and desired
         # state (connected, and whether to shutdown)
         self._live = self._handler.event_object()
-        self._stopped = self._handle.event_object()
+        self._stopped = self._handler.event_object()
+        self._stopped.set()
 
         self._connection_timed_out = False
 
@@ -431,6 +428,25 @@ class KazooClient(object):
             except Exception:
                 log.exception("Error in connection state listener")
 
+    def _safe_call(self, func, async_result, *args, **kwargs):
+        """Safely call a zookeeper function and handle errors related
+        to a bad zhandle"""
+        try:
+            return func(self._handle, *args)
+        except TypeError:
+            # Handle was cleared or isn't set. If it was cleared and we are
+            # supposed to be running, it means we had session expiration and
+            # are attempting to reconnect. We treat it as a connection loss
+            # in that case for appropriate behavior.
+            if self._stopped.is_set():
+                async_result.set_exception(
+                    ZookeeperStoppedError(
+                    "The Kazoo client is stopped, call connect before running "
+                    " commands that talk to Zookeeper"))
+            else:
+                async_result.set_exception(
+                    zookeeper.ConnectionLossException("connection loss"))
+
     def _assure_namespace(self):
         if self._needs_ensure_path:
             self.ensure_path('/')
@@ -465,8 +481,7 @@ class KazooClient(object):
 
     def _wrap_session_callback(self, func):
         def wrapper(handle, type, state, path):
-            event = WatchedEvent(type, state, path)
-            callback = Callback('session', func, (event,))
+            callback = Callback('session', func, (handle, type, state, path))
             self._handler.dispatch_callback(callback)
         return wrapper
 
@@ -479,21 +494,43 @@ class KazooClient(object):
                 self._handler.dispatch_callback(callback)
         return wrapper
 
-    def _session_callback(self, event):
-        if event.state == zookeeper.CONNECTED_STATE:
-            self._connected = True
-        elif event.state == zookeeper.CONNECTING_STATE:
-            self._connected = False
+    def _session_callback(self, handle, type, state, path):
+        if self._handle != handle:
+            try:
+                # latent handle callback from previous connection
+                zookeeper.close(handle)
+            except:
+                pass
+            return
 
-        if not self._connected_async_result.ready():
-            #close the connection if we already timed out
-            if self._connection_timed_out and self._connected:
-                self.close()
-            else:
-                self._connected_async_result.set()
+        if self._stopped.is_set():
+            return
+
+        if state == zookeeper.CONNECTED_STATE:
+            self._live.set()
+        elif state == zookeeper.EXPIRED_SESSION_STATE:
+            self._live.clear()
+            self._handle = None
+            self.connect_async()
+        else:
+            # Connection lost
+            self._live.clear()
+
+        event = WatchedEvent(type, state, path)
+        self._session_watcher(event)
 
         if self._watcher:
             self._watcher(event)
+
+    def _safe_close(self):
+        if self._handle is not None:
+            zh, self._handle = self._handle, None
+            try:
+                zookeeper.close(zh)
+            except zookeeper.ZookeeperException:
+                # Corrupt session or otherwise disconnected
+                pass
+            self._live.clear()
 
     def connect_async(self):
         """Asynchronously initiate connection to ZK
@@ -502,14 +539,23 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        # If we're already connected, ignore
+        if self._live.is_set():
+            return
+
+        # Make sure we're safely closed
+        self._safe_close()
+
+        # We've been asked to connect, clear the stop
+        self._stopped.clear()
+
         cb = self._wrap_session_callback(self._session_callback)
         if self._provided_client_id:
             self._handle = zookeeper.init(self._hosts, cb, self._timeout,
                 self._provided_client_id)
         else:
             self._handle = zookeeper.init(self._hosts, cb, self._timeout)
-
-        return self._connected_async_result
+        return self._live
 
     def connect(self, timeout=None):
         """Initiate connection to ZK
@@ -517,22 +563,28 @@ class KazooClient(object):
         :param timeout: Time in seconds to wait for connection to succeed
 
         """
-        async_result = self.connect_async()
+        event = self.connect_async()
+
+        if not event:
+            # Already connected
+            return
+
         try:
-            async_result.get(timeout=timeout)
+            event.wait(timeout=timeout)
         except self._handler.timeout_error:
             self._connection_timed_out = True
             raise
 
-    def close(self):
-        """Disconnect from ZooKeeper"""
-        if self._connected:
-            code = zookeeper.close(self._handle)
-            self._handle = None
-            self._connected = False
-            self._connected_async_result = self._handler.async_result()
-            if code != zookeeper.OK:
-                raise err_to_exception(code)
+    def stop(self):
+        """Gracefully stop this Zookeeper session"""
+        self._stopped.set()
+        self._safe_close()
+
+    def restart(self):
+        """Stop and restart the Zookeeper session."""
+        self._safe_close()
+        self._stopped.clear()
+        self.connect()
 
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server
@@ -543,13 +595,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
-        zookeeper.add_auth(self._handle, scheme, credential, callback)
+        self._safe_call(zookeeper.add_auth, scheme, credential, callback)
         return async_result
 
     def add_auth(self, scheme, credential):
@@ -576,9 +625,6 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         flags = 0
         if ephemeral:
             flags |= zookeeper.EPHEMERAL
@@ -590,7 +636,8 @@ class KazooClient(object):
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
-        zookeeper.acreate(self._handle, path, value, list(acl), flags, callback)
+        self._safe_call(zookeeper.acreate, async_result, path, value,
+                        list(acl), flags, callback)
         return async_result
 
     def create(self, path, value, acl=None, ephemeral=False, sequence=False):
@@ -618,14 +665,12 @@ class KazooClient(object):
         :rtype: `dict` or `None`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_exists_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
-        zookeeper.aexists(self._handle, path, watch_callback, callback)
+        self._safe_call(zookeeper.aexists, async_result, path, watch_callback,
+                        callback)
         return async_result
 
     def exists(self, path, watch=None):
@@ -651,14 +696,12 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
-        zookeeper.aget(self._handle, path, watch_callback, callback)
+        self._safe_call(zookeeper.aget, async_result, path, watch_callback,
+                        callback)
         return async_result
 
     def get(self, path, watch=None):
@@ -682,14 +725,12 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
-        zookeeper.aget_children(self._handle, path, watch_callback, callback)
+        self._safe_call(zookeeper.aget_children, async_result, path,
+                        watch_callback, callback)
         return async_result
 
     def get_children(self, path, watch=None):
@@ -716,13 +757,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
-        zookeeper.aset(self._handle, path, data, version, callback)
+        self._safe_call(zookeeper.aset, async_result, path, data, version,
+                        callback)
         return async_result
 
     def set(self, path, data, version=-1):
@@ -748,13 +787,11 @@ class KazooClient(object):
         :returns: AyncResult set upon completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
-        if self._handle is None:
-            raise NeverConnectedError(_conn_error)
-
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
-        zookeeper.adelete(self._handle, path, version, callback)
+        self._safe_call(zookeeper.adelete, async_result, path, version,
+                        callback)
         return async_result
 
     def delete(self, path, version=-1):
