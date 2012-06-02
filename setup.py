@@ -15,10 +15,11 @@ install_requires = [
 ]
 
 tests_require = install_requires + [
-    'Sphinx',
+    'gevent',
     'docutils',
     'repoze.sphinx.autointerface',
-    'gevent',
+    'Sphinx',
+    'zope.testing',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
