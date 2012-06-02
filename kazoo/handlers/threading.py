@@ -106,6 +106,11 @@ class AsyncResult(object):
 
     def rawlink(self, callback):
         """Register a callback to call when a value or an exception is set"""
+        # Are we already set? Dispatch it now
+        if self.ready():
+            self._handler.completion_queue.put(
+                lambda: callback(self)
+            )
         if callback not in self._callbacks:
             self._callbacks.append(callback)
 
