@@ -402,32 +402,6 @@ class KazooClient(object):
         self.state = KazooState.LOST
         self.state_listeners = set()
 
-    def _session_watcher(self, event):
-        """called by the underlying ZK client when the connection state changes
-        """
-        if event.type != EventType.SESSION:
-            return
-
-        if event.state == KeeperState.CONNECTED:
-            self._make_state_change(KazooState.CONNECTED)
-        elif event.state in (KeeperState.AUTH_FAILED,
-                             KeeperState.EXPIRED_SESSION):
-            self._make_state_change(KazooState.LOST)
-        elif event.state == KeeperState.CONNECTING:
-            self._make_state_change(KazooState.SUSPENDED)
-
-    def _make_state_change(self, state):
-        # skip if state is current
-        if self.state == state:
-            return
-        self.state = state
-
-        for listener in self.state_listeners:
-            try:
-                listener(state)
-            except Exception:
-                log.exception("Error in connection state listener")
-
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
         to a bad zhandle"""
@@ -494,7 +468,22 @@ class KazooClient(object):
                 self._handler.dispatch_callback(callback)
         return wrapper
 
+    def _make_state_change(self, state):
+        # skip if state is current
+        if self.state == state:
+            return
+        self.state = state
+
+        for listener in self.state_listeners:
+            try:
+                listener(state)
+            except Exception:
+                log.exception("Error in connection state listener")
+
     def _session_callback(self, handle, type, state, path):
+        if type != EventType.SESSION:
+            return
+
         if self._handle != handle:
             try:
                 # latent handle callback from previous connection
@@ -506,21 +495,22 @@ class KazooClient(object):
         if self._stopped.is_set():
             return
 
-        if state == zookeeper.CONNECTED_STATE:
+        if state == KeeperState.CONNECTED:
             self._live.set()
-        elif state == zookeeper.EXPIRED_SESSION_STATE:
+            self._make_state_change(KazooState.CONNECTED)
+        elif state in (KeeperState.EXPIRED_SESSION,
+                       KeeperState.AUTH_FAILED):
             self._live.clear()
             self._handle = None
+            self._make_state_change(KazooState.LOST)
             self.connect_async()
         else:
             # Connection lost
             self._live.clear()
-
-        event = WatchedEvent(type, state, path)
-        self._session_watcher(event)
+            self._make_state_change(KazooState.SUSPENDED)
 
         if self._watcher:
-            self._watcher(event)
+            self._watcher(WatchedEvent(type, state, path))
 
     def _safe_close(self):
         if self._handle is not None:
@@ -531,6 +521,7 @@ class KazooClient(object):
                 # Corrupt session or otherwise disconnected
                 pass
             self._live.clear()
+            self._make_state_change(KazooState.LOST)
 
     def connect_async(self):
         """Asynchronously initiate connection to ZK
