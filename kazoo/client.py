@@ -510,6 +510,7 @@ class KazooClient(object):
             return
 
         if self._stopped.is_set():
+            # Any events at this point can be ignored
             return
 
         if state == zookeeper.CONNECTED_STATE:
@@ -537,6 +538,7 @@ class KazooClient(object):
                 # Corrupt session or otherwise disconnected
                 pass
             self._live.clear()
+            self._make_state_change(KeeperState.LOST)
 
     def connect_async(self):
         """Asynchronously initiate connection to ZK
