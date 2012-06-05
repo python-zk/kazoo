@@ -486,11 +486,17 @@ class KazooClient(object):
         return wrapper
 
     def _wrap_watch_callback(self, func):
+        def func_wrapper(*args):
+            try:
+                func(args)
+            except Exception:
+                log.exception("Exception in kazoo callback <func: %s>" % func)
+
         def wrapper(handle, type, state, path):
             # don't send session events to all watchers
             if state != zookeeper.SESSION_EVENT:
                 event = WatchedEvent(type, state, path)
-                callback = Callback('watch', func, (event,))
+                callback = Callback('watch', func_wrapper, (event,))
                 self._handler.dispatch_callback(callback)
         return wrapper
 
