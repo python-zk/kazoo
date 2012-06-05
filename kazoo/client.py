@@ -528,7 +528,7 @@ class KazooClient(object):
                 # Corrupt session or otherwise disconnected
                 pass
             self._live.clear()
-            self._make_state_change(KeeperState.LOST)
+            self._make_state_change(KazooState.LOST)
 
     def connect_async(self):
         """Asynchronously initiate connection to ZK
