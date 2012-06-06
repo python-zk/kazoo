@@ -1,0 +1,5 @@
+include README.rst
+include LICENSE
+include CHANGES.rst
+recursive-include kazoo *
+global-exclude *pyc *pyo
