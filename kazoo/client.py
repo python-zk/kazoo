@@ -126,7 +126,7 @@ class KazooState(object):
 class KeeperState(object):
     """Zookeeper State
 
-    Represents the Zookeeper state. Watch functions will recieve a
+    Represents the Zookeeper state. Watch functions will receive a
     :class:`KeeperState` attribute as their state argument.
 
     .. attribute:: ASSOCIATING
@@ -139,11 +139,11 @@ class KeeperState(object):
 
     .. attribute:: CONNECTED
 
-        Zookeeper is  connected
+        Zookeeper is connected.
 
     .. attribute:: CONNECTING
 
-        Zookeeper is currently attempting to establish a connection
+        Zookeeper is currently attempting to establish a connection.
 
     .. attribute:: EXPIRED_SESSION
 
@@ -162,7 +162,7 @@ class EventType(object):
     """Zookeeper Event
 
     Represents a Zookeeper event. Events trigger watch functions which
-    will recieve a :class:`EventType` attribute as their event argument.
+    will receive a :class:`EventType` attribute as their event argument.
 
     .. attribute:: NOTWATCHING
 
@@ -173,9 +173,9 @@ class EventType(object):
 
     .. attribute:: SESSION
 
-        A Zookeeper session event. Watch functions do not recieve session
+        A Zookeeper session event. Watch functions do not receive session
         events. A session event watch can be registered with
-        :class:`KazooClient` during creation that can recieve these events.
+        :class:`KazooClient` during creation that can receive these events.
         It's recommended to add a listener for connection state changes
         instead.
 
@@ -193,7 +193,7 @@ class EventType(object):
 
     .. attribute:: CHILD
 
-        The children under a node has changed (a child was added or removed).
+        The children under a node have changed (a child was added or removed).
         This event does not indicate the data for a child node has changed,
         which must have its own watch established.
 
@@ -277,7 +277,7 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
 
         The session id of the owner of this znode if the znode is an
         ephemeral node. If it is not an ephemeral node, it will be `None`.
-        (ephemeralOwner will be 0 if its not ephemeral)
+        (ephemeralOwner will be 0 if it is not ephemeral)
 
     .. attribute:: data_length (dataLength)
 
