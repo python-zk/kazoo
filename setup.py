@@ -39,6 +39,8 @@ setup(
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 2.6",
+        "Programming Language :: Python :: 2.7",
         "Topic :: Communications",
         "Topic :: System :: Distributed Computing",
         "Topic :: System :: Networking",
