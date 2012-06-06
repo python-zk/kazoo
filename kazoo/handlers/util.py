@@ -1,7 +1,7 @@
 """Handler utilities for getting non-monkey patched std lib stuff
 
 Allows one to get an unpatched thread module, with a thread
-decorator that using the unpatching OS thread.
+decorator that uses the unpatching OS thread.
 
 """
 _realthread = None
