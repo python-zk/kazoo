@@ -177,7 +177,6 @@ class SequentialThreadingHandler(object):
 
     def event_object(self):
         """Create an appropriate Event object"""
-        # TODO: is this importing the right thing in a gevent environment?
         return threading.Event()
 
     def async_result(self):
