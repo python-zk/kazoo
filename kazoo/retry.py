@@ -1,6 +1,7 @@
 from zookeeper import (
     ClosingException,
     ConnectionLossException,
+    InvalidStateException,
     OperationTimeoutException,
     SessionExpiredException
 )
@@ -17,6 +18,12 @@ class KazooRetry(object):
         ConnectionLossException,
         OperationTimeoutException,
         SessionExpiredException,
+
+        # Occurs when a command is run on a session handle that expired, if it
+        # manages to run exactly when it expired but before the handle was
+        # removed for reconnection
+        InvalidStateException,
+
         ForceRetryError
     )
 

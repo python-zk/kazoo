@@ -19,7 +19,8 @@ from zookeeper import (
     AuthFailedException,
     NotEmptyException,
     SessionExpiredException,
-    InvalidCallbackException
+    InvalidCallbackException,
+    InvalidStateException
 )
 
 
@@ -61,6 +62,7 @@ _ERR_TO_EXCEPTION = {
     zookeeper.NOTEMPTY: NotEmptyException,
     zookeeper.SESSIONEXPIRED: SessionExpiredException,
     zookeeper.INVALIDCALLBACK: InvalidCallbackException,
+    zookeeper.INVALIDSTATE: InvalidStateException,
 }
 
 

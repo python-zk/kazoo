@@ -404,10 +404,18 @@ class KazooClient(object):
 
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
-        to a bad zhandle"""
+        to a bad zhandle and state bugs
+
+        In older zkpython bindings, a SystemError can arise if some
+        functions are called when the session handle is expired. This client
+        clears the old handle as soon as possible, but its possible a command
+        may run against the old handle that is expired resulting in this error
+        being thrown. See https://issues.apache.org/jira/browse/ZOOKEEPER-1318
+
+        """
         try:
             return func(self._handle, *args)
-        except TypeError:
+        except (TypeError, SystemError) as exc:
             # Handle was cleared or isn't set. If it was cleared and we are
             # supposed to be running, it means we had session expiration and
             # are attempting to reconnect. We treat it as a connection loss
@@ -417,6 +425,10 @@ class KazooClient(object):
                     ZookeeperStoppedError(
                     "The Kazoo client is stopped, call connect before running "
                     " commands that talk to Zookeeper"))
+            elif isinstance(exc, SystemError):
+                # Set this to the error it should be for appropriate handling
+                async_result.set_exception(
+                    zookeeper.InvalidStateException("invalid handle state"))
             else:
                 async_result.set_exception(
                     zookeeper.ConnectionLossException("connection loss"))
