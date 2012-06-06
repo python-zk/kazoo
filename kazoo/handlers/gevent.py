@@ -28,6 +28,7 @@ def _core_pipe_read_callback(event, evtype):
     try:
         os.read(event.fd, 1)
     except:
+        # TODO: I'd prefer `except Exception:`
         pass
 
 gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,

@@ -34,6 +34,8 @@ class KazooRetry(object):
                 return func(*args, **kwargs)
 
             except self.RETRY_EXCEPTIONS:
+                # TODO: won't this retry indefinitely with the default of None?
+                # Maybe a default of 1 would be better?
                 if self.max_tries and tries == self.max_tries:
                     raise
                 tries += 1

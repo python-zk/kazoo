@@ -495,6 +495,7 @@ class KazooClient(object):
                 # latent handle callback from previous connection
                 zookeeper.close(handle)
             except:
+                # TODO: Shouldn't this be `except Exception:`?
                 pass
             return
 
@@ -549,6 +550,7 @@ class KazooClient(object):
 
         cb = self._wrap_session_callback(self._session_callback)
         if self._provided_client_id:
+            # TODO: this doesn't seem to account for self.namespace?!
             self._handle = zookeeper.init(self._hosts, cb, self._timeout,
                 self._provided_client_id)
         else:
