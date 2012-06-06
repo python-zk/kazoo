@@ -6,11 +6,15 @@
 *.log
 *.pid
 *.komodo*
+bin
 build
 dist
+include
+lib
 *.egg-info
 .pydevproject
 .project
+.tox
 /.settings
 /.metadata
 dropin.cache
