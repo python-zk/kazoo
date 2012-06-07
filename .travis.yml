@@ -10,14 +10,16 @@ branches:
 notifications:
   email:
     - hschlichting@mozilla.com
+    - ben@groovie.org
+  irc: "irc.mozilla.org#services-dev"
 
 before_install:
-    - sudo apt-get update
-    - sudo apt-get install libev-dev
+    - sudo apt-get update >/dev/null 2>&1
+    - sudo apt-get install libev-dev >/dev/null 2>&1
 
 install:
-    - pip install -f http://code.google.com/p/gevent/downloads/list gevent>1.0dev
-    - pip install --use-mirrors zc-zookeeper-static
+    - pip install -f http://code.google.com/p/gevent/downloads/list gevent>1.0dev >/dev/null 2>&1
+    - pip install --use-mirrors zc-zookeeper-static >/dev/null 2>&1
     - python setup.py develop
     - pip install --use-mirrors kazoo[test]
 script: nosetests kazoo
