@@ -2,6 +2,12 @@
 Kazoo
 =====
 
+.. image:: https://secure.travis-ci.org/python-zk/kazoo.png?branch=master
+   :width: 82px
+   :height: 13px
+   :alt: Travis CI build report
+   :target: https://secure.travis-ci.org/#!/python-zk/kazoo
+
 ``kazoo`` implements a higher level API to `Apache Zookeeper`_ for Python
 clients.
 
