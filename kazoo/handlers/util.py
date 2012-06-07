@@ -4,22 +4,11 @@ Allows one to get an unpatched thread module, with a thread
 decorator that uses the unpatching OS thread.
 
 """
-_realthread = None
-
-
-def get_realthread():
-    """Get the real Python thread module, regardless of any monkeypatching"""
-    global _realthread
-    if _realthread:
-        return _realthread
-
-    import imp
-    fp, pathname, description = imp.find_module('thread')
-    try:
-        return imp.load_module('realthread', fp, pathname, description)
-    finally:
-        if fp:
-            fp.close()
+try:
+    from gevent import monkey
+    [start_new_thread] = monkey.get_original('thread', ['start_new_thread'])
+except ImportError:
+    from thread import start_new_thread
 
 
 def thread(func):
@@ -29,4 +18,4 @@ def thread(func):
     real OS thread regardless of monkey patching.
 
     """
-    get_realthread().start_new_thread(func, ())
+    start_new_thread(func, ())
