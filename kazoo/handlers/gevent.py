@@ -38,6 +38,7 @@ def _core_pipe_read_callback(event, evtype):
         pass
 
 if _using_libevent:
+    # The os pipe trick to wake gevent is only need for gevent pre-1.0
     gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
                      _core_pipe_read, _core_pipe_read_callback).add()
 
@@ -55,24 +56,14 @@ class AsyncResult(gevent.event.AsyncResult):
         self._handler.completion_queue.put(
             lambda: gevent.event.AsyncResult.set(self, value)
         )
-
-        if _using_libevent:
-            # Wake gevent wait/gets
-            os.write(_core_pipe_write, '\0')
-        else:
-            self._handler._async.send()
+        self._handler.wake()
 
     def set_exception(self, exception):
         # Proxy the set_exception call to the gevent thread
         self._handler.completion_queue.put(
             lambda: gevent.event.AsyncResult.set_exception(self, exception)
         )
-
-        if _using_libevent:
-            # Wake gevent wait/gets
-            os.write(_core_pipe_write, '\0')
-        else:
-            self._handler._async.send()
+        self._handler.wake()
 
 
 @implementer(IHandler)
@@ -137,6 +128,14 @@ class SequentialGeventHandler(object):
                     continue
         gevent.spawn(greenlet_worker)
 
+    def wake(self):
+        """Wake the gevent hub the appropriate way"""
+        if _using_libevent:
+            # Wake gevent wait/gets
+            os.write(_core_pipe_write, '\0')
+        else:
+            self._async.send()
+
     def event_object(self):
         """Create an appropriate Event object"""
         return gevent.event.Event()
@@ -162,9 +161,4 @@ class SequentialGeventHandler(object):
             self.session_queue.put(lambda: callback.func(*callback.args))
         else:
             self.callback_queue.put(lambda: callback.func(*callback.args))
-
-        if _using_libevent:
-            # Wake gevent wait/gets
-            os.write(_core_pipe_write, '\0')
-        else:
-            self._async.send()
+        self.wake()
