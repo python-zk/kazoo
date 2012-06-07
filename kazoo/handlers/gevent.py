@@ -6,6 +6,11 @@ import os
 
 import gevent
 import gevent.event
+try:
+    from gevent import get_hub
+except ImportError:
+    from gevent.hub import get_hub
+
 from gevent.queue import Empty
 from gevent.queue import Queue
 from zope.interface import implementer
@@ -99,7 +104,7 @@ class SequentialGeventHandler(object):
         self.callback_queue = Queue()
         self.session_queue = Queue()
         self._running = True
-        self._hub = hub or gevent.get_hub()
+        self._hub = hub or get_hub()
         self._async = None
 
         # Startup the async watcher to notify the gevent loop from other
