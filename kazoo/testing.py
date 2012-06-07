@@ -31,9 +31,11 @@ import sys
 import threading
 import time
 import traceback
-import zc.zk
-import zc.thread
 import zookeeper
+
+from kazoo.client import KazooClient
+from kazoo.client import ZK_OPEN_ACL_UNSAFE
+from kazoo.handlers.util import thread
 
 __all__ = ['assert_', 'setUp', 'tearDown', 'testing_with_real_zookeeper']
 
@@ -72,10 +74,11 @@ def wait_until(func=None, timeout=9):
 
 def setup_tree(tree, connection_string, root='/test-root',
                zookeeper_node=False):
-    zk = zc.zk.ZooKeeper(connection_string)
+    zk = KazooClient(connection_string)
+    zk.connect()
     if zk.exists(root):
         zk.delete_recursive(root)
-    zk.create(root, '', zc.zk.OPEN_ACL_UNSAFE)
+    zk.create(root, '', ZK_OPEN_ACL_UNSAFE)
     zk.import_tree(tree or """
     /fooservice
       /providers
@@ -376,7 +379,7 @@ class ZooKeeper:
         else:
             nreturn, nerror = nreturn
 
-        @zc.thread.Thread
+        @thread
         def doasync():
             try:
                 # print 'doasync', func, args
@@ -612,7 +615,7 @@ class Node:
     watchers = child_watchers = exists_watchers = ()
     flags = 0
     version = aversion = cversion = 0
-    acl = zc.zk.OPEN_ACL_UNSAFE
+    acl = ZK_OPEN_ACL_UNSAFE
 
     def meta(self):
         return dict(

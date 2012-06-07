@@ -15,6 +15,7 @@ install_requires = [
 ]
 
 tests_require = install_requires + [
+    'mock',
     'gevent',
     'docutils',
     'repoze.sphinx.autointerface',
@@ -52,7 +53,7 @@ setup(
     url="http://kazoo.readthedocs.org/",
     license="Apache 2.0",
     packages=find_packages(),
-    test_suite="kazoo.tests",
+    test_suite="nose.collector",
     include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
