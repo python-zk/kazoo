@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.1 (unreleased)
+0.2 (unreleased)
 ----------------
 
 Bug Handling
@@ -18,5 +18,9 @@ Bug Handling
 Features
 ********
 
+- State transition handling with listener registering to handle session state
+  changes (choose to fatal the app on session expiration, etc.)
+- Zookeeper logging stream redirected into Python logging channel under the
+  name 'Zookeeper'.
 - Base client library with handler support for threading and gevent async
   environments.
