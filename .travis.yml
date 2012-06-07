@@ -1,0 +1,23 @@
+language: python
+python:
+    - "2.6"
+    - "2.7"
+
+branches:
+  only:
+    - master
+
+notifications:
+  email:
+    - hschlichting@mozilla.com
+
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install libev-dev
+
+install:
+    - pip install -f http://code.google.com/p/gevent/downloads/list gevent>1.0dev
+    - pip install --use-mirrors zc-zookeeper-static
+    - pip install --use-mirrors kazoo[test]
+    - python setup.py develop
+script: nosetests kazoo
