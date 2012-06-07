@@ -14,6 +14,12 @@ from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
 
+if gevent.__version__.startswith('1.'):
+    _using_libevent = False
+else:
+    _using_libevent = True
+
+
 # Simple wrapper to os.pipe() - but sets to non-block
 def _pipe():
     r, w = os.pipe()
@@ -31,8 +37,9 @@ def _core_pipe_read_callback(event, evtype):
         # TODO: I'd prefer `except Exception:`
         pass
 
-gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
-                 _core_pipe_read, _core_pipe_read_callback).add()
+if _using_libevent:
+    gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
+                     _core_pipe_read, _core_pipe_read_callback).add()
 
 
 @implementer(IAsyncResult)
@@ -49,8 +56,11 @@ class AsyncResult(gevent.event.AsyncResult):
             lambda: gevent.event.AsyncResult.set(self, value)
         )
 
-        # Wake gevent wait/gets
-        os.write(_core_pipe_write, '\0')
+        if _using_libevent:
+            # Wake gevent wait/gets
+            os.write(_core_pipe_write, '\0')
+        else:
+            self._handler._async.send()
 
     def set_exception(self, exception):
         # Proxy the set_exception call to the gevent thread
@@ -58,8 +68,11 @@ class AsyncResult(gevent.event.AsyncResult):
             lambda: gevent.event.AsyncResult.set_exception(self, exception)
         )
 
-        # Wake gevent wait/gets
-        os.write(_core_pipe_write, '\0')
+        if _using_libevent:
+            # Wake gevent wait/gets
+            os.write(_core_pipe_write, '\0')
+        else:
+            self._handler._async.send()
 
 
 @implementer(IHandler)
@@ -89,12 +102,19 @@ class SequentialGeventHandler(object):
     name = "sequential_gevent_handler"
     timeout_exception = gevent.event.Timeout
 
-    def __init__(self):
+    def __init__(self, hub=None):
         """Create a :class:`SequentialGeventHandler` instance"""
         self.completion_queue = Queue()
         self.callback_queue = Queue()
         self.session_queue = Queue()
         self._running = True
+        self._hub = hub or gevent.get_hub()
+        self._async = None
+
+        # Startup the async watcher to notify the gevent loop from other
+        # threads when using gevent 1.0
+        if not _using_libevent:
+            self._async = self._hub.loop.async()
 
         # Spawn our worker greenlets, we have
         # - A completion worker for when values come back to be set on
@@ -143,5 +163,8 @@ class SequentialGeventHandler(object):
         else:
             self.callback_queue.put(lambda: callback.func(*callback.args))
 
-        # Wake gevent wait/gets
-        os.write(_core_pipe_write, '\0')
+        if _using_libevent:
+            # Wake gevent wait/gets
+            os.write(_core_pipe_write, '\0')
+        else:
+            self._async.send()
