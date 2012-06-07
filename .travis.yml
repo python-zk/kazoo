@@ -18,6 +18,6 @@ before_install:
 install:
     - pip install -f http://code.google.com/p/gevent/downloads/list gevent>1.0dev
     - pip install --use-mirrors zc-zookeeper-static
-    - pip install --use-mirrors kazoo[test]
     - python setup.py develop
+    - pip install --use-mirrors kazoo[test]
 script: nosetests kazoo
