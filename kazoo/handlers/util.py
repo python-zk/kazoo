@@ -4,9 +4,10 @@ Allows one to get an unpatched thread module, with a thread
 decorator that uses the unpatching OS thread.
 
 """
+from __future__ import absolute_import
+
 try:
-    from gevent import monkey
-    [start_new_thread] = monkey.get_original('thread', ['start_new_thread'])
+    from gevent._threading import start_new_thread
 except ImportError:
     from thread import start_new_thread
 
