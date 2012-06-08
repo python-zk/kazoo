@@ -1,6 +1,7 @@
 import threading
 import unittest
 
+import mock
 from nose.tools import eq_
 
 from kazoo.client import Callback
@@ -64,3 +65,33 @@ class TestThreadingAsync(unittest.TestCase):
     def _makeOne(self, *args):
         from kazoo.handlers.threading import AsyncResult
         return AsyncResult(*args)
+
+    def test_ready(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        eq_(async.ready(), False)
+        async.set('val')
+        eq_(async.ready(), True)
+        eq_(async.successful(), True)
+        eq_(async.exception, None)
+
+    def test_callback_queued(self):
+        mock_handler = mock.Mock()
+        mock_handler.completion_queue = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        async.rawlink(lambda a: a)
+        async.set('val')
+
+        assert mock_handler.completion_queue.put.called
+
+    def test_set_exception(self):
+        mock_handler = mock.Mock()
+        mock_handler.completion_queue = mock.Mock()
+        async = self._makeOne(mock_handler)
+        async.rawlink(lambda a: a)
+        async.set_exception(ImportError('Error occured'))
+
+        assert isinstance(async.exception, ImportError)
+        assert mock_handler.completion_queue.put.called
