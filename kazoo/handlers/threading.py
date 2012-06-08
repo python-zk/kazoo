@@ -167,7 +167,7 @@ class SequentialThreadingHandler(object):
 
     def _create_thread_worker(self, queue):
         @thread
-        def thread_worker():
+        def thread_worker():  # pragma: nocover
             while self._running:
                 try:
                     func = queue.get(timeout=1)
