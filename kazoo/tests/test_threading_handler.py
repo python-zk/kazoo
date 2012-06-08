@@ -183,14 +183,23 @@ class TestThreadingAsync(unittest.TestCase):
     def test_linkage(self):
         mock_handler = mock.Mock()
         async = self._makeOne(mock_handler)
+        cv = threading.Event()
 
         lst = []
 
         def add_on():
             lst.append(True)
 
+        def wait_for_val():
+            async.get()
+            cv.set()
+
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+
         async.rawlink(add_on)
         async.set('fred')
         assert mock_handler.completion_queue.put.called
         async.unlink(add_on)
-        eq_(lst, ['fred'])
+        cv.wait()
+        eq_(async.value, 'fred')
