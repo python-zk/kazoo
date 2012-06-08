@@ -95,3 +95,88 @@ class TestThreadingAsync(unittest.TestCase):
 
         assert isinstance(async.exception, ImportError)
         assert mock_handler.completion_queue.put.called
+
+    def test_get_wait_while_setting(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+        bv = threading.Event()
+        cv = threading.Event()
+
+        def wait_for_val():
+            bv.set()
+            val = async.get()
+            lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        bv.wait()
+
+        async.set('fred')
+        cv.wait()
+        eq_(lst, ['fred'])
+
+    def test_get_with_exception(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+        bv = threading.Event()
+        cv = threading.Event()
+
+        def wait_for_val():
+            bv.set()
+            try:
+                val = async.get()
+            except ImportError:
+                lst.append('oops')
+            else:
+                lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        bv.wait()
+
+        async.set_exception(ImportError)
+        cv.wait()
+        eq_(lst, ['oops'])
+
+    def test_set_before_wait(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+        cv = threading.Event()
+        async.set('fred')
+
+        def wait_for_val():
+            val = async.get()
+            lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        cv.wait()
+        eq_(lst, ['fred'])
+
+    def test_set_exc_before_wait(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+        cv = threading.Event()
+        async.set_exception(ImportError)
+
+        def wait_for_val():
+            try:
+                val = async.get()
+            except ImportError:
+                lst.append('ooops')
+            else:
+                lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        cv.wait()
+        eq_(lst, ['ooops'])
+
