@@ -180,3 +180,17 @@ class TestThreadingAsync(unittest.TestCase):
         cv.wait()
         eq_(lst, ['ooops'])
 
+    def test_linkage(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+
+        def add_on():
+            lst.append(True)
+
+        async.rawlink(add_on)
+        async.set('fred')
+        assert mock_handler.completion_queue.put.called
+        async.unlink(add_on)
+        eq_(lst, ['fred'])
