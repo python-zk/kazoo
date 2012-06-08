@@ -106,18 +106,26 @@ class AsyncResult(object):
 
     def rawlink(self, callback):
         """Register a callback to call when a value or an exception is set"""
-        # Are we already set? Dispatch it now
-        if self.ready():
-            self._handler.completion_queue.put(
-                lambda: callback(self)
-            )
-        if callback not in self._callbacks:
-            self._callbacks.append(callback)
+        with self._condition:
+            # Are we already set? Dispatch it now
+            if self.ready():
+                self._handler.completion_queue.put(
+                    lambda: callback(self)
+                )
+                return
+
+            if callback not in self._callbacks:
+                self._callbacks.append(callback)
 
     def unlink(self, callback):
         """Remove the callback set by :meth:`rawlink`"""
-        if callback in self._callbacks:
-            self._callbacks.remove(callback)
+        with self._condition:
+            if self.ready():
+                # Already triggered, ignore
+                return
+
+            if callback in self._callbacks:
+                self._callbacks.remove(callback)
 
 
 @implementer(IHandler)
