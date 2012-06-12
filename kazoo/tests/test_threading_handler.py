@@ -3,6 +3,7 @@ import unittest
 
 import mock
 from nose.tools import eq_
+from nose.tools import raises
 
 from kazoo.client import Callback
 
@@ -66,6 +67,10 @@ class TestThreadingAsync(unittest.TestCase):
         from kazoo.handlers.threading import AsyncResult
         return AsyncResult(*args)
 
+    def _makeHandler(self):
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        return SequentialThreadingHandler()
+
     def test_ready(self):
         mock_handler = mock.Mock()
         async = self._makeOne(mock_handler)
@@ -116,6 +121,21 @@ class TestThreadingAsync(unittest.TestCase):
         async.set('fred')
         cv.wait()
         eq_(lst, ['fred'])
+
+    def test_get_with_nowait(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+        timeout = self._makeHandler().timeout_exception
+
+        @raises(timeout)
+        def test_it():
+            async.get(block=False)
+        test_it()
+
+        @raises(timeout)
+        def test_nowait():
+            async.get_nowait()
+        test_nowait()
 
     def test_get_with_exception(self):
         mock_handler = mock.Mock()
@@ -203,3 +223,32 @@ class TestThreadingAsync(unittest.TestCase):
         async.unlink(add_on)
         cv.wait()
         eq_(async.value, 'fred')
+
+    def test_linkage_not_ready(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+
+        def add_on():
+            lst.append(True)
+
+        async.set('fred')
+        assert not mock_handler.completion_queue.called
+        async.rawlink(add_on)
+        assert mock_handler.completion_queue.put.called
+
+    def test_link_and_unlink(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+
+        def add_on():
+            lst.append(True)
+
+        async.rawlink(add_on)
+        assert not mock_handler.completion_queue.put.called
+        async.unlink(add_on)
+        async.set('fred')
+        assert not mock_handler.completion_queue.put.called
