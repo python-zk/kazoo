@@ -23,4 +23,5 @@ parts/
 develop-eggs/
 .idea
 docs/_build
+*.egg
 
