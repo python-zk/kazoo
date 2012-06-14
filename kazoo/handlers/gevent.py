@@ -8,7 +8,7 @@ import gevent
 import gevent.event
 try:
     from gevent import get_hub
-except ImportError:
+except ImportError:  # pragma: nocover
     from gevent.hub import get_hub
 
 from gevent.queue import Empty
