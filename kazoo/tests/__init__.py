@@ -3,6 +3,8 @@ import unittest
 import time
 import uuid
 
+from nose import SkipTest
+
 from kazoo.client import KazooClient, KazooState
 
 # if this env variable is set, ZK client integration tests are run
@@ -13,9 +15,9 @@ ENV_TEST_HOSTS = "KAZOO_TEST_HOSTS"
 def get_hosts_or_skip():
     if ENV_TEST_HOSTS in os.environ:
         return os.environ[ENV_TEST_HOSTS]
-    raise unittest.SkipTest("Skipping ZooKeeper test. To run, set " +
-                            "%s env to a host list. (ex: localhost:2181)" %
-                            ENV_TEST_HOSTS)
+    raise SkipTest("Skipping ZooKeeper test. To run, set " +
+                   "%s env to a host list. (ex: localhost:2181)" %
+                    ENV_TEST_HOSTS)
 
 
 def get_client_or_skip(**kwargs):
