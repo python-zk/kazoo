@@ -1,16 +1,19 @@
 """Kazoo Zookeeper Client
 
 """
+import hashlib
 import inspect
 import logging
 import os
 from collections import namedtuple
+from os.path import split
 from functools import partial
 
 import zookeeper
 
 from kazoo.exceptions import ConfigurationError
 from kazoo.exceptions import ZookeeperStoppedError
+from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.retry import KazooRetry
@@ -96,6 +99,48 @@ def _exists_callback(async_result, handle, code, stat):
         async_result.set_exception(exc)
     else:
         async_result.set(stat)
+
+
+def make_digest_acl_credential(username, password):
+    credential = "%s:%s" % (username, password)
+    cred_hash = hashlib.sha1(credential).digest().encode('base64').strip()
+    return "%s:%s" % (username, cred_hash)
+
+
+def make_acl(scheme, credential, read=False, write=False,
+             create=False, delete=False, admin=False, all=False):
+    if all:
+        permissions = ACLPermission.ALL
+    else:
+        permissions = 0
+        if read:
+            permissions |= ACLPermission.READ
+        if write:
+            permissions |= ACLPermission.WRITE
+        if create:
+            permissions |= ACLPermission.CREATE
+        if delete:
+            permissions |= ACLPermission.DELETE
+        if admin:
+            permissions |= ACLPermission.ADMIN
+
+    return dict(scheme=scheme, id=credential, perms=permissions)
+
+
+def make_digest_acl(username, password, read=False, write=False,
+                    create=False, delete=False, admin=False, all=False):
+    cred = make_digest_acl_credential(username, password)
+    return make_acl("digest", cred, read=read, write=write, create=create,
+        delete=delete, admin=admin, all=all)
+
+
+class ACLPermission(object):
+    READ = zookeeper.PERM_READ
+    WRITE = zookeeper.PERM_WRITE
+    CREATE = zookeeper.PERM_CREATE
+    DELETE = zookeeper.PERM_DELETE
+    ADMIN = zookeeper.PERM_ADMIN
+    ALL = zookeeper.PERM_ALL
 
 
 class KazooState(object):
@@ -345,12 +390,12 @@ class KazooClient(object):
     called with a single argument, a :class:`WatchedEvent` instance.
 
     """
-    def __init__(self, hosts='127.0.0.1:2181', namespace=None, watcher=None,
-                 timeout=10.0, client_id=None, max_retries=None, handler=None):
+    def __init__(self, hosts='127.0.0.1:2181', watcher=None,
+                 timeout=10.0, client_id=None, max_retries=None, handler=None,
+                 default_acl=None):
         """Create a KazooClient instance
 
         :param hosts: List of hosts to connect to
-        :param namespace: A Zookeeper namespace for nodes to be used under
         :param watcher: Set a default watcher. This will be called by the
                         actual default watcher that :class:`KazooClient`
                         establishes.
@@ -362,14 +407,15 @@ class KazooClient(object):
                         callback handling
 
         """
-        # remove any trailing slashes
-        if namespace:
-            namespace = namespace.rstrip('/')
-        if namespace:
-            validate_path(namespace)
-        self.namespace = namespace
+        # Check for chroot
+        chroot_check = hosts.split('/', 1)
+        if len(chroot_check) == 2:
+            self.chroot = '/' + chroot_check[1]
+        else:
+            self.chroot = None
 
-        self._needs_ensure_path = bool(namespace)
+        # remove any trailing slashes
+        self.default_acl = default_acl
 
         self._hosts = hosts
         self._watcher = watcher
@@ -418,7 +464,7 @@ class KazooClient(object):
         except (TypeError, SystemError) as exc:
             # Handle was cleared or isn't set. If it was cleared and we are
             # supposed to be running, it means we had session expiration and
-            # are attempting to reconnect. We treat it as a connection loss
+            # are attempting to reconnect. We treat it as a session expiration
             # in that case for appropriate behavior.
             if self._stopped.is_set():
                 async_result.set_exception(
@@ -431,12 +477,7 @@ class KazooClient(object):
                     zookeeper.InvalidStateException("invalid handle state"))
             else:
                 async_result.set_exception(
-                    zookeeper.ConnectionLossException("connection loss"))
-
-    def _assure_namespace(self):
-        if self._needs_ensure_path:
-            self.ensure_path('/')
-            self._needs_ensure_path = False
+                    zookeeper.SessionExpiredException("session expired"))
 
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
@@ -474,7 +515,7 @@ class KazooClient(object):
     def _wrap_watch_callback(self, func):
         def func_wrapper(*args):
             try:
-                func(args)
+                func(*args)
             except Exception:
                 log.exception("Exception in kazoo callback <func: %s>" % func)
 
@@ -543,6 +584,22 @@ class KazooClient(object):
             self._live.clear()
             self._make_state_change(KazooState.LOST)
 
+    def recursive_delete(self, path):
+        """Recursively delete a ZNode and all of its children
+        """
+        try:
+            children = self.get_children(path)
+        except zookeeper.NoNodeException:
+            return
+
+        if children:
+            for child in children:
+                self.recursive_delete(path + "/" + child)
+        try:
+            self.delete(path)
+        except zookeeper.NoNodeException:
+            pass
+
     def connect_async(self):
         """Asynchronously initiate connection to ZK
 
@@ -610,7 +667,8 @@ class KazooClient(object):
         async_result = self._handler.async_result()
         callback = partial(_generic_callback, async_result)
 
-        self._safe_call(zookeeper.add_auth, scheme, credential, callback)
+        self._safe_call(zookeeper.add_auth, async_result, scheme, credential,
+                        callback)
         return async_result
 
     def add_auth(self, scheme, credential):
@@ -622,7 +680,39 @@ class KazooClient(object):
         """
         return self.add_auth_async(scheme, credential).get()
 
-    def create_async(self, path, value, acl=None, ephemeral=False, sequence=False):
+    def ensure_path(self, path, acl=None):
+        """Recursively create a path if it doesn't exist
+        """
+        self._inner_ensure_path(path, acl)
+
+    def _inner_ensure_path(self, path, acl):
+        if self.exists(path):
+            return
+
+        if acl is None and self.default_acl:
+            acl = self.default_acl
+
+        parent, node = split(path)
+
+        if node:
+            self._inner_ensure_path(parent, acl)
+        try:
+            self.create_async(path, "", acl=acl).get()
+        except zookeeper.NodeExistsException:
+            # someone else created the node. how sweet!
+            pass
+
+    def unchroot(self, path):
+        if not self.chroot:
+            return path
+
+        if path.startswith(self.chroot):
+            return path[len(self.chroot):]
+        else:
+            return path
+
+    def create_async(self, path, value, acl=None, ephemeral=False,
+                     sequence=False):
         """Asynchronously create a ZNode
 
         :param path: path of node
@@ -637,6 +727,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if acl is None and self.default_acl:
+            acl = self.default_acl
+
         flags = 0
         if ephemeral:
             flags |= zookeeper.EPHEMERAL
@@ -652,7 +745,8 @@ class KazooClient(object):
                         list(acl), flags, callback)
         return async_result
 
-    def create(self, path, value, acl=None, ephemeral=False, sequence=False):
+    def create(self, path, value, acl=None, ephemeral=False, sequence=False,
+               makepath=False):
         """Create a ZNode
 
         :param path: path of node
@@ -662,10 +756,32 @@ class KazooClient(object):
                           to this session)
         :param sequence: boolean indicating whether path is suffixed with a
                          unique index
+        :param makepath: Whether the path should be created if it doesn't
+                         exist
         :returns: real path of the new node
 
         """
-        return self.create_async(path, value, acl, ephemeral, sequence).get()
+        try:
+            realpath = self.create_async(path, value, acl=acl,
+                ephemeral=ephemeral, sequence=sequence).get()
+
+        except NoNodeException:
+            # some or all of the parent path doesn't exist. if makepath is set
+            # we will create it and retry. If it fails again, someone must be
+            # actively deleting ZNodes and we'd best bail out.
+            if not makepath:
+                raise
+
+            parent, _ = split(path)
+
+            # using the inner call directly because path is already namespaced
+            self._inner_ensure_path(parent, acl)
+
+            # now retry
+            realpath = self.create_async(path, value, acl=acl,
+                ephemeral=ephemeral, sequence=sequence).get()
+
+        return self.unchroot(realpath)
 
     def exists_async(self, path, watch=None):
         """Asynchronously check if a node exists

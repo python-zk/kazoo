@@ -13,7 +13,7 @@ ENV_TEST_HOSTS = "KAZOO_TEST_HOSTS"
 def get_hosts_or_skip():
     if ENV_TEST_HOSTS in os.environ:
         return os.environ[ENV_TEST_HOSTS]
-    raise unittest.SkipTest("Skipping ZooKeeper test. To run, set "+
+    raise unittest.SkipTest("Skipping ZooKeeper test. To run, set " +
                             "%s env to a host list. (ex: localhost:2181)" %
                             ENV_TEST_HOSTS)
 
@@ -38,14 +38,16 @@ def until_timeout(timeout, value=None):
 
 
 class KazooTestCase(unittest.TestCase):
-    def setUp(self):
-        self.hosts = get_hosts_or_skip()
+    def _get_client(self):
+        return KazooClient(self.hosts)
 
-        self.namespace = "/kazootests" + uuid.uuid4().hex
-        self.client = KazooClient(self.hosts, namespace=self.namespace)
+    def setUp(self):
+        namespace = "/kazootests" + uuid.uuid4().hex
+        self.hosts = get_hosts_or_skip() + namespace
+
+        self.client = self._get_client()
 
     def tearDown(self):
         if self.client.state == KazooState.LOST:
             self.client.connect()
-        self.client.recursive_delete(self.namespace)
-        self.client.close()
+        self.client.stop()
