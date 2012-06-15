@@ -618,6 +618,10 @@ class KazooClient(object):
 
         self._safe_call(zookeeper.add_auth, async_result, scheme, credential,
                         callback)
+
+        # Compensate for io polling bug on auth by running an exists call
+        # See https://issues.apache.org/jira/browse/ZOOKEEPER-770
+        self.exists_async("/")
         return async_result
 
     def add_auth(self, scheme, credential):
