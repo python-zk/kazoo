@@ -13,3 +13,4 @@ organized alphabetically by module name.
    api/handlers/threading
    api/handlers/util
    api/interfaces
+   api/security
