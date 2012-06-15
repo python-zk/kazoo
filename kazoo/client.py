@@ -319,7 +319,11 @@ def _generic_callback(async_result, handle, code, *args):
         if not args:
             result = None
         elif len(args) == 1:
-            result = args[0]
+            if isinstance(args[0], dict):
+                # It's a node struct, put it in a ZnodeStat
+                result = ZnodeStat(**args[0])
+            else:
+                result = args[0]
         else:
             # if there's two, the second is a stat object
             args = list(args)
@@ -834,7 +838,7 @@ class KazooClient(object):
         :param path: path of node to set
         :param data: new data value
         :param version: version of node being updated, or -1
-        :returns: AsyncResult set with new node stat on success
+        :returns: AsyncResult set with new node :class:`ZnodeStat` on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -855,7 +859,7 @@ class KazooClient(object):
         :param path: path of node to set
         :param data: new data value
         :param version: version of node being updated, or -1
-        :returns: updated node stat
+        :returns: updated :class:`ZnodeStat` of the node
 
         """
         return self.set_async(path, data, version).get()

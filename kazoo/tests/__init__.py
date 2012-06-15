@@ -40,6 +40,9 @@ def until_timeout(timeout, value=None):
 
 
 class KazooTestCase(unittest.TestCase):
+    def _get_nonchroot_client(self):
+        return KazooClient(get_hosts_or_skip())
+
     def _get_client(self, **kwargs):
         return KazooClient(self.hosts, **kwargs)
 

@@ -32,6 +32,53 @@ class TestClient(KazooTestCase):
         client.ensure_path("/1/2/3/4")
         self.assertTrue(client.exists("/1/2/3/4"))
 
+    def test_state_listener(self):
+        from kazoo.client import KazooState
+        states = []
+        condition = threading.Condition()
+
+        def listener(state):
+            with condition:
+                states.append(state)
+                condition.notify_all()
+
+        self.client.add_listener(listener)
+        self.client.connect(5)
+
+        with condition:
+            if not states:
+                condition.wait(5)
+
+        eq_(len(states), 1)
+        eq_(states[0], KazooState.CONNECTED)
+
+    def test_create_no_makepath(self):
+        self.client.connect()
+
+        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1")
+        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1",
+            makepath=False)
+
+    def test_bad_create_args(self):
+        # We need a non-namespaced client for this test
+        client = self._get_nonchroot_client()
+        try:
+            client.connect()
+            self.assertRaises(ValueError, client.create, "1/2", "val1")
+        finally:
+            client.stop()
+
+    def test_create_makepath(self):
+        self.client.connect()
+
+        self.client.create("/1/2", "val1", makepath=True)
+        data, stat = self.client.get("/1/2")
+        self.assertEqual(data, "val1")
+
+        self.client.create("/1/2/3/4/5", "val2", makepath=True)
+        data, stat = self.client.get("/1/2/3/4/5")
+        self.assertEqual(data, "val2")
+
     def test_create_get_set(self):
         self.client.connect()
         self.client.ensure_path("/")
@@ -45,7 +92,17 @@ class TestClient(KazooTestCase):
 
         newstat = self.zk.set(nodepath, "hats", stat.version)
         self.assertTrue(newstat)
-        assert newstat['version'] > stat.version
+        assert newstat.version > stat.version
+
+        # Some other checks of the ZnodeStat object we got
+        eq_(newstat.acl_version, stat.acl_version)
+        eq_(newstat.created, stat.ctime / 1000.0)
+        eq_(newstat.last_modified, newstat.mtime / 1000.0)
+        eq_(newstat.owner_session_id, stat.ephemeralOwner)
+        eq_(newstat.creation_transaction_id, stat.czxid)
+        eq_(newstat.last_modified_transaction_id, newstat.mzxid)
+        eq_(newstat.data_length, newstat.dataLength)
+        eq_(newstat.children_count, stat.numChildren)
 
     def test_create_get_sequential(self):
         self.client.connect()
@@ -135,7 +192,6 @@ class TestClient(KazooTestCase):
         eq_(exists, None)
 
     def test_auth(self):
-
         self.client.connect()
         self.client.ensure_path("/")
 
