@@ -26,7 +26,8 @@ tests_require = install_requires + [
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     install_requires.extend([
-        'gevent'
+        'gevent',
+        'repoze.sphinx.autointerface',
     ])
 
 setup(
