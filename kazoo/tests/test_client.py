@@ -18,7 +18,7 @@ class TestClient(KazooTestCase):
         return KazooState
 
     def _makeAuth(self, *args, **kwargs):
-        from kazoo.client import make_digest_acl
+        from kazoo.security import make_digest_acl
         return make_digest_acl(*args, **kwargs)
 
     def test_ensure_path(self):
@@ -45,7 +45,7 @@ class TestClient(KazooTestCase):
 
         newstat = self.zk.set(nodepath, "hats", stat.version)
         self.assertTrue(newstat)
-        self.assertGreater(newstat['version'], stat.version)
+        assert newstat['version'] > stat.version
 
     def test_create_get_sequential(self):
         self.client.connect()
@@ -67,16 +67,16 @@ class TestClient(KazooTestCase):
         nodepath = "/" + uuid.uuid4().hex
 
         exists = self.zk.exists(nodepath)
-        self.assertIsNone(exists)
+        eq_(exists, None)
 
         self.zk.create(nodepath, "sandwich", ephemeral=True)
         exists = self.zk.exists(nodepath)
         self.assertTrue(exists)
-        self.assertIn("version", exists)
+        assert "version" in exists
 
         multi_node_nonexistent = "/" + uuid.uuid4().hex + "/hats"
         exists = self.zk.exists(multi_node_nonexistent)
-        self.assertIsNone(exists)
+        eq_(exists, None)
 
     def test_exists_watch(self):
         self.client.connect()
@@ -91,7 +91,7 @@ class TestClient(KazooTestCase):
             event.set()
 
         exists = self.zk.exists(nodepath, watch=w)
-        self.assertIsNone(exists)
+        eq_(exists, None)
 
         self.zk.create(nodepath, "x", ephemeral=True)
 
@@ -114,7 +114,7 @@ class TestClient(KazooTestCase):
             raise Exception("test exception in callback")
 
         exists = self.zk.exists(nodepath, watch=w)
-        self.assertIsNone(exists)
+        eq_(exists, None)
 
         self.zk.create(nodepath, "x", ephemeral=True)
 
@@ -132,7 +132,7 @@ class TestClient(KazooTestCase):
         self.zk.delete(nodepath)
 
         exists = self.zk.exists(nodepath)
-        self.assertIsNone(exists)
+        eq_(exists, None)
 
     def test_auth(self):
 

@@ -1,7 +1,6 @@
 """Kazoo Zookeeper Client
 
 """
-import hashlib
 import inspect
 import logging
 import os
@@ -26,6 +25,7 @@ ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
                        "id": "anyone"}
 
 
+## Zookeeper Logging Setup
 # Setup Zookeeper logging thread
 _logging_pipe = os.pipe()
 zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
@@ -70,79 +70,7 @@ def _loggingthread():
             logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
 
 
-def validate_path(path):
-    if not path.startswith('/'):
-        raise ValueError("invalid path '%s'. must start with /" % path)
-
-
-def _generic_callback(async_result, handle, code, *args):
-    if code != zookeeper.OK:
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        if not args:
-            result = None
-        elif len(args) == 1:
-            result = args[0]
-        else:
-            # if there's two, the second is a stat object
-            args = list(args)
-            if len(args) == 2:
-                args[1] = ZnodeStat(**args[1])
-            result = tuple(args)
-
-        async_result.set(result)
-
-
-def _exists_callback(async_result, handle, code, stat):
-    if code not in (zookeeper.OK, zookeeper.NONODE):
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        async_result.set(stat)
-
-
-def make_digest_acl_credential(username, password):
-    credential = "%s:%s" % (username, password)
-    cred_hash = hashlib.sha1(credential).digest().encode('base64').strip()
-    return "%s:%s" % (username, cred_hash)
-
-
-def make_acl(scheme, credential, read=False, write=False,
-             create=False, delete=False, admin=False, all=False):
-    if all:
-        permissions = ACLPermission.ALL
-    else:
-        permissions = 0
-        if read:
-            permissions |= ACLPermission.READ
-        if write:
-            permissions |= ACLPermission.WRITE
-        if create:
-            permissions |= ACLPermission.CREATE
-        if delete:
-            permissions |= ACLPermission.DELETE
-        if admin:
-            permissions |= ACLPermission.ADMIN
-
-    return dict(scheme=scheme, id=credential, perms=permissions)
-
-
-def make_digest_acl(username, password, read=False, write=False,
-                    create=False, delete=False, admin=False, all=False):
-    cred = make_digest_acl_credential(username, password)
-    return make_acl("digest", cred, read=read, write=write, create=create,
-        delete=delete, admin=admin, all=all)
-
-
-class ACLPermission(object):
-    READ = zookeeper.PERM_READ
-    WRITE = zookeeper.PERM_WRITE
-    CREATE = zookeeper.PERM_CREATE
-    DELETE = zookeeper.PERM_DELETE
-    ADMIN = zookeeper.PERM_ADMIN
-    ALL = zookeeper.PERM_ALL
-
+## Client State and Event objects
 
 class KazooState(object):
     """High level connection state values
@@ -372,13 +300,42 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
 
 
 class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
-    """A callback being triggered
+    """A callback that is handed to a handler for dispatch
 
     :param type: Type of the callback, can be 'session' or 'watch'
     :param func: Callback function
     :param args: Argument list for the callback function
 
     """
+
+
+## Client Callbacks
+
+def _generic_callback(async_result, handle, code, *args):
+    if code != zookeeper.OK:
+        exc = err_to_exception(code)
+        async_result.set_exception(exc)
+    else:
+        if not args:
+            result = None
+        elif len(args) == 1:
+            result = args[0]
+        else:
+            # if there's two, the second is a stat object
+            args = list(args)
+            if len(args) == 2:
+                args[1] = ZnodeStat(**args[1])
+            result = tuple(args)
+
+        async_result.set(result)
+
+
+def _exists_callback(async_result, handle, code, stat):
+    if code not in (zookeeper.OK, zookeeper.NONODE):
+        exc = err_to_exception(code)
+        async_result.set_exception(exc)
+    else:
+        async_result.set(stat)
 
 
 class KazooClient(object):
@@ -464,8 +421,11 @@ class KazooClient(object):
             return func(self._handle, *args)
         except BadArgumentsException:
             # Validate the path to throw a better except
-            validate_path(args[0])
-            raise
+            if isinstance(args[0], basestring) and not args[0].startswith('/'):
+                raise ValueError("invalid path '%s'. must start with /" %
+                                 args[0])
+            else:
+                raise
         except (TypeError, SystemError) as exc:
             # Handle was cleared or isn't set. If it was cleared and we are
             # supposed to be running, it means we had session expiration and
@@ -588,27 +548,6 @@ class KazooClient(object):
                 pass
             self._live.clear()
             self._make_state_change(KazooState.LOST)
-
-    def recursive_delete(self, path):
-        """Recursively delete a ZNode and all of its children
-        """
-        try:
-            children = self.get_children(path)
-        except zookeeper.NoNodeException:
-            return
-
-        if children:
-            for child in children:
-                if path == "/":
-                    child_path = path + child
-                else:
-                    child_path = path + "/" + child
-
-                self.recursive_delete(child_path)
-        try:
-            self.delete(path)
-        except zookeeper.NoNodeException:
-            pass
 
     def connect_async(self):
         """Asynchronously initiate connection to ZK
@@ -940,3 +879,24 @@ class KazooClient(object):
 
         """
         self.delete_async(path, version).get()
+
+    def recursive_delete(self, path):
+        """Recursively delete a ZNode and all of its children
+        """
+        try:
+            children = self.get_children(path)
+        except zookeeper.NoNodeException:
+            return
+
+        if children:
+            for child in children:
+                if path == "/":
+                    child_path = path + child
+                else:
+                    child_path = path + "/" + child
+
+                self.recursive_delete(child_path)
+        try:
+            self.delete(path)
+        except zookeeper.NoNodeException:
+            pass
