@@ -13,6 +13,10 @@ class TestClient(KazooTestCase):
     def zk(self):
         return self.client
 
+    def _getKazooState(self):
+        from kazoo.client import KazooState
+        return KazooState
+
     def _makeAuth(self, *args, **kwargs):
         from kazoo.client import make_digest_acl
         return make_digest_acl(*args, **kwargs)
@@ -151,9 +155,13 @@ class TestClient(KazooTestCase):
         eve = self._get_client()
         eve.connect()
 
-        self.assertRaises(NoAuthException, eve.get, "/1/2")
+        try:
+            self.assertRaises(NoAuthException, eve.get, "/1/2")
 
-        # try again with the wrong auth token
-        eve.add_auth("digest", "badbad:bad")
+            # try again with the wrong auth token
+            eve.add_auth("digest", "badbad:bad")
 
-        self.assertRaises(NoAuthException, eve.get, "/1/2")
+            self.assertRaises(NoAuthException, eve.get, "/1/2")
+        finally:
+            # Ensure we remove the ACL protected nodes
+            self.client.recursive_delete("/1")

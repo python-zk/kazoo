@@ -40,8 +40,8 @@ def until_timeout(timeout, value=None):
 
 
 class KazooTestCase(unittest.TestCase):
-    def _get_client(self):
-        return KazooClient(self.hosts)
+    def _get_client(self, **kwargs):
+        return KazooClient(self.hosts, **kwargs)
 
     def setUp(self):
         namespace = "/kazootests" + uuid.uuid4().hex
@@ -52,4 +52,5 @@ class KazooTestCase(unittest.TestCase):
     def tearDown(self):
         if self.client.state == KazooState.LOST:
             self.client.connect()
+        self.client.recursive_delete('/')
         self.client.stop()
