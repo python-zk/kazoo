@@ -11,6 +11,7 @@ from functools import partial
 
 import zookeeper
 
+from kazoo.exceptions import BadArgumentsException
 from kazoo.exceptions import ConfigurationError
 from kazoo.exceptions import ZookeeperStoppedError
 from kazoo.exceptions import NoNodeException
@@ -461,6 +462,10 @@ class KazooClient(object):
         """
         try:
             return func(self._handle, *args)
+        except BadArgumentsException:
+            # Validate the path to throw a better except
+            validate_path(args[0])
+            raise
         except (TypeError, SystemError) as exc:
             # Handle was cleared or isn't set. If it was cleared and we are
             # supposed to be running, it means we had session expiration and
@@ -578,7 +583,7 @@ class KazooClient(object):
             zh, self._handle = self._handle, None
             try:
                 zookeeper.close(zh)
-            except zookeeper.ZookeeperException:
+            except zookeeper.ZooKeeperException:
                 # Corrupt session or otherwise disconnected
                 pass
             self._live.clear()
@@ -594,7 +599,12 @@ class KazooClient(object):
 
         if children:
             for child in children:
-                self.recursive_delete(path + "/" + child)
+                if path == "/":
+                    child_path = path + child
+                else:
+                    child_path = path + "/" + child
+
+                self.recursive_delete(child_path)
         try:
             self.delete(path)
         except zookeeper.NoNodeException:
