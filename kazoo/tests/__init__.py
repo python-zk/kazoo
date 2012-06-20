@@ -1,16 +1,10 @@
 import atexit
 import os
 import unittest
-import time
 import uuid
 
 from kazoo.client import KazooClient, KazooState
 from kazoo.tests.common import ZookeeperCluster
-
-# if this env variable is set, ZK client integration tests are run
-# against the specified host list
-ENV_TEST_HOSTS = "KAZOO_TEST_HOSTS"
-
 
 ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
 assert ZK_HOME, (
@@ -19,20 +13,6 @@ assert ZK_HOME, (
 
 CLUSTER = ZookeeperCluster(ZK_HOME)
 atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
-
-
-def until_timeout(timeout, value=None):
-    """Returns an iterator that repeats until a timeout is reached
-
-    timeout is in seconds
-    """
-
-    start = time.time()
-
-    while True:
-        if time.time() - start >= timeout:
-            raise Exception("timed out before success!")
-        yield value
 
 
 _started = []
