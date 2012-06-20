@@ -1,28 +1,24 @@
+import atexit
 import os
 import unittest
 import time
 import uuid
 
-from nose import SkipTest
-
 from kazoo.client import KazooClient, KazooState
+from kazoo.tests.common import ZookeeperCluster
 
 # if this env variable is set, ZK client integration tests are run
 # against the specified host list
 ENV_TEST_HOSTS = "KAZOO_TEST_HOSTS"
 
 
-def get_hosts_or_skip():
-    if ENV_TEST_HOSTS in os.environ:
-        return os.environ[ENV_TEST_HOSTS]
-    raise SkipTest("Skipping ZooKeeper test. To run, set " +
-                   "%s env to a host list. (ex: localhost:2181)" %
-                    ENV_TEST_HOSTS)
+ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
+assert ZK_HOME, (
+    "ZOOKEEPER_PATH environment variable must be defined.\n "
+    "For deb package installations this is /usr/share/java")
 
-
-def get_client_or_skip(**kwargs):
-    hosts = get_hosts_or_skip()
-    return KazooClient(hosts, **kwargs)
+CLUSTER = ZookeeperCluster(ZK_HOME)
+atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
 
 
 def until_timeout(timeout, value=None):
@@ -39,16 +35,30 @@ def until_timeout(timeout, value=None):
         yield value
 
 
+_started = []
+
+
 class KazooTestCase(unittest.TestCase):
+    @property
+    def cluster(self):
+        return CLUSTER
+
+    @property
+    def servers(self):
+        return ",".join([s.address for s in self.cluster])
+
     def _get_nonchroot_client(self):
-        return KazooClient(get_hosts_or_skip())
+        return KazooClient(self.servers)
 
     def _get_client(self, **kwargs):
         return KazooClient(self.hosts, **kwargs)
 
     def setUp(self):
+        if not _started:
+            self.cluster.start()
+            _started.append(True)
         namespace = "/kazootests" + uuid.uuid4().hex
-        self.hosts = get_hosts_or_skip() + namespace
+        self.hosts = self.servers + namespace
 
         self.client = self._get_client()
 
