@@ -16,9 +16,6 @@ CLUSTER = ZookeeperCluster(ZK_HOME)
 atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
 
 
-_started = []
-
-
 class KazooTestCase(unittest.TestCase):
     @property
     def cluster(self):
@@ -40,17 +37,19 @@ class KazooTestCase(unittest.TestCase):
         client.stop()
 
     def setUp(self):
-        if not _started:
-            zookeeper.deterministic_conn_order(True)
+        zookeeper.deterministic_conn_order(True)
+        if not self.cluster[0].running:
             self.cluster.start()
-            _started.append(True)
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
 
         self.client = self._get_client()
 
     def tearDown(self):
-        if self.client.state == KazooState.LOST:
+        if not self.cluster[0].running:
+            self.cluster.start()
+
+        if not self.client.connected:
             self.client.connect()
         self.client.recursive_delete('/')
         self.client.stop()
