@@ -579,10 +579,10 @@ class KazooClient(object):
             self._handle = zookeeper.init(self._hosts, cb, self._timeout)
         return self._live
 
-    def connect(self, timeout=None):
+    def connect(self, timeout=3):
         """Initiate connection to ZK
 
-        :param timeout: Time in seconds to wait for connection to succeed
+        :param timeout: Time in seconds to wait for connection to succeed.
 
         """
         event = self.connect_async()
@@ -592,7 +592,7 @@ class KazooClient(object):
             return
 
         try:
-            event.wait(timeout=timeout)
+        event.wait(timeout=timeout)
         except self._handler.timeout_error:
             self._connection_timed_out = True
             raise
