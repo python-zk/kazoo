@@ -8,29 +8,56 @@ from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import NoAuthException
 
 
-class TestClient(KazooTestCase):
-    @property
-    def zk(self):
-        return self.client
-
-    def _getKazooState(self):
-        from kazoo.client import KazooState
-        return KazooState
-
+class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
         from kazoo.security import make_digest_acl
         return make_digest_acl(*args, **kwargs)
 
-    def test_ensure_path(self):
-        client = self.client
+    def test_auth(self):
+        self.client.connect()
+        self.client.ensure_path("/")
 
-        client.connect()
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
 
-        client.ensure_path("/1/2")
-        self.assertTrue(client.exists("/1/2"))
+        digest_auth = "%s:%s" % (username, password)
+        acl = self._makeAuth(username, password, all=True)
 
-        client.ensure_path("/1/2/3/4")
-        self.assertTrue(client.exists("/1/2/3/4"))
+        self.client.add_auth("digest", digest_auth)
+
+        self.client.default_acl = (acl,)
+
+        self.client.create("/1", "")
+        self.client.create("/1/2", "")
+
+        eve = self._get_client()
+        eve.connect()
+
+        try:
+            self.assertRaises(NoAuthException, eve.get, "/1/2")
+
+            # try again with the wrong auth token
+            eve.add_auth("digest", "badbad:bad")
+
+            self.assertRaises(NoAuthException, eve.get, "/1/2")
+        finally:
+            # Ensure we remove the ACL protected nodes
+            self.client.recursive_delete("/1")
+
+    def test_session_expire(self):
+        from kazoo.client import KazooState
+        self.client.connect()
+
+        cv = threading.Event()
+
+        def watch_events(event):
+            if event == KazooState.LOST:
+                cv.set()
+
+        self.client.add_listener(watch_events)
+        self.expire_session(self.client.client_id)
+        cv.wait(1)
+        assert cv.is_set()
 
     def test_state_listener(self):
         from kazoo.client import KazooState
@@ -51,6 +78,27 @@ class TestClient(KazooTestCase):
 
         eq_(len(states), 1)
         eq_(states[0], KazooState.CONNECTED)
+
+    def test_no_connection(self):
+        from kazoo.exceptions import ZookeeperStoppedError
+        self.assertRaises(ZookeeperStoppedError, self.client.exists, '/')
+
+
+class TestClient(KazooTestCase):
+    def _getKazooState(self):
+        from kazoo.client import KazooState
+        return KazooState
+
+    def test_ensure_path(self):
+        client = self.client
+
+        client.connect()
+
+        client.ensure_path("/1/2")
+        self.assertTrue(client.exists("/1/2"))
+
+        client.ensure_path("/1/2/3/4")
+        self.assertTrue(client.exists("/1/2/3/4"))
 
     def test_create_no_makepath(self):
         self.client.connect()
@@ -85,12 +133,12 @@ class TestClient(KazooTestCase):
 
         nodepath = "/" + uuid.uuid4().hex
 
-        self.zk.create(nodepath, "sandwich", ephemeral=True)
+        self.client.create(nodepath, "sandwich", ephemeral=True)
 
-        data, stat = self.zk.get(nodepath)
+        data, stat = self.client.get(nodepath)
         eq_(data, "sandwich")
 
-        newstat = self.zk.set(nodepath, "hats", stat.version)
+        newstat = self.client.set(nodepath, "hats", stat.version)
         self.assertTrue(newstat)
         assert newstat.version > stat.version
 
@@ -109,12 +157,12 @@ class TestClient(KazooTestCase):
         self.client.ensure_path("/")
 
         basepath = "/" + uuid.uuid4().hex
-        realpath = self.zk.create(basepath, "sandwich", sequence=True,
+        realpath = self.client.create(basepath, "sandwich", sequence=True,
             ephemeral=True)
 
         self.assertTrue(basepath != realpath and realpath.startswith(basepath))
 
-        data, stat = self.zk.get(realpath)
+        data, stat = self.client.get(realpath)
         self.assertEqual(data, "sandwich")
 
     def test_exists(self):
@@ -123,16 +171,16 @@ class TestClient(KazooTestCase):
 
         nodepath = "/" + uuid.uuid4().hex
 
-        exists = self.zk.exists(nodepath)
+        exists = self.client.exists(nodepath)
         eq_(exists, None)
 
-        self.zk.create(nodepath, "sandwich", ephemeral=True)
-        exists = self.zk.exists(nodepath)
+        self.client.create(nodepath, "sandwich", ephemeral=True)
+        exists = self.client.exists(nodepath)
         self.assertTrue(exists)
         assert "version" in exists
 
         multi_node_nonexistent = "/" + uuid.uuid4().hex + "/hats"
-        exists = self.zk.exists(multi_node_nonexistent)
+        exists = self.client.exists(multi_node_nonexistent)
         eq_(exists, None)
 
     def test_exists_watch(self):
@@ -147,10 +195,10 @@ class TestClient(KazooTestCase):
             eq_(watch_event.path, nodepath)
             event.set()
 
-        exists = self.zk.exists(nodepath, watch=w)
+        exists = self.client.exists(nodepath, watch=w)
         eq_(exists, None)
 
-        self.zk.create(nodepath, "x", ephemeral=True)
+        self.client.create(nodepath, "x", ephemeral=True)
 
         event.wait(1)
         self.assertTrue(event.is_set())
@@ -170,10 +218,10 @@ class TestClient(KazooTestCase):
 
             raise Exception("test exception in callback")
 
-        exists = self.zk.exists(nodepath, watch=w)
+        exists = self.client.exists(nodepath, watch=w)
         eq_(exists, None)
 
-        self.zk.create(nodepath, "x", ephemeral=True)
+        self.client.create(nodepath, "x", ephemeral=True)
 
         event.wait(1)
         self.assertTrue(event.is_set())
@@ -184,40 +232,9 @@ class TestClient(KazooTestCase):
 
         nodepath = "/" + uuid.uuid4().hex
 
-        self.zk.create(nodepath, "zzz")
+        self.client.create(nodepath, "zzz")
 
-        self.zk.delete(nodepath)
+        self.client.delete(nodepath)
 
-        exists = self.zk.exists(nodepath)
+        exists = self.client.exists(nodepath)
         eq_(exists, None)
-
-    def test_auth(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
-        username = uuid.uuid4().hex
-        password = uuid.uuid4().hex
-
-        digest_auth = "%s:%s" % (username, password)
-        acl = self._makeAuth(username, password, all=True)
-
-        self.client.add_auth("digest", digest_auth)
-
-        self.client.default_acl = (acl,)
-
-        self.client.create("/1", "")
-        self.client.create("/1/2", "")
-
-        eve = self._get_client()
-        eve.connect()
-
-        try:
-            self.assertRaises(NoAuthException, eve.get, "/1/2")
-
-            # try again with the wrong auth token
-            eve.add_auth("digest", "badbad:bad")
-
-            self.assertRaises(NoAuthException, eve.get, "/1/2")
-        finally:
-            # Ensure we remove the ACL protected nodes
-            self.client.recursive_delete("/1")

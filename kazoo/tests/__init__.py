@@ -3,6 +3,7 @@ import os
 import unittest
 import uuid
 
+import zookeeper
 from kazoo.client import KazooClient, KazooState
 from kazoo.tests.common import ZookeeperCluster
 
@@ -33,8 +34,14 @@ class KazooTestCase(unittest.TestCase):
     def _get_client(self, **kwargs):
         return KazooClient(self.hosts, **kwargs)
 
+    def expire_session(self, client_id):
+        client = KazooClient(self.cluster[1].address, client_id=client_id)
+        client.connect()
+        client.stop()
+
     def setUp(self):
         if not _started:
+            zookeeper.deterministic_conn_order(True)
             self.cluster.start()
             _started.append(True)
         namespace = "/kazootests" + uuid.uuid4().hex
