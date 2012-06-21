@@ -591,11 +591,11 @@ class KazooClient(object):
             # Already connected
             return
 
-        try:
         event.wait(timeout=timeout)
-        except self._handler.timeout_error:
-            self._connection_timed_out = True
-            raise
+        if not self.connected:
+            # We time-out, ensure we are disconnected
+            self.stop()
+            raise self._handler.timeout_exception("Connection time-out")
 
     def stop(self):
         """Gracefully stop this Zookeeper session"""
