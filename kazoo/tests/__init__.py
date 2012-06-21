@@ -31,7 +31,8 @@ class KazooTestCase(unittest.TestCase):
     def _get_client(self, **kwargs):
         return KazooClient(self.hosts, **kwargs)
 
-    def expire_session(self, client_id):
+    def expire_session(self, client_id=None):
+        client_id = client_id or self.client.client_id
         client = KazooClient(self.cluster[1].address, client_id=client_id)
         client.connect()
         client.stop()

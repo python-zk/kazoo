@@ -55,7 +55,7 @@ class TestConnection(KazooTestCase):
                 cv.set()
 
         self.client.add_listener(watch_events)
-        self.expire_session(self.client.client_id)
+        self.expire_session()
         cv.wait(1)
         assert cv.is_set()
 
