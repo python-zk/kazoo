@@ -531,8 +531,8 @@ class KazooClient(object):
         elif state in (KeeperState.EXPIRED_SESSION,
                        KeeperState.AUTH_FAILED):
             self._live.clear()
-            self._handle = None
             self._make_state_change(KazooState.LOST)
+            self._handle = None
             self.connect_async()
         else:
             # Connection lost
