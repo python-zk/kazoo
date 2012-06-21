@@ -69,7 +69,7 @@ class ManagedZooKeeper(object):
 
         # various setup steps
         if not os.path.exists(self.working_path):
-            os.mdir(self.working_path)
+            os.mkdir(self.working_path)
         if not os.path.exists(log_path):
             os.mkdir(log_path)
         if not os.path.exists(data_path):
