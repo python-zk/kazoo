@@ -151,6 +151,7 @@ class TestClient(KazooTestCase):
         eq_(newstat.last_modified_transaction_id, newstat.mzxid)
         eq_(newstat.data_length, newstat.dataLength)
         eq_(newstat.children_count, stat.numChildren)
+        eq_(newstat.children_version, stat.cversion)
 
     def test_create_get_sequential(self):
         self.client.connect()
