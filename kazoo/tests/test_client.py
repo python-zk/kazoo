@@ -1,9 +1,13 @@
 import threading
 import uuid
+import unittest
+
+import zookeeper
 
 from nose.tools import eq_
 
 from kazoo.tests import KazooTestCase
+from kazoo.tests import ZooError
 from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import NoAuthException
 
@@ -88,6 +92,33 @@ class TestClient(KazooTestCase):
     def _getKazooState(self):
         from kazoo.client import KazooState
         return KazooState
+
+    def test_legacy_error(self):
+        self.client.connect()
+
+        self.add_errors(dict(
+            acreate=[ZooError('call', SystemError, False)]
+        ))
+        self.assertRaises(zookeeper.InvalidStateException, self.client.create,
+                          "/1", "val1")
+
+    def test_bad_arguments(self):
+        self.client.connect()
+
+        self.add_errors(dict(
+            acreate=[ZooError('call', zookeeper.BadArgumentsException, False)]
+        ))
+        self.assertRaises(zookeeper.BadArgumentsException, self.client.create,
+                          "/1", "val1")
+
+    def test_bad_handle_type_error(self):
+        self.client.connect()
+
+        self.add_errors(dict(
+            acreate=[ZooError('call', TypeError, False)]
+        ))
+        self.assertRaises(zookeeper.SessionExpiredException, self.client.create,
+                          "/1", "val1")
 
     def test_ensure_path(self):
         client = self.client
@@ -239,3 +270,21 @@ class TestClient(KazooTestCase):
 
         exists = self.client.exists(nodepath)
         eq_(exists, None)
+
+
+class TestCallbacks(unittest.TestCase):
+    def _makeExistsCallback(self):
+        from kazoo.client import _exists_callback
+        return _exists_callback
+
+    def test_callback(self):
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        call = self._makeExistsCallback()
+        handler = SequentialThreadingHandler()
+        asy = handler.async_result()
+        call(asy, 0, zookeeper.OK, True)
+        eq_(asy.get(), True)
+
+        asy = handler.async_result()
+        call(asy, 0, zookeeper.CONNECTIONLOSS, False)
+        self.assertRaises(zookeeper.ConnectionLossException, asy.get)
