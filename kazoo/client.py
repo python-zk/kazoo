@@ -327,7 +327,7 @@ def _generic_callback(async_result, handle, code, *args):
         else:
             # if there's two, the second is a stat object
             args = list(args)
-            if len(args) == 2:
+            if len(args) == 2 and isinstance(args[1], dict):
                 args[1] = ZnodeStat(**args[1])
             result = tuple(args)
 
