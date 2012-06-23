@@ -63,6 +63,22 @@ class TestConnection(KazooTestCase):
         cv.wait(1)
         assert cv.is_set()
 
+    def test_bad_session_expire(self):
+        from kazoo.client import KazooState
+        self.client.connect()
+
+        cv = threading.Event()
+
+        def watch_events(event):
+            if event == KazooState.LOST:
+                raise Exception("oops")
+                cv.set()
+
+        self.client.add_listener(watch_events)
+        self.expire_session()
+        cv.wait(0.5)
+        assert not cv.is_set()
+
     def test_state_listener(self):
         from kazoo.client import KazooState
         states = []
@@ -271,20 +287,99 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath)
         eq_(exists, None)
 
+dummy_dict = {
+    'aversion': 1, 'ctime': 0, 'cversion': 1,
+    'czxid': 110, 'dataLength': 1, 'ephemeralOwner': 'ben',
+    'mtime': 1, 'mzxid': 1, 'numChildren': 0, 'pzxid': 1, 'version': 1
+}
+
 
 class TestCallbacks(unittest.TestCase):
-    def _makeExistsCallback(self):
+    def test_exists_callback(self):
         from kazoo.client import _exists_callback
-        return _exists_callback
-
-    def test_callback(self):
         from kazoo.handlers.threading import SequentialThreadingHandler
-        call = self._makeExistsCallback()
         handler = SequentialThreadingHandler()
         asy = handler.async_result()
-        call(asy, 0, zookeeper.OK, True)
+        _exists_callback(asy, 0, zookeeper.OK, True)
         eq_(asy.get(), True)
 
         asy = handler.async_result()
-        call(asy, 0, zookeeper.CONNECTIONLOSS, False)
+        _exists_callback(asy, 0, zookeeper.CONNECTIONLOSS, False)
         self.assertRaises(zookeeper.ConnectionLossException, asy.get)
+
+    def test_generic_callback_ok(self):
+        from kazoo.client import _generic_callback
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        handler = SequentialThreadingHandler()
+
+        # No args
+        asy = handler.async_result()
+        _generic_callback(asy, 0, zookeeper.OK)
+        eq_(asy.get(), None)
+
+        # One arg thats not a dict
+        asy = handler.async_result()
+        _generic_callback(asy, 0, zookeeper.OK, 12)
+        eq_(asy.get(), 12)
+
+        # One arg thats a node struct
+        asy = handler.async_result()
+        _generic_callback(asy, 0, zookeeper.OK, dummy_dict)
+        eq_(asy.get().acl_version, 1)
+
+        # two args, second is struct
+        asy = handler.async_result()
+        _generic_callback(asy, 0, zookeeper.OK, 11, dummy_dict)
+        val = asy.get()
+        eq_(val[1].acl_version, 1)
+        eq_(val[0], 11)
+
+    def test_generic_callback_error(self):
+        from kazoo.client import _generic_callback
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        handler = SequentialThreadingHandler()
+
+        asy = handler.async_result()
+        _generic_callback(asy, 0, zookeeper.CONNECTIONLOSS)
+        self.assertRaises(zookeeper.ConnectionLossException, asy.get)
+
+    def test_session_callback_states(self):
+        from kazoo.client import (KazooClient, KazooState, KeeperState,
+            EventType)
+
+        client = KazooClient()
+        client._handle = 1
+        client._live.set()
+
+        result = client._session_callback(1, EventType.CREATED,
+                                          KeeperState.CONNECTED, '/')
+        eq_(result, None)
+
+        # Now with stopped
+        client._stopped.set()
+        result = client._session_callback(1, EventType.SESSION,
+                                          KeeperState.CONNECTED, '/')
+        eq_(result, None)
+
+        # Test several state transitions
+        client._stopped.clear()
+        client.connect_async = lambda: True
+        client._session_callback(1, EventType.SESSION, KeeperState.CONNECTED,
+                                 None)
+        eq_(client.state, KazooState.CONNECTED)
+
+        client._session_callback(1, EventType.SESSION, KeeperState.AUTH_FAILED,
+                                 None)
+        eq_(client._handle, None)
+        eq_(client.state, KazooState.LOST)
+
+        client._handle = 1
+        client._session_callback(1, EventType.SESSION, -250, None)
+        eq_(client.state, KazooState.SUSPENDED)
+
+        # handle mismatch
+        client._handle = 0
+        # This will be ignored due to handle mismatch
+        client._session_callback(1, EventType.SESSION, KeeperState.CONNECTED,
+                                 None)
+        eq_(client.state, KazooState.SUSPENDED)

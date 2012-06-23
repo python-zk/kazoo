@@ -141,7 +141,7 @@ class ZookeeperErrors(object):
         err = self.errors.get(name)
         if err:
             err = err.pop()
-        else:
+        if not isinstance(err, ZooError):
             return func
 
         def func_wrapper(*args, **kwargs):
