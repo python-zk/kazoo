@@ -22,4 +22,5 @@ install:
     - pip install --use-mirrors zc-zookeeper-static >/dev/null 2>&1
     - python setup.py develop
     - pip install --use-mirrors kazoo[test]
-script: nosetests kazoo
+    - pip install --use-mirrors coverage
+script: ZOOKEEPER_PATH=/usr/share/java nosetests -d --with-coverage kazoo
