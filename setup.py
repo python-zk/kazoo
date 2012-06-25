@@ -54,7 +54,7 @@ setup(
     url="http://kazoo.readthedocs.org/",
     license="Apache 2.0",
     packages=find_packages(),
-    test_suite="nose.collector",
+    test_suite="kazoo.tests",
     include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
