@@ -584,7 +584,7 @@ class KazooClient(object):
             self._handle = self.zookeeper.init(self._hosts, cb, self._timeout)
         return self._live
 
-    def connect(self, timeout=3):
+    def connect(self, timeout=15):
         """Initiate connection to ZK
 
         :param timeout: Time in seconds to wait for connection to succeed.
