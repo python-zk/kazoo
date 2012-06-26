@@ -18,9 +18,6 @@ class TestConnection(KazooTestCase):
         return make_digest_acl(*args, **kwargs)
 
     def test_auth(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
 
@@ -50,7 +47,6 @@ class TestConnection(KazooTestCase):
 
     def test_session_expire(self):
         from kazoo.client import KazooState
-        self.client.connect()
 
         cv = threading.Event()
 
@@ -65,7 +61,6 @@ class TestConnection(KazooTestCase):
 
     def test_bad_session_expire(self):
         from kazoo.client import KazooState
-        self.client.connect()
 
         cv = threading.Event()
 
@@ -89,6 +84,7 @@ class TestConnection(KazooTestCase):
                 states.append(state)
                 condition.notify_all()
 
+        self.client.stop()
         self.client.add_listener(listener)
         self.client.connect(5)
 
@@ -101,6 +97,7 @@ class TestConnection(KazooTestCase):
 
     def test_no_connection(self):
         from kazoo.exceptions import ZookeeperStoppedError
+        self.client.stop()
         self.assertRaises(ZookeeperStoppedError, self.client.exists, '/')
 
 
@@ -110,8 +107,6 @@ class TestClient(KazooTestCase):
         return KazooState
 
     def test_legacy_error(self):
-        self.client.connect()
-
         self.add_errors(dict(
             acreate=[ZooError('call', SystemError, False)]
         ))
@@ -119,8 +114,6 @@ class TestClient(KazooTestCase):
                           "/1", "val1")
 
     def test_bad_arguments(self):
-        self.client.connect()
-
         self.add_errors(dict(
             acreate=[ZooError('call', zookeeper.BadArgumentsException, False)]
         ))
@@ -128,8 +121,6 @@ class TestClient(KazooTestCase):
                           "/1", "val1")
 
     def test_bad_handle_type_error(self):
-        self.client.connect()
-
         self.add_errors(dict(
             acreate=[ZooError('call', TypeError, False)]
         ))
@@ -138,9 +129,6 @@ class TestClient(KazooTestCase):
 
     def test_ensure_path(self):
         client = self.client
-
-        client.connect()
-
         client.ensure_path("/1/2")
         self.assertTrue(client.exists("/1/2"))
 
@@ -148,8 +136,6 @@ class TestClient(KazooTestCase):
         self.assertTrue(client.exists("/1/2/3/4"))
 
     def test_create_no_makepath(self):
-        self.client.connect()
-
         self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1")
         self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1",
             makepath=False)
@@ -164,20 +150,15 @@ class TestClient(KazooTestCase):
             client.stop()
 
     def test_create_makepath(self):
-        self.client.connect()
-
         self.client.create("/1/2", "val1", makepath=True)
         data, stat = self.client.get("/1/2")
-        self.assertEqual(data, "val1")
+        eq_(data, "val1")
 
         self.client.create("/1/2/3/4/5", "val2", makepath=True)
         data, stat = self.client.get("/1/2/3/4/5")
-        self.assertEqual(data, "val2")
+        eq_(data, "val2")
 
     def test_create_get_set(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         nodepath = "/" + uuid.uuid4().hex
 
         self.client.create(nodepath, "sandwich", ephemeral=True)
@@ -201,9 +182,6 @@ class TestClient(KazooTestCase):
         eq_(newstat.children_version, stat.cversion)
 
     def test_create_get_sequential(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         basepath = "/" + uuid.uuid4().hex
         realpath = self.client.create(basepath, "sandwich", sequence=True,
             ephemeral=True)
@@ -211,12 +189,9 @@ class TestClient(KazooTestCase):
         self.assertTrue(basepath != realpath and realpath.startswith(basepath))
 
         data, stat = self.client.get(realpath)
-        self.assertEqual(data, "sandwich")
+        eq_(data, "sandwich")
 
     def test_exists(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         nodepath = "/" + uuid.uuid4().hex
 
         exists = self.client.exists(nodepath)
@@ -232,9 +207,6 @@ class TestClient(KazooTestCase):
         eq_(exists, None)
 
     def test_exists_watch(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         nodepath = "/" + uuid.uuid4().hex
 
         event = threading.Event()
@@ -252,9 +224,6 @@ class TestClient(KazooTestCase):
         self.assertTrue(event.is_set())
 
     def test_exists_watcher_exception(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         nodepath = "/" + uuid.uuid4().hex
 
         event = threading.Event()
@@ -275,9 +244,6 @@ class TestClient(KazooTestCase):
         self.assertTrue(event.is_set())
 
     def test_create_delete(self):
-        self.client.connect()
-        self.client.ensure_path("/")
-
         nodepath = "/" + uuid.uuid4().hex
 
         self.client.create(nodepath, "zzz")
