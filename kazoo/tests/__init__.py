@@ -128,9 +128,12 @@ class ZookeeperErrors(object):
             args[-2] = lambda *args: 1
         # Call it if we're supposed to
         if err.allow:
+            log.debug("Calling actual function: %s", name)
             func(*args, **kwargs)
         else:
             # Make sure the completion callback is called
+            log.debug("Returning desired exception on call: %s",
+                      err.exception)
             self.handler.dispatch_callback(
                 Callback('completion', func, (None, err.exception))
             )
@@ -182,6 +185,8 @@ class KazooTestCase(unittest.TestCase):
         self.hosts = self.servers + namespace
 
         self.client = self._get_client()
+        self.client.connect()
+        self.client.ensure_path("/")
 
     def tearDown(self):
         if not self.cluster[0].running:
