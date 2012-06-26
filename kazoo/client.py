@@ -16,6 +16,7 @@ from kazoo.exceptions import ZookeeperStoppedError
 from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
+from kazoo.recipe.lock import Lock
 from kazoo.retry import KazooRetry
 from kazoo.handlers.util import thread
 
@@ -413,6 +414,9 @@ class KazooClient(object):
         # transitions
         self.state = KazooState.LOST
         self.state_listeners = set()
+
+        # conveinence API
+        self.Lock = partial(Lock, self)
 
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
