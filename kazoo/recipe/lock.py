@@ -1,3 +1,4 @@
+"""Zookeeper Locking Implementations"""
 import threading
 import uuid
 
@@ -7,6 +8,16 @@ from kazoo.exceptions import NoNodeException
 
 
 class Lock(object):
+    """Kazoo Basic Lock
+
+    Example usage with a :class:`~kazoo.client.KazooClient` instance::
+
+        zk = KazooClient()
+        lock = zk.Lock("/lockpath", "my identifier")
+        with lock:  # blocks waiting for lock acquisition
+            # do something with the lock
+
+    """
     _LOCK_NAME = '_lock_'
 
     def __init__(self, client, path, contender_name=None):
