@@ -17,6 +17,7 @@ from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.recipe.lock import Lock
+from kazoo.recipe.party import Party
 from kazoo.retry import KazooRetry
 from kazoo.handlers.util import thread
 
@@ -347,13 +348,11 @@ class KazooClient(object):
     """An Apache Zookeeper Python wrapper supporting alternate callback
     handlers and high-level functionality
 
-
     Watch functions registered with this class will not get session
     events, unlike the default Zookeeper watch's. They will also be
     called with a single argument, a :class:`WatchedEvent` instance.
 
     """
-
     # for testing purposes
     zookeeper = zookeeper
 
@@ -417,6 +416,7 @@ class KazooClient(object):
 
         # conveinence API
         self.Lock = partial(Lock, self)
+        self.Party = partial(Party, self)
 
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
