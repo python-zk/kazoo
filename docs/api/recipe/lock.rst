@@ -8,7 +8,7 @@
 Public API
 ++++++++++
 
-    .. autoclass:: KazooClient
+    .. autoclass:: Lock
         :members:
 
         .. automethod:: __init__
