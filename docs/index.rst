@@ -24,7 +24,9 @@ easy to install staticly compiled version:
     $ easy_install zc-zookeeper-static
 
 Or if your OS distribution includes a python-zookeeper package, that can
-be installed.
+be installed. Unless you're using a recent ubuntu, its recommended that you use
+the static library above as it includes some memory leak patches that are not
+necessarilly in python zookeeper OS distributions.
 
 Reference Material
 ==================
@@ -41,6 +43,15 @@ Source Code
 ===========
 
 All source code is available on `github under kazoo <https://github.com/python-zk/kazoo>`_.
+
+Reporting Bugs & Getting Help
+=============================
+
+Bugs and support issues should be reported on the `kazoo github issue tracker <https://github.com/python-zk/kazoo/issues>`_.
+
+The developers of ``kazoo`` can frequently be found on the Freenode IRC
+network in the #zookeeper channel.
+
 
 Indices and tables
 ==================
