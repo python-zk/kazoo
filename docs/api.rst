@@ -13,4 +13,6 @@ organized alphabetically by module name.
    api/handlers/threading
    api/handlers/util
    api/interfaces
+   api/recipe/lock
+   api/recipe/party
    api/security
