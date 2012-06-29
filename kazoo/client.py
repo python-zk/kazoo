@@ -1,6 +1,4 @@
-"""Kazoo Zookeeper Client
-
-"""
+"""Kazoo Zookeeper Client"""
 import inspect
 import logging
 import os
@@ -37,10 +35,10 @@ zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
 def _loggingthread():
     """Zookeeper logging redirect
 
-    Zookeeper by default logs directly out. This thread handles reading off
-    the pipe that the above `set_log_stream` call designates so that the
-    Zookeeper logging output can be turned into Python logging statements
-    under the `Zookeeper` name.
+    Zookeeper by default logs directly out. This thread handles reading
+    off the pipe that the above `set_log_stream` call designates so
+    that the Zookeeper logging output can be turned into Python logging
+    statements under the `Zookeeper` name.
 
     """
     r, w = _logging_pipe
@@ -81,8 +79,8 @@ class KazooState(object):
 
     .. attribute:: SUSPENDED
 
-        The connection has been lost but may be recovered.
-        We should operate in a "safe mode" until then.
+        The connection has been lost but may be recovered. We should
+        operate in a "safe mode" until then.
 
     .. attribute:: CONNECTED
 
@@ -138,22 +136,23 @@ class EventType(object):
     """Zookeeper Event
 
     Represents a Zookeeper event. Events trigger watch functions which
-    will receive a :class:`EventType` attribute as their event argument.
+    will receive a :class:`EventType` attribute as their event
+    argument.
 
     .. attribute:: NOTWATCHING
 
-        This event type was added to Zookeeper in the event that watches
-        get overloaded. It's never been used though and will likely be
-        removed in a future Zookeeper version. **This event will never
-        actually be set, don't bother testing for it.**
+        This event type was added to Zookeeper in the event that
+        watches get overloaded. It's never been used though and will
+        likely be removed in a future Zookeeper version. **This event
+        will never actually be set, don't bother testing for it.**
 
     .. attribute:: SESSION
 
-        A Zookeeper session event. Watch functions do not receive session
-        events. A session event watch can be registered with
-        :class:`KazooClient` during creation that can receive these events.
-        It's recommended to add a listener for connection state changes
-        instead.
+        A Zookeeper session event. Watch functions do not receive
+        session events. A session event watch can be registered with
+        :class:`KazooClient` during creation that can receive these
+        events. It's recommended to add a listener for connection state
+        changes instead.
 
     .. attribute:: CREATED
 
@@ -169,9 +168,9 @@ class EventType(object):
 
     .. attribute:: CHILD
 
-        The children under a node have changed (a child was added or removed).
-        This event does not indicate the data for a child node has changed,
-        which must have its own watch established.
+        The children under a node have changed (a child was added or
+        removed). This event does not indicate the data for a child
+        node has changed, which must have its own watch established.
 
     """
     NOTWATCHING = zookeeper.NOTWATCHING_EVENT
@@ -185,10 +184,10 @@ class EventType(object):
 class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
-    The :class:`WatchedEvent` includes exactly what happened, the current state
-    of ZooKeeper, and the path of the znode that was involved in the event. An
-    instance of :class:`WatchedEvent` will be passed to registered watch
-    functions.
+    The :class:`WatchedEvent` includes exactly what happened, the
+    current state of ZooKeeper, and the path of the znode that was
+    involved in the event. An instance of :class:`WatchedEvent` will be
+    passed to registered watch functions.
 
     .. attribute:: type
 
@@ -196,7 +195,8 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
 
     .. attribute:: state
 
-        A :class:`KeeperState` attribute indicating the Zookeeper state.
+        A :class:`KeeperState` attribute indicating the Zookeeper
+        state.
 
     .. attribute:: path
 
@@ -211,21 +211,22 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
                                          'numChildren', 'pzxid', 'version'))):
     """A ZnodeStat structure with convenience properties
 
-    When getting the value of a node from Zookeeper, the properties for the
-    node known as a "Stat structure" will be retrieved. The
+    When getting the value of a node from Zookeeper, the properties for
+    the node known as a "Stat structure" will be retrieved. The
     :class:`ZnodeStat` object provides access to the standard Stat
-    properties and additional properties that are more readable and
-    use Python time semantics (seconds since epoch instead of ms).
+    properties and additional properties that are more readable and use
+    Python time semantics (seconds since epoch instead of ms).
 
     .. note::
 
-        The original Zookeeper Stat name is in parens next to the name when it
-        differs from the convenience attribute. These are **not functions**,
-        just attributes.
+        The original Zookeeper Stat name is in parens next to the name
+        when it differs from the convenience attribute. These are **not
+        functions**, just attributes.
 
     .. attribute:: creation_transaction_id (czxid)
 
-        The transaction id of the change that caused this znode to be created.
+        The transaction id of the change that caused this znode to be
+        created.
 
     .. attribute:: last_modified_transaction_id (mzxid)
 
@@ -233,13 +234,13 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
 
     .. attribute:: created (ctime)
 
-        The time in seconds from epoch when this node was created. (ctime is
-        in milliseconds)
+        The time in seconds from epoch when this node was created.
+        (ctime is in milliseconds)
 
     .. attribute:: last_modified (mtime)
 
-        The time in seconds from epoch when this znode was last modified.
-        (mtime is in milliseconds)
+        The time in seconds from epoch when this znode was last
+        modified. (mtime is in milliseconds)
 
     .. attribute:: version
 
@@ -252,8 +253,8 @@ class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
     .. attribute:: owner_session_id (ephemeralOwner)
 
         The session id of the owner of this znode if the znode is an
-        ephemeral node. If it is not an ephemeral node, it will be `None`.
-        (ephemeralOwner will be 0 if it is not ephemeral)
+        ephemeral node. If it is not an ephemeral node, it will be
+        `None`. (ephemeralOwner will be 0 if it is not ephemeral)
 
     .. attribute:: data_length (dataLength)
 
@@ -362,15 +363,15 @@ class KazooClient(object):
         """Create a KazooClient instance
 
         :param hosts: List of hosts to connect to
-        :param watcher: Set a default watcher. This will be called by the
-                        actual default watcher that :class:`KazooClient`
-                        establishes.
+        :param watcher: Set a default watcher. This will be called by
+                        the actual default watcher that
+                        :class:`KazooClient` establishes.
         :param timeout: The longest to wait for a Zookeeper connection
-        :param client_id: A Zookeeper client id, used when re-establishing a
-                          prior session connection
+        :param client_id: A Zookeeper client id, used when
+                          re-establishing a prior session connection
         :param handler: An instance of a class implementing the
-                        :class:`~kazoo.interfaces.IHandler` interface for
-                        callback handling
+                        :class:`~kazoo.interfaces.IHandler` interface
+                        for callback handling
 
         """
         # Check for chroot
@@ -423,10 +424,11 @@ class KazooClient(object):
         to a bad zhandle and state bugs
 
         In older zkpython bindings, a SystemError can arise if some
-        functions are called when the session handle is expired. This client
-        clears the old handle as soon as possible, but its possible a command
-        may run against the old handle that is expired resulting in this error
-        being thrown. See https://issues.apache.org/jira/browse/ZOOKEEPER-1318
+        functions are called when the session handle is expired. This
+        client clears the old handle as soon as possible, but its
+        possible a command may run against the old handle that is
+        expired resulting in this error being thrown. See
+        https://issues.apache.org/jira/browse/ZOOKEEPER-1318
 
         """
         try:
@@ -460,8 +462,8 @@ class KazooClient(object):
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
 
-        This function will be called with a :class:`KazooState` instance
-        indicating the new connection state.
+        This function will be called with a :class:`KazooState`
+        instance indicating the new connection state.
 
         """
         if not (listener and callable(listener)):
@@ -591,7 +593,8 @@ class KazooClient(object):
     def connect(self, timeout=15):
         """Initiate connection to ZK
 
-        :param timeout: Time in seconds to wait for connection to succeed.
+        :param timeout: Time in seconds to wait for connection to
+                        succeed.
 
         """
         event = self.connect_async()
@@ -620,7 +623,8 @@ class KazooClient(object):
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server
 
-        :param scheme: authentication scheme (default supported: "digest")
+        :param scheme: authentication scheme (default supported:
+                       "digest")
         :param credential: the credential -- value depends on scheme
         :returns: AsyncResult object set on completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -640,7 +644,8 @@ class KazooClient(object):
     def add_auth(self, scheme, credential):
         """Send credentials to server
 
-        :param scheme: authentication scheme (default supported: "digest")
+        :param scheme: authentication scheme (default supported:
+                       "digest")
         :param credential: the credential -- value depends on scheme
 
         """
@@ -684,12 +689,12 @@ class KazooClient(object):
         :param path: path of node
         :param value: initial value of node
         :param acl: permissions for node
-        :param ephemeral: boolean indicating whether node is ephemeral (tied
-                          to this session)
-        :param sequence: boolean indicating whether path is suffixed with a
-                         unique index
-        :returns: AsyncResult object set on completion with the real path of
-                  the new node
+        :param ephemeral: boolean indicating whether node is ephemeral
+                          (tied to this session)
+        :param sequence: boolean indicating whether path is suffixed
+                         with a unique index
+        :returns: AsyncResult object set on completion with the real
+                  path of the new node
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -718,12 +723,12 @@ class KazooClient(object):
         :param path: path of node
         :param value: initial value of node
         :param acl: permissions for node
-        :param ephemeral: boolean indicating whether node is ephemeral (tied
-                          to this session)
-        :param sequence: boolean indicating whether path is suffixed with a
-                         unique index
-        :param makepath: Whether the path should be created if it doesn't
-                         exist
+        :param ephemeral: boolean indicating whether node is ephemeral
+                          (tied to this session)
+        :param sequence: boolean indicating whether path is suffixed
+                         with a unique index
+        :param makepath: Whether the path should be created if it
+                         doesn't exist
         :returns: real path of the new node
 
         """
@@ -753,8 +758,8 @@ class KazooClient(object):
         """Asynchronously check if a node exists
 
         :param path: path of node
-        :param watch: optional watch callback to set for future changes to this
-                      path
+        :param watch: optional watch callback to set for future changes
+                      to this path
         :returns: stat of the node if it exists, else None
         :rtype: `dict` or `None`
 
@@ -771,8 +776,8 @@ class KazooClient(object):
         """Check if a node exists
 
         :param path: path of node
-        :param watch: optional watch callback to set for future changes to this
-                      path
+        :param watch: optional watch callback to set for future changes
+                      to this path
         :returns: stat of the node if it exists, else None
         :rtype: `dict` or `None`
 
@@ -783,10 +788,10 @@ class KazooClient(object):
         """Asynchronously get the value of a node
 
         :param path: path of node
-        :param watch: optional watch callback to set for future changes to
-                      this path
-        :returns: AsyncResult set with tuple (value, :class:`ZnodeStat`) of node
-                on success
+        :param watch: optional watch callback to set for future changes
+                      to this path
+        :returns: AsyncResult set with tuple (value, :class:`ZnodeStat`
+                  ) of node on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -802,8 +807,8 @@ class KazooClient(object):
         """Get the value of a node
 
         :param path: path of node
-        :param watch: optional watch callback to set for future changes to
-                      this path
+        :param watch: optional watch callback to set for future changes
+                      to this path
         :returns: tuple (value, :class:`ZnodeStat`) of node
 
         """
@@ -813,9 +818,10 @@ class KazooClient(object):
         """Asynchronously get a list of child nodes of a path
 
         :param path: path of node to list
-        :param watch: optional watch callback to set for future changes to
-                      this path
-        :returns: AsyncResult set with list of child node names on success
+        :param watch: optional watch callback to set for future changes
+                      to this path
+        :returns: AsyncResult set with list of child node names on
+                  success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -831,7 +837,8 @@ class KazooClient(object):
         """Get a list of child nodes of a path
 
         :param path: path of node to list
-        :param watch: optional watch callback to set for future changes to this path
+        :param watch: optional watch callback to set for future changes
+                      to this path
         :returns: list of child node names
 
         """
@@ -840,14 +847,15 @@ class KazooClient(object):
     def set_async(self, path, data, version=-1):
         """Set the value of a node
 
-        If the version of the node being updated is newer than the supplied
-        version (and the supplied version is not -1), a BadVersionException
-        will be raised.
+        If the version of the node being updated is newer than the
+        supplied version (and the supplied version is not -1), a
+        BadVersionException will be raised.
 
         :param path: path of node to set
         :param data: new data value
         :param version: version of node being updated, or -1
-        :returns: AsyncResult set with new node :class:`ZnodeStat` on success
+        :returns: AsyncResult set with new node :class:`ZnodeStat` on
+                  success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -861,9 +869,9 @@ class KazooClient(object):
     def set(self, path, data, version=-1):
         """Set the value of a node
 
-        If the version of the node being updated is newer than the supplied
-        version (and the supplied version is not -1), a BadVersionException
-        will be raised.
+        If the version of the node being updated is newer than the
+        supplied version (and the supplied version is not -1), a
+        BadVersionException will be raised.
 
         :param path: path of node to set
         :param data: new data value
