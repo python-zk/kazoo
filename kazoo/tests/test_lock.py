@@ -164,7 +164,12 @@ class KazooLockTests(KazooTestCase):
         thread2.start()
 
         # this one should block in acquire. check that it is a contender
-        eq_(lock2.get_contenders(), ["one", "two"])
+        for _ in until_timeout(5):
+            contenders = lock2.get_contenders()
+            if contenders and len(contenders) > 1:
+                break
+            time.sleep(0)
+        eq_(contenders, ["one", "two"])
 
         lock2.cancel()
         with self.condition:
