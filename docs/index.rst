@@ -31,11 +31,14 @@ necessarilly in python zookeeper OS distributions.
 Reference Material
 ==================
 
-Reference material includes documentation for every `kazoo` API.
+Reference material includes documentation for using `kazoo` and every
+`kazoo` API.
 
 .. toctree::
    :maxdepth: 1
 
+   introduction
+   basic_usage
    api
    Changelog <changelog>
 
