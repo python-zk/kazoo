@@ -16,6 +16,7 @@ from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.recipe.lock import Lock
 from kazoo.recipe.party import Party
+from kazoo.recipe.election import Election
 from kazoo.retry import KazooRetry
 from kazoo.handlers.util import thread
 
@@ -418,6 +419,7 @@ class KazooClient(object):
         # conveinence API
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
+        self.Election = partial(Election, self)
 
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related

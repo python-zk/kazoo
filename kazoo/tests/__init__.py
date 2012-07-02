@@ -3,6 +3,7 @@ import logging
 import os
 import unittest
 import uuid
+import time
 from collections import namedtuple
 
 import zookeeper
@@ -202,3 +203,17 @@ class KazooTestCase(unittest.TestCase):
 
     def add_errors(self, errors):
         self.client.zookeeper = ZookeeperErrors(errors, self.client._handler)
+
+
+def until_timeout(timeout, value=None):
+    """Returns an iterator that repeats until a timeout is reached
+
+    timeout is in seconds
+    """
+
+    start = time.time()
+
+    while True:
+        if time.time() - start >= timeout:
+            raise Exception("timed out before success!")
+        yield value

@@ -6,22 +6,8 @@ import zookeeper
 from nose.tools import eq_
 
 from kazoo.exceptions import CancelledError
-from kazoo.tests import KazooTestCase
+from kazoo.tests import KazooTestCase, until_timeout
 from kazoo.tests import ZooError
-
-
-def until_timeout(timeout, value=None):
-    """Returns an iterator that repeats until a timeout is reached
-
-    timeout is in seconds
-    """
-
-    start = time.time()
-
-    while True:
-        if time.time() - start >= timeout:
-            raise Exception("timed out before success!")
-        yield value
 
 
 class KazooLockTests(KazooTestCase):
