@@ -15,4 +15,5 @@ organized alphabetically by module name.
    api/interfaces
    api/recipe/lock
    api/recipe/party
+   api/recipe/election
    api/security

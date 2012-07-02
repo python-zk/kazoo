@@ -13,7 +13,7 @@ passed into :class:`~kazoo.client.KazooClient` during instantiation for the
 preferred callback handling.
 
 If the developer needs to use objects implementing the :class:`IAsyncResult`
-inteface, the :meth:`IHandler.async_result` method must be used instead of
+interface, the :meth:`IHandler.async_result` method must be used instead of
 instantiating one directly.
 
     .. autointerface:: IHandler
