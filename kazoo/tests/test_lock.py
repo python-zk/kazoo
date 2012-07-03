@@ -1,12 +1,12 @@
 import uuid
 import threading
-import time
 
 import zookeeper
 from nose.tools import eq_
+from zope.testing.wait import wait
 
 from kazoo.exceptions import CancelledError
-from kazoo.tests import KazooTestCase, until_timeout
+from kazoo.tests import KazooTestCase
 from kazoo.tests import ZooError
 
 
@@ -31,14 +31,10 @@ class KazooLockTests(KazooTestCase):
         thread.start()
 
         anotherlock = self.client.Lock(self.lockpath, contender_name)
-        contenders = None
-        for _ in until_timeout(5):
-            contenders = anotherlock.get_contenders()
-            if contenders:
-                break
-            time.sleep(0)
 
-        eq_(contenders, [contender_name])
+        # wait for any contender to show up on the lock
+        wait(anotherlock.get_contenders)
+        eq_(anotherlock.get_contenders(), [contender_name])
 
         with self.condition:
             while self.active_thread != contender_name:
@@ -74,12 +70,9 @@ class KazooLockTests(KazooTestCase):
         for t in threads:
             t.start()
 
-        contenders = None
         # wait for everyone to line up on the lock
-        for _ in until_timeout(5):
-            contenders = lock.get_contenders()
-            if len(contenders) == 6:
-                break
+        wait(lambda: len(lock.get_contenders()) == 6)
+        contenders = lock.get_contenders()
 
         eq_(contenders[0], "test")
         contenders = contenders[1:]
@@ -150,12 +143,8 @@ class KazooLockTests(KazooTestCase):
         thread2.start()
 
         # this one should block in acquire. check that it is a contender
-        for _ in until_timeout(5):
-            contenders = lock2.get_contenders()
-            if contenders and len(contenders) > 1:
-                break
-            time.sleep(0)
-        eq_(contenders, ["one", "two"])
+        wait(lambda: len(lock2.get_contenders()) > 1)
+        eq_(lock2.get_contenders(), ["one", "two"])
 
         lock2.cancel()
         with self.condition:
