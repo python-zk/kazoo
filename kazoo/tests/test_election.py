@@ -5,7 +5,7 @@ import threading
 from nose.tools import eq_
 from zope.testing.wait import wait
 
-from kazoo.tests import KazooTestCase
+from kazoo.testing import KazooTestCase
 
 class UniqueError(Exception):
     """Error raised only by test leader function

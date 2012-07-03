@@ -10,8 +10,8 @@ from nose.tools import eq_
 from zope.testing.wait import wait
 
 import kazoo.client
-from kazoo.tests import KazooTestCase
-from kazoo.tests import ZooError
+from kazoo.testing import KazooTestCase
+from kazoo.testing import ZooError
 from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import NoAuthException
 
