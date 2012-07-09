@@ -60,11 +60,13 @@ class SetPartitioner(object):
     members.
 
     When the :class:`SetPartitioner` enters the
-    :attribute:`PartitionState.FAILURE` state, it is unrecoverable
+    :attr:`~PartitionState.FAILURE` state, it is unrecoverable
     and a new :class:`SetPartitioner` should be created.
 
 
     Simple Example:
+
+    .. code-block:: python
 
         from kazoo.client import KazooClient
         client = KazooClient()
@@ -82,7 +84,9 @@ class SetPartitioner(object):
     Sometimes, more control is needed over handling the state
     transitions. Or the program may need to do other things during
     specific states, in which case a more verbose example that allows
-    for finer grained control::
+    for finer grained control:
+
+    .. code-block:: python
 
         from kazoo.client import KazooClient
         from kazoo.recipe.partioner import PartitionState
@@ -105,37 +109,37 @@ class SetPartitioner(object):
     -----------------
 
     When created, the :class:`SetPartitioner` enters the
-    :attribute:`PartitionState.ALLOCATING` state.
+    :attr:`PartitionState.ALLOCATING` state.
 
-    :attribute:`PartitionState.ALLOCATING` ->
-    :attribute:`PartitionState.ACQUIRED`
+    :attr:`~PartitionState.ALLOCATING` ->
+    :attr:`~PartitionState.ACQUIRED`
 
         Set was partitioned successfully, the partition list assigned
         is accessible via list/iter methods or calling list() on the
         :class:`SetPartitioner` instance.
 
-    :attribute:`PartitionState.ALLOCATING` ->
-    :attribute:`PartitionState.FAILURE`
+    :attr:`~PartitionState.ALLOCATING` ->
+    :attr:`~PartitionState.FAILURE`
 
         Allocating the set failed either due to a Zookeeper session
         expiration, or failure to acquire the partition members of the
         set withing the timeout period.
 
-    :attribute:`PartitionState.ACQUIRED` ->
-    :attribute:`PartitionState.RELEASE`
+    :attr:`~PartitionState.ACQUIRED` ->
+    :attr:`~PartitionState.RELEASE`
 
         The members of the party has changed, and the set needs to be
         repartioned. :meth:`SetPartitioner.release` should be called
         as soon as possible.
 
-    :attribute:`PartitionState.ACQUIRED` ->
-    :attribute:`PartitionState.FAILURE`
+    :attr:`~PartitionState.ACQUIRED` ->
+    :attr:`~PartitionState.FAILURE`
 
         The current partition was lost due to a Zookeeper session
         expiration.
 
-    :attribute:`PartitionState.RELEASE` ->
-    :attribute:`PartitionState.ALLOCATING`
+    :attr:`~PartitionState.RELEASE` ->
+    :attr:`~PartitionState.ALLOCATING`
 
         The current partition was released and is being re-allocated.
 
