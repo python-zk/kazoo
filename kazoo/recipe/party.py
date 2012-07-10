@@ -93,3 +93,85 @@ class Party(object):
     def _get_children(self):
         children = self.client.retry(self.client.get_children, self.path)
         return filter(lambda child: self._NODE_NAME in child, children)
+
+
+class ShallowParty(object):
+    """Simple shallow pool of participating processes
+
+    This differs from the :class:`Party` as the identifier is used in the
+    name of the party node itself, rather than the data. This places some
+    restrictions on the length as it must be a valid Zookeeper node (an
+    alphanumeric string), but reduces the overhead of getting a list of
+    participants to a single Zookeeper call.
+
+    """
+
+    def __init__(self, client, path, identifier=None):
+        """
+        :param client: A :class:`~kazoo.client.KazooClient` instance
+        :param path: The party path to use
+        :param identifier: An identifier to use for this member of the party
+                           when participating.
+
+        """
+        self.client = client
+        self.path = path
+
+        self.data = str(identifier or "")
+
+        self.node = '-'.join([uuid.uuid4().hex, self.data])
+        self.create_path = self.path + "/" + self.node
+
+        self.ensured_path = False
+        self.participating = False
+
+    def join(self):
+        """Join the party"""
+        return self.client.retry(self._inner_join)
+
+    def _inner_join(self):
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+
+        try:
+            self.client.create(self.create_path, '0', ephemeral=True)
+            self.participating = True
+        except NodeExistsException:
+            # node was already created, perhaps we are recovering from a
+            # suspended connection
+            self.participating = True
+
+    def leave(self):
+        """Leave the party"""
+        return self.client.retry(self._inner_leave)
+
+    def _inner_leave(self):
+        try:
+            self.client.delete(self.create_path)
+        except NoNodeException:
+            return False
+
+        return True
+
+    def get_participants(self):
+        """Get a list of participating clients' identifiers"""
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+
+        children = self._get_children()
+        return [child[child.find('-') + 1:] for child in children]
+
+    def get_participant_count(self):
+        """Return a count of participating clients"""
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+        return len(self._get_children())
+
+    def _get_children(self):
+        return self.client.retry(self.client.get_children, self.path)

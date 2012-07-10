@@ -12,3 +12,8 @@ Public API
         :members:
 
         .. automethod:: __init__
+
+    .. autoclass:: ShallowParty
+        :members:
+
+        .. automethod:: __init__
