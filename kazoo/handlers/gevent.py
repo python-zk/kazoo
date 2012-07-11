@@ -155,6 +155,10 @@ class SequentialGeventHandler(object):
         """
         return AsyncResult(self)
 
+    def spawn(self, func, *args, **kwargs):
+        """Spawn a function to run asynchronously"""
+        gevent.spawn(func, *args, **kwargs)
+
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
 
