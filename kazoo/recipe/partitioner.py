@@ -16,6 +16,10 @@ Example Use-Case
 """
 import os
 import socket
+import time
+import threading
+
+from kazoo.client import KazooState
 
 
 class PartitionState(object):
@@ -144,20 +148,124 @@ class SetPartitioner(object):
         The current partition was released and is being re-allocated.
 
     """
-    def __init__(self, client, path, identifier=None):
+    def __init__(self, client, path, set, partition_func=None,
+                 identifier=None):
         """Create a :class:~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The partition path to use
+        :param set: The set of items to partition
+        :param partition_func: A function to use to decide how to partition the
+                               set
         :param identifier: An identifier to use for this member of the
                            party when participating. Defaults to the
                            hostname + process id.
 
         """
-        self.client = client
-        self.path = path
-        self.identifier = identifier or '%s-%s' % (
-            socket.gethostname(), os.getpid())
-
         self.state = PartitionState.ALLOCATING
 
+        self._client = client
+        self._path = path
+        self._set = set
+        self._partition_set = []
+        self._partition_func = partition_func or self._partition_set
+        self._identifier = identifier or '%s-%s' % (
+            socket.gethostname(), os.getpid())
+        self._locks = []
+        self._lock_path = '/'.join([path, 'locks'])
+        self._party_path = '/'.join([path, 'party'])
+
+        # Create basic path nodes
+        client.ensure_path(path)
+        client.ensure_path(self._lock_path)
+        client.ensure_path(self._party_path)
+
+        # Join the party
+        self._party = client.ShallowParty(self._party_path,
+                                          identifier=self.identifier)
+        self._party.join()
+        self._party_members = self._party.get_participants()
+
+        self._state_change = threading.Condition()
+        client.add_listener(self._establish_sessionwatch)
+
+        # Now watch the party and set the callback on the async result
+        # so we know when we're ready
+        watcher = ChildrenWatcher(client, self._party_path)
+        asy = watcher.start()
+        asy.rawlink(self._allocate_set)
+
+    def _allocate_transition(self, result):
+        # First time running
+        # Did we get an exception?
+        if result.exception:
+            with self._state_change:
+                self.state = PartitionState.FAILURE
+
+    def _establish_sessionwatch(self, state):
+        """Register ourself to listen for session events, we shut down if we
+        become lost"""
+        if state == KazooState.LOST:
+            self.client.remove_listener(self._establish_sessionwatch)
+
+            # Ensure we don't get flipped elsewhere
+            with self._state_change:
+                self.state = PartitionState.FAILURE
+
+    def _partition_set(self, identifier, members, ):
+        pass
+
+    def release(self):
+        for lock in self._locks:
+            lock.release()
+
+
+class ChildrenWatcher(object):
+    """A separate watcher for the children of a node, that ignores changes
+    within a boundary time and sets the result only when the boundary
+    time has elapsed and there is no change of children from beginning to end
+
+    Example::
+
+        watcher = ChildrenWatcher(client, '/some/path')
+        result = watcher.start()
+        children = result.get()  # blocks until the children has held steady
+                                 # for the specified time_boundary
+
+    """
+    def __init__(self, client, path, time_boundary=30):
+        self.client = client
+        self.path = path
+        self.time_boundary = time_boundary
+        self.children = []
+        self.last_change = None
+
+    def start(self):
+        """Begin the watching process
+
+        :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance
+
+        """
+        self.asy = asy = self.client._handler.async_result()
+        self.client._handler.spawn(self._inner_start)
+        return asy
+
+    def _inner_start(self):
+        if not self.last_change:
+            self.last_change = time.time()
+
+        try:
+            while time.time() - self.last_change < self.time_boundary:
+                self.children = self.client.retry(
+                    self.client.get_children, self.path, self.children_watcher)
+
+                # Now sleep for a time boundary's worth from the last change
+                sleep_till = self.time_boundary - (time.time() - self.last_change)
+                time.sleep(sleep_till)
+
+            self.asy.set(self.children)
+        except Exception as exc:
+            self.asy.set_exception(exc)
+
+    def children_watcher(self, event):
+        self.last_change = time.time()
