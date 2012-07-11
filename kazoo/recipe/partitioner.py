@@ -4,7 +4,7 @@
 Zookeeper for dividing up resources amongst members of a party.
 
 This is useful when there is a set of resources that should only be
-accessed by a single process at a time, and which multiple processes
+accessed by a single process at a time that multiple processes
 across a cluster might want to divide up.
 
 Example Use-Case
