@@ -191,6 +191,11 @@ class SequentialThreadingHandler(object):
         """Create a :class:`AsyncResult` instance"""
         return AsyncResult(self)
 
+    def spawn(self, func, *args, **kwargs):
+        t = threading.Thread(target=func, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
+
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
 
