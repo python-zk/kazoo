@@ -36,6 +36,17 @@ class IHandler(Interface):
         """Return an instance that conforms to the :class:`~IAsyncResult`
         interface appropriate for this handler"""
 
+    def spawn(func, *args, **kwargs):
+        """Spawn a function to run asynchronously
+
+        :param args: args to call the function with
+        :param kwargs: keyword args to call the function with
+
+        This method should return immediately and execute the function
+        with the provided args and kwargs in an asynchronous manner.
+
+        """
+
     def dispatch_callback(callback):
         """Dispatch to the callback object
 
