@@ -14,12 +14,17 @@ Example Use-Case
   so that no two workers own the same queue.
 
 """
+import logging
 import os
 import socket
 import time
 import threading
+from functools import partial
 
 from kazoo.client import KazooState
+
+
+log = logging.getLogger(__name__)
 
 
 class PartitionState(object):
@@ -93,21 +98,20 @@ class SetPartitioner(object):
     .. code-block:: python
 
         from kazoo.client import KazooClient
-        from kazoo.recipe.partioner import PartitionState
         client = KazooClient()
 
         qp = client.SetPartitioner(
             path='/work_queues', set=('queue-1', 'queue-2', 'queue-3'))
 
         while 1:
-            if qp.state == PartitionState.ACQUIRED:
-                # Do something with the qp
-            elif qp.state == PartitionState.RELEASE:
-                qp.release()
-            elif qp.state == PartitionState.ALLOCATING:
-                qp.wait_for_acquire()
-            elif qp.state == PartitionState.FAILURE:
+            if qp.failed:
                 raise Exception("Lost or unable to acquire partition")
+            elif qp.release:
+                qp.release_set()
+            elif qp.acquired:
+                # Do something with the qp
+            elif qp.allocating:
+                qp.wait_for_acquire()
 
     State Transitions
     -----------------
@@ -149,17 +153,19 @@ class SetPartitioner(object):
 
     """
     def __init__(self, client, path, set, partition_func=None,
-                 identifier=None):
+                 identifier=None, time_boundary=30):
         """Create a :class:~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The partition path to use
         :param set: The set of items to partition
-        :param partition_func: A function to use to decide how to partition the
-                               set
+        :param partition_func: A function to use to decide how to
+                               partition the set
         :param identifier: An identifier to use for this member of the
                            party when participating. Defaults to the
                            hostname + process id.
+        :param time_boundary: How long the party members must be stable
+                              before allocation can complete
 
         """
         self.state = PartitionState.ALLOCATING
@@ -168,12 +174,15 @@ class SetPartitioner(object):
         self._path = path
         self._set = set
         self._partition_set = []
-        self._partition_func = partition_func or self._partition_set
+        self._partition_func = partition_func or self._partitioner
         self._identifier = identifier or '%s-%s' % (
             socket.gethostname(), os.getpid())
         self._locks = []
         self._lock_path = '/'.join([path, 'locks'])
         self._party_path = '/'.join([path, 'party'])
+        self._time_boundary = time_boundary
+
+        self._acquire_event = client._handler.event_object()
 
         # Create basic path nodes
         client.ensure_path(path)
@@ -182,7 +191,7 @@ class SetPartitioner(object):
 
         # Join the party
         self._party = client.ShallowParty(self._party_path,
-                                          identifier=self.identifier)
+                                          identifier=self._identifier)
         self._party.join()
         self._party_members = self._party.get_participants()
 
@@ -191,39 +200,219 @@ class SetPartitioner(object):
 
         # Now watch the party and set the callback on the async result
         # so we know when we're ready
-        watcher = ChildrenWatcher(client, self._party_path)
-        asy = watcher.start()
-        asy.rawlink(self._allocate_set)
+        self._children_updated = False
+        self._child_watching(self._allocate_transition)
+
+    def __iter__(self):
+        for i in self._partition_set:
+            yield i
+
+    @property
+    def failed(self):
+        return self.state == PartitionState.FAILURE
+
+    @property
+    def release(self):
+        return self.state == PartitionState.ACQUIRED and self._children_updated
+
+    @property
+    def allocating(self):
+        return self.state == PartitionState.ALLOCATING
+
+    @property
+    def acquired(self):
+        return self.state == PartitionState.ACQUIRED
+
+    def wait_for_acquire(self, timeout=30):
+        """Wait for the set to be partitioned and acquired
+
+        :param timeout: How long to wait before returning
+
+        """
+        self._acquire_event.wait(timeout)
+
+    def release_set(self):
+        """Call to release the set
+
+        This method begins the step of allocating once the set has
+        been released.
+
+        """
+        self._release_locks()
+        if self._locks:
+            # This shouldn't happen, it means we couldn't release our
+            # locks, abort
+            self._fail_out()
+            return
+        else:
+            with self._state_change:
+                if self.failed:
+                    return
+                self.state = PartitionState.ALLOCATING
+        return self._child_watching(self._allocate_transition)
+
+    def finish(self):
+        """Call to release the set and leave the party"""
+        self._release_locks()
+        self._fail_out()
+
+    def _fail_out(self):
+        with self._state_change:
+            self.state = PartitionState.FAILURE
+        if self._party.participating:
+            try:
+                self._party.leave()
+            except Exception:
+                pass
 
     def _allocate_transition(self, result):
-        # First time running
+        """Called when in allocating mode, and the children settled"""
         # Did we get an exception?
+        log.debug("allocating")
         if result.exception:
-            with self._state_change:
-                self.state = PartitionState.FAILURE
+            self._fail_out()
+            return
+
+        # Not an exception, set our new watch and see that children
+        # still haven't changed
+        children, async_result = result.get()
+        log.debug("getting result")
+
+        if async_result.ready():
+            # We've apparently changed already, go back to waiting for
+            # it to settle down
+            return self._child_watching(self._allocate_transition)
+
+        # Children still valid, proceed to divvy up set and add a
+        # callback that indicates if the value changed from now
+        self._children_updated = False
+
+        def updated(result):
+            self._children_updated = True
+        async_result.rawlink(updated)
+        self._divide_set()
+
+    def _divide_set(self):
+        """Called after allocation when children have settled"""
+        # First, make sure the children didn't change, again.
+        if self._children_updated:
+            return self._child_watching(self._allocate_transition)
+
+        # Make sure we weren't lost
+        if self.failed:
+            return
+
+        # Split up the set
+        self._party_members = self._party.get_participants()
+        self._partition_set = self._partition_func(
+            self._identifier, self._party_members, self._set)
+
+        # Now proceed to lock acquisition for next state transition
+        self._acquire_locks()
+
+    def _acquire_locks(self):
+        """Called after set division to acquire locks before becoming
+        ACQUIRED"""
+        # Proceed to acquire locks for the working set as needed
+        for member in self._partition_set:
+            if self._children_updated or self.failed:
+                # Still haven't settled down, release locks acquired
+                # so far and go back
+                return self._abort_lock_acquisition()
+
+            lock = self._client.Lock(self._lock_path + '/' +
+                                     str(member))
+            try:
+                lock.acquire()
+            except Exception:
+                self._fail_out()
+                self._release_locks()
+                return
+            self._locks.append(lock)
+
+        # All locks acquired! Time for state transition, make sure
+        # we didn't inadvertantly get lost thus far
+        with self._state_change:
+            if self.failed:
+                return self._release_locks()
+            self.state = PartitionState.ACQUIRED
+            self._acquire_event.set()
+
+    def _release_locks(self):
+        """Attempt to completely remove all the locks"""
+        self._acquire_event.clear()
+        for lock in self._locks[:]:
+            try:
+                lock.release()
+            except Exception:
+                # We proceed to remove as many as possible, and leave
+                # the ones we couldn't remove
+                pass
+            else:
+                self._locks.remove(lock)
+
+    def _abort_lock_acquisition(self):
+        """Called during lock acquisition if a party change occurs"""
+        self._partition_set = None
+        self._release_locks()
+        if self._locks:
+            # This shouldn't happen, it means we couldn't release our
+            # locks, abort
+            self._fail_out()
+            return
+        return self._child_watching(self._allocate_transition)
+
+    def _child_watching(self, func=None):
+        """Called when children are being watched to stabilize
+
+        This actually returns immediately, child watcher spins up a
+        new thread/greenlet and waits for it to stabilize before
+        any callbacks might run.
+
+        """
+        watcher = ChildrenWatcher(self._client, self._party_path,
+                                  self._time_boundary)
+        asy = watcher.start()
+        log.debug("Spinning up watcher")
+        if func:
+            # We spin up the function in a separate thread/greenlet
+            # to ensure that the rawlink's it might use won't be
+            # blocked
+            func = partial(self._client._handler.spawn, func)
+            log.debug("Adding func callback")
+            asy.rawlink(func)
+        return asy
 
     def _establish_sessionwatch(self, state):
-        """Register ourself to listen for session events, we shut down if we
-        become lost"""
+        """Register ourself to listen for session events, we shut down
+        if we become lost"""
         if state == KazooState.LOST:
-            self.client.remove_listener(self._establish_sessionwatch)
+            self._client.remove_listener(self._establish_sessionwatch)
+            self._fail_out()
 
-            # Ensure we don't get flipped elsewhere
-            with self._state_change:
-                self.state = PartitionState.FAILURE
-
-    def _partition_set(self, identifier, members, ):
-        pass
-
-    def release(self):
-        for lock in self._locks:
-            lock.release()
+    def _partitioner(self, identifier, members, partitions):
+        # 1. sort the partitions (P)
+        all_partitions = sorted(partitions)
+        # 2. sort the members (W)
+        workers = sorted(members)
+        # 3. let i be the index position of Wi in W and
+        # let N = size(P) / size(W)
+        i = workers.index(identifier)
+        N = len(all_partitions) / len(workers)
+        # 4. assign partitions from i*N to (i+1)*N - 1 to Wi
+        new_partitions = set()
+        for num in xrange(i * N, (i + 1) * N):
+            new_partitions.add(all_partitions[num])
+        return list(new_partitions)
 
 
 class ChildrenWatcher(object):
-    """A separate watcher for the children of a node, that ignores changes
-    within a boundary time and sets the result only when the boundary
-    time has elapsed and there is no change of children from beginning to end
+    """Node Children Watcher that alerts when the children stabilize
+
+    A separate watcher for the children of a node, that ignores
+    changes within a boundary time and sets the result only when the
+    boundary time has elapsed and there is no change of children for
+    the boundary time's duration.
 
     Example::
 
@@ -255,17 +444,24 @@ class ChildrenWatcher(object):
             self.last_change = time.time()
 
         try:
+            async_result = None
             while time.time() - self.last_change < self.time_boundary:
+                async_result = self.client._handler.async_result()
                 self.children = self.client.retry(
-                    self.client.get_children, self.path, self.children_watcher)
+                    self.client.get_children, self.path,
+                    partial(self.children_watcher, async_result))
 
                 # Now sleep for a time boundary's worth from the last change
-                sleep_till = self.time_boundary - (time.time() - self.last_change)
+                sleep_till = self.time_boundary - (time.time() -
+                                                   self.last_change)
                 time.sleep(sleep_till)
 
-            self.asy.set(self.children)
+            log.debug("Stabilized, setting value")
+            self.asy.set((self.children, async_result))
         except Exception as exc:
+            log.debug("Error, setting exception")
             self.asy.set_exception(exc)
 
-    def children_watcher(self, event):
+    def children_watcher(self, async, event):
         self.last_change = time.time()
+        async.set(time.time())
