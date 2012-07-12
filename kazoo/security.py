@@ -1,6 +1,6 @@
 """Kazoo Security
 
-This modules includes helper functions to create digest ACL's approprate for
+This modules includes helper functions to create digest ACL's appropriate for
 use with Zookeeper.
 
 """
@@ -9,7 +9,7 @@ import hashlib
 import zookeeper
 
 
-__all__ = ["make_digest_acl"]
+__all__ = ("make_digest_acl", )
 
 
 def make_digest_acl_credential(username, password):

@@ -68,7 +68,7 @@ def _loggingthread():
                 log(logging.INFO, line)
             else:
                 log(level, message)
-        except Exception, v:
+        except Exception as v:
             logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
 
 
@@ -419,7 +419,7 @@ class KazooClient(object):
         self.state = KazooState.LOST
         self.state_listeners = set()
 
-        # conveinence API
+        # convenience API
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
         self.ShallowParty = partial(ShallowParty, self)
@@ -456,7 +456,7 @@ class KazooClient(object):
                 async_result.set_exception(
                     ZookeeperStoppedError(
                     "The Kazoo client is stopped, call connect before running "
-                    " commands that talk to Zookeeper"))
+                    "commands that talk to Zookeeper"))
             elif isinstance(exc, SystemError):
                 # Set this to the error it should be for appropriate handling
                 async_result.set_exception(
