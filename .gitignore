@@ -11,6 +11,8 @@ build
 dist
 include
 lib
+man
+share
 *.egg-info
 .pydevproject
 .project
@@ -24,4 +26,3 @@ develop-eggs/
 .idea
 docs/_build
 *.egg
-
