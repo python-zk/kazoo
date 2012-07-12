@@ -15,9 +15,11 @@ install_requires = [
 ]
 
 tests_require = install_requires + [
-    'mock',
-    'gevent',
+    'coverage',
     'docutils',
+    'gevent',
+    'mock',
+    'nose',
     'repoze.sphinx.autointerface',
     'Sphinx',
     'zope.testing',

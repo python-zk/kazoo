@@ -20,7 +20,9 @@ lib/
 man/
 parts/
 share/
+.coverage
 .idea
+.pip_cache
 .project
 .pydevproject
 .tox
