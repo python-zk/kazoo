@@ -376,6 +376,8 @@ class KazooClient(object):
                         for callback handling
 
         """
+        from kazoo.recipe.partitioner import SetPartitioner
+
         # Check for chroot
         chroot_check = hosts.split('/', 1)
         if len(chroot_check) == 2:
@@ -421,6 +423,7 @@ class KazooClient(object):
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
         self.ShallowParty = partial(ShallowParty, self)
+        self.SetPartitioner = partial(SetPartitioner, self)
         self.Election = partial(Election, self)
 
     def _safe_call(self, func, async_result, *args, **kwargs):
@@ -517,7 +520,9 @@ class KazooClient(object):
             return
         self.state = state
 
-        for listener in self.state_listeners:
+        # Create copy of listeners for iteration in case one needs to
+        # remove itself
+        for listener in list(self.state_listeners):
             try:
                 listener(state)
             except Exception:
