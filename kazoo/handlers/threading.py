@@ -170,8 +170,10 @@ class SequentialThreadingHandler(object):
         # Spawn our worker threads, we have
         # - A callback worker for watch events to be called
         # - A session worker for session events to be called
+        # - A completion worker for completion events to be called
         self._create_thread_worker(self.callback_queue)
         self._create_thread_worker(self.session_queue)
+        self._create_thread_worker(self.completion_queue)
 
     def _create_thread_worker(self, queue):
         @thread
