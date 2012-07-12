@@ -19,9 +19,8 @@ before_install:
     - sudo apt-get install libev-dev >/dev/null 2>&1
 
 install:
-    - pip install -f http://code.google.com/p/gevent/downloads/list gevent>1.0dev >/dev/null 2>&1
-    - pip install --use-mirrors zc-zookeeper-static >/dev/null 2>&1
-    - python setup.py develop
-    - pip install --use-mirrors kazoo[test]
-    - pip install --use-mirrors coverage
-script: ZOOKEEPER_PATH=/usr/share/java nosetests -d --with-coverage kazoo
+    - make
+
+script:
+    - export ZOOKEEPER_PATH=/usr/share/java
+    - make test
