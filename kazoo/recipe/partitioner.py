@@ -204,8 +204,8 @@ class SetPartitioner(object):
         self._child_watching(self._allocate_transition)
 
     def __iter__(self):
-        for i in self._partition_set:
-            yield i
+        for partition in self._partition_set:
+            yield partition
 
     @property
     def failed(self):
@@ -391,19 +391,14 @@ class SetPartitioner(object):
             self._fail_out()
 
     def _partitioner(self, identifier, members, partitions):
-        # 1. sort the partitions (P)
+        # Ensure consistent order of partitions/members
         all_partitions = sorted(partitions)
-        # 2. sort the members (W)
         workers = sorted(members)
-        # 3. let i be the index position of Wi in W and
-        # let N = size(P) / size(W)
+
         i = workers.index(identifier)
-        N = len(all_partitions) / len(workers)
-        # 4. assign partitions from i*N to (i+1)*N - 1 to Wi
-        new_partitions = set()
-        for num in xrange(i * N, (i + 1) * N):
-            new_partitions.add(all_partitions[num])
-        return list(new_partitions)
+        # Now return the partition list starting at our location and
+        # skipping the other workers
+        return all_partitions[i::len(workers)]
 
 
 class ChildrenWatcher(object):
@@ -418,8 +413,9 @@ class ChildrenWatcher(object):
 
         watcher = ChildrenWatcher(client, '/some/path')
         result = watcher.start()
-        children = result.get()  # blocks until the children has held steady
-                                 # for the specified time_boundary
+
+        # Blocks until the children has not changed for time boundary seconds
+        children, async_result = result.get()
 
     """
     def __init__(self, client, path, time_boundary=30):

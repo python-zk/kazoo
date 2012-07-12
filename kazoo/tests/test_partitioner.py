@@ -86,3 +86,48 @@ class KazooPartitionerTests(KazooTestCase):
         time.sleep(0.1)
         eq_(partitioners[1].release, True)
         partitioners[1].finish()
+
+    def test_party_expansion(self):
+        partitioners = [self.client.SetPartitioner(self.path, (1, 2, 3),
+                        identifier="p%s" % i, time_boundary=0.2)
+                        for i in range(2)]
+
+        eq_(partitioners[0].acquired, False)
+        partitioners[0].wait_for_acquire(1)
+        partitioners[1].wait_for_acquire(1)
+
+        eq_(list(partitioners[0]), [1, 3])
+        eq_(list(partitioners[1]), [2])
+
+        # Add another partition, wait till they settle
+        partitioners.append(self.client.SetPartitioner(self.path, (1, 2, 3),
+                            identifier="p2", time_boundary=0.2))
+        time.sleep(0.1)
+        eq_(partitioners[0].release, True)
+        for p in partitioners[:-1]:
+            p.release_set()
+
+        for p in partitioners:
+            p.wait_for_acquire(1)
+
+        eq_(list(partitioners[0]), [1])
+        eq_(list(partitioners[1]), [2])
+        eq_(list(partitioners[2]), [3])
+
+        for p in partitioners:
+            p.finish()
+
+    def test_more_members_than_set_items(self):
+        partitioners = [self.client.SetPartitioner(self.path, (1,),
+                        identifier="p%s" % i, time_boundary=0.2)
+                        for i in range(2)]
+
+        eq_(partitioners[0].acquired, False)
+        partitioners[0].wait_for_acquire(1)
+        partitioners[1].wait_for_acquire(1)
+
+        eq_(list(partitioners[0]), [1])
+        eq_(list(partitioners[1]), [])
+
+        for p in partitioners:
+            p.finish()
