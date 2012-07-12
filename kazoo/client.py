@@ -374,7 +374,7 @@ class KazooClient(object):
         :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling
-
+        :param default_acl: A default ACL used on node creation.
         """
         from kazoo.recipe.partitioner import SetPartitioner
 

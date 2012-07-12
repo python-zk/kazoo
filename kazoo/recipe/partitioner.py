@@ -65,7 +65,7 @@ class SetPartitioner(object):
     This class will partition a set amongst members of a party such
     that each party will be given one or more members of the set and
     each set item will be given to a single member. When new members
-    enter or leave the party, the set will be re-partioned amongst the
+    enter or leave the party, the set will be re-partitioned amongst the
     members.
 
     When the :class:`SetPartitioner` enters the
@@ -131,13 +131,13 @@ class SetPartitioner(object):
 
         Allocating the set failed either due to a Zookeeper session
         expiration, or failure to acquire the partition members of the
-        set withing the timeout period.
+        set within the timeout period.
 
     :attr:`~PartitionState.ACQUIRED` ->
     :attr:`~PartitionState.RELEASE`
 
-        The members of the party has changed, and the set needs to be
-        repartioned. :meth:`SetPartitioner.release` should be called
+        The members of the party have changed, and the set needs to be
+        repartitioned. :meth:`SetPartitioner.release` should be called
         as soon as possible.
 
     :attr:`~PartitionState.ACQUIRED` ->
@@ -154,7 +154,7 @@ class SetPartitioner(object):
     """
     def __init__(self, client, path, set, partition_func=None,
                  identifier=None, time_boundary=30):
-        """Create a :class:~SetPartitioner` instance
+        """Create a :class:`~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The partition path to use

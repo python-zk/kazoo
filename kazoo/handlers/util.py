@@ -1,4 +1,4 @@
-"""Handler utilities for getting non-monkey patched std lib stuff
+"""Handler utilities for getting non-monkey patched standard library stuff.
 
 Allows one to get an unpatched thread module, with a thread
 decorator that uses the unpatching OS thread.

@@ -10,23 +10,23 @@ Pythonic manner, and is compatible with async environments like `gevent`_.
 Installing
 ==========
 
-kazoo can be installed via ``easy_install`` or ``pip``:
+kazoo can be installed via ``pip`` or ``easy_install``:
 
 .. code-block:: bash
 
-    $ easy_install kazoo
+    $ pip install kazoo
 
-You will also need the Python zookeeper C binding installed. There's an
-easy to install staticly compiled version:
+You will also need the Python Zookeeper C binding installed. There's an
+easy to install statically compiled version:
 
 .. code-block:: bash
 
-    $ easy_install zc-zookeeper-static
+    $ pip install zc-zookeeper-static
 
 Or if your OS distribution includes a python-zookeeper package, that can
-be installed. Unless you're using a recent ubuntu, its recommended that you use
+be installed. Unless you're using a recent Ubuntu, its recommended that you use
 the static library above as it includes some memory leak patches that are not
-necessarilly in python zookeeper OS distributions.
+necessarily in Python Zookeeper OS distributions.
 
 Reference Material
 ==================
