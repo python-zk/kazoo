@@ -62,25 +62,21 @@ class Party(object):
 
         return True
 
-    def get_participants(self):
-        """
-        Get a list of participating clients' data values
-        """
+    def __iter__(self):
+        """Get a list of participating clients' data values"""
         if not self.ensured_path:
             # make sure our election parent node exists
             self.client.ensure_path(self.path)
             self.ensured_path = True
 
         children = self._get_children()
-        participants = []
         for child in children:
             try:
                 d, _ = self.client.retry(self.client.get, self.path +
                                          "/" + child)
-                participants.append(d)
+                yield d
             except NoNodeException:
                 pass
-        return participants
 
     def __len__(self):
         """Return a count of participating clients"""
