@@ -110,7 +110,7 @@ log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} [myid:%X{myid}] 
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
 log4j.appender.ROLLINGFILE.File=""" + (
-                            self.working_path + os.sep + "zookeeper.log\n"))
+                self.working_path + os.sep + "zookeeper.log\n"))
 
         self.process = subprocess.Popen(
             args=["java",
@@ -133,7 +133,7 @@ log4j.appender.ROLLINGFILE.File=""" + (
         jars = glob((os.path.join(
             self.install_path, 'zookeeper-*.jar')))
         if jars:
-            # Relase build (`ant package`)
+            # Release build (`ant package`)
             jars.extend(glob(os.path.join(
                 self.install_path,
                 "lib/*.jar")))
@@ -215,7 +215,7 @@ class ZookeeperCluster(object):
 
     def start(self):
         # Zookeeper client expresses a preference for either lower ports or
-        # lexographical ordering of hosts, to ensure that all servers have a
+        # lexicographical ordering of hosts, to ensure that all servers have a
         # chance to startup, start them in reverse order.
         for server in reversed(list(self)):
             server.run()
