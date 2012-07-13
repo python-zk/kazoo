@@ -177,3 +177,4 @@ class KazooLockTests(KazooTestCase):
         thread2.join()
         event1.set()
         thread1.join()
+        client2.stop()
