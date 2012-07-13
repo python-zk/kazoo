@@ -29,6 +29,20 @@ class BaseParty(object):
         """Join the party"""
         return self.client.retry(self._inner_join)
 
+    def _inner_join(self):
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+
+        try:
+            self.client.create(self.create_path, self.data, ephemeral=True)
+            self.participating = True
+        except NodeExistsException:
+            # node was already created, perhaps we are recovering from a
+            # suspended connection
+            self.participating = True
+
     def leave(self):
         """Leave the party"""
         return self.client.retry(self._inner_leave)
@@ -49,20 +63,6 @@ class Party(BaseParty):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = uuid.uuid4().hex + self._NODE_NAME
         self.create_path = self.path + "/" + self.node
-
-    def _inner_join(self):
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-
-        try:
-            self.client.create(self.create_path, self.data, ephemeral=True)
-            self.participating = True
-        except NodeExistsException:
-            # node was already created, perhaps we are recovering from a
-            # suspended connection
-            self.participating = True
 
     def __iter__(self):
         """Get a list of participating clients' data values"""
@@ -107,20 +107,6 @@ class ShallowParty(BaseParty):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = '-'.join([uuid.uuid4().hex, self.data])
         self.create_path = self.path + "/" + self.node
-
-    def _inner_join(self):
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-
-        try:
-            self.client.create(self.create_path, '0', ephemeral=True)
-            self.participating = True
-        except NodeExistsException:
-            # node was already created, perhaps we are recovering from a
-            # suspended connection
-            self.participating = True
 
     def __len__(self):
         """Return a count of participating clients"""
