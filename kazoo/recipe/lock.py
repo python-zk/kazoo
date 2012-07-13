@@ -33,7 +33,7 @@ class Lock(object):
         self.client = client
         self.path = path
 
-        # some data is written to the node. this can be queries via
+        # some data is written to the node. this can be queried via
         # get_contenders() to see who is contending for the lock
         self.data = str(contender_name or "")
 
@@ -47,11 +47,8 @@ class Lock(object):
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
-
         self.is_acquired = False
-
         self.assured_path = False
-
         self.cancelled = False
 
     def cancel(self):
@@ -64,9 +61,7 @@ class Lock(object):
         """Acquire the mutex, blocking until it is obtained"""
         try:
             self.client.retry(self._inner_acquire)
-
             self.is_acquired = True
-
         except Exception:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
