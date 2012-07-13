@@ -82,7 +82,7 @@ class Party(object):
                 pass
         return participants
 
-    def get_participant_count(self):
+    def __len__(self):
         """Return a count of participating clients"""
         if not self.ensured_path:
             # make sure our election parent node exists

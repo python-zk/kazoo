@@ -17,7 +17,7 @@ class KazooPartyTests(KazooTestCase):
         one_party = parties[0]
 
         eq_(one_party.get_participants(), [])
-        eq_(one_party.get_participant_count(), 0)
+        eq_(len(one_party), 0)
 
         participants = set()
         for party in parties:
@@ -25,14 +25,14 @@ class KazooPartyTests(KazooTestCase):
             participants.add(party.data)
 
             eq_(set(party.get_participants()), participants)
-            eq_(party.get_participant_count(), len(participants))
+            eq_(len(party), len(participants))
 
         for party in parties:
             party.leave()
             participants.remove(party.data)
 
             eq_(set(party.get_participants()), participants)
-            eq_(party.get_participant_count(), len(participants))
+            eq_(len(party), len(participants))
 
 
 class KazooShallowPartyTests(KazooTestCase):
