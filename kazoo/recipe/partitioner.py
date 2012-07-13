@@ -176,7 +176,7 @@ class SetPartitioner(object):
         self._partition_set = []
         self._partition_func = partition_func or self._partitioner
         self._identifier = identifier or '%s-%s' % (
-            socket.gethostname(), os.getpid())
+            socket.getfqdn(), os.getpid())
         self._locks = []
         self._lock_path = '/'.join([path, 'locks'])
         self._party_path = '/'.join([path, 'party'])
