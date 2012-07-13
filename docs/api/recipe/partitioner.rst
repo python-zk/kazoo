@@ -14,3 +14,11 @@ Public API
         .. automethod:: __init__
 
     .. autoclass:: PartitionState
+
+Private API
++++++++++++
+
+    .. autoclass:: ChildrenWatcher
+        :members:
+
+        .. automethod:: __init__
