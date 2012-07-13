@@ -377,6 +377,7 @@ class KazooClient(object):
         :param default_acl: A default ACL used on node creation.
         """
         from kazoo.recipe.partitioner import SetPartitioner
+        from kazoo.recipe.watchers import DataWatch
         from kazoo.recipe.watchers import ChildrenWatch
 
         # Check for chroot
@@ -421,6 +422,7 @@ class KazooClient(object):
         self.state_listeners = set()
 
         # convenience API
+        self.DataWatch = partial(DataWatch, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
