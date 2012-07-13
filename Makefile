@@ -32,6 +32,10 @@ test:
 	export ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) && \
 	$(BIN)/nosetests -d --with-coverage kazoo
 
+html:
+	cd docs && \
+	make html
+
 $(ZOOKEEPER):
 	@echo "Installing Zookeeper"
 	mkdir -p bin
