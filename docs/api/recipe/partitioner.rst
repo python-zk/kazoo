@@ -1,7 +1,7 @@
 .. _partitioner_module:
 
 :mod:`kazoo.recipe.partitioner`
-----------------------------
+-------------------------------
 
 .. automodule:: kazoo.recipe.partitioner
 

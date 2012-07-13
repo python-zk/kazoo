@@ -8,6 +8,4 @@
 Public API
 ++++++++++
 
-    .. autofunction:: get_realthread
-
     .. autofunction:: thread

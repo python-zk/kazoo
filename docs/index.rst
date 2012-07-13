@@ -63,6 +63,11 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`glossary`
 
+.. toctree::
+   :hidden:
+
+   glossary
+
 License
 =======
 
