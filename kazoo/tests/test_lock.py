@@ -41,23 +41,23 @@ class KazooLockTests(KazooTestCase):
                 self.condition.notify_all()
 
     def test_lock_one(self):
-        contender_name = uuid.uuid4().hex
-        lock = self.client.Lock(self.lockpath, contender_name)
-
+        lock_name = uuid.uuid4().hex
+        lock = self.client.Lock(self.lockpath, lock_name)
         event = threading.Event()
 
         thread = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=(contender_name, lock, event))
+            args=(lock_name, lock, event))
         thread.start()
 
+        contender_name = uuid.uuid4().hex
         anotherlock = self.client.Lock(self.lockpath, contender_name)
 
         # wait for any contender to show up on the lock
         wait(anotherlock.get_contenders)
-        eq_(anotherlock.get_contenders(), [contender_name])
+        eq_(anotherlock.get_contenders(), [lock_name])
 
         with self.condition:
-            while self.active_thread != contender_name:
+            while self.active_thread != lock_name:
                 self.condition.wait()
 
         # release the lock
