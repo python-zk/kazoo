@@ -25,16 +25,18 @@ class BaseParty(object):
         self.ensured_path = False
         self.participating = False
 
+    def _ensure_parent(self):
+        if not self.ensured_path:
+            # make sure our parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+
     def join(self):
         """Join the party"""
         return self.client.retry(self._inner_join)
 
     def _inner_join(self):
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-
+        self._ensure_parent()
         try:
             self.client.create(self.create_path, self.data, ephemeral=True)
             self.participating = True
@@ -56,10 +58,7 @@ class BaseParty(object):
 
     def __len__(self):
         """Return a count of participating clients"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
+        self._ensure_parent()
         return len(self._get_children())
 
 
@@ -74,11 +73,7 @@ class Party(BaseParty):
 
     def __iter__(self):
         """Get a list of participating clients' data values"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-
+        self._ensure_parent()
         children = self._get_children()
         for child in children:
             try:
@@ -110,11 +105,7 @@ class ShallowParty(BaseParty):
 
     def __iter__(self):
         """Get a list of participating clients' identifiers"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-
+        self._ensure_parent()
         children = self._get_children()
         for child in children:
             yield child[child.find('-') + 1:]
