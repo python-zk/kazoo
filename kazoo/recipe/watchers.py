@@ -10,7 +10,20 @@ log = logging.getLogger(__name__)
 
 
 class ChildrenWatch(object):
-    def __init__(self, client, path, func, allow_session_lost=True):
+    """Watches a node for children updates and calls the specified
+    function each time it changes
+
+    Example with client:
+
+    .. code-block:: python
+
+        @client.ChildrenWatch('/path/to/watch')
+        def my_func(children):
+            print "Children are %s" % children
+
+    """
+    def __init__(self, client, path, func=None,
+                 allow_session_lost=True):
         """Create a children watcher for a path
 
         :param client: A zookeeper client
@@ -35,11 +48,28 @@ class ChildrenWatch(object):
         self._func = func
         self._stopped = False
         self._watch_established = False
+        self._allow_session_lost = allow_session_lost
         self._run_lock = threading.Lock()
 
         # Register our session listener if we're going to resume
         # across session losses
-        if allow_session_lost:
+        if func:
+            if allow_session_lost:
+                self._client.add_listener(self._session_watcher)
+            self._get_children()
+
+    def __call__(self, func):
+        """Callable version for use as a decorator
+
+        :param func: Function to call initially and every time the
+                     children change. `func` will be called with a
+                     single argument, the list of children.
+        :type func: callable
+
+        """
+        self._func = func
+
+        if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
         self._get_children()
 

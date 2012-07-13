@@ -16,7 +16,7 @@ class KazooWatcherTests(KazooTestCase):
         update = threading.Event()
         all_children = ['fred']
 
-        @self.client.children(self.path)
+        @self.client.ChildrenWatch(self.path)
         def changed(children):
             while all_children:
                 all_children.pop()
@@ -43,7 +43,7 @@ class KazooWatcherTests(KazooTestCase):
 
         fail_through = []
 
-        @self.client.children(self.path)
+        @self.client.ChildrenWatch(self.path)
         def changed(children):
             while all_children:
                 all_children.pop()
@@ -71,7 +71,7 @@ class KazooWatcherTests(KazooTestCase):
         update = threading.Event()
         all_children = ['fred']
 
-        @self.client.children(self.path)
+        @self.client.ChildrenWatch(self.path)
         def changed(children):
             while all_children:
                 all_children.pop()
@@ -100,7 +100,7 @@ class KazooWatcherTests(KazooTestCase):
         update = threading.Event()
         all_children = ['fred']
 
-        @self.client.children(self.path, allow_session_lost=False)
+        @self.client.ChildrenWatch(self.path, allow_session_lost=False)
         def changed(children):
             while all_children:
                 all_children.pop()
