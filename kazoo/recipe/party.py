@@ -54,6 +54,14 @@ class BaseParty(object):
             return False
         return True
 
+    def __len__(self):
+        """Return a count of participating clients"""
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+        return len(self._get_children())
+
 
 class Party(BaseParty):
     """Simple pool of participating processes"""
@@ -80,14 +88,6 @@ class Party(BaseParty):
             except NoNodeException:
                 pass
 
-    def __len__(self):
-        """Return a count of participating clients"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-        return len(self._get_children())
-
     def _get_children(self):
         children = self.client.retry(self.client.get_children, self.path)
         return filter(lambda child: self._NODE_NAME in child, children)
@@ -107,14 +107,6 @@ class ShallowParty(BaseParty):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = '-'.join([uuid.uuid4().hex, self.data])
         self.create_path = self.path + "/" + self.node
-
-    def __len__(self):
-        """Return a count of participating clients"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-        return len(self._get_children())
 
     def __iter__(self):
         """Get a list of participating clients' identifiers"""
