@@ -1,6 +1,5 @@
 import uuid
 
-
 from nose.tools import eq_
 
 from kazoo.testing import KazooTestCase
