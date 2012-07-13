@@ -20,14 +20,14 @@ class Lock(object):
     """
     _LOCK_NAME = '_lock_'
 
-    def __init__(self, client, path, contender_name=None):
+    def __init__(self, client, path, identifier=None):
         """Create a Kazoo Lock
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The lock path to use
-        :param contender_name: Name to use for this lock contender. This
-                               can be useful for querying to see who the
-                               current lock contenders are.
+        :param identifier: Name to use for this lock contender. This
+                           can be useful for querying to see who the
+                           current lock contenders are.
 
         """
         self.client = client
@@ -35,7 +35,7 @@ class Lock(object):
 
         # some data is written to the node. this can be queried via
         # get_contenders() to see who is contending for the lock
-        self.data = str(contender_name or "")
+        self.data = str(identifier or "")
 
         self.condition = threading.Condition()
 
@@ -161,7 +161,7 @@ class Lock(object):
 
         .. note::
 
-            If the contenders did not set a contender_name, it will appear
+            If the contenders did not set an identifier, it will appear
             as a blank string.
 
         """

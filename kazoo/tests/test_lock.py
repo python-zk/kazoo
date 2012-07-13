@@ -49,8 +49,8 @@ class KazooLockTests(KazooTestCase):
             args=(lock_name, lock, event))
         thread.start()
 
-        contender_name = uuid.uuid4().hex
-        anotherlock = self.client.Lock(self.lockpath, contender_name)
+        lock2_name = uuid.uuid4().hex
+        anotherlock = self.client.Lock(self.lockpath, lock2_name)
 
         # wait for any contender to show up on the lock
         wait(anotherlock.get_contenders)

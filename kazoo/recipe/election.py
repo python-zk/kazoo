@@ -15,16 +15,16 @@ class Election(object):
 
     """
 
-    def __init__(self, client, path, contender_name=None):
+    def __init__(self, client, path, identifier=None):
         """Create a Kazoo Leader Election
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The election path to use
-        :param contender_name: Name to use for this lock contender. This
-                               can be useful for querying to see who the
-                               current lock contenders are.
+        :param identifier: Name to use for this lock contender. This
+                           can be useful for querying to see who the
+                           current lock contenders are.
         """
-        self.lock = client.Lock(path, contender_name)
+        self.lock = client.Lock(path, identifier)
 
     def run(self, func, *args, **kwargs):
         """Contend for the leadership
@@ -62,7 +62,7 @@ class Election(object):
 
         .. note::
 
-            If the contenders did not set a contender_name, it will appear
+            If the contenders did not set an identifier, it will appear
             as a blank string.
 
         """
