@@ -193,7 +193,6 @@ class SetPartitioner(object):
         self._party = client.ShallowParty(self._party_path,
                                           identifier=self._identifier)
         self._party.join()
-        self._party_members = self._party.get_participants()
 
         self._state_change = threading.Condition()
         client.add_listener(self._establish_sessionwatch)
@@ -201,26 +200,32 @@ class SetPartitioner(object):
         # Now watch the party and set the callback on the async result
         # so we know when we're ready
         self._children_updated = False
-        self._child_watching(self._allocate_transition)
+        self._child_watching(self._allocate_transition, async=True)
 
     def __iter__(self):
+        """Return the partitions in this partition set"""
         for partition in self._partition_set:
             yield partition
 
     @property
     def failed(self):
+        """Corresponds to the :attr:`PartitionState.FAILURE` state"""
         return self.state == PartitionState.FAILURE
 
     @property
     def release(self):
-        return self.state == PartitionState.ACQUIRED and self._children_updated
+        """Corresponds to the :attr:`PartitionState.RELEASE` state"""
+        return self.state == PartitionState.RELEASE
 
     @property
     def allocating(self):
+        """Corresponds to the :attr:`PartitionState.ALLOCATING`
+        state"""
         return self.state == PartitionState.ALLOCATING
 
     @property
     def acquired(self):
+        """Corresponds to the :attr:`PartitionState.ACQUIRED` state"""
         return self.state == PartitionState.ACQUIRED
 
     def wait_for_acquire(self, timeout=30):
@@ -249,7 +254,7 @@ class SetPartitioner(object):
                 if self.failed:
                     return
                 self.state = PartitionState.ALLOCATING
-        return self._child_watching(self._allocate_transition)
+        self._child_watching(self._allocate_transition, async=True)
 
     def finish(self):
         """Call to release the set and leave the party"""
@@ -267,52 +272,27 @@ class SetPartitioner(object):
 
     def _allocate_transition(self, result):
         """Called when in allocating mode, and the children settled"""
-        # Did we get an exception?
-        log.debug("allocating")
+        # Did we get an exception waiting for children to settle?
         if result.exception:
             self._fail_out()
             return
 
-        # Not an exception, set our new watch and see that children
-        # still haven't changed
         children, async_result = result.get()
-        log.debug("getting result")
-
-        if async_result.ready():
-            # We've apparently changed already, go back to waiting for
-            # it to settle down
-            return self._child_watching(self._allocate_transition)
-
-        # Children still valid, proceed to divvy up set and add a
-        # callback that indicates if the value changed from now
         self._children_updated = False
 
+        # Add a callback when children change on the async_result
         def updated(result):
+            with self._state_change:
+                if self.acquired:
+                    self.state = PartitionState.RELEASE
             self._children_updated = True
+
         async_result.rawlink(updated)
-        self._divide_set()
-
-    def _divide_set(self):
-        """Called after allocation when children have settled"""
-        # First, make sure the children didn't change, again.
-        if self._children_updated:
-            return self._child_watching(self._allocate_transition)
-
-        # Make sure we weren't lost
-        if self.failed:
-            return
 
         # Split up the set
-        self._party_members = self._party.get_participants()
         self._partition_set = self._partition_func(
-            self._identifier, self._party_members, self._set)
+            self._identifier, list(self._party), self._set)
 
-        # Now proceed to lock acquisition for next state transition
-        self._acquire_locks()
-
-    def _acquire_locks(self):
-        """Called after set division to acquire locks before becoming
-        ACQUIRED"""
         # Proceed to acquire locks for the working set as needed
         for member in self._partition_set:
             if self._children_updated or self.failed:
@@ -325,16 +305,14 @@ class SetPartitioner(object):
             try:
                 lock.acquire()
             except Exception:
-                self._fail_out()
-                self._release_locks()
-                return
+                return self.finish()
             self._locks.append(lock)
 
         # All locks acquired! Time for state transition, make sure
         # we didn't inadvertantly get lost thus far
         with self._state_change:
             if self.failed:
-                return self._release_locks()
+                return self.finish()
             self.state = PartitionState.ACQUIRED
             self._acquire_event.set()
 
@@ -362,7 +340,7 @@ class SetPartitioner(object):
             return
         return self._child_watching(self._allocate_transition)
 
-    def _child_watching(self, func=None):
+    def _child_watching(self, func=None, async=False):
         """Called when children are being watched to stabilize
 
         This actually returns immediately, child watcher spins up a
@@ -373,13 +351,12 @@ class SetPartitioner(object):
         watcher = ChildrenWatcher(self._client, self._party_path,
                                   self._time_boundary)
         asy = watcher.start()
-        log.debug("Spinning up watcher")
         if func:
             # We spin up the function in a separate thread/greenlet
             # to ensure that the rawlink's it might use won't be
             # blocked
-            func = partial(self._client._handler.spawn, func)
-            log.debug("Adding func callback")
+            if async:
+                func = partial(self._client._handler.spawn, func)
             asy.rawlink(func)
         return asy
 
@@ -452,10 +429,8 @@ class ChildrenWatcher(object):
                                                    self.last_change)
                 time.sleep(sleep_till)
 
-            log.debug("Stabilized, setting value")
             self.asy.set((self.children, async_result))
         except Exception as exc:
-            log.debug("Error, setting exception")
             self.asy.set_exception(exc)
 
     def children_watcher(self, async, event):
