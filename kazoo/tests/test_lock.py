@@ -3,11 +3,11 @@ import threading
 
 import zookeeper
 from nose.tools import eq_
-from zope.testing.wait import wait
 
 from kazoo.exceptions import CancelledError
 from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
+from kazoo.tests.util import wait
 
 
 class KazooLockTests(KazooTestCase):

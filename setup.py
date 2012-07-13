@@ -22,7 +22,6 @@ tests_require = install_requires + [
     'nose',
     'repoze.sphinx.autointerface',
     'Sphinx',
-    'zope.testing',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'

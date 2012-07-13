@@ -5,21 +5,20 @@ import uuid
 import unittest
 
 import zookeeper
-import zope.testing.loggingsupport
 from nose.tools import eq_
-from zope.testing.wait import wait
 
 import kazoo.client
 from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
 from kazoo.exceptions import NoNodeException
 from kazoo.exceptions import NoAuthException
+from kazoo.tests.util import InstalledHandler
+from kazoo.tests.util import wait
 
 
 class LoggingTests(unittest.TestCase):
     def test_logging(self):
-        handler = zope.testing.loggingsupport.InstalledHandler(
-            'ZooKeeper')
+        handler = InstalledHandler('ZooKeeper')
         try:
             handle = zookeeper.init('zookeeper.example.com:2181')
             zookeeper.close(handle)

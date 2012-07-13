@@ -3,13 +3,15 @@ import sys
 import threading
 
 from nose.tools import eq_
-from zope.testing.wait import wait
 
 from kazoo.testing import KazooTestCase
+from kazoo.tests.util import wait
+
 
 class UniqueError(Exception):
     """Error raised only by test leader function
     """
+
 
 class KazooElectionTests(KazooTestCase):
     def setUp(self):
