@@ -390,7 +390,9 @@ class ChildrenWatcher(object):
         watcher = ChildrenWatcher(client, '/some/path')
         result = watcher.start()
 
-        # Blocks until the children has not changed for time boundary seconds
+        # Blocks until the children has not changed for time boundary
+        # seconds, returns list of children and an async_result that
+        # will be set once if the children change in the future
         children, async_result = result.get()
 
     """
@@ -402,9 +404,11 @@ class ChildrenWatcher(object):
         self.last_change = None
 
     def start(self):
-        """Begin the watching process
+        """Begin the watching process asynchronously
 
         :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance
+                  that will be set when no change has occured to the
+                  children for time boundary seconds.
 
         """
         self.asy = asy = self.client._handler.async_result()
