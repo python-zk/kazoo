@@ -20,6 +20,26 @@ class KazooLockTests(KazooTestCase):
         self.active_thread = None
         self.cancelled_threads = []
 
+    def _thread_lock_acquire_til_event(self, name, lock, event):
+        try:
+            with lock:
+                with self.condition:
+                    eq_(self.active_thread, None)
+                    self.active_thread = name
+                    self.condition.notify_all()
+
+                event.wait()
+
+                with self.condition:
+                    eq_(self.active_thread, name)
+                    self.active_thread = None
+                    self.condition.notify_all()
+            self.released.set()
+        except CancelledError:
+            with self.condition:
+                self.cancelled_threads.append(name)
+                self.condition.notify_all()
+
     def test_lock_one(self):
         contender_name = uuid.uuid4().hex
         lock = self.client.Lock(self.lockpath, contender_name)
@@ -157,23 +177,3 @@ class KazooLockTests(KazooTestCase):
         thread2.join()
         event1.set()
         thread1.join()
-
-    def _thread_lock_acquire_til_event(self, name, lock, event):
-        try:
-            with lock:
-                with self.condition:
-                    eq_(self.active_thread, None)
-                    self.active_thread = name
-                    self.condition.notify_all()
-
-                event.wait()
-
-                with self.condition:
-                    eq_(self.active_thread, name)
-                    self.active_thread = None
-                    self.condition.notify_all()
-            self.released.set()
-        except CancelledError:
-            with self.condition:
-                self.cancelled_threads.append(name)
-                self.condition.notify_all()
