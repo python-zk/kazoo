@@ -80,7 +80,7 @@ class TestConnection(KazooTestCase):
             self.assertRaises(NoAuthException, eve.get, "/1/2")
         finally:
             # Ensure we remove the ACL protected nodes
-            self.client.recursive_delete("/1")
+            self.client.delete("/1", recursive=True)
 
     def test_session_expire(self):
         from kazoo.client import KazooState

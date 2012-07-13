@@ -936,18 +936,20 @@ class KazooClient(object):
                         callback)
         return async_result
 
-    def delete(self, path, version=-1):
+    def delete(self, path, version=-1, recursive=False):
         """Delete a node
 
         :param path: path of node to delete
         :param version: version of node to delete, or -1 for any
-
+        :param recursive: Recursively delete node and all its children,
+            defaults to False.
         """
-        self.delete_async(path, version).get()
+        if recursive:
+            self._delete_recursive(path)
+        else:
+            self.delete_async(path, version).get()
 
-    def recursive_delete(self, path):
-        """Recursively delete a ZNode and all of its children
-        """
+    def _delete_recursive(self, path):
         try:
             children = self.get_children(path)
         except self.zookeeper.NoNodeException:
@@ -960,7 +962,7 @@ class KazooClient(object):
                 else:
                     child_path = path + "/" + child
 
-                self.recursive_delete(child_path)
+                self._delete_recursive(child_path)
         try:
             self.delete(path)
         except self.zookeeper.NoNodeException:

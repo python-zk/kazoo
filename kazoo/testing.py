@@ -239,7 +239,7 @@ class KazooTestHarness(object):
 
         client = self._get_client()
         client.connect()
-        client.recursive_delete('/')
+        client.delete('/', recursive=True)
         client.stop()
 
     def add_errors(self, errors):
