@@ -34,7 +34,7 @@ class Lock(object):
         self.path = path
 
         # some data is written to the node. this can be queried via
-        # get_contenders() to see who is contending for the lock
+        # contenders() to see who is contending for the lock
         self.data = str(identifier or "")
 
         self.condition = threading.Condition()
@@ -156,7 +156,7 @@ class Lock(object):
 
         return True
 
-    def get_contenders(self):
+    def contenders(self):
         """Return an ordered list of the current contenders for the lock
 
         .. note::

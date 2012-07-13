@@ -86,8 +86,8 @@ class KazooElectionTests(KazooTestCase):
         election = self.client.Election(self.path)
 
         # make sure all contenders are in the pool
-        wait(lambda: len(election.get_contenders()) == len(elections))
-        contenders = election.get_contenders()
+        wait(lambda: len(election.contenders()) == len(elections))
+        contenders = election.contenders()
 
         eq_(set(contenders), set(elections.keys()))
 
@@ -112,8 +112,8 @@ class KazooElectionTests(KazooTestCase):
             elections[first_leader])
 
         # contender set should now be the current leader plus the first leader
-        wait(lambda: len(election.get_contenders()) == 2)
-        contenders = election.get_contenders()
+        wait(lambda: len(election.contenders()) == 2)
+        contenders = election.contenders()
         eq_(set(contenders), set([self.leader_id, first_leader]))
 
         # make current leader raise an exception. first should be reelected

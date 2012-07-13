@@ -53,8 +53,8 @@ class KazooLockTests(KazooTestCase):
         anotherlock = self.client.Lock(self.lockpath, lock2_name)
 
         # wait for any contender to show up on the lock
-        wait(anotherlock.get_contenders)
-        eq_(anotherlock.get_contenders(), [lock_name])
+        wait(anotherlock.contenders)
+        eq_(anotherlock.contenders(), [lock_name])
 
         with self.condition:
             while self.active_thread != lock_name:
@@ -91,8 +91,8 @@ class KazooLockTests(KazooTestCase):
             t.start()
 
         # wait for everyone to line up on the lock
-        wait(lambda: len(lock.get_contenders()) == 6)
-        contenders = lock.get_contenders()
+        wait(lambda: len(lock.contenders()) == 6)
+        contenders = lock.contenders()
 
         eq_(contenders[0], "test")
         contenders = contenders[1:]
@@ -109,7 +109,7 @@ class KazooLockTests(KazooTestCase):
                     self.condition.wait()
                 eq_(self.active_thread, contender)
 
-            eq_(lock.get_contenders(), remaining)
+            eq_(lock.contenders(), remaining)
             remaining = remaining[1:]
 
             event.set()
@@ -137,7 +137,7 @@ class KazooLockTests(KazooTestCase):
             if not self.active_thread:
                 self.condition.wait(5)
                 eq_(self.active_thread, "one")
-        eq_(lock1.get_contenders(), ["one"])
+        eq_(lock1.contenders(), ["one"])
         event1.set()
         thread1.join()
 
@@ -163,8 +163,8 @@ class KazooLockTests(KazooTestCase):
         thread2.start()
 
         # this one should block in acquire. check that it is a contender
-        wait(lambda: len(lock2.get_contenders()) > 1)
-        eq_(lock2.get_contenders(), ["one", "two"])
+        wait(lambda: len(lock2.contenders()) > 1)
+        eq_(lock2.contenders(), ["one", "two"])
 
         lock2.cancel()
         with self.condition:
@@ -172,7 +172,7 @@ class KazooLockTests(KazooTestCase):
                 self.condition.wait()
                 assert "two" in self.cancelled_threads
 
-        eq_(lock2.get_contenders(), ["one"])
+        eq_(lock2.contenders(), ["one"])
 
         thread2.join()
         event1.set()

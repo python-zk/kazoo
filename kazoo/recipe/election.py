@@ -57,7 +57,7 @@ class Election(object):
         """
         self.lock.cancel()
 
-    def get_contenders(self):
+    def contenders(self):
         """Return an ordered list of the current contenders in the election
 
         .. note::
@@ -66,4 +66,4 @@ class Election(object):
             as a blank string.
 
         """
-        return self.lock.get_contenders()
+        return self.lock.contenders()
