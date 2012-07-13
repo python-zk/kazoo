@@ -8,6 +8,14 @@
 Public API
 ++++++++++
 
+    .. autoclass:: DataWatch
+        :members:
+
+        .. automethod:: __init__
+
+        .. automethod:: __call__
+
+
     .. autoclass:: ChildrenWatch
         :members:
 
