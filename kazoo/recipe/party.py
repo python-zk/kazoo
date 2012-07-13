@@ -61,6 +61,9 @@ class BaseParty(object):
         self._ensure_parent()
         return len(self._get_children())
 
+    def _get_children(self):
+        return self.client.retry(self.client.get_children, self.path)
+
 
 class Party(BaseParty):
     """Simple pool of participating processes"""
@@ -84,7 +87,7 @@ class Party(BaseParty):
                 pass
 
     def _get_children(self):
-        children = self.client.retry(self.client.get_children, self.path)
+        children = BaseParty._get_children(self)
         return filter(lambda child: self._NODE_NAME in child, children)
 
 
@@ -109,6 +112,3 @@ class ShallowParty(BaseParty):
         children = self._get_children()
         for child in children:
             yield child[child.find('-') + 1:]
-
-    def _get_children(self):
-        return self.client.retry(self.client.get_children, self.path)
