@@ -22,7 +22,7 @@ class LoggingTests(unittest.TestCase):
         try:
             handle = zookeeper.init('zookeeper.example.com:2181')
             zookeeper.close(handle)
-        except:
+        except Exception:
             pass
 
         wait(lambda: [r for r in handler.records
