@@ -17,4 +17,5 @@ organized alphabetically by module name.
    api/recipe/partitioner
    api/recipe/party
    api/recipe/election
+   api/recipe/watchers
    api/security
