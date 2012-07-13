@@ -18,7 +18,7 @@ class Lock(object):
             # do something with the lock
 
     """
-    _LOCK_NAME = '_lock_'
+    _NODE_NAME = '__lock__'
 
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo Lock
@@ -43,7 +43,7 @@ class Lock(object):
         # create request to succeed on the server, but for a failure to
         # prevent us from getting back the full path name. We prefix our
         # lock name with a uuid and can check for its presence on retry.
-        self.prefix = uuid.uuid4().hex + self._LOCK_NAME
+        self.prefix = uuid.uuid4().hex + self._NODE_NAME
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
@@ -122,7 +122,7 @@ class Lock(object):
         children = self.client.get_children(self.path)
 
         # can't just sort directly: the node names are prefixed by uuids
-        lockname = self._LOCK_NAME
+        lockname = self._NODE_NAME
         children.sort(key=lambda c: c[c.find(lockname) + len(lockname):])
         return children
 
