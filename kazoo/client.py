@@ -508,7 +508,7 @@ class KazooClient(object):
 
         def wrapper(handle, type, state, path):
             # don't send session events to all watchers
-            if state != self.zookeeper.SESSION_EVENT:
+            if type != self.zookeeper.SESSION_EVENT:
                 event = WatchedEvent(type, state, path)
                 callback = Callback('watch', func_wrapper, (event,))
                 self._handler.dispatch_callback(callback)
@@ -851,6 +851,38 @@ class KazooClient(object):
 
         """
         return self.get_children_async(path, watch).get()
+
+    def children(self, path, allow_session_lost=True):
+        """Watch a path for children changes and call the function
+        when they change
+
+        :param path: The path to watch for children on
+        :type path: str
+        :param allow_session_lost: Whether the watch should be
+                                   re-registered if the zookeeper
+                                   session is lost.
+        :type allow_session_lost: bool
+        :returns: A function to call with a single argument, the
+                  callable that should be called when the children
+                  change.
+
+        This method can be used as a decorator::
+
+            @client.children('/some/path')
+            def my_func(children):
+                # do something with children
+
+        The function passed in will be called immediately and every
+        time the children change. To stop having the function called
+        when the children change, it should return False.
+
+        """
+        # Imported here to prevent recursive import issues
+        from kazoo.recipe.watchers import ChildrenWatch
+
+        def wrapper(func):
+            return ChildrenWatch(self, path, func, allow_session_lost)
+        return wrapper
 
     def set_async(self, path, data, version=-1):
         """Set the value of a node
