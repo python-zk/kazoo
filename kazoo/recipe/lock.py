@@ -13,7 +13,7 @@ class Lock(object):
     Example usage with a :class:`~kazoo.client.KazooClient` instance::
 
         zk = KazooClient()
-        lock = zk.Lock("/lockpath", "my identifier")
+        lock = zk.Lock("/lockpath", "my-identifier")
         with lock:  # blocks waiting for lock acquisition
             # do something with the lock
 

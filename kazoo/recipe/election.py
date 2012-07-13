@@ -8,7 +8,7 @@ class Election(object):
     Example usage with a :class:`~kazoo.client.KazooClient` instance::
 
         zk = KazooClient()
-        election = zk.Election("/electionpath", "my identifier")
+        election = zk.Election("/electionpath", "my-identifier")
 
         # blocks until the election is won, then calls my_leader_function()
         election.run(my_leader_function)
