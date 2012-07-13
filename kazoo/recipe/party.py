@@ -1,17 +1,15 @@
 """Party
 
-A zookeeper pool of party members. The :class:`Party` object can be
+A Zookeeper pool of party members. The :class:`Party` object can be
 used for determining members of a party.
-
 """
 import uuid
 
 from kazoo.exceptions import NodeExistsException, NoNodeException
 
 
-class Party(object):
-    """Simple pool of participating processes"""
-    _NODE_NAME = "__party__"
+class BaseParty(object):
+    """Base implementation of a party."""
 
     def __init__(self, client, path, identifier=None):
         """
@@ -23,18 +21,34 @@ class Party(object):
         """
         self.client = client
         self.path = path
-
         self.data = str(identifier or "")
-
-        self.node = uuid.uuid4().hex + self._NODE_NAME
-        self.create_path = self.path + "/" + self.node
-
         self.ensured_path = False
         self.participating = False
 
     def join(self):
         """Join the party"""
         return self.client.retry(self._inner_join)
+
+    def leave(self):
+        """Leave the party"""
+        return self.client.retry(self._inner_leave)
+
+    def _inner_leave(self):
+        try:
+            self.client.delete(self.create_path)
+        except NoNodeException:
+            return False
+        return True
+
+
+class Party(BaseParty):
+    """Simple pool of participating processes"""
+    _NODE_NAME = "__party__"
+
+    def __init__(self, client, path, identifier=None):
+        BaseParty.__init__(self, client, path, identifier=identifier)
+        self.node = uuid.uuid4().hex + self._NODE_NAME
+        self.create_path = self.path + "/" + self.node
 
     def _inner_join(self):
         if not self.ensured_path:
@@ -49,18 +63,6 @@ class Party(object):
             # node was already created, perhaps we are recovering from a
             # suspended connection
             self.participating = True
-
-    def leave(self):
-        """Leave the party"""
-        return self.client.retry(self._inner_leave)
-
-    def _inner_leave(self):
-        try:
-            self.client.delete(self.create_path)
-        except NoNodeException:
-            return False
-
-        return True
 
     def __iter__(self):
         """Get a list of participating clients' data values"""
@@ -91,7 +93,7 @@ class Party(object):
         return filter(lambda child: self._NODE_NAME in child, children)
 
 
-class ShallowParty(object):
+class ShallowParty(BaseParty):
     """Simple shallow pool of participating processes
 
     This differs from the :class:`Party` as the identifier is used in the
@@ -99,31 +101,12 @@ class ShallowParty(object):
     restrictions on the length as it must be a valid Zookeeper node (an
     alphanumeric string), but reduces the overhead of getting a list of
     participants to a single Zookeeper call.
-
     """
 
     def __init__(self, client, path, identifier=None):
-        """
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The party path to use
-        :param identifier: An identifier to use for this member of the party
-                           when participating.
-
-        """
-        self.client = client
-        self.path = path
-
-        self.data = str(identifier or "")
-
+        BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = '-'.join([uuid.uuid4().hex, self.data])
         self.create_path = self.path + "/" + self.node
-
-        self.ensured_path = False
-        self.participating = False
-
-    def join(self):
-        """Join the party"""
-        return self.client.retry(self._inner_join)
 
     def _inner_join(self):
         if not self.ensured_path:
@@ -138,18 +121,6 @@ class ShallowParty(object):
             # node was already created, perhaps we are recovering from a
             # suspended connection
             self.participating = True
-
-    def leave(self):
-        """Leave the party"""
-        return self.client.retry(self._inner_leave)
-
-    def _inner_leave(self):
-        try:
-            self.client.delete(self.create_path)
-        except NoNodeException:
-            return False
-
-        return True
 
     def __len__(self):
         """Return a count of participating clients"""
