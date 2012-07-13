@@ -36,6 +36,36 @@ class KazooWatcherTests(KazooTestCase):
         update.wait()
         eq_(sorted(all_children), ['george', 'smith'])
 
+    def test_func_stops(self):
+        self.client.ensure_path(self.path)
+        update = threading.Event()
+        all_children = ['fred']
+
+        fail_through = []
+
+        @self.client.children(self.path)
+        def changed(children):
+            while all_children:
+                all_children.pop()
+            all_children.extend(children)
+            update.set()
+            if fail_through:
+                return False
+
+        update.wait()
+        eq_(all_children, [])
+        update.clear()
+
+        fail_through.append(True)
+        self.client.create(self.path + '/' + 'smith', '0')
+        update.wait()
+        eq_(all_children, ['smith'])
+        update.clear()
+
+        self.client.create(self.path + '/' + 'george', '0')
+        update.wait(0.5)
+        eq_(all_children, ['smith'])
+
     def test_child_watch_session_loss(self):
         self.client.ensure_path(self.path)
         update = threading.Event()
