@@ -38,8 +38,7 @@ _core_pipe_read, _core_pipe_write = _pipe()
 def _core_pipe_read_callback(event, evtype):
     try:
         os.read(event.fd, 1)
-    except:
-        # TODO: I'd prefer `except Exception:`
+    except Exception:
         pass
 
 if _using_libevent:

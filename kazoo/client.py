@@ -536,8 +536,7 @@ class KazooClient(object):
             try:
                 # latent handle callback from previous connection
                 self.zookeeper.close(handle)
-            except:
-                # TODO: Shouldn't this be `except Exception:`?
+            except Exception:
                 pass
             return
 
