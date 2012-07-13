@@ -113,8 +113,7 @@ class SetPartitioner(object):
             elif qp.allocating:
                 qp.wait_for_acquire()
 
-    State Transitions
-    -----------------
+    **State Transitions**
 
     When created, the :class:`SetPartitioner` enters the
     :attr:`PartitionState.ALLOCATING` state.
