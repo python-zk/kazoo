@@ -41,7 +41,7 @@ class LoggingTests(unittest.TestCase):
                        ]
              )
 
-        self.assert_(not [r for r in handler.records
+        self.assertFalse([r for r in handler.records
                           if ('Exceeded deadline by' in r.getMessage()
                               and r.levelno == logging.WARNING)
                           ])
