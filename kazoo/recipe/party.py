@@ -155,7 +155,15 @@ class ShallowParty(object):
 
         return True
 
-    def get_participants(self):
+    def __len__(self):
+        """Return a count of participating clients"""
+        if not self.ensured_path:
+            # make sure our election parent node exists
+            self.client.ensure_path(self.path)
+            self.ensured_path = True
+        return len(self._get_children())
+
+    def __iter__(self):
         """Get a list of participating clients' identifiers"""
         if not self.ensured_path:
             # make sure our election parent node exists
@@ -163,15 +171,8 @@ class ShallowParty(object):
             self.ensured_path = True
 
         children = self._get_children()
-        return [child[child.find('-') + 1:] for child in children]
-
-    def get_participant_count(self):
-        """Return a count of participating clients"""
-        if not self.ensured_path:
-            # make sure our election parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
-        return len(self._get_children())
+        for child in children:
+            yield child[child.find('-') + 1:]
 
     def _get_children(self):
         return self.client.retry(self.client.get_children, self.path)
