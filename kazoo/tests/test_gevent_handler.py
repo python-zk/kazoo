@@ -6,7 +6,7 @@ from nose.tools import eq_
 from kazoo.client import Callback
 
 
-class TestThreadingHandler(unittest.TestCase):
+class TestGeventHandler(unittest.TestCase):
     def _makeOne(self, *args):
         from kazoo.handlers.gevent import SequentialGeventHandler
         return SequentialGeventHandler(*args)
