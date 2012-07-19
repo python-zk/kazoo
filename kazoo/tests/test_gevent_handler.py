@@ -4,6 +4,7 @@ from gevent.event import Event
 from nose.tools import eq_
 
 from kazoo.client import Callback
+from kazoo.testing import KazooTestCase
 
 
 class TestGeventHandler(unittest.TestCase):
@@ -58,3 +59,15 @@ class TestGeventHandler(unittest.TestCase):
         h = self._makeOne()
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
+
+
+class TestGeventClient(KazooTestCase):
+    def _makeOne(self, *args):
+        from kazoo.handlers.gevent import SequentialGeventHandler
+        return SequentialGeventHandler(*args)
+
+    def test_connect(self):
+        client = self._get_client(handler=self._makeOne())
+        client.connect()
+        assert client.state == 'CONNECTED'
+        client.stop()
