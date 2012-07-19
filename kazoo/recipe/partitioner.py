@@ -193,7 +193,7 @@ class SetPartitioner(object):
                                           identifier=self._identifier)
         self._party.join()
 
-        self._state_change = threading.Condition()
+        self._state_change = self._client.condition_object()
         client.add_listener(self._establish_sessionwatch)
 
         # Now watch the party and set the callback on the async result

@@ -6,6 +6,8 @@ import os
 
 import gevent
 import gevent.event
+import gevent.coros
+
 try:
     from gevent import get_hub
 except ImportError:  # pragma: nocover
@@ -45,6 +47,97 @@ if _using_libevent:
     # The os pipe trick to wake gevent is only need for gevent pre-1.0
     gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
                      _core_pipe_read, _core_pipe_read_callback).add()
+
+
+class Condition(object):
+    """
+    Greenlet version of threading.Condition.
+    Almost copy-paste of original one.
+    """
+    def __init__(self):
+        self.__lock = gevent.coros.RLock()
+        # Export the lock's acquire() and release() methods
+        self.acquire = self.__lock.acquire
+        self.release = self.__lock.release
+        # If the lock defines _release_save() and/or _acquire_restore(),
+        # these override the default implementations (which just call
+        # release() and acquire() on the lock).  Ditto for _is_owned().
+        try:
+            self._release_save = self.__lock._release_save
+        except AttributeError:
+            pass
+        try:
+            self._acquire_restore = self.__lock._acquire_restore
+        except AttributeError:
+            pass
+        try:
+            self._is_owned = self.__lock._is_owned
+        except AttributeError:
+            pass
+        self.__waiters = []
+
+    def __enter__(self):
+        return self.__lock.__enter__()
+
+    def __exit__(self, *args):
+        return self.__lock.__exit__(*args)
+
+    def __repr__(self):
+        return "<Condition(%s, %d)>" % (self.__lock, len(self.__waiters))
+
+    def _release_save(self):
+        self.__lock.release()           # No state to save
+
+    def _acquire_restore(self, x):
+        self.__lock.acquire()           # Ignore saved state
+
+    def _is_owned(self):
+        # Return True if lock is owned by current_thread.
+        # This method is called only if __lock doesn't have _is_owned().
+        if self.__lock.acquire(0):
+            self.__lock.release()
+            return False
+        else:
+            return True
+
+    def wait(self, timeout=None):
+        if not self._is_owned():
+            raise RuntimeError("cannot wait on un-acquired lock")
+        waiter = gevent.coros.Semaphore()
+        waiter.acquire()
+        self.__waiters.append(waiter)
+        saved_state = self._release_save()
+        try:  # restore state no matter what (e.g., KeyboardInterrupt)
+            if timeout is None:
+                waiter.acquire()
+            else:
+                # green locks don't block python interpreter
+                # so there's no need to loop as in original version
+                gotit = waiter.acquire(timeout=timeout)
+                if not gotit:  # timeout expired
+                    try:
+                        self.__waiters.remove(waiter)
+                    except ValueError:
+                        pass
+        finally:
+            self._acquire_restore(saved_state)
+
+    def notify(self, n=1):
+        if not self._is_owned():
+            raise RuntimeError("cannot notify on un-acquired lock")
+        __waiters = self.__waiters
+        waiters = __waiters[:n]
+        if not waiters:
+            return
+        for waiter in waiters:
+            waiter.release()
+            try:
+                __waiters.remove(waiter)
+            except ValueError:
+                pass
+
+    def notify_all(self):
+        self.notify(len(self.__waiters))
 
 
 @implementer(IAsyncResult)
@@ -143,6 +236,14 @@ class SequentialGeventHandler(object):
     def event_object(self):
         """Create an appropriate Event object"""
         return gevent.event.Event()
+
+    def lock_object(self):
+        """Create an appropriate Lock object"""
+        return gevent.coros.Semaphore()
+
+    def condition_object(self):
+        """Create an appropriate Condition object"""
+        return Condition()
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance

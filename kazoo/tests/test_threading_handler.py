@@ -1,4 +1,5 @@
 import threading
+import thread
 import unittest
 
 import mock
@@ -55,6 +56,8 @@ class TestThreadingHandler(unittest.TestCase):
     def test_proper_threading(self):
         h = self._makeOne()
         assert isinstance(h.event_object(), threading._Event)
+        assert h.lock_object().__class__ is threading.Lock().__class__
+        assert isinstance(h.condition_object(), threading._Condition)
 
     def test_matching_async(self):
         h = self._makeOne()

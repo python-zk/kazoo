@@ -1,5 +1,6 @@
 import unittest
 
+from gevent.coros import Semaphore
 from gevent.event import Event
 from nose.tools import eq_
 
@@ -15,6 +16,10 @@ class TestGeventHandler(unittest.TestCase):
     def _getAsync(self, *args):
         from kazoo.handlers.gevent import AsyncResult
         return AsyncResult
+
+    def _getCondition(self, *args):
+        from kazoo.handlers.gevent import Condition
+        return Condition
 
     def test_completion_vs_session(self):
         h = self._makeOne()
@@ -54,11 +59,17 @@ class TestGeventHandler(unittest.TestCase):
     def test_proper_threading(self):
         h = self._makeOne()
         assert isinstance(h.event_object(), Event)
+        assert isinstance(h.lock_object(), Semaphore)
 
     def test_matching_async(self):
         h = self._makeOne()
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
+
+    def test_matching_condition(self):
+        h = self._makeOne()
+        cond = self._getCondition()
+        assert isinstance(h.condition_object(), cond)
 
 
 class TestGeventClient(KazooTestCase):
