@@ -40,7 +40,7 @@ $(ZOOKEEPER):
 	@echo "Installing Zookeeper"
 	mkdir -p bin
 	cd bin && \
-	curl http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
+	curl --progress-bar http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
 	mv bin/zookeeper-$(ZOOKEEPER_VERSION) bin/zookeeper
 	cd bin/zookeeper && ant compile
 	cd bin/zookeeper/src/c && \
