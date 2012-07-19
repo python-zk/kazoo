@@ -13,14 +13,18 @@ from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
 
-ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
-assert ZK_HOME, (
-    "ZOOKEEPER_PATH environment variable must be defined.\n "
-    "For deb package installations this is /usr/share/java")
+CLUSTER = None
+def get_global_cluster():
+    global CLUSTER
+    if CLUSTER is None:
+        ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
+        assert ZK_HOME, (
+            "ZOOKEEPER_PATH environment variable must be defined.\n "
+            "For deb package installations this is /usr/share/java")
 
-CLUSTER = ZookeeperCluster(ZK_HOME)
-atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
-
+        CLUSTER = ZookeeperCluster(ZK_HOME)
+        atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
+    return CLUSTER
 
 class ZooError(namedtuple('ZooError', ('when', 'exception', 'allow'))):
     """A Zookeeper Error to throw instead of or in addition to executing the
@@ -188,7 +192,7 @@ class KazooTestHarness(object):
 
     @property
     def cluster(self):
-        return CLUSTER
+        return get_global_cluster()
 
     @property
     def servers(self):
