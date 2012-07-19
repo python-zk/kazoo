@@ -9,7 +9,7 @@ import unittest
 import zookeeper
 from kazoo.client import Callback
 from kazoo.client import KazooClient
-from kazoo.tests.common import ZookeeperCluster
+from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
 
