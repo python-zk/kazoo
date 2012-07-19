@@ -19,3 +19,4 @@ organized alphabetically by module name.
    api/recipe/election
    api/recipe/watchers
    api/security
+   api/testing
