@@ -430,6 +430,18 @@ class KazooClient(object):
         self.SetPartitioner = partial(SetPartitioner, self)
         self.Election = partial(Election, self)
 
+    def lock_object(self):
+        """Return appropriate lock object to be used depending on
+        chosen handler.
+        """
+        return self._handler.lock_object()
+
+    def condition_object(self):
+        """Return appropriate condition object to be used depending on
+        chosen handler.
+        """
+        return self._handler.condition_object()
+
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
         to a bad zhandle and state bugs

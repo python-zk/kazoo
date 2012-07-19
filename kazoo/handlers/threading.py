@@ -189,6 +189,14 @@ class SequentialThreadingHandler(object):
         """Create an appropriate Event object"""
         return threading.Event()
 
+    def lock_object(self):
+        """Create an appropriate Lock object"""
+        return threading.Lock()
+
+    def condition_object(self):
+        """Create an appropriate Condition object"""
+        return threading.Condition()
+
     def async_result(self):
         """Create a :class:`AsyncResult` instance"""
         return AsyncResult(self)

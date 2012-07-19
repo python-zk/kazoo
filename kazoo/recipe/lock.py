@@ -37,7 +37,7 @@ class Lock(object):
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "")
 
-        self.condition = threading.Condition()
+        self.condition = self.client.condition_object()
 
         # props to Netflix Curator for this trick. It is possible for our
         # create request to succeed on the server, but for a failure to
