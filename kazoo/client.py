@@ -466,6 +466,8 @@ class KazooClient(object):
                 async_result.set_exception(
                     self.zookeeper.InvalidStateException(
                         "invalid handle state"))
+            elif isinstance(exc, TypeError):
+                async_result.set_exception(exc)
             else:
                 async_result.set_exception(
                     self.zookeeper.SessionExpiredException("session expired"))
