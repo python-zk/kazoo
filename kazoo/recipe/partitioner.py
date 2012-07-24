@@ -109,7 +109,8 @@ class SetPartitioner(object):
             elif qp.release:
                 qp.release_set()
             elif qp.acquired:
-                # Do something with the qp
+                for partition in qp:
+                    # Do something with each partition
             elif qp.allocating:
                 qp.wait_for_acquire()
 
