@@ -309,7 +309,7 @@ class SetPartitioner(object):
             self._locks.append(lock)
 
         # All locks acquired! Time for state transition, make sure
-        # we didn't inadvertantly get lost thus far
+        # we didn't inadvertently get lost thus far
         with self._state_change:
             if self.failed:
                 return self.finish()
@@ -391,7 +391,7 @@ class ChildrenWatcher(object):
         watcher = ChildrenWatcher(client, '/some/path')
         result = watcher.start()
 
-        # Blocks until the children has not changed for time boundary
+        # Blocks until the children have not changed for time boundary
         # seconds, returns list of children and an async_result that
         # will be set once if the children change in the future
         children, async_result = result.get()
@@ -408,7 +408,7 @@ class ChildrenWatcher(object):
         """Begin the watching process asynchronously
 
         :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance
-                  that will be set when no change has occured to the
+                  that will be set when no change has occurred to the
                   children for time boundary seconds.
 
         """
