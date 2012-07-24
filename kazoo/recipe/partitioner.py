@@ -48,7 +48,7 @@ class PartitionState(object):
     .. attribute:: FAILURE
 
         The set partition has failed. This occurs when the maximum
-        time to partition the set fails or the Zookeeper session is
+        time to partition the set is exceeded or the Zookeeper session is
         lost. The partitioner is unusable after this state and must
         be recreated.
 
@@ -63,7 +63,7 @@ class SetPartitioner(object):
     """Partitions a set amongst members of a party
 
     This class will partition a set amongst members of a party such
-    that each party will be given one or more members of the set and
+    that each member will be given zero or more items of the set and
     each set item will be given to a single member. When new members
     enter or leave the party, the set will be re-partitioned amongst the
     members.
@@ -86,14 +86,14 @@ class SetPartitioner(object):
         def use_setlist(partitions):
             # do something with a partition passed in
 
-        # Run the use_setlist function when the partition is acquired
+        # Run the use_setlist function when partitions are acquired
         # repeatedly
         qp.run(func=use_setlist)
 
     Sometimes, more control is needed over handling the state
     transitions. Or the program may need to do other things during
     specific states, in which case a more verbose example that allows
-    for finer grained control:
+    for finer grained control is needed:
 
     .. code-block:: python
 
@@ -129,8 +129,8 @@ class SetPartitioner(object):
     :attr:`~PartitionState.FAILURE`
 
         Allocating the set failed either due to a Zookeeper session
-        expiration, or failure to acquire the partition members of the
-        set within the timeout period.
+        expiration, or failure to acquire the items of the set within
+        the timeout period.
 
     :attr:`~PartitionState.ACQUIRED` ->
     :attr:`~PartitionState.RELEASE`
