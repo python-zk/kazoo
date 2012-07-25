@@ -6,6 +6,7 @@ import os
 
 import gevent
 import gevent.event
+import gevent.thread
 try:
     from gevent import get_hub
 except ImportError:  # pragma: nocover
@@ -144,6 +145,10 @@ class SequentialGeventHandler(object):
     def event_object(self):
         """Create an appropriate Event object"""
         return gevent.event.Event()
+
+    def lock_object(self):
+        """Create an appropriate Lock object"""
+        return gevent.thread.allocate_lock()
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance
