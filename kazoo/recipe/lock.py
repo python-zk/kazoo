@@ -7,7 +7,7 @@ It's highly recommended to add a state listener with
 :meth:`~KazooClient.add_listener` and watch for
 :attr:`~KazooState.LOST` and :attr:`~KazooState.SUSPENDED` state
 changes and re-act appropriately. In the event that a
-:attr:`~KazooState.SUSPENDED` state occurs, its certain that the lock
+:attr:`~KazooState.LOST` state occurs, its certain that the lock
 has been lost.
 
 """
