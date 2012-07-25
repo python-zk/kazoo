@@ -385,8 +385,8 @@ class KazooClient(object):
         :param default_acl: A default ACL used on node creation.
         """
         from kazoo.recipe.partitioner import SetPartitioner
-        from kazoo.recipe.watchers import DataWatch
         from kazoo.recipe.watchers import ChildrenWatch
+        from kazoo.recipe.watchers import DataWatch
 
         # Check for chroot
         chroot_check = hosts.split('/', 1)
@@ -436,13 +436,13 @@ class KazooClient(object):
         self.state_listeners = set()
 
         # convenience API
-        self.DataWatch = partial(DataWatch, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
+        self.DataWatch = partial(DataWatch, self)
+        self.Election = partial(Election, self)
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
-        self.ShallowParty = partial(ShallowParty, self)
         self.SetPartitioner = partial(SetPartitioner, self)
-        self.Election = partial(Election, self)
+        self.ShallowParty = partial(ShallowParty, self)
 
     def _safe_call(self, func, async_result, *args, **kwargs):
         """Safely call a zookeeper function and handle errors related
