@@ -13,6 +13,7 @@ environments that use threads.
 from __future__ import absolute_import
 
 import Queue
+import time
 import threading
 
 from zope.interface import implementer
@@ -159,6 +160,7 @@ class SequentialThreadingHandler(object):
     """
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
+    sleep_func = time.sleep
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""

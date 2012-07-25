@@ -28,6 +28,10 @@ class IHandler(Interface):
         """Exception class that should be thrown and captured if a result
         is not available within the given time""")
 
+    sleep_func = Attribute(
+        """Appropriate sleep function that can be called with a single
+        argument and sleep.""")
+
     def event_object():
         """Return an appropriate object that implements Python's
         threading.Event API"""

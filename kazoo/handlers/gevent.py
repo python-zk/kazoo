@@ -96,6 +96,7 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     timeout_exception = gevent.event.Timeout
+    sleep_func = gevent.sleep
 
     def __init__(self, hub=None):
         """Create a :class:`SequentialGeventHandler` instance"""
