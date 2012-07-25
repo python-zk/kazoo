@@ -14,6 +14,8 @@ from kazoo.testing.common import ZookeeperCluster
 log = logging.getLogger(__name__)
 
 CLUSTER = None
+
+
 def get_global_cluster():
     global CLUSTER
     if CLUSTER is None:
@@ -25,6 +27,7 @@ def get_global_cluster():
         CLUSTER = ZookeeperCluster(ZK_HOME)
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
+
 
 class ZooError(namedtuple('ZooError', ('when', 'exception', 'allow'))):
     """A Zookeeper Error to throw instead of or in addition to executing the
@@ -122,6 +125,10 @@ class ZookeeperErrors(object):
             raise err.exception
 
     def _completion_exception(self, err, name, func, *args, **kwargs):
+        # Ensure args is a list
+        if isinstance(args, tuple):
+            args = list(args)
+
         if callable(args[-1]):
             # Replace completion callback with one that returns the
             # exception
