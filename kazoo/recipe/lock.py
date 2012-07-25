@@ -11,7 +11,6 @@ changes and re-act appropriately. In the event that a
 has been lost.
 
 """
-import threading
 import uuid
 
 from kazoo.retry import ForceRetryError
@@ -49,7 +48,7 @@ class Lock(object):
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "")
 
-        self.condition = threading.Condition()
+        self.wake_event = client._handler.event_object()
 
         # props to Netflix Curator for this trick. It is possible for our
         # create request to succeed on the server, but for a failure to
@@ -65,9 +64,8 @@ class Lock(object):
 
     def cancel(self):
         """Cancel a pending lock acquire"""
-        with self.condition:
-            self.cancelled = True
-            self.condition.notify_all()
+        self.cancelled = True
+        self.wake_event.set()
 
     def acquire(self):
         """Acquire the mutex, blocking until it is obtained"""
@@ -81,6 +79,8 @@ class Lock(object):
             raise
 
     def _inner_acquire(self):
+        self.wake_event.clear()
+
         # make sure our election parent node exists
         if not self.assured_path:
             self.client.ensure_path(self.path)
@@ -122,13 +122,11 @@ class Lock(object):
 
             # otherwise we are in the mix. watch predecessor and bide our time
             predecessor = self.path + "/" + children[our_index - 1]
-            with self.condition:
-                if self.client.exists(predecessor, self._watch_predecessor):
-                    self.condition.wait()
+            if self.client.exists(predecessor, self._watch_predecessor):
+                self.wake_event.wait()
 
     def _watch_predecessor(self, event):
-        with self.condition:
-            self.condition.notify_all()
+        self.wake_event.set()
 
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
