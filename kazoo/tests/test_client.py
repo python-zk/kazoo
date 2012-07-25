@@ -159,10 +159,16 @@ class TestClient(KazooTestCase):
 
     def test_bad_handle_type_error(self):
         self.add_errors(dict(
-            acreate=[ZooError('call', TypeError, False)]
+            acreate=[ZooError('call', TypeError("an integer is required"),
+                              False)]
         ))
         self.assertRaises(zookeeper.SessionExpiredException, self.client.create,
                           "/1", "val1")
+
+    def test_bad_argument(self):
+        client = self.client
+        client.ensure_path("/1")
+        self.assertRaises(TypeError, self.client.set, "/1", 1)
 
     def test_ensure_path(self):
         client = self.client

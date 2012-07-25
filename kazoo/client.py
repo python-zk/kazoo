@@ -466,9 +466,11 @@ class KazooClient(object):
                 async_result.set_exception(
                     self.zookeeper.InvalidStateException(
                         "invalid handle state"))
-            else:
+            elif self._handle is None or 'an integer is required' in exc:
                 async_result.set_exception(
                     self.zookeeper.SessionExpiredException("session expired"))
+            else:
+                raise
 
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
