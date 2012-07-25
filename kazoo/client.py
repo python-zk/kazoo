@@ -360,7 +360,8 @@ class KazooClient(object):
     zookeeper = zookeeper
 
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
-                 timeout=10.0, client_id=None, max_retries=None, handler=None,
+                 timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
+                 retry_backoff=2, retry_jitter=0.8, handler=None,
                  default_acl=None):
         """Create a KazooClient instance
 
@@ -371,6 +372,13 @@ class KazooClient(object):
         :param timeout: The longest to wait for a Zookeeper connection
         :param client_id: A Zookeeper client id, used when
                           re-establishing a prior session connection
+        :param max_retries: Maximum retries when using the
+                            :meth:`KazooClient.retry` method.
+        :param retry_delay: Initial delay when retrying a call.
+        :param retry_backoff: How much to back off on each call retry.
+        :param retry_jitter: How much jitter delay to introduce per call. An
+                             amount of time up to this will be added per retry
+                             call to avoid hammering the server.
         :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling
@@ -414,7 +422,13 @@ class KazooClient(object):
 
         self._connection_timed_out = False
 
-        self.retry = KazooRetry(max_retries)
+        self.retry = KazooRetry(
+            max_tries=max_retries,
+            delay=retry_delay,
+            backoff=retry_backoff,
+            max_jitter=retry_jitter,
+            sleep_func=self._handler.sleep_func
+        )
 
         # Curator like simplified state tracking, and listeners for state
         # transitions
