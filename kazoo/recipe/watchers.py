@@ -60,6 +60,7 @@ class DataWatch(object):
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
         self._run_lock = threading.Lock()
+        self._prior_data = ()
 
         # Register our session listener if we're going to resume
         # across session losses
@@ -93,6 +94,15 @@ class DataWatch(object):
                                             self._path, self._watcher)
             if not self._watch_established:
                 self._watch_established = True
+
+                # If we already had data, and it hasn't changed, this is a
+                # session re-establishment and nothing changed, don't call the
+                # func
+                if self._prior_data and \
+                   self._prior_data[1].mzxid == stat.mzxid:
+                    return
+
+            self._prior_data = data, stat
 
             try:
                 if self._func(data, stat) is False:
@@ -161,6 +171,7 @@ class ChildrenWatch(object):
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
         self._run_lock = threading.Lock()
+        self._prior_children = None
 
         # Register our session listener if we're going to resume
         # across session losses
@@ -193,6 +204,12 @@ class ChildrenWatch(object):
                                           self._path, self._watcher)
             if not self._watch_established:
                 self._watch_established = True
+
+                if self._prior_children is not None and \
+                   self._prior_children == children:
+                    return
+
+            self._prior_children = children
 
             try:
                 if self._func(children) is False:
