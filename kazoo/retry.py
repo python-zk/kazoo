@@ -50,7 +50,7 @@ class KazooRetry(object):
         self.max_tries = max_tries
         self.delay = delay
         self.backoff = backoff
-        self.max_jitter = max_jitter * 100
+        self.max_jitter = int(max_jitter * 100)
         self.retry_exceptions = self.RETRY_EXCEPTIONS
         if ignore_expire:
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
