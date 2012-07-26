@@ -83,6 +83,7 @@ class DataWatch(object):
         if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
         self._get_data()
+        return func
 
     def _get_data(self):
         with self._run_lock:  # Ensure this runs one at a time
@@ -193,6 +194,7 @@ class ChildrenWatch(object):
         if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
         self._get_children()
+        return func
 
     def _get_children(self):
         with self._run_lock:  # Ensure this runs one at a time
