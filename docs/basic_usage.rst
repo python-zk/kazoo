@@ -79,7 +79,7 @@ the node, only the ACL.
 
 :meth:`~kazoo.client.KazooClient.create` creates a node and can set the data on
 the node along with a watch function. It requires the path to it to exist
-first.
+first, unless the `makepath` option is set to `True`.
 
 .. code-block:: python
 
