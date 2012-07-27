@@ -30,9 +30,13 @@ easy to install statically compiled version:
     $ pip install zc-zookeeper-static
 
 Or if your OS distribution includes a python-zookeeper package, that can
-be installed. Unless you're using a recent Ubuntu, its recommended that you use
-the static library above as it includes some memory leak patches that are not
-necessarily in Python Zookeeper OS distributions.
+be installed.
+
+.. warning::
+
+    Unless you're using a recent Ubuntu, its recommended that you use the
+    static library above as it includes some memory leak patches that are not
+    necessarily in Python Zookeeper OS distributions.
 
 Reference Material
 ==================
