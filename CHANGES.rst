@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.2 (unreleased)
-----------------
+0.2b1 (7/27/2012)
+-----------------
 
 Bug Handling
 ************
@@ -18,6 +18,10 @@ Bug Handling
 Features
 ********
 
+- Exponential backoff with jitter for retrying commands.
+- Gevent 0.13 and 1.0b support.
+- Lock, Party, SetPartitioner, and Election recipe implementations.
+- Data and Children watching API's.
 - State transition handling with listener registering to handle session state
   changes (choose to fatal the app on session expiration, etc.)
 - Zookeeper logging stream redirected into Python logging channel under the
