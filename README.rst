@@ -2,12 +2,6 @@
 Kazoo
 =====
 
-.. image:: https://secure.travis-ci.org/python-zk/kazoo.png?branch=master
-   :width: 82px
-   :height: 13px
-   :alt: Travis CI build report
-   :target: https://secure.travis-ci.org/#!/python-zk/kazoo
-
 ``kazoo`` implements a higher level API to `Apache Zookeeper`_ for Python
 clients.
 
@@ -24,6 +18,15 @@ Authors
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
 `Zope Corporation`_.
+
+Current Development CI Status
+=============================
+
+.. image:: https://secure.travis-ci.org/python-zk/kazoo.png?branch=master
+   :width: 82px
+   :height: 13px
+   :alt: Travis CI build report
+   :target: https://secure.travis-ci.org/#!/python-zk/kazoo
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
 .. _the full docs: http://kazoo.rtfd.org/
