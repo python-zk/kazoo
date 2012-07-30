@@ -8,13 +8,12 @@
 Public API
 ++++++++++
 
-    .. autoclass:: EventType 
-
     .. autoclass:: KazooClient
         :members:
 
         .. automethod:: __init__
 
+    .. autoclass:: EventType
 
     .. autoclass:: KazooState
 
