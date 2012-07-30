@@ -18,8 +18,8 @@ created and a connection established:
     zk.connect()
 
 By default, the client will connect to a local Zookeeper server on the default
-port. You should make sure Zookeeper is actually running there first, or the
-``connect`` command will be waiting until its default timeout.
+port (2181). You should make sure Zookeeper is actually running there first,
+or the ``connect`` command will be waiting until its default timeout.
 
 Once connected, the client will attempt to stay connected regardless of
 intermittent connection loss or Zookeeper session expiration. The client can be
