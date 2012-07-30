@@ -184,7 +184,7 @@ node changes or the node itself is deleted. It will be passed a
     children = zk.get_children("/my/favorite/node", watch=my_func)
 
 Kazoo includes a higher level API that watches for data and children
-modifications thats easier to use as it doesn't require re-setting the watch
+modifications that's easier to use as it doesn't require re-setting the watch
 every time the event is triggered. It also passes in the data and
 :class:`~kazoo.client.ZnodeStat` when watching a node or the list of children
 when watching a nodes children. Watch functions registered with this API will
@@ -207,7 +207,7 @@ called directly allowing them to be used as decorators:
     @zk.ChildrenWatch("/my/favorite/node")
     def watch_children(children):
         print "Children are now: %s" % children
-    # Above function called imediately, and from then on
+    # Above function called immediately, and from then on
 
     @zk.DataWatch("/my/favorite")
     def watch_node(data, stat):
