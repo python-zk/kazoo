@@ -58,7 +58,7 @@ class DataWatch(object):
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
-        self._run_lock = client._handler.lock_object()
+        self._run_lock = client.handler.lock_object()
         self._prior_data = ()
 
         # Register our session listener if we're going to resume
@@ -170,7 +170,7 @@ class ChildrenWatch(object):
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
-        self._run_lock = client._handler.lock_object()
+        self._run_lock = client.handler.lock_object()
         self._prior_children = None
 
         # Register our session listener if we're going to resume

@@ -182,7 +182,7 @@ class SetPartitioner(object):
         self._party_path = '/'.join([path, 'party'])
         self._time_boundary = time_boundary
 
-        self._acquire_event = client._handler.event_object()
+        self._acquire_event = client.handler.event_object()
 
         # Create basic path nodes
         client.ensure_path(path)
@@ -356,7 +356,7 @@ class SetPartitioner(object):
             # to ensure that the rawlink's it might use won't be
             # blocked
             if async:
-                func = partial(self._client._handler.spawn, func)
+                func = partial(self._client.handler.spawn, func)
             asy.rawlink(func)
         return asy
 
@@ -412,8 +412,8 @@ class ChildrenWatcher(object):
                   children for time boundary seconds.
 
         """
-        self.asy = asy = self.client._handler.async_result()
-        self.client._handler.spawn(self._inner_start)
+        self.asy = asy = self.client.handler.async_result()
+        self.client.handler.spawn(self._inner_start)
         return asy
 
     def _inner_start(self):
@@ -423,7 +423,7 @@ class ChildrenWatcher(object):
         try:
             async_result = None
             while time.time() - self.last_change < self.time_boundary:
-                async_result = self.client._handler.async_result()
+                async_result = self.client.handler.async_result()
                 self.children = self.client.retry(
                     self.client.get_children, self.path,
                     partial(self.children_watcher, async_result))

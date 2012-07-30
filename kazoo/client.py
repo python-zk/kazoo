@@ -408,17 +408,18 @@ class KazooClient(object):
 
         # Record the handler strategy used
         self._handler = handler if handler else SequentialThreadingHandler()
+        self.handler = self._handler
 
-        if inspect.isclass(self._handler):
+        if inspect.isclass(self.handler):
             raise ConfigurationError("Handler must be an instance of a class, "
-                                     "not the class: %s" % self._handler)
+                                     "not the class: %s" % self.handler)
 
         self._handle = None
 
         # We use events like twitter's client to track current and desired
         # state (connected, and whether to shutdown)
-        self._live = self._handler.event_object()
-        self._stopped = self._handler.event_object()
+        self._live = self.handler.event_object()
+        self._stopped = self.handler.event_object()
         self._stopped.set()
 
         self._connection_timed_out = False
@@ -428,7 +429,7 @@ class KazooClient(object):
             delay=retry_delay,
             backoff=retry_backoff,
             max_jitter=retry_jitter,
-            sleep_func=self._handler.sleep_func
+            sleep_func=self.handler.sleep_func
         )
 
         # Curator like simplified state tracking, and listeners for state
@@ -517,7 +518,7 @@ class KazooClient(object):
     def _wrap_session_callback(self, func):
         def wrapper(handle, type, state, path):
             callback = Callback('session', func, (handle, type, state, path))
-            self._handler.dispatch_callback(callback)
+            self.handler.dispatch_callback(callback)
         return wrapper
 
     def _wrap_watch_callback(self, func):
@@ -532,7 +533,7 @@ class KazooClient(object):
             if type != self.zookeeper.SESSION_EVENT:
                 event = WatchedEvent(type, state, path)
                 callback = Callback('watch', func_wrapper, (event,))
-                self._handler.dispatch_callback(callback)
+                self.handler.dispatch_callback(callback)
         return wrapper
 
     def _make_state_change(self, state):
@@ -636,7 +637,7 @@ class KazooClient(object):
         if not self.connected:
             # We time-out, ensure we are disconnected
             self.stop()
-            raise self._handler.timeout_exception("Connection time-out")
+            raise self.handler.timeout_exception("Connection time-out")
 
     def stop(self):
         """Gracefully stop this Zookeeper session"""
@@ -659,7 +660,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         self._safe_call(self.zookeeper.add_auth, async_result, scheme,
@@ -738,7 +739,7 @@ class KazooClient(object):
         if acl is None:
             acl = (ZK_OPEN_ACL_UNSAFE,)
 
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         self._safe_call(self.zookeeper.acreate, async_result, path, value,
@@ -793,7 +794,7 @@ class KazooClient(object):
         :rtype: `dict` or `None`
 
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_exists_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -824,7 +825,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -854,7 +855,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
         watch_callback = self._wrap_watch_callback(watch) if watch else None
 
@@ -888,7 +889,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         self._safe_call(self.zookeeper.aset, async_result, path, data, version,
@@ -918,7 +919,7 @@ class KazooClient(object):
         :returns: AyncResult set upon completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
-        async_result = self._handler.async_result()
+        async_result = self.handler.async_result()
         callback = partial(_generic_callback, async_result)
 
         self._safe_call(self.zookeeper.adelete, async_result, path, version,

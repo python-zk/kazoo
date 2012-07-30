@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.2b2 (**master**)
+------------------
+
+API Changes
+***********
+
+- The KazooClient handler is now officially exposed as KazooClient.handler
+  so that the appropriate sync objects can be used by end-users.
+
+Backward Incompatibilies
+************************
+
 0.2b1 (7/27/2012)
 -----------------
 
