@@ -105,6 +105,12 @@ class AsyncResult(object):
         """
         return self.get(block=False)
 
+    def wait(self, timeout=None):
+        """Block until the instance is ready."""
+        with self._condition:
+            self._condition.wait(timeout)
+        return self._exception is not _NONE
+
     def rawlink(self, callback):
         """Register a callback to call when a value or an exception is set"""
         with self._condition:
