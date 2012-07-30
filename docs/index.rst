@@ -53,6 +53,7 @@ Reference material includes documentation for using `kazoo` and every
    :maxdepth: 1
 
    basic_usage
+   async_usage
    api
    Changelog <changelog>
 
