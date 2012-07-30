@@ -130,7 +130,7 @@ Methods:
 :meth:`~kazoo.client.KazooClient.set` updates the data for a given node. A
 version for the node can be supplied, which will be required to match before
 updating the data, or a :exc:`~kazoo.exceptions.BadVersionException` will be
-thrown instead of updating.
+raised instead of updating.
 
 .. code-block:: python
 
@@ -147,7 +147,7 @@ Methods:
 recursively delete the entire path up to the node as well. A version can be
 supplied when deleting a node which will be required to match the version of
 the node before deleting it or a :exc:`~kazoo.exceptions.BadVersionException`
-will be thrown instead of deleting.
+will be raised instead of deleting.
 
 .. code-block:: python
 
