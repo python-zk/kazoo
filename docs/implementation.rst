@@ -33,8 +33,9 @@ Callbacks are queued by type, the 3 types being:
 3. Completion callbacks (Functions chained to
    :class:`~kazoo.interfaces.IAsyncResult` objects)
 
-This ensures that calls can be made to Zookeeper from any callback *except* a
-state listener without worrying that critical session events will be blocked.
+This ensures that calls can be made to Zookeeper from any callback **except for
+a state listener** without worrying that critical session events will be
+blocked.
 
 .. warning::
 
