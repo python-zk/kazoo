@@ -40,6 +40,7 @@ event the connection has failed than an exception is raised. The
 to use gevent, kazoo doesn't rely on gevents monkey patching and requires that
 you pass in the appropriate handler.
 
+
 Chaining a connection callback:
 
 .. code-block:: python
