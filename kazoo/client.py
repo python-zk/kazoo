@@ -375,7 +375,8 @@ class KazooClient(object):
         :param max_retries: Maximum retries when using the
                             :meth:`KazooClient.retry` method.
         :param retry_delay: Initial delay when retrying a call.
-        :param retry_backoff: How much to back off on each call retry.
+        :param retry_backoff: Backoff multiplier between retry attempts.
+                              Defaults to 2 for exponential backoff.
         :param retry_jitter: How much jitter delay to introduce per call. An
                              amount of time up to this will be added per retry
                              call to avoid hammering the server.
