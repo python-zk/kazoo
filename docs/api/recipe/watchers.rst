@@ -1,7 +1,7 @@
 .. _watchers_module:
 
 :mod:`kazoo.recipe.watchers`
--------------------------
+----------------------------
 
 .. automodule:: kazoo.recipe.watchers
 
