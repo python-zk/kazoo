@@ -24,7 +24,7 @@ Creating a connection:
     from kazoo.client import KazooClient
     from kazoo.handlers.gevent import SequentialGeventHandler
 
-    zk = KazooClient(handler=SequentialGeventHandler)
+    zk = KazooClient(handler=SequentialGeventHandler())
 
     # returns immediately
     async_obj = zk.connect_async()
