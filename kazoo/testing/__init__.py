@@ -31,7 +31,7 @@ def get_global_cluster():
 
 class ZooError(namedtuple('ZooError', ('when', 'exception', 'allow'))):
     """A Zookeeper Error to throw instead of or in addition to executing the
-    zookeeper command
+    Zookeeper command
 
     Since the :class:`KazooClient` implements most of the zookeeper commands
     using the async calls, the exception could occur during the call itself
@@ -44,11 +44,11 @@ class ZooError(namedtuple('ZooError', ('when', 'exception', 'allow'))):
 
     .. attribute:: exception
 
-        The exception instance or zookeeper exception code (an int).
+        The exception instance or Zookeeper exception code (an int).
 
     .. attribute:: allow
 
-        Boolean indicating if the zookeeper function should be called
+        Boolean indicating if the Zookeeper function should be called
         even though an exception is being returned. This is useful for
         reproducing rare events in Zookeeper where a connection is lost
         before a response is returned but the command ran successfully.
@@ -62,7 +62,7 @@ class ZookeeperErrors(object):
         """Create a :class:`ZookeeperErrors` object that throws the
         desired errors upon calls
 
-        :param errors: A dict structure keyed by the zookeeper function
+        :param errors: A dict structure keyed by the Zookeeper function
                        to intercept, with the value being a list of
                        :class:`ZooError`s to throw. When the list is empty
                        calls will proceed as normal, include ``True`` in a
@@ -89,7 +89,7 @@ class ZookeeperErrors(object):
         .. warning::
 
             Care should be taken when simulating errors that your test code
-            executes the zookeeper commands in a reliably deterministic manner.
+            executes the Zookeeper commands in a reliably deterministic manner.
 
         """
         for k, v in errors.items():

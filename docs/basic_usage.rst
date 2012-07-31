@@ -179,7 +179,7 @@ sequence options set, `documented here on the Zookeeper site <http://zookeeper.
 apache.org/doc/trunk/recipes.html#sc_recipes_errorHandlingNote>`_. Since the
 :meth:`~kazoo.client.KazooClient.retry` method takes a function to call and
 its arguments, a function that runs multiple Zookeeper commands could be
-passed to it so that the entire function will be retried of the connection is
+passed to it so that the entire function will be retried if the connection is
 lost.
 
 This snippet from the lock implementation shows how it uses retry to re-run the
