@@ -13,45 +13,18 @@ asynchronous API which is consistent when using threads or `gevent`_ greenlets.
 
 Kazoo is heavily inspired by `Netflix Curator`_ simplifications and helpers.
 
-Installing
-==========
-
-kazoo can be installed via ``pip`` or ``easy_install``:
-
-.. code-block:: bash
-
-    $ pip install kazoo
-
-You will also need the Python Zookeeper C binding installed. There's an
-easy to install statically compiled version:
-
-.. code-block:: bash
-
-    $ pip install zc-zookeeper-static
-
-Or if your OS distribution includes a python-zookeeper package, that can
-be installed.
-
-.. warning::
-
-    Unless you're using a recent Ubuntu, its recommended that you use the
-    static library above as it includes some memory leak patches that are not
-    necessarily in Python Zookeeper OS distributions.
-
-Reference Material
-==================
-
-Reference material includes documentation for using `kazoo` and every
-`kazoo` API.
-
 .. note::
 
-    It's generally assumed that you are familiar with Zookeeper and have read
-    the `Zookeeper Programmers Guide`_ before using `kazoo`.
+    You should be familiar with Zookeeper and have read the `Zookeeper
+    Programmers Guide`_ before using `kazoo`.
+
+Getting Started
+===============
 
 .. toctree::
    :maxdepth: 1
 
+   install
    basic_usage
    async_usage
    implementation
@@ -62,12 +35,14 @@ Reference material includes documentation for using `kazoo` and every
 Source Code
 ===========
 
-All source code is available on `github under kazoo <https://github.com/python-zk/kazoo>`_.
+All source code is available on `github under kazoo <https://github.com/python-
+zk/kazoo>`_.
 
-Reporting Bugs & Getting Help
-=============================
+Bugs/Support
+============
 
-Bugs and support issues should be reported on the `kazoo github issue tracker <https://github.com/python-zk/kazoo/issues>`_.
+Bugs and support issues should be reported on the `kazoo github issue tracker
+<https://github.com/python-zk/kazoo/issues>`_.
 
 The developers of ``kazoo`` can frequently be found on the Freenode IRC
 network in the #zookeeper channel.
