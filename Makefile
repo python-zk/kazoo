@@ -20,7 +20,7 @@ $(PYTHON):
 	virtualenv --distribute .
 
 build: $(PYTHON)
-	$(INSTALL) http://gevent.googlecode.com/files/gevent-1.0b2.tar.gz
+	$(INSTALL) http://gevent.googlecode.com/files/gevent-1.0b3.tar.gz
 	$(INSTALL) zc-zookeeper-static
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
