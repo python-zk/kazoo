@@ -55,6 +55,7 @@ Reference material includes documentation for using `kazoo` and every
    basic_usage
    async_usage
    implementation
+   testing
    api
    Changelog <changelog>
 
