@@ -24,4 +24,5 @@ be installed.
 
     Unless you're using a recent Ubuntu (12.04+), its recommended that you use
     the `zc-zookeeper-static` static library as it includes some memory leak
-    patches that are not necessarily in Python Zookeeper OS distributions.
+    patches that are not necessarily in Python Zookeeper OS distributions. The
+    patches are available upstream in 3.3.6 and 3.4.4.
