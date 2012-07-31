@@ -79,6 +79,13 @@ class ZookeeperErrors(object):
                 ]
             )
 
+            self.client.add_errors(errors)
+
+        This example replaces the first call to `zookeeper.acreate` with a
+        CONNECTIONLOSS, and doesn't run the call in the background. The second
+        call will run fine, the third will have a SystemError, and any more
+        calls will proceed as usual.
+
         .. warning::
 
             Care should be taken when simulating errors that your test code
