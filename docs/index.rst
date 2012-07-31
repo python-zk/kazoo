@@ -3,13 +3,19 @@ kazoo
 =====
 
 Kazoo is a Python library designed to make working with :term:`Zookeeper` a
-more hassle-free experience and less prone to errors. Using :term:`Zookeeper`
-in a safe manner can be difficult due to the variety of edge-cases in
-:term:`Zookeeper` and other bugs that have been present in the Python C
-binding. Due to how the C library utilizes a separate C thread for
-:term:`Zookeeper` communication some libraries like `gevent`_ also don't work
-properly by default. Kazoo handles all of these cases and provides a new
-asynchronous API which is consistent when using threads or `gevent`_ greenlets.
+more hassle-free experience that is less prone to errors.
+
+Kazoo features:
+
+* Support for gevent 0.13 and gevent 1.0b
+* Unified asynchronous API for use with greenlets or threads
+* Lock, Party, Election, and Partitioner recipe implementations (more
+  implementations are in development)
+* Data and Children Watchers
+* Workarounds for Zookeeper Python binding bugs in the released libraries
+* Integrated testing helpers for Zookeeper clusters
+* Simplified Zookeeper connection state tracking
+* Logging redirection to standard Python logging system
 
 Kazoo is heavily inspired by `Netflix Curator`_ simplifications and helpers.
 
@@ -18,8 +24,8 @@ Kazoo is heavily inspired by `Netflix Curator`_ simplifications and helpers.
     You should be familiar with Zookeeper and have read the `Zookeeper
     Programmers Guide`_ before using `kazoo`.
 
-Getting Started
-===============
+Reference Docs
+==============
 
 .. toctree::
    :maxdepth: 1
@@ -31,6 +37,16 @@ Getting Started
    testing
    api
    Changelog <changelog>
+
+Why
+===
+
+Using :term:`Zookeeper` in a safe manner can be difficult due to the variety of
+edge- cases in :term:`Zookeeper` and other bugs that have been present in the
+Python C binding. Due to how the C library utilizes a separate C thread for
+:term:`Zookeeper` communication some libraries like `gevent`_ also don't work
+properly by default. Kazoo handles all of these cases and provides a new
+asynchronous API which is consistent when using threads or `gevent`_ greenlets.
 
 Source Code
 ===========
