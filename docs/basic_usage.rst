@@ -153,6 +153,76 @@ will be raised instead of deleting.
 
     zk.delete("/my/favorite/node", recursive=True)
 
+Retrying Commands
+=================
+
+Connections to Zookeeper may get interrupted if the Zookeeper server goes down
+or becomes unreachable. By default, kazoo does not retry commands so these
+failures will result in an exception being raised. To assist with failures
+kazoo comes with a :meth:`~kazoo.client.KazooClient.retry` helper that will
+retry a function should one of the Zookeeper connection exceptions get raised.
+
+Example:
+
+.. code-block:: python
+
+    result = zk.retry(zk.get, "/path/to/node")
+
+Some commands may have unique behavior that doesn't warrant automatic retries
+on a per command basis. For example, if one creates a node a connection might
+be lost before the command returns successfully but the node actually got
+created. This results in a :exc:`kazoo.exceptions.NodeExistsException` being
+raised when it runs again.
+
+A similar unique situation arises when a node is created with ephemeral and
+sequence options set, `documented here on the Zookeeper site <http://zookeeper.
+apache.org/doc/trunk/recipes.html#sc_recipes_errorHandlingNote>`_. Since the
+:meth:`~kazoo.client.KazooClient.retry` method takes a function to call and
+its arguments, a function that runs multiple Zookeeper commands could be
+passed to it so that the entire function will be retried of the connection is
+lost.
+
+This snippet from the lock implementation shows how it uses retry to re-run the
+function acquiring a lock, and checks to see if it was already created to
+handle this condition:
+
+.. code-block:: python
+
+    # kazoo.recipe.lock snippet
+
+    def acquire(self):
+        """Acquire the mutex, blocking until it is obtained"""
+        try:
+            self.client.retry(self._inner_acquire)
+            self.is_acquired = True
+        except Exception:
+            # if we did ultimately fail, attempt to clean up
+            self._best_effort_cleanup()
+            self.cancelled = False
+            raise
+
+    def _inner_acquire(self):
+        self.wake_event.clear()
+
+        # make sure our election parent node exists
+        if not self.assured_path:
+            self.client.ensure_path(self.path)
+
+        node = None
+        if self.create_tried:
+            node = self._find_node()
+        else:
+            self.create_tried = True
+
+        if not node:
+            node = self.client.create(self.create_path, self.data,
+                ephemeral=True, sequence=True)
+            # strip off path to node
+            node = node[len(self.path) + 1:]
+
+`create_tried` records whether it has tried to create the node already in the
+event the connection is lost before the node name is returned.
+
 Watchers
 ========
 
