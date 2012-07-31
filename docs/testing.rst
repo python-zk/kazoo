@@ -82,5 +82,6 @@ Example:
 
             self.client.add_errors(errors)
 
+            # ensure_path internally calls acreate
             self.client.ensure_path('/test/path')
             result = self.client.get('/test/path')
