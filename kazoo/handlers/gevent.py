@@ -1,6 +1,7 @@
 """gevent Handler"""
 from __future__ import absolute_import
 
+import atexit
 import fcntl
 import os
 
@@ -25,6 +26,8 @@ if gevent.__version__.startswith('1.'):
 else:
     _using_libevent = True
 
+def stop_worker():
+    pass
 
 # Simple wrapper to os.pipe() - but sets to non-block
 def _pipe():
@@ -104,7 +107,7 @@ class SequentialGeventHandler(object):
         self.completion_queue = Queue()
         self.callback_queue = Queue()
         self.session_queue = Queue()
-        self._running = True
+        self._running = False
         self._hub = hub or get_hub()
         self._async = None
 
@@ -113,23 +116,20 @@ class SequentialGeventHandler(object):
         if not _using_libevent:
             self._async = self._hub.loop.async()
 
-        # Spawn our worker greenlets, we have
-        # - A completion worker for when values come back to be set on
-        #   the AsyncResult object
-        # - A callback worker for watch events to be called
-        # - A session worker for session events to be called
-        self._create_greenlet_worker(self.completion_queue)
-        self._create_greenlet_worker(self.callback_queue)
-        self._create_greenlet_worker(self.session_queue)
-
     def _create_greenlet_worker(self, queue):
         def greenlet_worker():
-            while self._running:
+            atexit.register(self.stop)
+            while True:
                 # We timeout after 1 and repeat so that we can gracefully
                 # shutdown if self_running is set to false
                 try:
                     func = queue.get(timeout=1)
-                    func()
+                    try:
+                        func()
+                    finally:
+                        queue.task_done()
+                    if func == stop_worker:
+                        break
                 except Empty:
                     continue
         gevent.spawn(greenlet_worker)
@@ -141,6 +141,29 @@ class SequentialGeventHandler(object):
             os.write(_core_pipe_write, '\0')
         else:
             self._async.send()
+
+    def start(self):
+        if self._running is False:
+            self._running = True
+
+            # Spawn our worker greenlets, we have
+            # - A completion worker for when values come back to be set on
+            #   the AsyncResult object
+            # - A callback worker for watch events to be called
+            # - A session worker for session events to be called
+            self._create_greenlet_worker(self.completion_queue)
+            self._create_greenlet_worker(self.callback_queue)
+            self._create_greenlet_worker(self.session_queue)
+
+    def stop(self):
+        if self._running:
+            self.completion_queue.put(stop_worker)
+            self.session_queue.put(stop_worker)
+            self.callback_queue.put(stop_worker)
+            self.completion_queue.join()
+            self.session_queue.join()
+            self.callback_queue.join()
+            self._running = False
 
     def event_object(self):
         """Create an appropriate Event object"""
