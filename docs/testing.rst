@@ -4,13 +4,13 @@
 Testing
 =======
 
-Kazoo has several test harnasses used internally for its own tests that are
+Kazoo has several test harnesses used internally for its own tests that are
 exposed as public API's for use in your own tests for common Zookeeper cluster
 management and session testing. They can be mixed in with your own `unittest`
 or `nose` tests along with a `mock` object that allows you to force specific
 `KazooClient` command to fail in various ways.
 
-Kazoo Test Harnass
+Kazoo Test Harness
 ==================
 
 The :class:`~kazoo.testing.KazooTestHarness` can be used directly or mixed in
@@ -41,8 +41,8 @@ Kazoo Test Case
 ===============
 
 The :class:`~kazoo.testing.KazooTestCase` is complete test case that is
-equivilant to the mixin setup of :class:`~kazoo.testing.KazooTestHarness`. An
-equivilant test to the one above:
+equivalent to the mixin setup of :class:`~kazoo.testing.KazooTestHarness`. An
+equivalent test to the one above:
 
 .. code-block:: python
 
