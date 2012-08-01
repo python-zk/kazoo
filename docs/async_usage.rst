@@ -27,18 +27,24 @@ Creating a connection:
     zk = KazooClient(handler=SequentialGeventHandler())
 
     # returns immediately
-    async_obj = zk.connect_async()
+    event = zk.connect_async()
 
-    # Wait for the connection to be established, this will throw
-    # an exception if there's one during the connection attempt
-    async_obj.get()
+    # Wait for 30 seconds and see if we're connected
+    event.wait(timeout=30)
 
-In this example, the :meth:`~kazoo.interfaces.IAsyncResult.get` method is used
-to wait and get the value which is set when a connection is established. In the
-event the connection has failed than an exception is raised. The
-:class:`~kazoo.handlers.gevent.SequentialGeventHandler` is used when you want
-to use gevent, kazoo doesn't rely on gevents monkey patching and requires that
-you pass in the appropriate handler.
+    if not zk.connected:
+        # Not connected, stop trying to connect
+        zk.stop()
+        raise Exception("Unable to connect.")
+
+In this example, the `wait` method is used on the event object returned by the
+:meth:`~kazoo.client.KazooClient.connect_async` method. A timeout is **always**
+used because its possible that we might never connect and that should be
+handled gracefully. 
+
+The :class:`~kazoo.handlers.gevent.SequentialGeventHandler` is used when you
+want to use gevent, kazoo doesn't rely on gevents monkey patching and requires
+that you pass in the appropriate handler.
 
 
 Chaining a connection callback:
