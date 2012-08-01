@@ -365,13 +365,14 @@ class KazooClient(object):
                  default_acl=None):
         """Create a KazooClient instance
 
-        :param hosts: List of hosts to connect to
+        :param hosts: Comma-separated list of hosts to connect to
+                      (e.g. 127.0.0.1:2181,127.0.0.1:2182).
         :param watcher: Set a default watcher. This will be called by
                         the actual default watcher that
                         :class:`KazooClient` establishes.
-        :param timeout: The longest to wait for a Zookeeper connection
+        :param timeout: The longest to wait for a Zookeeper connection.
         :param client_id: A Zookeeper client id, used when
-                          re-establishing a prior session connection
+                          re-establishing a prior session connection.
         :param max_retries: Maximum retries when using the
                             :meth:`KazooClient.retry` method.
         :param retry_delay: Initial delay when retrying a call.
@@ -382,7 +383,7 @@ class KazooClient(object):
                              call to avoid hammering the server.
         :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface
-                        for callback handling
+                        for callback handling.
         :param default_acl: A default ACL used on node creation.
         """
         from kazoo.recipe.partitioner import SetPartitioner
