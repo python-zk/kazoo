@@ -12,6 +12,7 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
+import atexit
 import Queue
 import time
 import threading
@@ -29,6 +30,8 @@ _NONE = object()
 class TimeoutError(Exception):
     pass
 
+def stop_thread():
+    pass
 
 @implementer(IAsyncResult)
 class AsyncResult(object):
@@ -173,25 +176,45 @@ class SequentialThreadingHandler(object):
         self.callback_queue = Queue.Queue()
         self.session_queue = Queue.Queue()
         self.completion_queue = Queue.Queue()
-        self._running = True
-
-        # Spawn our worker threads, we have
-        # - A callback worker for watch events to be called
-        # - A session worker for session events to be called
-        # - A completion worker for completion events to be called
-        self._create_thread_worker(self.callback_queue)
-        self._create_thread_worker(self.session_queue)
-        self._create_thread_worker(self.completion_queue)
+        self._running = False
 
     def _create_thread_worker(self, queue):
         @thread
         def thread_worker():  # pragma: nocover
-            while self._running:
+            atexit.register(self.stop)
+            while True:
                 try:
                     func = queue.get(timeout=1)
-                    func()
+                    try:
+                        func()
+                    finally:
+                        queue.task_done()
+                    if func == stop_thread:
+                        break
                 except Queue.Empty:
                     continue
+
+    def start(self):
+        if self._running is False:
+            self._running = True
+
+            # Spawn our worker threads, we have
+            # - A callback worker for watch events to be called
+            # - A session worker for session events to be called
+            # - A completion worker for completion events to be called
+            self._create_thread_worker(self.callback_queue)
+            self._create_thread_worker(self.session_queue)
+            self._create_thread_worker(self.completion_queue)
+
+    def stop(self):
+        if self._running:
+            self.completion_queue.put(stop_thread)
+            self.session_queue.put(stop_thread)
+            self.callback_queue.put(stop_thread)
+            self.completion_queue.join()
+            self.session_queue.join()
+            self.callback_queue.join()
+            self._running = False
 
     def event_object(self):
         """Create an appropriate Event object"""
