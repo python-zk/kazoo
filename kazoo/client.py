@@ -634,7 +634,7 @@ class KazooClient(object):
                         succeed.
 
         """
-        event = self.connect_async()
+        event = self.start_async()
 
         if not event:
             # Already connected
