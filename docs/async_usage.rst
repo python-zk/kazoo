@@ -27,7 +27,7 @@ Creating a connection:
     zk = KazooClient(handler=SequentialGeventHandler())
 
     # returns immediately
-    event = zk.connect_async()
+    event = zk.start_async()
 
     # Wait for 30 seconds and see if we're connected
     event.wait(timeout=30)
@@ -38,7 +38,7 @@ Creating a connection:
         raise Exception("Unable to connect.")
 
 In this example, the `wait` method is used on the event object returned by the
-:meth:`~kazoo.client.KazooClient.connect_async` method. A timeout is **always**
+:meth:`~kazoo.client.KazooClient.start_async` method. A timeout is **always**
 used because its possible that we might never connect and that should be
 handled gracefully. 
 

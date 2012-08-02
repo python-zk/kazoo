@@ -69,7 +69,7 @@ class TestConnection(KazooTestCase):
         self.client.create("/1/2", "")
 
         eve = self._get_client()
-        eve.connect()
+        eve.start()
 
         try:
             self.assertRaises(NoAuthException, eve.get, "/1/2")
@@ -123,7 +123,7 @@ class TestConnection(KazooTestCase):
 
         self.client.stop()
         self.client.add_listener(listener)
-        self.client.connect(5)
+        self.client.start(5)
 
         with condition:
             if not states:
@@ -187,7 +187,7 @@ class TestClient(KazooTestCase):
         # We need a non-namespaced client for this test
         client = self._get_nonchroot_client()
         try:
-            client.connect()
+            client.start()
             self.assertRaises(ValueError, client.create, "1/2", "val1")
         finally:
             client.stop()

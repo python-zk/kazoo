@@ -595,7 +595,7 @@ class KazooClient(object):
             self._live.clear()
             self._make_state_change(KazooState.LOST)
 
-    def connect_async(self):
+    def start_async(self):
         """Asynchronously initiate connection to ZK
 
         :returns: An AsyncResult instance for the configured handler
@@ -620,8 +620,9 @@ class KazooClient(object):
         else:
             self._handle = self.zookeeper.init(self._hosts, cb, self._timeout)
         return self._live
+    connect_async = start_async
 
-    def connect(self, timeout=15):
+    def start(self, timeout=15):
         """Initiate connection to ZK
 
         :param timeout: Time in seconds to wait for connection to
@@ -639,6 +640,7 @@ class KazooClient(object):
             # We time-out, ensure we are disconnected
             self.stop()
             raise self.handler.timeout_exception("Connection time-out")
+    connect = start
 
     def stop(self):
         """Gracefully stop this Zookeeper session"""
@@ -649,7 +651,7 @@ class KazooClient(object):
         """Stop and restart the Zookeeper session."""
         self._safe_close()
         self._stopped.clear()
-        self.connect()
+        self.start()
 
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server

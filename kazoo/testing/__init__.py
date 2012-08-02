@@ -227,7 +227,7 @@ class KazooTestHarness(object):
         """
         client_id = client_id or self.client.client_id
         client = KazooClient(self.cluster[1].address, client_id=client_id)
-        client.connect()
+        client.start()
         client.stop()
 
     def setup_zookeeper(self):
@@ -243,7 +243,7 @@ class KazooTestHarness(object):
         self.hosts = self.servers + namespace
 
         self.client = self._get_client()
-        self.client.connect()
+        self.client.start()
         self.client.ensure_path("/")
 
     def teardown_zookeeper(self):
@@ -256,7 +256,7 @@ class KazooTestHarness(object):
             self.client.stop()
 
         client = self._get_client()
-        client.connect()
+        client.start()
         client.delete('/', recursive=True)
         client.stop()
 

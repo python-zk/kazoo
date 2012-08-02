@@ -66,8 +66,8 @@ class TestGeventClient(KazooTestCase):
         from kazoo.handlers.gevent import SequentialGeventHandler
         return SequentialGeventHandler(*args)
 
-    def test_connect(self):
+    def test_start(self):
         client = self._get_client(handler=self._makeOne())
-        client.connect()
+        client.start()
         assert client.state == 'CONNECTED'
         client.stop()

@@ -15,11 +15,11 @@ created and a connection established:
     from kazoo.client import KazooClient
 
     zk = KazooClient()
-    zk.connect()
+    zk.start()
 
 By default, the client will connect to a local Zookeeper server on the default
 port (2181). You should make sure Zookeeper is actually running there first,
-or the ``connect`` command will be waiting until its default timeout.
+or the ``start`` command will be waiting until its default timeout.
 
 Once connected, the client will attempt to stay connected regardless of
 intermittent connection loss or Zookeeper session expiration. The client can be

@@ -155,7 +155,7 @@ class KazooLockTests(KazooTestCase):
                 eq_(self.active_thread, "one")
 
         client2 = self._get_client()
-        client2.connect()
+        client2.start()
         event2 = threading.Event()
         lock2 = client2.Lock(self.lockpath, "two")
         thread2 = threading.Thread(target=self._thread_lock_acquire_til_event,
