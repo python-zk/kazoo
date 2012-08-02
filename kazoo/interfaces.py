@@ -33,10 +33,11 @@ class IHandler(Interface):
         argument and sleep.""")
 
     def start():
-        """Start the handler."""
+        """Start the handler, used for setting up the handler."""
 
     def stop():
-        """Stop the handler."""
+        """Stop the handler. Should block until the handler is safely
+        stopped."""
 
     def event_object():
         """Return an appropriate object that implements Python's
