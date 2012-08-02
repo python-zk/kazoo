@@ -30,3 +30,4 @@ def thread(func):
 
     """
     get_realthread().start_new_thread(func, ())
+    return func
