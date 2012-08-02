@@ -32,6 +32,12 @@ class IHandler(Interface):
         """Appropriate sleep function that can be called with a single
         argument and sleep.""")
 
+    def start():
+        """Start the handler."""
+
+    def stop():
+        """Stop the handler."""
+
     def event_object():
         """Return an appropriate object that implements Python's
         threading.Event API"""
