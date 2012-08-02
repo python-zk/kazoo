@@ -127,12 +127,12 @@ class SequentialGeventHandler(object):
                 # shutdown if self_running is set to false
                 try:
                     func = queue.get(timeout=1)
+                    if func == _STOP:
+                        break
                     try:
                         func()
                     finally:
                         queue.task_done()
-                    if func == _STOP:
-                        break
                 except Empty:
                     continue
         gevent.spawn(greenlet_worker)

@@ -185,12 +185,12 @@ class SequentialThreadingHandler(object):
             while True:
                 try:
                     func = queue.get(timeout=1)
+                    if func == _STOP:
+                        break
                     try:
                         func()
                     finally:
                         queue.task_done()
-                    if func == _STOP:
-                        break
                 except Queue.Empty:
                     continue
 
