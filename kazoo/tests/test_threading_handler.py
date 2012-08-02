@@ -19,6 +19,7 @@ class TestThreadingHandler(unittest.TestCase):
 
     def test_completion_vs_session(self):
         h = self._makeOne()
+        h.start()
 
         lst = []
         av = threading.Event()
@@ -41,6 +42,7 @@ class TestThreadingHandler(unittest.TestCase):
 
         h.dispatch_callback(call1)
         av.wait()
+        print
         # Now we know the first is waiting, make sure
         # the second executes while the first has blocked
         # its thread
@@ -54,10 +56,12 @@ class TestThreadingHandler(unittest.TestCase):
 
     def test_proper_threading(self):
         h = self._makeOne()
+        h.start()
         assert isinstance(h.event_object(), threading._Event)
 
     def test_matching_async(self):
         h = self._makeOne()
+        h.start()
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
 

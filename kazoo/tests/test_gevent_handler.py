@@ -18,6 +18,7 @@ class TestGeventHandler(unittest.TestCase):
 
     def test_completion_vs_session(self):
         h = self._makeOne()
+        h.start()
 
         lst = []
         av = Event()
@@ -53,10 +54,12 @@ class TestGeventHandler(unittest.TestCase):
 
     def test_proper_threading(self):
         h = self._makeOne()
+        h.start()
         assert isinstance(h.event_object(), Event)
 
     def test_matching_async(self):
         h = self._makeOne()
+        h.start()
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
 
