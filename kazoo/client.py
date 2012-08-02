@@ -586,6 +586,7 @@ class KazooClient(object):
 
     def _safe_close(self):
         if self._handle is not None:
+            # Stop the handler
             self.handler.stop()
             zh, self._handle = self._handle, None
             try:
@@ -613,6 +614,7 @@ class KazooClient(object):
         # We've been asked to connect, clear the stop
         self._stopped.clear()
 
+        # Start the handler
         self.handler.start()
 
         cb = self._wrap_session_callback(self._session_callback)
