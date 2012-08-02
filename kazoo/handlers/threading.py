@@ -19,7 +19,6 @@ import threading
 
 from zope.interface import implementer
 
-from kazoo.handlers.util import thread
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
@@ -177,34 +176,40 @@ class SequentialThreadingHandler(object):
         self.completion_queue = Queue.Queue()
         self._running = False
         self._state_change = threading.Lock()
+        self._workers = []
+        atexit.register(self.stop)
 
     def _create_thread_worker(self, queue):
-        @thread
         def thread_worker():  # pragma: nocover
-            atexit.register(self.stop)
             while True:
                 try:
-                    func = queue.get(timeout=1)
-                    if func == _STOP:
-                        break
+                    func = queue.get()
                     try:
+                        if func == _STOP:
+                            break
                         func()
                     finally:
                         queue.task_done()
                 except Queue.Empty:
                     continue
+        t = threading.Thread(target=thread_worker)
+        t.daemon = True
+        t.start()
+        return t
 
     def start(self):
         with self._state_change:
             if self._running:
                 return
+
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
             # - A session worker for session events to be called
             # - A completion worker for completion events to be called
-            self._create_thread_worker(self.callback_queue)
-            self._create_thread_worker(self.session_queue)
-            self._create_thread_worker(self.completion_queue)
+            for queue in (self.completion_queue, self.callback_queue,
+                          self.session_queue):
+                w = self._create_thread_worker(queue)
+                self._workers.append(w)
             self._running = True
 
     def stop(self):
@@ -212,19 +217,21 @@ class SequentialThreadingHandler(object):
             if not self._running:
                 return
 
-            self.completion_queue.put(_STOP)
-            self.session_queue.put(_STOP)
-            self.callback_queue.put(_STOP)
-            self.completion_queue.join()
-            self.session_queue.join()
-            self.callback_queue.join()
+            self._running = False
+
+            for queue in (self.completion_queue, self.callback_queue,
+                          self.session_queue):
+                queue.put(_STOP)
+
+            self._workers.reverse()
+            while self._workers:
+                worker = self._workers.pop()
+                worker.join()
 
             # Clear the queues
-            for queue in [self.callback_queue, self.session_queue,
-                          self.completion_queue]:
-                while not queue.empty():
-                    queue.get()
-            self._running = False
+            self.callback_queue = Queue.Queue()
+            self.session_queue = Queue.Queue()
+            self.completion_queue = Queue.Queue()
 
     def event_object(self):
         """Create an appropriate Event object"""
@@ -240,6 +247,7 @@ class SequentialThreadingHandler(object):
 
     def spawn(self, func, *args, **kwargs):
         t = threading.Thread(target=func, args=args, kwargs=kwargs)
+        t.daemon = True
         t.start()
 
     def dispatch_callback(self, callback):

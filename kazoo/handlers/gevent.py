@@ -113,6 +113,7 @@ class SequentialGeventHandler(object):
         self._hub = hub or get_hub()
         self._async = None
         self._state_change = gevent.coros.Semaphore()
+        self._workers = []
         atexit.register(self.stop)
 
         # Startup the async watcher to notify the gevent loop from other
@@ -123,19 +124,14 @@ class SequentialGeventHandler(object):
     def _create_greenlet_worker(self, queue):
         def greenlet_worker():
             while True:
-                # We timeout after 1 and repeat so that we can gracefully
-                # shutdown if self_running is set to false
                 try:
-                    func = queue.get(timeout=1)
+                    func = queue.get()
                     if func == _STOP:
                         break
-                    try:
-                        func()
-                    finally:
-                        queue.task_done()
+                    func()
                 except Empty:
                     continue
-        gevent.spawn(greenlet_worker)
+        return gevent.spawn(greenlet_worker)
 
     def wake(self):
         """Wake the gevent hub the appropriate way"""
@@ -150,34 +146,34 @@ class SequentialGeventHandler(object):
             if self._running:
                 return
 
+            self._running = True
+
             # Spawn our worker greenlets, we have
             # - A completion worker for when values come back to be set on
             #   the AsyncResult object
             # - A callback worker for watch events to be called
             # - A session worker for session events to be called
-            self._create_greenlet_worker(self.completion_queue)
-            self._create_greenlet_worker(self.callback_queue)
-            self._create_greenlet_worker(self.session_queue)
-            self._running = True
+            for queue in (self.completion_queue, self.callback_queue,
+                          self.session_queue):
+                w = self._create_greenlet_worker(queue)
+                self._workers.append(w)
 
     def stop(self):
         with self._state_change:
-            if not self._running:
-                return
+            self._running = False
 
-            self.completion_queue.put(_STOP)
-            self.session_queue.put(_STOP)
-            self.callback_queue.put(_STOP)
-            self.completion_queue.join()
-            self.session_queue.join()
-            self.callback_queue.join()
+            for queue in (self.completion_queue, self.callback_queue,
+                          self.session_queue):
+                queue.put(_STOP)
+
+            while self._workers:
+                worker = self._workers.pop()
+                worker.join()
 
             # Clear the queues
-            for queue in [self.callback_queue, self.session_queue,
-                          self.completion_queue]:
-                while not queue.empty():
-                    queue.get()
-            self._running = False
+            self.completion_queue = Queue()
+            self.callback_queue = Queue()
+            self.session_queue = Queue()
 
     def event_object(self):
         """Create an appropriate Event object"""
