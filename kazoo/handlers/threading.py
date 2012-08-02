@@ -23,15 +23,14 @@ from kazoo.handlers.util import thread
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
-# sentinal object
+# sentinal objects
 _NONE = object()
+_STOP = object()
 
 
 class TimeoutError(Exception):
     pass
 
-def stop_thread():
-    pass
 
 @implementer(IAsyncResult)
 class AsyncResult(object):
@@ -177,6 +176,7 @@ class SequentialThreadingHandler(object):
         self.session_queue = Queue.Queue()
         self.completion_queue = Queue.Queue()
         self._running = False
+        self._state_change = threading.Lock()
 
     def _create_thread_worker(self, queue):
         @thread
@@ -189,15 +189,15 @@ class SequentialThreadingHandler(object):
                         func()
                     finally:
                         queue.task_done()
-                    if func == stop_thread:
+                    if func == _STOP:
                         break
                 except Queue.Empty:
                     continue
 
     def start(self):
-        if self._running is False:
-            self._running = True
-
+        with self._state_change:
+            if self._running:
+                return
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
             # - A session worker for session events to be called
@@ -205,12 +205,16 @@ class SequentialThreadingHandler(object):
             self._create_thread_worker(self.callback_queue)
             self._create_thread_worker(self.session_queue)
             self._create_thread_worker(self.completion_queue)
+            self._running = True
 
     def stop(self):
-        if self._running:
-            self.completion_queue.put(stop_thread)
-            self.session_queue.put(stop_thread)
-            self.callback_queue.put(stop_thread)
+        with self._state_change:
+            if not self._running:
+                return
+
+            self.completion_queue.put(_STOP)
+            self.session_queue.put(_STOP)
+            self.callback_queue.put(_STOP)
             self.completion_queue.join()
             self.session_queue.join()
             self.callback_queue.join()
@@ -230,7 +234,6 @@ class SequentialThreadingHandler(object):
 
     def spawn(self, func, *args, **kwargs):
         t = threading.Thread(target=func, args=args, kwargs=kwargs)
-        t.daemon = True
         t.start()
 
     def dispatch_callback(self, callback):
