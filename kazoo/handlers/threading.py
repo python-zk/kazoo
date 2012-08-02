@@ -218,6 +218,12 @@ class SequentialThreadingHandler(object):
             self.completion_queue.join()
             self.session_queue.join()
             self.callback_queue.join()
+
+            # Clear the queues
+            for queue in [self.callback_queue, self.session_queue,
+                          self.completion_queue]:
+                while not queue.empty():
+                    queue.get()
             self._running = False
 
     def event_object(self):
