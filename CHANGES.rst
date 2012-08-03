@@ -13,10 +13,10 @@ Documentation
 Bug Handling
 ************
 
-- Handler now has a start/stop that is used by the client when calling start
-  and stop that shuts down the handler workers. This addresses errors and
-  warnings that could be emitted upon process shutdown regarding a clean exit
-  of the workers.
+- Issue #9 fixed: Threads/greenlets didn't gracefully shut down. Handler now
+  has a start/stop that is used by the client when calling start and stop that
+  shuts down the handler workers. This addresses errors and warnings that could
+  be emitted upon process shutdown regarding a clean exit of the workers.
 - Issue #12 fixed: gevent 0.13 doesn't use the same start_new_thread as gevent
   1.0 which resulted in a fully monkey-patched environment halting due to the
   wrong thread. Updated to use the older kazoo method of getting the real thread
