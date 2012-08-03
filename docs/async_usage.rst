@@ -40,7 +40,7 @@ Creating a connection:
 In this example, the `wait` method is used on the event object returned by the
 :meth:`~kazoo.client.KazooClient.start_async` method. A timeout is **always**
 used because its possible that we might never connect and that should be
-handled gracefully. 
+handled gracefully.
 
 The :class:`~kazoo.handlers.gevent.SequentialGeventHandler` is used when you
 want to use gevent. Kazoo doesn't rely on gevents monkey patching and requires
@@ -51,7 +51,20 @@ that you pass in the appropriate handler, the default handler is
 Asynchronous Callbacks
 ======================
 
-Chaining a kazoo callback:
+All kazoo `_async` methods except for
+:meth:`~kazoo.client.KazooClient.start_async` return an
+:class:`~kazoo.interfaces.IAsyncResult` instance. These instances allow
+you to see when a result is ready, or chain one or more callback
+functions to the result that will be called when it's ready.
+
+The callback function will be passed the
+:class:`~kazoo.interfaces.IAsyncResult` instance and should call the
+:meth:`~kazoo.interfaces.IAsyncResult.get` method to retrieve on it to
+retrieve the value. This call could result in an exception being raised
+if the asynchronous function encountered an error. It should be caught
+and handled appropriately.
+
+Example:
 
 .. code-block:: python
 
