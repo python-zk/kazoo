@@ -606,7 +606,7 @@ class KazooClient(object):
         """
         # If we're already connected, ignore
         if self._live.is_set():
-            return
+            return self._live
 
         # Make sure we're safely closed
         self._safe_close()
