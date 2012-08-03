@@ -43,11 +43,15 @@ used because its possible that we might never connect and that should be
 handled gracefully. 
 
 The :class:`~kazoo.handlers.gevent.SequentialGeventHandler` is used when you
-want to use gevent, kazoo doesn't rely on gevents monkey patching and requires
-that you pass in the appropriate handler.
+want to use gevent. Kazoo doesn't rely on gevents monkey patching and requires
+that you pass in the appropriate handler, the default handler is
+:class:`~kazoo.handlers.threading.SequentialThreadingHandler`.
 
 
-Chaining a connection callback:
+Asynchronous Callbacks
+======================
+
+Chaining a kazoo callback:
 
 .. code-block:: python
 
@@ -56,21 +60,17 @@ Chaining a connection callback:
     from kazoo.exceptions import ConnectionLossException
     from kazoo.exceptions import NoAuthException
 
-    def my_handler(async_obj):
+    def my_callback(async_obj):
         try:
-            async_obj.get()
-            do_something()
+            children = async_obj.get()
+            do_something(children)
         except (ConnectionLossException, NoAuthException):
             sys.exit(1)
 
-    # Both of these statements return immediately
-    async_obj = zk.connect_async()
-    async_obj.rawlink(my_handler)
-
-For the :meth:`~kazoo.client.KazooClient.connect_async` method, the resulting
-value when the connection succeeds isn't relevant. For other asynchronous
-methods, the value returned will be identical to what would've been returned
-with the synchronous version.
+    # Both these statements return immediately, the second sets a callback
+    # that will be run when get_children_async has its return value
+    async_obj = zk.get_children_async("/some/node")
+    async_obj.rawlink(my_callback)
 
 Zookeeper CRUD
 ==============
