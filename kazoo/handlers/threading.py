@@ -193,6 +193,10 @@ class SequentialThreadingHandler(object):
                 except Queue.Empty:
                     continue
         t = threading.Thread(target=thread_worker)
+
+        # Even though these should be joined, its possible stop might
+        # not issue in time so we set them to daemon to let the program
+        # exit anyways
         t.daemon = True
         t.start()
         return t
