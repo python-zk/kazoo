@@ -401,8 +401,7 @@ class ChildrenWatcher(object):
         self.client = client
         self.path = path
         self.time_boundary = time_boundary
-        self.children = []
-        self.last_change = None
+        self.children_changed = client.handler.event_object()
 
     def start(self):
         """Begin the watching process asynchronously
@@ -417,26 +416,23 @@ class ChildrenWatcher(object):
         return asy
 
     def _inner_start(self):
-        if not self.last_change:
-            self.last_change = time.time()
-
         try:
-            async_result = None
-            while time.time() - self.last_change < self.time_boundary:
+            while True:
                 async_result = self.client.handler.async_result()
                 self.children = self.client.retry(
                     self.client.get_children, self.path,
                     partial(self.children_watcher, async_result))
+                time.sleep(self.time_boundary)
 
-                # Now sleep for a time boundary's worth from the last change
-                sleep_till = self.time_boundary - (time.time() -
-                                                   self.last_change)
-                time.sleep(sleep_till)
+                if self.children_changed.is_set():
+                    self.children_changed.clear()
+                else:
+                    break
 
             self.asy.set((self.children, async_result))
         except Exception as exc:
             self.asy.set_exception(exc)
 
     def children_watcher(self, async, event):
-        self.last_change = time.time()
+        self.children_changed.set()
         async.set(time.time())
