@@ -619,7 +619,6 @@ class KazooClient(object):
 
         cb = self._wrap_session_callback(self._session_callback)
         if self._provided_client_id:
-            # TODO: this doesn't seem to account for self.namespace?!
             self._handle = self.zookeeper.init(self._hosts, cb, self._timeout,
                 self._provided_client_id)
         else:
