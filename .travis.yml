@@ -14,7 +14,6 @@ notifications:
   irc: "irc.mozilla.org#services-dev"
 
 before_install:
-    - sudo apt-get update >/dev/null 2>&1
     - sudo apt-get install zookeeper 2>&1
     - sudo apt-get install libev-dev >/dev/null 2>&1
 
