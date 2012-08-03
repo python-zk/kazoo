@@ -32,7 +32,7 @@ Deprecations
 ************
 
 - connect/connect_async has been renamed to start/start_async to better match
-  the stop to indicate connectino handling. The prior names are aliased for
+  the stop to indicate connection handling. The prior names are aliased for
   the time being.
 
 0.2b1 (7/27/2012)
