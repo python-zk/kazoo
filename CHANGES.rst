@@ -28,7 +28,7 @@ API Changes
 - The KazooClient handler is now officially exposed as KazooClient.handler
   so that the appropriate sync objects can be used by end-users.
 - Refactored ChildrenWatcher used by SetPartitioner into a publicly exposed
-  PatientChildrenWatcher under recipe.watchers.
+  PatientChildrenWatch under recipe.watchers.
 
 Deprecations
 ************

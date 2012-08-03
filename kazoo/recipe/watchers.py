@@ -231,8 +231,8 @@ class ChildrenWatch(object):
             self._get_children()
 
 
-class PatientChildrenWatcher(object):
-    """Patient Children Watcher that returns values after the children
+class PatientChildrenWatch(object):
+    """Patient Children Watch that returns values after the children
     of a node don't change for a period of time
 
     A separate watcher for the children of a node, that ignores
@@ -250,6 +250,14 @@ class PatientChildrenWatcher(object):
         # async_result that will be set if the children change in the
         # future
         children, child_async = async_object.get()
+
+    .. note::
+
+        This Watch is different from :class:`DataWatch` and
+        :class:`ChildrenWatch` as it only returns once, does not take
+        a function that is called, and provides an
+        :class:`~kazoo.interfaces.IAsyncResult` object that can be
+        checked to see if the children has changed later.
 
     """
     def __init__(self, client, path, time_boundary=30):
@@ -277,7 +285,7 @@ class PatientChildrenWatcher(object):
                 async_result = self.client.handler.async_result()
                 self.children = self.client.retry(
                     self.client.get_children, self.path,
-                    partial(self.children_watcher, async_result))
+                    partial(self._children_watcher, async_result))
                 time.sleep(self.time_boundary)
 
                 if self.children_changed.is_set():
@@ -289,6 +297,6 @@ class PatientChildrenWatcher(object):
         except Exception as exc:
             self.asy.set_exception(exc)
 
-    def children_watcher(self, async, event):
+    def _children_watcher(self, async, event):
         self.children_changed.set()
         async.set(time.time())

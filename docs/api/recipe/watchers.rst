@@ -23,6 +23,7 @@ Public API
 
         .. automethod:: __call__
 
-    .. autoclass:: PatientChildrenWatcher
+    .. autoclass:: PatientChildrenWatch
+        :members:
 
         .. automethod:: __init__

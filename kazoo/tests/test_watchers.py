@@ -195,8 +195,8 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         self.path = "/" + uuid.uuid4().hex
 
     def _makeOne(self, *args, **kwargs):
-        from kazoo.recipe.partitioner import PatientChildrenWatcher
-        return PatientChildrenWatcher(*args, **kwargs)
+        from kazoo.recipe.partitioner import PatientChildrenWatch
+        return PatientChildrenWatch(*args, **kwargs)
 
     def test_watch(self):
         self.client.ensure_path(self.path)

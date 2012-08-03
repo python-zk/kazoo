@@ -21,7 +21,7 @@ import threading
 from functools import partial
 
 from kazoo.client import KazooState
-from kazoo.recipe.watchers import PatientChildrenWatcher
+from kazoo.recipe.watchers import PatientChildrenWatch
 
 log = logging.getLogger(__name__)
 
@@ -347,7 +347,7 @@ class SetPartitioner(object):
         any callbacks might run.
 
         """
-        watcher = PatientChildrenWatcher(self._client, self._party_path,
+        watcher = PatientChildrenWatch(self._client, self._party_path,
                                          self._time_boundary)
         asy = watcher.start()
         if func:
