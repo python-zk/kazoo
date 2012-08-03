@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.2b2 (**master**)
+0.2 (**master**)
 ------------------
 
 Documentation
