@@ -363,7 +363,7 @@ class KazooClient(object):
                  timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
                  retry_backoff=2, retry_jitter=0.8, handler=None,
                  default_acl=None):
-        """Create a KazooClient instance
+        """Create a KazooClient instance. All time arguments are in seconds.
 
         :param hosts: Comma-separated list of hosts to connect to
                       (e.g. 127.0.0.1:2181,127.0.0.1:2182).
