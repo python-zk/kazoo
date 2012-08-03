@@ -1,7 +1,7 @@
 """Handler utilities for getting non-monkey patched standard library stuff.
 
 Allows one to get an unpatched thread module, with a thread
-decorator that uses the unpatching OS thread.
+decorator that uses the unpatched OS thread.
 
 """
 _realthread = None

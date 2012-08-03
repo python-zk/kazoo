@@ -1,5 +1,4 @@
-"""Child and Data watching higher level API's
-
+"""Higher level child and data watching API's.
 """
 import logging
 
