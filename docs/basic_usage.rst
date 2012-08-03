@@ -29,9 +29,6 @@ instructed to drop a connection by calling `stop`:
 
     zk.stop()
 
-This command is named `stop` rather than `disconnect` because the client could
-be already disconnected and attempting to reconnect when this is called.
-
 Listening for Connection Events
 -------------------------------
 
