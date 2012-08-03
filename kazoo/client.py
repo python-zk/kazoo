@@ -600,8 +600,9 @@ class KazooClient(object):
     def start_async(self):
         """Asynchronously initiate connection to ZK
 
-        :returns: An AsyncResult instance for the configured handler
-        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        :returns: An event object that can be checked to see if the
+                  connection is alive.
+        :rtype: :class:`~threading.Event` compatible object
 
         """
         # If we're already connected, ignore
@@ -631,14 +632,12 @@ class KazooClient(object):
 
         :param timeout: Time in seconds to wait for connection to
                         succeed.
+        :throws: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
+                 if the connection wasn't established within `timeout`
+                 seconds.
 
         """
         event = self.start_async()
-
-        if not event:
-            # Already connected
-            return
-
         event.wait(timeout=timeout)
         if not self.connected:
             # We time-out, ensure we are disconnected
