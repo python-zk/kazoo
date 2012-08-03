@@ -15,8 +15,8 @@ class BaseParty(object):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance
         :param path: The party path to use
-        :param identifier: An identifier to use for this member of the party
-                           when participating.
+        :param identifier: An identifier to use for this member of the
+                           party when participating.
 
         """
         self.client = client
@@ -94,13 +94,13 @@ class Party(BaseParty):
 class ShallowParty(BaseParty):
     """Simple shallow pool of participating processes
 
-    This differs from the :class:`Party` as the identifier is used in the
-    name of the party node itself, rather than the data. This places some
-    restrictions on the length as it must be a valid Zookeeper node (an
-    alphanumeric string), but reduces the overhead of getting a list of
-    participants to a single Zookeeper call.
-    """
+    This differs from the :class:`Party` as the identifier is used in
+    the name of the party node itself, rather than the data. This
+    places some restrictions on the length as it must be a valid
+    Zookeeper node (an alphanumeric string), but reduces the overhead
+    of getting a list of participants to a single Zookeeper call.
 
+    """
     def __init__(self, client, path, identifier=None):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = '-'.join([uuid.uuid4().hex, self.data])
