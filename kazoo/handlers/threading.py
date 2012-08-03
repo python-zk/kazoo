@@ -1,4 +1,4 @@
-"""Threading Handler
+"""A threading based handler.
 
 The :class:`SequentialThreadingHandler` is intended for regular Python
 environments that use threads.
@@ -202,6 +202,7 @@ class SequentialThreadingHandler(object):
         return t
 
     def start(self):
+        """Start the worker threads."""
         with self._state_change:
             if self._running:
                 return
@@ -217,6 +218,7 @@ class SequentialThreadingHandler(object):
             self._running = True
 
     def stop(self):
+        """Stop the worker threads and empty all queues."""
         with self._state_change:
             if not self._running:
                 return

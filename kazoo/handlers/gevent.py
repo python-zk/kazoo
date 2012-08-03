@@ -1,4 +1,4 @@
-"""gevent Handler"""
+"""A gevent based handler."""
 from __future__ import absolute_import
 
 import atexit
@@ -78,7 +78,7 @@ class AsyncResult(gevent.event.AsyncResult):
 
 @implementer(IHandler)
 class SequentialGeventHandler(object):
-    """gevent Handler for sequentially executing callbacks
+    """Gevent handler for sequentially executing callbacks.
 
     This handler executes callbacks in a sequential manner from the Zookeeper
     thread. A queue is created for each of the callback events, so that each
@@ -142,6 +142,7 @@ class SequentialGeventHandler(object):
             self._async.send()
 
     def start(self):
+        """Start the greenlet workers."""
         with self._state_change:
             if self._running:
                 return
@@ -159,6 +160,7 @@ class SequentialGeventHandler(object):
                 self._workers.append(w)
 
     def stop(self):
+        """Stop the greenlet workers and empty all queues."""
         with self._state_change:
             self._running = False
 
