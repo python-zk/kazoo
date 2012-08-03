@@ -3,59 +3,8 @@ import time
 
 
 from nose.tools import eq_
-from nose.tools import raises
 
 from kazoo.testing import KazooTestCase
-
-
-class KazooChildrenWatcherTests(KazooTestCase):
-    def setUp(self):
-        super(KazooChildrenWatcherTests, self).setUp()
-        self.path = "/" + uuid.uuid4().hex
-
-    def _makeOne(self, *args, **kwargs):
-        from kazoo.recipe.partitioner import ChildrenWatcher
-        return ChildrenWatcher(*args, **kwargs)
-
-    def test_watch(self):
-        self.client.ensure_path(self.path)
-        watcher = self._makeOne(self.client, self.path, 0.1)
-        result = watcher.start()
-        children, asy = result.get()
-        eq_(len(children), 0)
-        eq_(asy.ready(), False)
-
-        self.client.create(self.path + '/' + 'fred', '0')
-        asy.get(timeout=1)
-        eq_(asy.ready(), True)
-
-    def test_exception(self):
-        from kazoo.exceptions import NoNodeException
-        watcher = self._makeOne(self.client, self.path, 0.1)
-        result = watcher.start()
-
-        @raises(NoNodeException)
-        def testit():
-            result.get()
-        testit()
-
-    def test_watch_iterations(self):
-        self.client.ensure_path(self.path)
-        watcher = self._makeOne(self.client, self.path, 0.2)
-        result = watcher.start()
-        eq_(result.ready(), False)
-
-        time.sleep(0.1)
-        self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
-        eq_(result.ready(), False)
-        time.sleep(0.1)
-        eq_(result.ready(), False)
-        self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
-        time.sleep(0.1)
-        eq_(result.ready(), False)
-
-        children, asy = result.get()
-        eq_(len(children), 2)
 
 
 class KazooPartitionerTests(KazooTestCase):

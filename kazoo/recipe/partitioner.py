@@ -17,12 +17,11 @@ Example Use-Case
 import logging
 import os
 import socket
-import time
 import threading
 from functools import partial
 
 from kazoo.client import KazooState
-
+from kazoo.recipe.watchers import PatientChildrenWatcher
 
 log = logging.getLogger(__name__)
 
@@ -348,8 +347,8 @@ class SetPartitioner(object):
         any callbacks might run.
 
         """
-        watcher = ChildrenWatcher(self._client, self._party_path,
-                                  self._time_boundary)
+        watcher = PatientChildrenWatcher(self._client, self._party_path,
+                                         self._time_boundary)
         asy = watcher.start()
         if func:
             # We spin up the function in a separate thread/greenlet
@@ -376,63 +375,3 @@ class SetPartitioner(object):
         # Now return the partition list starting at our location and
         # skipping the other workers
         return all_partitions[i::len(workers)]
-
-
-class ChildrenWatcher(object):
-    """Node Children Watcher that alerts when the children stabilize
-
-    A separate watcher for the children of a node, that ignores
-    changes within a boundary time and sets the result only when the
-    boundary time has elapsed and there is no change of children for
-    the boundary time's duration.
-
-    Example::
-
-        watcher = ChildrenWatcher(client, '/some/path')
-        result = watcher.start()
-
-        # Blocks until the children have not changed for time boundary
-        # seconds, returns list of children and an async_result that
-        # will be set once if the children change in the future
-        children, async_result = result.get()
-
-    """
-    def __init__(self, client, path, time_boundary=30):
-        self.client = client
-        self.path = path
-        self.time_boundary = time_boundary
-        self.children_changed = client.handler.event_object()
-
-    def start(self):
-        """Begin the watching process asynchronously
-
-        :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance
-                  that will be set when no change has occurred to the
-                  children for time boundary seconds.
-
-        """
-        self.asy = asy = self.client.handler.async_result()
-        self.client.handler.spawn(self._inner_start)
-        return asy
-
-    def _inner_start(self):
-        try:
-            while True:
-                async_result = self.client.handler.async_result()
-                self.children = self.client.retry(
-                    self.client.get_children, self.path,
-                    partial(self.children_watcher, async_result))
-                time.sleep(self.time_boundary)
-
-                if self.children_changed.is_set():
-                    self.children_changed.clear()
-                else:
-                    break
-
-            self.asy.set((self.children, async_result))
-        except Exception as exc:
-            self.asy.set_exception(exc)
-
-    def children_watcher(self, async, event):
-        self.children_changed.set()
-        async.set(time.time())
