@@ -10,6 +10,12 @@ management and session testing. They can be mixed in with your own `unittest`
 or `nose` tests along with a `mock` object that allows you to force specific
 `KazooClient` commands to fail in various ways.
 
+The test harness needs to be able to find the Zookeeper Java libraries. You
+need to specify an environment variable called `ZOOKEEPER_PATH` and point it
+to their location, for example `/usr/share/java`. The directory should contain
+a `zookeeper-*.jar` and a `lib` directory containing at least a `log4j-*.jar`.
+
+
 Kazoo Test Harness
 ==================
 
