@@ -126,7 +126,7 @@ class SequentialGeventHandler(object):
             while True:
                 try:
                     func = queue.get()
-                    if func == _STOP:
+                    if func is _STOP:
                         break
                     func()
                 except Empty:

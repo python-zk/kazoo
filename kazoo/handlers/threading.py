@@ -185,7 +185,7 @@ class SequentialThreadingHandler(object):
                 try:
                     func = queue.get()
                     try:
-                        if func == _STOP:
+                        if func is _STOP:
                             break
                         func()
                     finally:
