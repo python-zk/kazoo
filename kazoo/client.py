@@ -386,6 +386,7 @@ class KazooClient(object):
                         for callback handling.
         :param default_acl: A default ACL used on node creation.
         """
+        from kazoo.recipe.barrier import Barrier
         from kazoo.recipe.partitioner import SetPartitioner
         from kazoo.recipe.watchers import ChildrenWatch
         from kazoo.recipe.watchers import DataWatch
@@ -439,6 +440,7 @@ class KazooClient(object):
         self.state_listeners = set()
 
         # convenience API
+        self.Barrier = partial(Barrier, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
         self.DataWatch = partial(DataWatch, self)
         self.Election = partial(Election, self)

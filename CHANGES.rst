@@ -7,7 +7,7 @@ Changelog
 Documentation
 *************
 
-- Fixed doc references to connect_async using an AsyncResult object, it uses
+- Fixed doc references to start_async using an AsyncResult object, it uses
   an Event object.
 
 Bug Handling
@@ -36,6 +36,11 @@ Deprecations
 - connect/connect_async has been renamed to start/start_async to better match
   the stop to indicate connection handling. The prior names are aliased for
   the time being.
+
+Recipes
+*******
+
+- Added Barrier implementation.
 
 0.2b1 (7/27/2012)
 -----------------
