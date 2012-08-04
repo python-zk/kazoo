@@ -257,7 +257,7 @@ class PatientChildrenWatch(object):
         :class:`ChildrenWatch` as it only returns once, does not take
         a function that is called, and provides an
         :class:`~kazoo.interfaces.IAsyncResult` object that can be
-        checked to see if the children has changed later.
+        checked to see if the children have changed later.
 
     """
     def __init__(self, client, path, time_boundary=30):
