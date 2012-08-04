@@ -59,8 +59,8 @@ functions to the result that will be called when it's ready.
 
 The callback function will be passed the
 :class:`~kazoo.interfaces.IAsyncResult` instance and should call the
-:meth:`~kazoo.interfaces.IAsyncResult.get` method to retrieve on it to
-retrieve the value. This call could result in an exception being raised
+:meth:`~kazoo.interfaces.IAsyncResult.get` method on it to retrieve
+the value. This call could result in an exception being raised
 if the asynchronous function encountered an error. It should be caught
 and handled appropriately.
 
