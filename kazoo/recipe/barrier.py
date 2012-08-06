@@ -79,6 +79,13 @@ class DoubleBarrier(object):
     the members have joined, and blocks when leaving until all the
     members have left.
 
+    .. note::
+
+        You should register a listener for session loss as the process
+        will no longer be part of the barrier once the session is
+        gone. Connection losses will be retried with the default retry
+        policy.
+
     """
     def __init__(self, client, path, num_clients, identifier=None):
         """Create a Double Barrier
