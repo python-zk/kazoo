@@ -1,6 +1,11 @@
 """Zookeeper Barriers"""
+import os
+import socket
+import uuid
+
 from kazoo.client import EventType
 from kazoo.exceptions import NoNodeException
+from kazoo.exceptions import NodeExistsException
 
 
 class Barrier(object):
@@ -64,3 +69,134 @@ class Barrier(object):
 
         cleared.wait(timeout)
         return cleared.is_set()
+
+
+class DoubleBarrier(object):
+    """Kazoo Double Barrier
+
+    Double barriers are used to synchronize the beginning and end of
+    a distributed task. The barrier blocks when entering it until all
+    the members have joined, and blocks when leaving until all the
+    members have left.
+
+    """
+    def __init__(self, client, path, num_clients, identifier=None):
+        """Create a Double Barrier
+
+        :param client: A :class:`~kazoo.client.KazooClient` instance
+        :param path: The election path to use
+        :param num_clients: How many clients must enter the barrier to
+                            proceed
+        :type num_clients: int
+        :param identifier: An identifier to use for this member of the
+                           party when participating. Defaults to the
+                           hostname + process id.
+
+        """
+        self.client = client
+        self.path = path
+        self.num_clients = num_clients
+        self._identifier = identifier or '%s-%s' % (
+            socket.getfqdn(), os.getpid())
+        self.participating = False
+        self.assured_path = False
+        self.node_name = uuid.uuid4().hex
+        self.create_path = self.path + "/" + self.node_name
+
+    def enter(self):
+        """Enter the barrier, blocks until all nodes have entered"""
+        try:
+            self.client.retry(self._inner_enter)
+            self.participating = True
+        except Exception:
+            # We failed to enter, best effort cleanup
+            self._best_effort_cleanup()
+            self.participating = False
+
+    def _inner_enter(self):
+        # make sure our barrier parent node exists
+        if not self.assured_path:
+            self.client.ensure_path(self.path)
+            self.assured_path = True
+
+        ready = self.client.handler.event_object()
+
+        try:
+            self.client.create(self.create_path, self._identifier,
+                               ephemeral=True)
+        except NodeExistsException:
+            pass
+
+        def created(event):
+            print "Got an event: %s" % event
+            if event.type == EventType.CREATED:
+                ready.set()
+
+        self.client.exists(self.path + '/' + 'ready', watch=created)
+
+        children = self.client.get_children(self.path)
+
+        if len(children) < self.num_clients:
+            ready.wait()
+        else:
+            self.client.ensure_path(self.path + '/ready')
+        return True
+
+    def leave(self):
+        """Leave the barrier, blocks until all nodes have left"""
+        try:
+            self.client.retry(self._inner_leave)
+        except Exception:
+            # Failed to cleanly leave
+            self._best_effort_cleanup()
+        self.participating = False
+
+    def _inner_leave(self):
+        # Delete the ready node if its around
+        try:
+            self.client.delete(self.path + '/ready')
+        except NoNodeException:
+            pass
+
+        while True:
+            children = self.client.get_children(self.path)
+            if not children:
+                return True
+
+            if len(children) == 1 and children[0] == self.node_name:
+                self.client.delete(self.create_path)
+                return True
+
+            children.sort()
+
+            ready = self.client.handler.event_object()
+
+            def deleted(event):
+                if event.type == EventType.DELETED:
+                    ready.set()
+
+            if self.node_name == children[0]:
+                # We're first, wait on the highest to leave
+                if not self.client.exists(self.path + '/' + children[-1],
+                                          watch=deleted):
+                    continue
+
+                ready.wait()
+                continue
+
+            # Delete our node
+            self.client.delete(self.create_path)
+
+            # Wait on the first
+            if not self.client.exists(self.path + '/' + children[0],
+                                      watch=deleted):
+                continue
+
+            # Wait for the lowest to be deleted
+            ready.wait()
+
+    def _best_effort_cleanup(self):
+        try:
+            self.client.retry(self.client.delete, self.create_path)
+        except NoNodeException:
+            pass

@@ -40,7 +40,7 @@ Deprecations
 Recipes
 *******
 
-- Added Barrier implementation.
+- Added Barrier and DoubleBarrier implementation.
 
 0.2b1 (7/27/2012)
 -----------------

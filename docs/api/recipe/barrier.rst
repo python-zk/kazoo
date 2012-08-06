@@ -12,3 +12,8 @@ Public API
         :members:
 
         .. automethod:: __init__
+
+    .. autoclass:: DoubleBarrier
+        :members:
+
+        .. automethod:: __init__
