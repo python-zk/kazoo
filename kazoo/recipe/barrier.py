@@ -91,12 +91,12 @@ class DoubleBarrier(object):
         """Create a Double Barrier
 
         :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The election path to use
+        :param path: The barrier path to use
         :param num_clients: How many clients must enter the barrier to
                             proceed
         :type num_clients: int
         :param identifier: An identifier to use for this member of the
-                           party when participating. Defaults to the
+                           barrier when participating. Defaults to the
                            hostname + process id.
 
         """
@@ -135,7 +135,6 @@ class DoubleBarrier(object):
             pass
 
         def created(event):
-            print "Got an event: %s" % event
             if event.type == EventType.CREATED:
                 ready.set()
 
