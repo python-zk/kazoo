@@ -13,6 +13,9 @@ Documentation
 Bug Handling
 ************
 
+- Issue #15 fixed: sleep_func for SequentialGeventHandler was not set on the
+  class appropriately leading to additional arguments being passed to
+  gevent.sleep.
 - Issue #9 fixed: Threads/greenlets didn't gracefully shut down. Handler now
   has a start/stop that is used by the client when calling start and stop that
   shuts down the handler workers. This addresses errors and warnings that could

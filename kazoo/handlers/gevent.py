@@ -102,7 +102,6 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     timeout_exception = gevent.event.Timeout
-    sleep_func = gevent.sleep
 
     def __init__(self, hub=None):
         """Create a :class:`SequentialGeventHandler` instance"""
@@ -120,6 +119,10 @@ class SequentialGeventHandler(object):
         # threads when using gevent 1.0
         if not _using_libevent:
             self._async = self._hub.loop.async()
+
+    @staticmethod
+    def sleep_func(duration):
+        return gevent.sleep(duration)
 
     def _create_greenlet_worker(self, queue):
         def greenlet_worker():
