@@ -47,7 +47,6 @@ setup(
         "Topic :: Communications",
         "Topic :: System :: Distributed Computing",
         "Topic :: System :: Networking",
-        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     keywords='zookeeper lock leader configuration',
     author="Nimbus team, Zope Corporation, Mozilla Foundation",
