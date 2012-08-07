@@ -5,6 +5,7 @@ PYTHON = $(BIN)/python
 PIP_DOWNLOAD_CACHE ?= $(HERE)/.pip_cache
 INSTALL = $(BIN)/pip install
 INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) -U --use-mirrors
+INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 
 BUILD_DIRS = bin build include lib lib64 man share
 
@@ -20,8 +21,7 @@ $(PYTHON):
 	virtualenv --distribute .
 
 build: $(PYTHON)
-	$(INSTALL) http://gevent.googlecode.com/files/gevent-1.0b3.tar.gz
-	$(INSTALL) zc-zookeeper-static
+	$(INSTALL) -r requirements.txt
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 

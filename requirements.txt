@@ -1,0 +1,14 @@
+Jinja2==2.6
+Pygments==1.5
+Sphinx==1.1.3
+coverage==3.5.2
+distribute==0.6.28
+docutils==0.9.1
+gevent==1.0b3
+greenlet==0.4.0
+mock==1.0b1
+nose==1.1.2
+repoze.sphinx.autointerface==0.7.0
+wsgiref==0.1.2
+zc-zookeeper-static==3.4.3-3
+zope.interface==4.0.1
