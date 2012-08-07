@@ -30,7 +30,7 @@ clean:
 
 test:
 	export ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) && \
-	$(BIN)/nosetests -d -v --with-coverage kazoo
+	$(BIN)/nosetests -d --with-coverage kazoo
 
 html:
 	cd docs && \
