@@ -37,7 +37,7 @@ setup(
     description='Higher Level Zookeeper Client',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "License :: OSI Approved :: Apache Software License",
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
