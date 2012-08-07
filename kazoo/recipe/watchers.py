@@ -5,6 +5,7 @@ import time
 from functools import partial
 
 from kazoo.client import KazooState
+from kazoo.exceptions import NoNodeException
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,14 @@ class DataWatch(object):
             print "Version is %s" % stat.version
 
         # Above function is called immediately and prints
+
+    Error Handling
+    --------------
+
+    In the event the node does not exist, the function will be called
+    with ``(None, None)`` and will not be called again. This should be
+    considered the last function call. This behavior will also occur
+    if the node is deleted.
 
     """
     def __init__(self, client, path, func=None,
@@ -91,8 +100,14 @@ class DataWatch(object):
             if self._stopped:
                 return
 
-            data, stat = self._client.retry(self._client.get,
-                                            self._path, self._watcher)
+            try:
+                data, stat = self._client.retry(self._client.get,
+                                                self._path, self._watcher)
+            except NoNodeException:
+                self._stopped = True
+                self._func(None, None)
+                return
+
             if not self._watch_established:
                 self._watch_established = True
 
@@ -120,7 +135,7 @@ class DataWatch(object):
             self._watch_established = False
         elif state == KazooState.CONNECTED and \
              not self._watch_established and not self._stopped:
-            self._get_data()
+            self._client.handler.spawn(self._get_data)
 
 
 class ChildrenWatch(object):

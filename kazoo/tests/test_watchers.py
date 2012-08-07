@@ -65,6 +65,15 @@ class KazooDataWatcherTests(KazooTestCase):
         d, stat = self.client.get(self.path)
         eq_(d, 'asdfasdf')
 
+    def test_no_such_node(self):
+        args = []
+
+        @self.client.DataWatch("/some/path")
+        def changed(d, stat):
+            args.extend([d, stat])
+
+        eq_(args, [None, None])
+
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
