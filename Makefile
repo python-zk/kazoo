@@ -9,7 +9,7 @@ INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) -U --use-mirrors
 BUILD_DIRS = bin build include lib lib64 man share
 
 ZOOKEEPER = $(BIN)/zookeeper
-ZOOKEEPER_VERSION = 3.3.5
+ZOOKEEPER_VERSION = 3.3.6
 ZOOKEEPER_PATH ?= $(ZOOKEEPER)
 
 .PHONY: all build clean test zookeeper clean-zookeeper
