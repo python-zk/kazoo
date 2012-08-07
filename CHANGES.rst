@@ -13,6 +13,10 @@ Documentation
 Bug Handling
 ************
 
+- Fixed bug similar to #14 for ChildrenWatch on the session listener.
+- Issue #14 fixed: DataWatch had inconsistent handling of the node it was
+  watching not existing. DataWatch also properly spawns its _get_data function
+  to avoid blocking session events.
 - Issue #15 fixed: sleep_func for SequentialGeventHandler was not set on the
   class appropriately leading to additional arguments being passed to
   gevent.sleep.
