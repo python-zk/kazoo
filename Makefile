@@ -51,6 +51,7 @@ $(ZOOKEEPER):
 	cat old_build.xml | sed 's|executable="python"|executable="../../../../../bin/python"|g' > build.xml && \
 	ant install
 	chmod a+x bin/zookeeper/bin/zkServer.sh
+	$(INSTALL) --force-reinstall zc-zookeeper-static
 	@echo "Finished installing Zookeeper"
 
 zookeeper: $(ZOOKEEPER)
