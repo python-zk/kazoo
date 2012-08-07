@@ -243,7 +243,7 @@ class ChildrenWatch(object):
             self._watch_established = False
         elif state == KazooState.CONNECTED and \
              not self._watch_established and not self._stopped:
-            self._get_children()
+            self._client.handler.spawn(self._get_children)
 
 
 class PatientChildrenWatch(object):
