@@ -22,33 +22,19 @@ def setup_logging(use_gevent=False):
         return
 
     if use_gevent:
-        _setup_gevent_logging()
-    else:
-        _setup_threading_logging()
-    _logging_setup = True
+        import gevent
+        from kazoo.handlers.gevent import _pipe
+        _logging_pipe = _pipe()
+        zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
 
-
-def _setup_gevent_logging():
-    """Setup greenlet based logging redirects"""
-    import gevent
-    from kazoo.handlers.gevent import (_pipe, _using_libevent)
-    _logging_pipe = _pipe()
-    zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
-
-    if _using_libevent:
-        gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
-                          _logging_pipe[0], _log_pipe_reader).add()
-    else:
         gevent.spawn(_logging_greenlet, _logging_pipe)
+    else:
+        _logging_pipe = os.pipe()
+        zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
 
-
-def _setup_threading_logging():
-    """Setup threading based logging redirects"""
-    _logging_pipe = os.pipe()
-    zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
-
-    thread = get_realthread()
-    thread.start_new_thread(_loggingthread, (_logging_pipe,))
+        thread = get_realthread()
+        thread.start_new_thread(_logging_thread, (_logging_pipe,))
+    _logging_setup = True
 
 
 def _process_message(line):
@@ -78,29 +64,13 @@ def _process_message(line):
         zk_log.exception("Logging error: %s", v)
 
 
-def _log_pipe_reader(event, evtype):
-    """Logging callback for new gevent 0.13 pipe notifications"""
-    try:
-        data = []
-        char = os.read(event.fd, 1)
-        while char != '\n':
-            data.append(char)
-            char = os.read(event.fd, 1)
-        line = ''.join(data).strip()
-        if not line:
-            return
-        _process_message(line)
-    except Exception:
-        pass
-
-
 def _logging_greenlet(logging_pipe):
     """Zookeeper logging redirect
 
     This greenlet based logger waits for the pipe to get data, then reads
     lines off it and processes them.
 
-    Used for gevent 1.0 and above.
+    Used for gevent.
 
     """
     from gevent.socket import wait_read
@@ -118,13 +88,15 @@ def _logging_greenlet(logging_pipe):
         _process_message(line)
 
 
-def _loggingthread(logging_pipe):
+def _logging_thread(logging_pipe):
     """Zookeeper logging redirect
 
     Zookeeper by default logs directly out. This thread handles reading
     off the pipe that the above `set_log_stream` call designates so
     that the Zookeeper logging output can be turned into Python logging
     statements under the `Zookeeper` name.
+
+    Used for threading.
 
     """
     r, w = logging_pipe

@@ -346,8 +346,12 @@ class KazooClient(object):
         from kazoo.recipe.watchers import ChildrenWatch
         from kazoo.recipe.watchers import DataWatch
 
+        # Record the handler strategy used
+        self._handler = handler if handler else SequentialThreadingHandler()
+        self.handler = self._handler
+
         # Check for logging
-        using_gevent = 'gevent' in handler.name
+        using_gevent = 'gevent' in self.handler.name
         setup_logging(use_gevent=using_gevent)
 
         # Check for chroot
@@ -366,10 +370,6 @@ class KazooClient(object):
 
         # ZK uses milliseconds
         self._timeout = int(timeout * 1000)
-
-        # Record the handler strategy used
-        self._handler = handler if handler else SequentialThreadingHandler()
-        self.handler = self._handler
 
         if inspect.isclass(self.handler):
             raise ConfigurationError("Handler must be an instance of a class, "
