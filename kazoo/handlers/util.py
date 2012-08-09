@@ -16,7 +16,8 @@ def get_realthread():
     import imp
     fp, pathname, description = imp.find_module('thread')
     try:
-        return imp.load_module('realthread', fp, pathname, description)
+        _realthread = imp.load_module('realthread', fp, pathname, description)
+        return _realthread
     finally:
         if fp:
             fp.close()
