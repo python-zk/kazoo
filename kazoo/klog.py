@@ -4,6 +4,7 @@ Zookeeper logging redirects that fashion the appropriate logging setup based
 on the handler used for the :class:`~kazoo.client.KazooClient`.
 
 """
+import fcntl
 import os
 import logging
 
@@ -11,8 +12,9 @@ import zookeeper
 
 from kazoo.handlers.util import get_realthread
 
-zk_log = logging.getLogger('ZooKeeper')
 _logging_setup = False
+_logging_pipe = os.pipe()
+log = logging.getLogger('ZooKeeper').log
 
 
 def setup_logging(use_gevent=False):
@@ -23,23 +25,18 @@ def setup_logging(use_gevent=False):
 
     if use_gevent:
         import gevent
-        from kazoo.handlers.gevent import _pipe
-        _logging_pipe = _pipe()
-        zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
-
-        gevent.spawn(_logging_greenlet, _logging_pipe)
+        fcntl.fcntl(_logging_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(_logging_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
+        gevent.spawn(_logging_greenlet)
     else:
-        _logging_pipe = os.pipe()
-        zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
-
         thread = get_realthread()
-        thread.start_new_thread(_logging_thread, (_logging_pipe,))
+        thread.start_new_thread(_logging_thread, ())
+    zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
     _logging_setup = True
 
 
 def _process_message(line):
     """Line processor used by all loggers"""
-    log = zk_log.log
     levels = dict(ZOO_INFO=logging.INFO,
                   ZOO_WARN=logging.WARNING,
                   ZOO_ERROR=logging.ERROR,
@@ -61,10 +58,10 @@ def _process_message(line):
         else:
             log(level, message)
     except Exception as v:
-        zk_log.exception("Logging error: %s", v)
+        logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
 
 
-def _logging_greenlet(logging_pipe):
+def _logging_greenlet():
     """Zookeeper logging redirect
 
     This greenlet based logger waits for the pipe to get data, then reads
@@ -74,7 +71,7 @@ def _logging_greenlet(logging_pipe):
 
     """
     from gevent.socket import wait_read
-    r, w = logging_pipe
+    r, w = _logging_pipe
     while 1:
         wait_read(r)
         data = []
@@ -88,7 +85,7 @@ def _logging_greenlet(logging_pipe):
         _process_message(line)
 
 
-def _logging_thread(logging_pipe):
+def _logging_thread():
     """Zookeeper logging redirect
 
     Zookeeper by default logs directly out. This thread handles reading
@@ -99,7 +96,7 @@ def _logging_thread(logging_pipe):
     Used for threading.
 
     """
-    r, w = logging_pipe
+    r, w = _logging_pipe
     f = os.fdopen(r)
     while 1:
         line = f.readline().strip()
