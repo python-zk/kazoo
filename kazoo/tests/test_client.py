@@ -8,6 +8,7 @@ import zookeeper
 from nose.tools import eq_
 
 import kazoo.client
+import kazoo.klog
 from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
 from kazoo.exceptions import NoNodeException
@@ -29,10 +30,11 @@ class LoggingTests(unittest.TestCase):
                        if 'environment' in r.getMessage()]
              )
         handler.clear()
+        kazoo.klog.setup_logging()
 
         # Test that the filter for the "Exceeded deadline by" noise works.
         # cheat and bypass zk by writing to the pipe directly.
-        os.write(kazoo.client._logging_pipe[1],
+        os.write(kazoo.klog._logging_pipe[1],
                  '2012-01-06 16:45:44,572:43673(0x1004f6000):ZOO_WARN@'
                  'zookeeper_interest@1461: Exceeded deadline by 27747ms\n')
         wait(lambda: [r for r in handler.records
