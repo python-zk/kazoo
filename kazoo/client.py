@@ -1,7 +1,6 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
-import os
 from collections import namedtuple
 from functools import partial
 from os.path import split
@@ -19,57 +18,12 @@ from kazoo.recipe.party import Party
 from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
 from kazoo.retry import KazooRetry
-from kazoo.handlers.util import thread
+from kazoo.klog import setup_logging
 
 log = logging.getLogger(__name__)
 
 ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
                        "id": "anyone"}
-
-
-## Zookeeper Logging Setup
-# Setup Zookeeper logging thread
-_logging_pipe = os.pipe()
-zookeeper.set_log_stream(os.fdopen(_logging_pipe[1], 'w'))
-
-
-@thread
-def _loggingthread():
-    """Zookeeper logging redirect
-
-    Zookeeper by default logs directly out. This thread handles reading
-    off the pipe that the above `set_log_stream` call designates so
-    that the Zookeeper logging output can be turned into Python logging
-    statements under the `Zookeeper` name.
-
-    """
-    r, w = _logging_pipe
-    log = logging.getLogger('ZooKeeper').log
-    f = os.fdopen(r)
-    levels = dict(ZOO_INFO=logging.INFO,
-                  ZOO_WARN=logging.WARNING,
-                  ZOO_ERROR=logging.ERROR,
-                  ZOO_DEBUG=logging.DEBUG,
-                  )
-    while 1:
-        line = f.readline().strip()
-        try:
-            if '@' in line:
-                level, message = line.split('@', 1)
-                level = levels.get(level.split(':')[-1])
-
-                if 'Exceeded deadline by' in line and level == logging.WARNING:
-                    level = logging.DEBUG
-
-            else:
-                level = None
-
-            if level is None:
-                log(logging.INFO, line)
-            else:
-                log(level, message)
-        except Exception as v:
-            logging.getLogger('ZooKeeper').exception("Logging error: %s", v)
 
 
 ## Client State and Event objects
@@ -391,6 +345,10 @@ class KazooClient(object):
         from kazoo.recipe.partitioner import SetPartitioner
         from kazoo.recipe.watchers import ChildrenWatch
         from kazoo.recipe.watchers import DataWatch
+
+        # Check for logging
+        using_gevent = 'gevent' in handler.name
+        setup_logging(use_gevent=using_gevent)
 
         # Check for chroot
         chroot_check = hosts.split('/', 1)
