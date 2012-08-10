@@ -13,6 +13,9 @@ Documentation
 Bug Handling
 ************
 
+- Issue #16 fixed: gevent zookeeper logging failed to handle a monkey patched
+  logging setup. Logging is now setup such that a greenlet is used for logging
+  messages under gevent, and the thread one is used otherwise.
 - Fixed bug similar to #14 for ChildrenWatch on the session listener.
 - Issue #14 fixed: DataWatch had inconsistent handling of the node it was
   watching not existing. DataWatch also properly spawns its _get_data function
