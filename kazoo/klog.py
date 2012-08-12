@@ -16,6 +16,13 @@ _logging_setup = False
 _logging_pipe = os.pipe()
 log = logging.getLogger('ZooKeeper').log
 
+# Define global levels
+LEVELS = dict(ZOO_INFO=logging.INFO,
+              ZOO_WARN=logging.WARNING,
+              ZOO_ERROR=logging.ERROR,
+              ZOO_DEBUG=logging.DEBUG,
+              )
+
 
 def setup_logging(use_gevent=False):
     global _logging_setup
@@ -37,15 +44,10 @@ def setup_logging(use_gevent=False):
 
 def _process_message(line):
     """Line processor used by all loggers"""
-    levels = dict(ZOO_INFO=logging.INFO,
-                  ZOO_WARN=logging.WARNING,
-                  ZOO_ERROR=logging.ERROR,
-                  ZOO_DEBUG=logging.DEBUG,
-                  )
     try:
         if '@' in line:
             level, message = line.split('@', 1)
-            level = levels.get(level.split(':')[-1])
+            level = LEVELS.get(level.split(':')[-1])
 
             if 'Exceeded deadline by' in line and level == logging.WARNING:
                 level = logging.DEBUG
@@ -81,7 +83,7 @@ def _logging_greenlet():
             char = os.read(r, 1)
         line = ''.join(data).strip()
         if not line:
-            return
+            continue
         _process_message(line)
 
 
