@@ -253,12 +253,16 @@ class KazooTestHarness(object):
             self.cluster.start()
 
         if self.client.connected:
+            self.client.delete('/', recursive=True)
             self.client.stop()
-
-        client = self._get_client()
-        client.start()
-        client.delete('/', recursive=True)
-        client.stop()
+            self.client.stop()
+            del self.client
+        else:
+            client = self._get_client()
+            client.start()
+            client.delete('/', recursive=True)
+            client.stop()
+            del client
 
     def add_errors(self, errors):
         self.client.zookeeper = ZookeeperErrors(errors, self.client._handler)
