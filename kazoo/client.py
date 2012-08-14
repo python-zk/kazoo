@@ -539,13 +539,10 @@ class KazooClient(object):
             self._handle = None
             self._provided_client_id = None
 
-            # We send the connect call off to avoid having leftovers
-            # in the Zookeeper event thread. We go through the extra
-            # gymnastics of having it spawned on return so that the
-            # handler can shutdown before the startup
-            cb = Callback(type='session', func=self.handler.spawn,
-                          args=(self.start_async,))
-            self.handler.dispatch_callback(cb)
+            # This session callback already runs in the handler so
+            # its safe to spawn the start_async call so this function
+            # can return immediately
+            self.handler.spawn(self.start_async)
         else:
             # Connection lost
             self._live.clear()
