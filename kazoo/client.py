@@ -538,7 +538,14 @@ class KazooClient(object):
             self._make_state_change(KazooState.LOST)
             self._handle = None
             self._provided_client_id = None
-            self.start_async()
+
+            # We send the connect call off to avoid having leftovers
+            # in the Zookeeper event thread. We go through the extra
+            # gymnastics of having it spawned on return so that the
+            # handler can shutdown before the startup
+            cb = Callback(type='session', func=self.handler.spawn,
+                          args=(self.start_async,))
+            self.handler.dispatch_callback(cb)
         else:
             # Connection lost
             self._live.clear()
