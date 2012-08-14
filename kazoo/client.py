@@ -537,6 +537,7 @@ class KazooClient(object):
             self._live.clear()
             self._make_state_change(KazooState.LOST)
             self._handle = None
+            self._provided_client_id = None
             self.start_async()
         else:
             # Connection lost
