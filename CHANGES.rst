@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.3 (**master**)
+
+Bug Handling
+************
+
+- Fixed bug with client reconnection looping indefinitely using an expired
+  session id.
+
 0.2 (8/12/2012)
 ---------------
 
