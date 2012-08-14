@@ -374,7 +374,7 @@ class TestCallbacks(unittest.TestCase):
 
         # Test several state transitions
         client._stopped.clear()
-        client.connect_async = lambda: True
+        client.start_async = lambda: True
         client._session_callback(1, EventType.SESSION, KeeperState.CONNECTED,
                                  None)
         eq_(client.state, KazooState.CONNECTED)
