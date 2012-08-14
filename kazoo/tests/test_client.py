@@ -95,7 +95,7 @@ class TestConnection(KazooTestCase):
 
         self.client.add_listener(watch_events)
         self.expire_session()
-        cv.wait(1)
+        cv.wait(3)
         assert cv.is_set()
 
     def test_bad_session_expire(self):
