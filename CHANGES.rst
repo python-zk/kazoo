@@ -6,6 +6,8 @@ Changelog
 Bug Handling
 ************
 
+- Issue #17 fixed: Wrap timeout exceptions with staticmethod so they can be
+  used directly as intended.
 - Fixed bug with client reconnection looping indefinitely using an expired
   session id.
 
