@@ -101,7 +101,6 @@ class SequentialGeventHandler(object):
 
     """
     name = "sequential_gevent_handler"
-    timeout_exception = staticmethod(gevent.event.Timeout)
     sleep_func = staticmethod(gevent.sleep)
 
     def __init__(self, hub=None):
@@ -120,6 +119,10 @@ class SequentialGeventHandler(object):
         # threads when using gevent 1.0
         if not _using_libevent:
             self._async = self._hub.loop.async()
+
+    class timeout_exception(gevent.event.Timeout):
+        def __init__(self, msg):
+            gevent.event.Timeout.__init__(self, exception=msg)
 
     def _create_greenlet_worker(self, queue):
         def greenlet_worker():

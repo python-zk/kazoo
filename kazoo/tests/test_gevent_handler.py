@@ -2,6 +2,7 @@ import unittest
 
 from gevent.event import Event
 from nose.tools import eq_
+from nose.tools import raises
 
 from kazoo.client import Callback
 from kazoo.testing import KazooTestCase
@@ -62,6 +63,14 @@ class TestGeventHandler(unittest.TestCase):
         h.start()
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
+
+    def test_exception_raising(self):
+        h = self._makeOne()
+
+        @raises(h.timeout_exception)
+        def testit():
+            raise h.timeout_exception("This is a timeout")
+        testit()
 
 
 class TestGeventClient(KazooTestCase):

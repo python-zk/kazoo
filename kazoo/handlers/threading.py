@@ -166,7 +166,7 @@ class SequentialThreadingHandler(object):
 
     """
     name = "sequential_threading_handler"
-    timeout_exception = staticmethod(TimeoutError)
+    timeout_exception = TimeoutError
     sleep_func = time.sleep
 
     def __init__(self):

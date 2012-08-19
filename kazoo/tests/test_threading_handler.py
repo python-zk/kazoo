@@ -65,6 +65,14 @@ class TestThreadingHandler(unittest.TestCase):
         async = self._getAsync()
         assert isinstance(h.async_result(), async)
 
+    def test_exception_raising(self):
+        h = self._makeOne()
+
+        @raises(h.timeout_exception)
+        def testit():
+            raise h.timeout_exception("This is a timeout")
+        testit()
+
 
 class TestThreadingAsync(unittest.TestCase):
     def _makeOne(self, *args):
