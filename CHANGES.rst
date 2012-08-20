@@ -3,6 +3,11 @@ Changelog
 
 0.3 (**master**)
 
+API Changes
+***********
+
+- Handler interface now has an rlock_object for use by recipes.
+
 Bug Handling
 ************
 
