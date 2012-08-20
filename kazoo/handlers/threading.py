@@ -247,6 +247,10 @@ class SequentialThreadingHandler(object):
         """Create a lock object"""
         return threading.Lock()
 
+    def rlock_object(self):
+        """Create an appropriate RLock object"""
+        return threading.RLock()
+
     def async_result(self):
         """Create a :class:`AsyncResult` instance"""
         return AsyncResult(self)

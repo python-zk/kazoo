@@ -188,6 +188,10 @@ class SequentialGeventHandler(object):
         """Create an appropriate Lock object"""
         return gevent.thread.allocate_lock()
 
+    def rlock_object(self):
+        """Create an appropriate RLock object"""
+        return gevent.coros.RLock()
+
     def async_result(self):
         """Create a :class:`AsyncResult` instance
 

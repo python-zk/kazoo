@@ -47,6 +47,10 @@ class IHandler(Interface):
         """Return an appropriate object that implements Python's
         threading.Lock API"""
 
+    def rlock_object():
+        """Return an appropriate object that implements Python's
+        threading.RLock API"""
+
     def async_result():
         """Return an instance that conforms to the :class:`~IAsyncResult`
         interface appropriate for this handler"""
