@@ -15,6 +15,8 @@ from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
 
+zookeeper.deterministic_conn_order(True)
+
 CLUSTER = None
 
 
@@ -242,6 +244,7 @@ class KazooTestHarness(object):
         client.stop()
         lost.wait()
         self.client.remove_listener(watch_loss)
+        lost.wait(25)
 
     def setup_zookeeper(self):
         """Create a ZK cluster and chrooted :class:`KazooClient`
