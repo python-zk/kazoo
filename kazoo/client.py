@@ -509,7 +509,9 @@ class KazooClient(object):
         # remove itself
         for listener in list(self.state_listeners):
             try:
-                listener(state)
+                remove = listener(state)
+                if remove is True:
+                    self.remove_listener(listener)
             except Exception:
                 log.exception("Error in connection state listener")
 
