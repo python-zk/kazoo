@@ -237,13 +237,12 @@ class KazooTestHarness(object):
         def watch_loss(state):
             if state == KazooState.LOST:
                 lost.set()
+                return True
 
         self.client.add_listener(watch_loss)
 
         client.start()
         client.stop()
-        lost.wait()
-        self.client.remove_listener(watch_loss)
         lost.wait(25)
 
     def setup_zookeeper(self):
