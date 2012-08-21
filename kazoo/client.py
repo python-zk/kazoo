@@ -1,6 +1,7 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
+import random
 from collections import namedtuple
 from functools import partial
 from os.path import split
@@ -339,6 +340,11 @@ class KazooClient(object):
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling.
         :param default_acl: A default ACL used on node creation.
+
+
+        Retry parameters will be used for connection establishment attempts
+        and reconnects.
+
         """
         from kazoo.recipe.barrier import Barrier
         from kazoo.recipe.barrier import DoubleBarrier
@@ -392,6 +398,12 @@ class KazooClient(object):
             max_jitter=retry_jitter,
             sleep_func=self.handler.sleep_func
         )
+
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.retry_backoff = retry_backoff
+        self.retry_jitter = int(retry_jitter * 100)
+        self._connection_attempts = None
 
         # Curator like simplified state tracking, and listeners for state
         # transitions
@@ -516,6 +528,18 @@ class KazooClient(object):
                 log.exception("Error in connection state listener")
 
     def _session_callback(self, handle, type, state, path):
+        states = {}
+        types = {}
+        for name, val in zookeeper.__dict__.items():
+            if name.endswith('_STATE'):
+                states[val] = name
+            if name.endswith('EVENT'):
+                types[val] = name
+
+        log.debug("Client Instance: %s, Handle: %s, Type: %s, State: %s"
+                  ", Path: %s", id(self), handle, types[type], states[state],
+                  path)
+
         if type != EventType.SESSION:
             return
 
@@ -533,18 +557,22 @@ class KazooClient(object):
 
         if state == KeeperState.CONNECTED:
             self._live.set()
+            self._connection_attempts = None
+
+            # Clear the client id when we successfully connect
+            self._provided_client_id = None
+
             self._make_state_change(KazooState.CONNECTED)
         elif state in (KeeperState.EXPIRED_SESSION,
                        KeeperState.AUTH_FAILED):
             self._live.clear()
             self._make_state_change(KazooState.LOST)
             self._handle = None
-            self._provided_client_id = None
 
             # This session callback already runs in the handler so
             # its safe to spawn the start_async call so this function
             # can return immediately
-            self.handler.spawn(self.start_async)
+            self.handler.spawn(self._reconnect)
         else:
             # Connection lost
             self._live.clear()
@@ -588,6 +616,8 @@ class KazooClient(object):
         self.handler.start()
 
         cb = self._wrap_session_callback(self._session_callback)
+        self._connection_attempts = 1
+        self._connection_delay = self.retry_delay
         if self._provided_client_id:
             self._handle = self.zookeeper.init(self._hosts, cb, self._timeout,
                 self._provided_client_id)
@@ -595,6 +625,20 @@ class KazooClient(object):
             self._handle = self.zookeeper.init(self._hosts, cb, self._timeout)
         return self._live
     connect_async = start_async
+
+    def _reconnect(self):
+        """Reconnect to Zookeeper, staggering connection attempts"""
+        if not self._connection_attempts:
+            self._connection_attempts = 1
+            self._connection_delay = self.retry_delay
+        else:
+            if self._connection_attempts == self.max_retries:
+                raise self.handler.timeout_exception("Time out reconnecting")
+            self._connection_attempts += 1
+            jitter = random.randint(0, self.retry_jitter) / 100.0
+            self.handler.sleep_func(self._connection_delay + jitter)
+            self._connection_delay *= self.retry_delay
+        self.start_async()
 
     def start(self, timeout=15):
         """Initiate connection to ZK
