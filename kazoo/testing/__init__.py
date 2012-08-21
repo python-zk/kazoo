@@ -4,11 +4,13 @@ import logging
 import os
 import uuid
 from collections import namedtuple
+import threading
 import unittest
 
 import zookeeper
 from kazoo.client import Callback
 from kazoo.client import KazooClient
+from kazoo.client import KazooState
 from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
@@ -227,8 +229,19 @@ class KazooTestHarness(object):
         """
         client_id = client_id or self.client.client_id
         client = KazooClient(self.cluster[1].address, client_id=client_id)
+
+        lost = threading.Event()
+
+        def watch_loss(state):
+            if state == KazooState.LOST:
+                lost.set()
+
+        self.client.add_listener(watch_loss)
+
         client.start()
         client.stop()
+        lost.wait()
+        self.client.remove_listener(watch_loss)
 
     def setup_zookeeper(self):
         """Create a ZK cluster and chrooted :class:`KazooClient`
