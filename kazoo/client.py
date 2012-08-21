@@ -556,6 +556,7 @@ class KazooClient(object):
             return
 
         if state == KeeperState.CONNECTED:
+            log.info("Zookeeper connection established")
             self._live.set()
             self._connection_attempts = None
 
@@ -565,6 +566,7 @@ class KazooClient(object):
             self._make_state_change(KazooState.CONNECTED)
         elif state in (KeeperState.EXPIRED_SESSION,
                        KeeperState.AUTH_FAILED):
+            log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
             self._handle = None
@@ -574,6 +576,7 @@ class KazooClient(object):
             # can return immediately
             self.handler.spawn(self._reconnect)
         else:
+            log.info("Zookeeper connection lost")
             # Connection lost
             self._live.clear()
             self._make_state_change(KazooState.SUSPENDED)
