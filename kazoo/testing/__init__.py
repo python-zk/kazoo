@@ -251,7 +251,6 @@ class KazooTestHarness(object):
         The cluster will only be created on the first invocation and won't be
         fully torn down until exit.
         """
-        zookeeper.deterministic_conn_order(True)
         if not self.cluster[0].running:
             self.cluster.start()
         namespace = "/kazootests" + uuid.uuid4().hex
