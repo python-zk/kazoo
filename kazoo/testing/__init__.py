@@ -22,6 +22,11 @@ zookeeper.deterministic_conn_order(True)
 CLUSTER = None
 
 this_file = os.path.abspath(__file__)
+test_dir = os.path.dirname(this_file)
+kazoo_lib = os.path.dirname(test_dir)
+kazoo_dir = os.path.dirname(kazoo_lib)
+
+PYTHON = os.path.join(kazoo_dir, 'bin', 'python')
 
 
 def expire_session():
@@ -258,7 +263,7 @@ class KazooTestHarness(object):
         retries = 0
         while (not lost.is_set() and retries < 5):
             process = subprocess.Popen(
-                args=["bin/python", this_file, self.cluster[1].address,
+                args=[PYTHON, this_file, self.cluster[1].address,
                       str(client_id[0]), client_id[1]]
             )
             lost.wait(3)
