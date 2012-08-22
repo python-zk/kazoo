@@ -13,7 +13,10 @@ def main(args):
             "kazoo.tests.test_watchers:KazooChildrenWatcherTests")
         return
     arg = args[0]
+    i = 0
     while 1:
+        i += 1
+        print('Run number: %s' % i)
         ret = test(arg)
         if ret != 0:
             break
