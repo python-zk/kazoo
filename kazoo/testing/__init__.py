@@ -7,7 +7,6 @@ import sys
 from collections import namedtuple
 import threading
 import unittest
-import subprocess
 
 import zookeeper
 from kazoo.client import Callback
@@ -20,24 +19,6 @@ log = logging.getLogger(__name__)
 zookeeper.deterministic_conn_order(True)
 
 CLUSTER = None
-
-this_file = os.path.abspath(__file__)
-test_dir = os.path.dirname(this_file)
-kazoo_lib = os.path.dirname(test_dir)
-kazoo_dir = os.path.dirname(kazoo_lib)
-
-PYTHON = os.path.join(kazoo_dir, 'bin', 'python')
-
-
-def expire_session():
-    if len(sys.argv) < 4:
-        raise Exception("Insufficient args for session expiration")
-    host, session_id, password = sys.argv[1:]
-    client = KazooClient(host, client_id=(long(session_id), password),
-                         timeout=2)
-    client.start()
-    client.stop()
-    sys.exit()
 
 
 def get_global_cluster():
@@ -260,17 +241,11 @@ class KazooTestHarness(object):
 
         self.client.add_listener(watch_loss)
 
-        retries = 0
-        while (not lost.is_set() and retries < 5):
-            process = subprocess.Popen(
-                args=[PYTHON, this_file, self.cluster[1].address,
-                      str(client_id[0]), client_id[1]]
-            )
-            lost.wait(3)
-            process.terminate()
-            process.wait()
-            retries += 1
-        lost.wait(5)
+        client = KazooClient(self.cluster[1].address, client_id=client_id)
+        client.start()
+        client.stop()
+        sys.exit()
+        lost.wait(15)
 
     def setup_zookeeper(self):
         """Create a ZK cluster and chrooted :class:`KazooClient`
@@ -315,7 +290,3 @@ class KazooTestCase(unittest.TestCase, KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
-
-
-if __name__ == '__main__':
-    expire_session()
