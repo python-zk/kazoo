@@ -28,7 +28,8 @@ def expire_session():
     if len(sys.argv) < 4:
         raise Exception("Insufficient args for session expiration")
     host, session_id, password = sys.argv[1:]
-    client = KazooClient(host, client_id=(long(session_id), password))
+    client = KazooClient(host, client_id=(long(session_id), password),
+                         timeout=2)
     client.start()
     client.stop()
     sys.exit()
@@ -253,12 +254,18 @@ class KazooTestHarness(object):
                 return True
 
         self.client.add_listener(watch_loss)
-        process = subprocess.Popen(
-            args=["python", this_file, self.cluster[1].address,
-                  str(client_id[0]), client_id[1]]
-        )
-        process.wait()
-        lost.wait(15)
+
+        retries = 0
+        while (not lost.is_set() and retries < 5):
+            process = subprocess.Popen(
+                args=["bin/python", this_file, self.cluster[1].address,
+                      str(client_id[0]), client_id[1]]
+            )
+            lost.wait(3)
+            process.terminate()
+            process.wait()
+            retries += 1
+        lost.wait(5)
 
     def setup_zookeeper(self):
         """Create a ZK cluster and chrooted :class:`KazooClient`
