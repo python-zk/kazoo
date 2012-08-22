@@ -102,14 +102,18 @@ class TestConnection(KazooTestCase):
         from kazoo.client import KazooState
 
         cv = threading.Event()
+        ab = threading.Event()
 
         def watch_events(event):
             if event == KazooState.LOST:
+                ab.set()
                 raise Exception("oops")
                 cv.set()
 
         self.client.add_listener(watch_events)
         self.expire_session()
+        ab.wait(0.5)
+        assert ab.is_set()
         cv.wait(0.5)
         assert not cv.is_set()
 
