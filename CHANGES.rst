@@ -1,7 +1,8 @@
 Changelog
 =========
 
-0.3 (**master**)
+0.3 (8/23/2012)
+---------------
 
 API Changes
 ***********
@@ -11,6 +12,10 @@ API Changes
 Bug Handling
 ************
 
+- Fixed password bug with updated zc-zookeeper-static release, which retains
+  null bytes in the password properly.
+- Fixed reconnect hammering, so that the reconnection follows retry jitter and
+  retry backoff's.
 - Fixed possible bug with using a threading.Condition in the set partitioner.
   Set partitioner uses new rlock_object handler API to get an appropriate RLock
   for gevent.
