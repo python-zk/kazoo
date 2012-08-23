@@ -25,6 +25,13 @@ log = logging.getLogger(__name__)
 
 ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
                        "id": "anyone"}
+ZK_STATES = {}
+ZK_TYPES = {}
+for name, val in zookeeper.__dict__.items():
+    if name.endswith('_STATE'):
+        ZK_STATES[val] = name
+    if name.endswith('EVENT'):
+        ZK_TYPES[val] = name
 
 
 ## Client State and Event objects
@@ -528,16 +535,9 @@ class KazooClient(object):
                 log.exception("Error in connection state listener")
 
     def _session_callback(self, handle, type, state, path):
-        states = {}
-        types = {}
-        for name, val in zookeeper.__dict__.items():
-            if name.endswith('_STATE'):
-                states[val] = name
-            if name.endswith('EVENT'):
-                types[val] = name
-
         log.debug("Client Instance: %s, Handle: %s, Type: %s, State: %s"
-                  ", Path: %s", id(self), handle, types[type], states[state],
+                  ", Path: %s", id(self), handle, ZK_TYPES.get(type, type),
+                  ZK_STATES.get(state, state),
                   path)
 
         if type != EventType.SESSION:
