@@ -19,7 +19,6 @@ from kazoo.recipe.party import Party
 from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
 from kazoo.retry import KazooRetry
-from kazoo.klog import setup_logging
 
 log = logging.getLogger(__name__)
 
@@ -362,10 +361,6 @@ class KazooClient(object):
         # Record the handler strategy used
         self._handler = handler if handler else SequentialThreadingHandler()
         self.handler = self._handler
-
-        # Check for logging
-        using_gevent = 'gevent' in self.handler.name
-        setup_logging(use_gevent=using_gevent)
 
         # Check for chroot
         chroot_check = hosts.split('/', 1)
