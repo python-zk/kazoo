@@ -2,17 +2,14 @@
 from __future__ import absolute_import
 
 import atexit
-import fcntl
-import os
 
 import gevent
+import gevent.queue
 import gevent.coros
 import gevent.event
 import gevent.thread
-try:
-    from gevent import get_hub
-except ImportError:  # pragma: nocover
-    from gevent.hub import get_hub
+import gevent.select
+import gevent.socket
 
 from gevent.queue import Empty
 from gevent.queue import Queue
@@ -31,49 +28,50 @@ else:
 _STOP = object()
 
 
-# Simple wrapper to os.pipe() - but sets to non-block
-def _pipe():
-    r, w = os.pipe()
-    fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
-    fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
-    return r, w
-
-_core_pipe_read, _core_pipe_write = _pipe()
-
-
-def _core_pipe_read_callback(event, evtype):
-    try:
-        os.read(event.fd, 1)
-    except Exception:
-        pass
-
 if _using_libevent:
-    # The os pipe trick to wake gevent is only need for gevent pre-1.0
-    gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
-                     _core_pipe_read, _core_pipe_read_callback).add()
+    from gevent.timeout import Timeout
+    from gevent.hub import Waiter, getcurrent
+
+    # No peek method on queue in 0.13, so add one from gevent 1.0
+    class _PeekableQueue(gevent.queue.Queue):
+        def _peek(self):
+            return self.queue[0]
+
+        def peek(self, block=True, timeout=None):
+            if self.qsize():
+                return self._peek()
+            elif self.hub is getcurrent():
+                # special case to make peek(False) runnable in the mainloop
+                # greenlet there are no items in the queue; try to fix the
+                # situation by unlocking putters
+                while self.putters:
+                    self.putters.pop().put_and_switch()
+                    if self.qsize():
+                        return self._peek()
+                raise Empty
+            elif block:
+                waiter = Waiter()
+                timeout = Timeout.start_new(timeout, Empty)
+                try:
+                    self.getters.add(waiter)
+                    if self.putters:
+                        self._schedule_unlock()
+                    result = waiter.get()
+                    assert result is waiter, 'Invalid switch into Queue.peek: %r' % (result, )
+                    return self._peek()
+                finally:
+                    self.getters.discard(waiter)
+                    timeout.cancel()
+            else:
+                raise Empty
+
+        def peek_nowait(self):
+            return self.peek(False)
+else:
+    _PeekableQueue = gevent.queue.Queue
 
 
-@implementer(IAsyncResult)
-class AsyncResult(gevent.event.AsyncResult):
-    """A gevent AsyncResult capable of waking the gevent thread when used
-    from the Zookeeper thread"""
-    def __init__(self, handler):
-        self._handler = handler
-        gevent.event.AsyncResult.__init__(self)
-
-    def set(self, value=None):
-        # Proxy the set call to the gevent thread
-        self._handler.completion_queue.put(
-            lambda: gevent.event.AsyncResult.set(self, value)
-        )
-        self._handler.wake()
-
-    def set_exception(self, exception):
-        # Proxy the set_exception call to the gevent thread
-        self._handler.completion_queue.put(
-            lambda: gevent.event.AsyncResult.set_exception(self, exception)
-        )
-        self._handler.wake()
+AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 
 
 @implementer(IHandler)
@@ -102,23 +100,18 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     sleep_func = staticmethod(gevent.sleep)
+    empty = staticmethod(gevent.queue.Empty)
 
-    def __init__(self, hub=None):
+    def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
         self.completion_queue = Queue()
         self.callback_queue = Queue()
         self.session_queue = Queue()
         self._running = False
-        self._hub = hub or get_hub()
         self._async = None
         self._state_change = gevent.coros.Semaphore()
         self._workers = []
         atexit.register(self.stop)
-
-        # Startup the async watcher to notify the gevent loop from other
-        # threads when using gevent 1.0
-        if not _using_libevent:
-            self._async = self._hub.loop.async()
 
     class timeout_exception(gevent.event.Timeout):
         def __init__(self, msg):
@@ -135,14 +128,6 @@ class SequentialGeventHandler(object):
                 except Empty:
                     continue
         return gevent.spawn(greenlet_worker)
-
-    def wake(self):
-        """Wake the gevent hub the appropriate way"""
-        if _using_libevent:
-            # Wake gevent wait/gets
-            os.write(_core_pipe_write, '\0')
-        else:
-            self._async.send()
 
     def start(self):
         """Start the greenlet workers."""
@@ -179,6 +164,15 @@ class SequentialGeventHandler(object):
             self.completion_queue = Queue()
             self.callback_queue = Queue()
             self.session_queue = Queue()
+
+    def select(self, *args, **kwargs):
+        return gevent.select.select(*args, **kwargs)
+
+    def socket(self, *args, **kwargs):
+        return gevent.socket.socket(*args, **kwargs)
+
+    def peekable_queue(self, *args, **kwargs):
+        return _PeekableQueue(*args, **kwargs)
 
     def event_object(self):
         """Create an appropriate Event object"""
