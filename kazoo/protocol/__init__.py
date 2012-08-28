@@ -5,8 +5,7 @@ from kazoo.exceptions import AuthFailedError
 from kazoo.exceptions import ConnectionDropped
 from kazoo.exceptions import EXCEPTIONS
 from kazoo.protocol.serialization import int_struct
-from kazoo.protocol.serialization import int_int_struct
-from kazoo.protocol.serialization import deserialize_reply_header
+from kazoo.protocol.serialization import ReplyHeader
 from kazoo.protocol.serialization import Close
 from kazoo.protocol.serialization import Connect
 from kazoo.protocol.serialization import Ping
@@ -172,7 +171,6 @@ def connect_loop(client, retry):
             log.info('Closing connection to %s:%s', host, port)
 
             if writer_done:
-                client._close(KeeperState.CLOSED)
                 return False
         except ConnectionDropped:
             log.warning('Connection dropped')
@@ -232,6 +230,7 @@ def _connect(client, s, host, port):
               '    read timeout: %s', client._session_id,
               client._session_passwd.encode('hex'), negotiated_session_timeout,
               connect_timeout, read_timeout)
+
     client._session_callback(KeeperState.CONNECTED)
 
     # for scheme, auth in client.auth_data:
@@ -309,7 +308,7 @@ def _read_header(client, socket, timeout):
     b = _read(client, socket, 4, timeout)
     length = int_struct.unpack(b)[0]
     b = _read(client, socket, length, timeout)
-    header, offset = deserialize_reply_header(b, 0)
+    header, offset = ReplyHeader.deserialize(b, 0)
     return header, b, offset
 
 

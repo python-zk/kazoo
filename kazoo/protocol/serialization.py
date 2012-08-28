@@ -2,8 +2,6 @@
 from collections import namedtuple
 import struct
 
-ReplyHeader = namedtuple('ReplyHeader', 'xid zxid err')
-
 # Struct objects with formats compiled
 int_struct = struct.Struct('!i')
 int_int_struct = struct.Struct('!ii')
@@ -96,9 +94,11 @@ class Watch(namedtuple('Watch', 'type state path')):
         return cls(type, state, path), offset
 
 
-def deserialize_reply_header(buffer, offset):
-    """Given a buffer and the current buffer offset, return a
-    :class:`ReplyHeader` instance and the new offset"""
-    new_offset = offset + reply_header_struct.size
-    return ReplyHeader._make(
-        reply_header_struct.unpack_from(buffer, offset)), new_offset
+class ReplyHeader(namedtuple('ReplyHeader', 'xid, zxid, err')):
+    @classmethod
+    def deserialize(cls, buffer, offset):
+        """Given a buffer and the current buffer offset, return a
+        :class:`ReplyHeader` instance and the new offset"""
+        new_offset = offset + reply_header_struct.size
+        return cls._make(
+            reply_header_struct.unpack_from(buffer, offset)), new_offset
