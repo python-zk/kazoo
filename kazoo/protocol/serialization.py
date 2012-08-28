@@ -7,6 +7,7 @@ ReplyHeader = namedtuple('ReplyHeader', 'xid zxid err')
 # Struct objects with formats compiled
 int_struct = struct.Struct('!i')
 int_int_struct = struct.Struct('!ii')
+int_int_long_struct = struct.Struct('!iiq')
 
 int_long_int_long_struct = struct.Struct('!iqiq')
 reply_header_struct = struct.Struct('!iqi')
@@ -32,13 +33,19 @@ def write_buffer(bytes):
         return int_struct.pack(len(bytes)) + bytes
 
 
-def serialize_connect(protocol_version, last_zxid_seen, time_out, session_id,
-                      passwd, read_only):
-    b = int_long_int_long_struct.pack(protocol_version, last_zxid_seen,
-                                      time_out, session_id)
-    b += write_buffer(passwd)
-    b += 1 if read_only else 0
-    return b
+class Connect(namedtuple('Connect', 'protocol_version', 'last_zxid_seen',
+                         'time_out', 'session_id', 'passwd', 'read_only')):
+    """A connection request"""
+    def serialize(self):
+        b = int_long_int_long_struct.pack(
+            self.protocol_version, self.last_zxid_seen, self.time_out,
+            self.session_id)
+        b += write_buffer(self.passwd)
+        b += 1 if self.read_only else 0
+        return b
+
+    def deserialize(buffer, offset):
+        pass
 
 
 def deserialize_reply_header(buffer, offset):
