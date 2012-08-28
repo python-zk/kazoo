@@ -3,9 +3,9 @@ import os
 import socket
 import uuid
 
-from kazoo.client import EventType
-from kazoo.exceptions import NoNodeException
-from kazoo.exceptions import NodeExistsException
+from kazoo.protocol.states import EventType
+from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NodeExistsError
 
 
 class Barrier(object):
@@ -46,7 +46,7 @@ class Barrier(object):
         try:
             self.client.retry(self.client.delete, self.path)
             return True
-        except NoNodeException:
+        except NoNodeError:
             return False
 
     def wait(self, timeout=None):
@@ -131,7 +131,7 @@ class DoubleBarrier(object):
         try:
             self.client.create(self.create_path, self._identifier,
                                ephemeral=True)
-        except NodeExistsException:
+        except NodeExistsError:
             pass
 
         def created(event):
@@ -161,7 +161,7 @@ class DoubleBarrier(object):
         # Delete the ready node if its around
         try:
             self.client.delete(self.path + '/ready')
-        except NoNodeException:
+        except NoNodeError:
             pass
 
         while True:
@@ -204,5 +204,5 @@ class DoubleBarrier(object):
     def _best_effort_cleanup(self):
         try:
             self.client.retry(self.client.delete, self.create_path)
-        except NoNodeException:
+        except NoNodeError:
             pass

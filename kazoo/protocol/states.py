@@ -1,4 +1,5 @@
 """Kazoo State and Event objects"""
+from collections import namedtuple
 
 
 class KazooState(object):
@@ -26,62 +27,6 @@ class KazooState(object):
     LOST = "LOST"
 
 
-class State(object):
-    def __init__(self, code, description):
-        self.code = code
-        self.description = description
-
-    def __eq__(self, other):
-        return self.code == other.code
-
-    def __hash__(self):
-        return hash(self.code)
-
-    def __str__(self):
-        return self.code
-
-    def __repr__(self):
-        return '%s()' % self.__class__.__name__
-
-
-class Connecting(State):
-    def __init__(self):
-        super(Connecting, self).__init__('CONNECTING', 'Connecting')
-
-
-class Connected(State):
-    def __init__(self):
-        super(Connected, self).__init__('CONNECTED', 'Connected')
-
-
-class ConnectedRO(State):
-    def __init__(self):
-        super(ConnectedRO, self).__init__('CONNECTED_RO', 'Connected Read-Only')
-
-
-class AuthFailed(State):
-    def __init__(self):
-        super(AuthFailed, self).__init__('AUTH_FAILED', 'Authorization Failed')
-
-
-class Closed(State):
-    def __init__(self):
-        super(Closed, self).__init__('CLOSED', 'Closed')
-
-
-class ExpiredSession(State):
-    def __init__(self):
-        super(ExpiredSession, self).__init__('EXPIRED_SESSION', 'Expired Session')
-
-
-CONNECTING = Connecting()
-CONNECTED = Connected()
-CONNECTED_RO = ConnectedRO()
-AUTH_FAILED = AuthFailed()
-CLOSED = Closed()
-EXPIRED_SESSION = ExpiredSession()
-
-
 class KeeperState(object):
     """Zookeeper State
 
@@ -100,6 +45,10 @@ class KeeperState(object):
 
         Zookeeper is connected.
 
+    .. attribute:: CONNECTED_RO
+
+        Zookeeper is connected in read-only state.
+
     .. attribute:: CONNECTING
 
         Zookeeper is currently attempting to establish a connection.
@@ -110,11 +59,12 @@ class KeeperState(object):
         gone.
 
     """
-    AUTH_FAILED = AUTH_FAILED
-    CONNECTED = CONNECTED
-    CONNECTING = CONNECTING
-    CLOSED = CLOSED
-    EXPIRED_SESSION = EXPIRED_SESSION
+    AUTH_FAILED = 'AUTH_FAILED'
+    CONNECTED = 'CONNECTED'
+    CONNECTED_RO = 'CONNECTED_RO'
+    CONNECTING = 'CONNECTING'
+    CLOSED = 'CLOSED'
+    EXPIRED_SESSION = 'EXPIRED_SESSION'
 
 
 class EventType(object):
@@ -123,21 +73,6 @@ class EventType(object):
     Represents a Zookeeper event. Events trigger watch functions which
     will receive a :class:`EventType` attribute as their event
     argument.
-
-    .. attribute:: NOTWATCHING
-
-        This event type was added to Zookeeper in the event that
-        watches get overloaded. It's never been used though and will
-        likely be removed in a future Zookeeper version. **This event
-        will never actually be set, don't bother testing for it.**
-
-    .. attribute:: SESSION
-
-        A Zookeeper session event. Watch functions do not receive
-        session events. A session event watch can be registered with
-        :class:`KazooClient` during creation that can receive these
-        events. It's recommended to add a listener for connection state
-        changes instead.
 
     .. attribute:: CREATED
 
@@ -158,9 +93,145 @@ class EventType(object):
         node has changed, which must have its own watch established.
 
     """
-    NOTWATCHING = zookeeper.NOTWATCHING_EVENT
-    SESSION = zookeeper.SESSION_EVENT
-    CREATED = zookeeper.CREATED_EVENT
-    DELETED = zookeeper.DELETED_EVENT
-    CHANGED = zookeeper.CHANGED_EVENT
-    CHILD = zookeeper.CHILD_EVENT
+    CREATED = 'CREATED'
+    DELETED = 'DELETED'
+    CHANGED = 'CHANGED'
+    CHILD = 'CHILD'
+
+EVENT_TYPE_MAP = {
+    1: EventType.CREATED,
+    2: EventType.DELETED,
+    3: EventType.CHANGED,
+    4: EventType.CHILD
+}
+
+
+class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
+    """A change on ZooKeeper that a Watcher is able to respond to.
+
+    The :class:`WatchedEvent` includes exactly what happened, the
+    current state of ZooKeeper, and the path of the znode that was
+    involved in the event. An instance of :class:`WatchedEvent` will be
+    passed to registered watch functions.
+
+    .. attribute:: type
+
+        A :class:`EventType` attribute indicating the event type.
+
+    .. attribute:: state
+
+        A :class:`KeeperState` attribute indicating the Zookeeper
+        state.
+
+    .. attribute:: path
+
+        The path of the node for the watch event.
+
+    """
+
+
+class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
+    """A callback that is handed to a handler for dispatch
+
+    :param type: Type of the callback, can be 'session' or 'watch'
+    :param func: Callback function
+    :param args: Argument list for the callback function
+
+    """
+
+
+class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
+                                         'czxid', 'dataLength',
+                                         'ephemeralOwner', 'mtime', 'mzxid',
+                                         'numChildren', 'pzxid', 'version'))):
+    """A ZnodeStat structure with convenience properties
+
+    When getting the value of a node from Zookeeper, the properties for
+    the node known as a "Stat structure" will be retrieved. The
+    :class:`ZnodeStat` object provides access to the standard Stat
+    properties and additional properties that are more readable and use
+    Python time semantics (seconds since epoch instead of ms).
+
+    .. note::
+
+        The original Zookeeper Stat name is in parens next to the name
+        when it differs from the convenience attribute. These are **not
+        functions**, just attributes.
+
+    .. attribute:: creation_transaction_id (czxid)
+
+        The transaction id of the change that caused this znode to be
+        created.
+
+    .. attribute:: last_modified_transaction_id (mzxid)
+
+        The transaction id of the change that last modified this znode.
+
+    .. attribute:: created (ctime)
+
+        The time in seconds from epoch when this node was created.
+        (ctime is in milliseconds)
+
+    .. attribute:: last_modified (mtime)
+
+        The time in seconds from epoch when this znode was last
+        modified. (mtime is in milliseconds)
+
+    .. attribute:: version
+
+        The number of changes to the data of this znode.
+
+    .. attribute:: acl_version (aversion)
+
+        The number of changes to the ACL of this znode.
+
+    .. attribute:: owner_session_id (ephemeralOwner)
+
+        The session id of the owner of this znode if the znode is an
+        ephemeral node. If it is not an ephemeral node, it will be
+        `None`. (ephemeralOwner will be 0 if it is not ephemeral)
+
+    .. attribute:: data_length (dataLength)
+
+        The length of the data field of this znode.
+
+    .. attribute:: children_count (numChildren)
+
+        The number of children of this znode.
+
+    """
+    @property
+    def acl_version(self):
+        return self.aversion
+
+    @property
+    def children_version(self):
+        return self.cversion
+
+    @property
+    def created(self):
+        return self.ctime / 1000.0
+
+    @property
+    def last_modified(self):
+        return self.mtime / 1000.0
+
+    @property
+    def owner_session_id(self):
+        return self.ephemeralOwner or None
+
+    @property
+    def creation_transaction_id(self):
+        return self.czxid
+
+    @property
+    def last_modified_transaction_id(self):
+        return self.mzxid
+
+    @property
+    def data_length(self):
+        return self.dataLength
+
+    @property
+    def children_count(self):
+        return self.numChildren

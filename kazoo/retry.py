@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 
@@ -8,6 +9,8 @@ from zookeeper import (
     OperationTimeoutException,
     SessionExpiredException
 )
+
+log = logging.getLogger(__name__)
 
 
 class ForceRetryError(Exception):
@@ -46,16 +49,16 @@ class RetySleeper(object):
         """Increment the failed count, and sleep appropriately before
         continuing"""
         if self._attempts == self.max_tries:
-            raise
+            raise Exception("Too many retry attempts")
         self._attempts += 1
         jitter = random.randint(0, self.max_jitter) / 100.0
-        self.sleep_func(self.delay + jitter)
+        self.sleep_func(self._cur_delay + jitter)
         self._cur_delay *= self.backoff
 
     def copy(self):
         """Return a clone of this retry sleeper"""
         return RetySleeper(self.max_tries, self.delay, self.backoff,
-                           self.max_jitter, self.sleep_func)
+                           self.max_jitter / 100.0, self.sleep_func)
 
 
 class KazooRetry(object):
@@ -90,8 +93,8 @@ class KazooRetry(object):
                               and treated as a retry-able command.
 
         """
-        self.retry = RetySleeper(max_tries, delay, backoff, max_jitter,
-                                 sleep_func)
+        self.retry_sleeper = RetySleeper(max_tries, delay, backoff, max_jitter,
+                                         sleep_func)
         self.sleep_func = sleep_func
         self.retry_exceptions = self.RETRY_EXCEPTIONS
         if ignore_expire:
@@ -101,11 +104,11 @@ class KazooRetry(object):
         self(func, *args, **kwargs)
 
     def __call__(self, func, *args, **kwargs):
-        self.retry.reset()
+        self.retry_sleeper.reset()
 
         while True:
             try:
                 return func(*args, **kwargs)
 
             except self.retry_exceptions:
-                self.retry.increment()
+                self.retry_sleeper.increment()

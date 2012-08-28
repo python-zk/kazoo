@@ -5,7 +5,7 @@ import time
 from functools import partial
 
 from kazoo.client import KazooState
-from kazoo.exceptions import NoNodeException
+from kazoo.exceptions import NoNodeError
 
 log = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class DataWatch(object):
             try:
                 data, stat = self._client.retry(self._client.get,
                                                 self._path, self._watcher)
-            except NoNodeException:
+            except NoNodeError:
                 self._stopped = True
                 self._func(None, None)
                 return

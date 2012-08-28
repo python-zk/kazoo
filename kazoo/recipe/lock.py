@@ -15,7 +15,7 @@ import uuid
 
 from kazoo.retry import ForceRetryError
 from kazoo.exceptions import CancelledError
-from kazoo.exceptions import NoNodeException
+from kazoo.exceptions import NoNodeError
 
 
 class Lock(object):
@@ -186,7 +186,7 @@ class Lock(object):
             try:
                 data, stat = self.client.get(self.path + "/" + child)
                 contenders.append(data)
-            except NoNodeException:
+            except NoNodeError:
                 pass
         return contenders
 

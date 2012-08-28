@@ -285,9 +285,9 @@ class SequentialThreadingHandler(object):
             self.callback_queue.put(lambda: callback.func(*callback.args))
 
 
-class _PeekableQueue(Queue):
+class _PeekableQueue(Queue.Queue):
     def __init__(self, maxsize=0):
-        Queue.__init__(self, maxsize=0)
+        Queue.Queue.__init__(self, maxsize=maxsize)
 
     def peek(self, block=True, timeout=None):
         """Return the first item in the queue but do not remove it from the queue.

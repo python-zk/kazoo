@@ -1,188 +1,26 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
-import random
-from collections import namedtuple
+from collections import defaultdict
 from functools import partial
 from os.path import split
 
-from kazoo.exceptions import BadArgumentsException
+from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import ConfigurationError
-from kazoo.exceptions import ZookeeperStoppedError
-from kazoo.exceptions import NoNodeException
-from kazoo.exceptions import err_to_exception
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.recipe.lock import Lock
 from kazoo.recipe.party import Party
 from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
+from kazoo.protocol.states import KazooState
+from kazoo.protocol.states import KeeperState
+from kazoo.protocol import proto_writer
 from kazoo.retry import KazooRetry
+from kazoo.hosts import collect_hosts
+from kazoo.protocol.serialization import Close
+from kazoo.protocol.paths import normpath
 
 log = logging.getLogger(__name__)
-
-
-class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
-    """A change on ZooKeeper that a Watcher is able to respond to.
-
-    The :class:`WatchedEvent` includes exactly what happened, the
-    current state of ZooKeeper, and the path of the znode that was
-    involved in the event. An instance of :class:`WatchedEvent` will be
-    passed to registered watch functions.
-
-    .. attribute:: type
-
-        A :class:`EventType` attribute indicating the event type.
-
-    .. attribute:: state
-
-        A :class:`KeeperState` attribute indicating the Zookeeper
-        state.
-
-    .. attribute:: path
-
-        The path of the node for the watch event.
-
-    """
-
-
-class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
-                                         'czxid', 'dataLength',
-                                         'ephemeralOwner', 'mtime', 'mzxid',
-                                         'numChildren', 'pzxid', 'version'))):
-    """A ZnodeStat structure with convenience properties
-
-    When getting the value of a node from Zookeeper, the properties for
-    the node known as a "Stat structure" will be retrieved. The
-    :class:`ZnodeStat` object provides access to the standard Stat
-    properties and additional properties that are more readable and use
-    Python time semantics (seconds since epoch instead of ms).
-
-    .. note::
-
-        The original Zookeeper Stat name is in parens next to the name
-        when it differs from the convenience attribute. These are **not
-        functions**, just attributes.
-
-    .. attribute:: creation_transaction_id (czxid)
-
-        The transaction id of the change that caused this znode to be
-        created.
-
-    .. attribute:: last_modified_transaction_id (mzxid)
-
-        The transaction id of the change that last modified this znode.
-
-    .. attribute:: created (ctime)
-
-        The time in seconds from epoch when this node was created.
-        (ctime is in milliseconds)
-
-    .. attribute:: last_modified (mtime)
-
-        The time in seconds from epoch when this znode was last
-        modified. (mtime is in milliseconds)
-
-    .. attribute:: version
-
-        The number of changes to the data of this znode.
-
-    .. attribute:: acl_version (aversion)
-
-        The number of changes to the ACL of this znode.
-
-    .. attribute:: owner_session_id (ephemeralOwner)
-
-        The session id of the owner of this znode if the znode is an
-        ephemeral node. If it is not an ephemeral node, it will be
-        `None`. (ephemeralOwner will be 0 if it is not ephemeral)
-
-    .. attribute:: data_length (dataLength)
-
-        The length of the data field of this znode.
-
-    .. attribute:: children_count (numChildren)
-
-        The number of children of this znode.
-
-    """
-    @property
-    def acl_version(self):
-        return self.aversion
-
-    @property
-    def children_version(self):
-        return self.cversion
-
-    @property
-    def created(self):
-        return self.ctime / 1000.0
-
-    @property
-    def last_modified(self):
-        return self.mtime / 1000.0
-
-    @property
-    def owner_session_id(self):
-        return self.ephemeralOwner or None
-
-    @property
-    def creation_transaction_id(self):
-        return self.czxid
-
-    @property
-    def last_modified_transaction_id(self):
-        return self.mzxid
-
-    @property
-    def data_length(self):
-        return self.dataLength
-
-    @property
-    def children_count(self):
-        return self.numChildren
-
-
-class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
-    """A callback that is handed to a handler for dispatch
-
-    :param type: Type of the callback, can be 'session' or 'watch'
-    :param func: Callback function
-    :param args: Argument list for the callback function
-
-    """
-
-
-## Client Callbacks
-
-def _generic_callback(async_result, handle, code, *args):
-    if code != zookeeper.OK:
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        if not args:
-            result = None
-        elif len(args) == 1:
-            if isinstance(args[0], dict):
-                # It's a node struct, put it in a ZnodeStat
-                result = ZnodeStat(**args[0])
-            else:
-                result = args[0]
-        else:
-            # if there's two, the second is a stat object
-            args = list(args)
-            if len(args) == 2 and isinstance(args[1], dict):
-                args[1] = ZnodeStat(**args[1])
-            result = tuple(args)
-
-        async_result.set(result)
-
-
-def _exists_callback(async_result, handle, code, stat):
-    if code not in (zookeeper.OK, zookeeper.NONODE):
-        exc = err_to_exception(code)
-        async_result.set_exception(exc)
-    else:
-        async_result.set(stat)
 
 
 class KazooClient(object):
@@ -197,7 +35,7 @@ class KazooClient(object):
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
                  timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
                  retry_backoff=2, retry_jitter=0.8, handler=None,
-                 default_acl=None):
+                 default_acl=None, read_only=None):
         """Create a KazooClient instance. All time arguments are in seconds.
 
         :param hosts: Comma-separated list of hosts to connect to
@@ -226,46 +64,47 @@ class KazooClient(object):
         and reconnects.
 
         """
-        from kazoo.recipe.barrier import Barrier
-        from kazoo.recipe.barrier import DoubleBarrier
-        from kazoo.recipe.partitioner import SetPartitioner
-        from kazoo.recipe.watchers import ChildrenWatch
-        from kazoo.recipe.watchers import DataWatch
-
         # Record the handler strategy used
-        self._handler = handler if handler else SequentialThreadingHandler()
-        self.handler = self._handler
-
-        # Check for chroot
-        chroot_check = hosts.split('/', 1)
-        if len(chroot_check) == 2:
-            self.chroot = '/' + chroot_check[1]
-        else:
-            self.chroot = None
-
-        # remove any trailing slashes
-        self.default_acl = default_acl
-
-        self._hosts = hosts
-        self._watcher = watcher
-        self._provided_client_id = client_id
-
-        # ZK uses milliseconds
-        self._timeout = int(timeout * 1000)
-
+        self.handler = handler if handler else SequentialThreadingHandler()
         if inspect.isclass(self.handler):
             raise ConfigurationError("Handler must be an instance of a class, "
                                      "not the class: %s" % self.handler)
 
-        self._handle = None
+        self.default_acl = default_acl
+        self.hosts, chroot = collect_hosts(hosts)
+        if chroot:
+            self.chroot = normpath(chroot)
+            if not self.chroot.startswith('/'):
+                raise ValueError('chroot not absolute')
+        else:
+            self.chroot = ''
+
+        self.last_zxid = 0
+        self.read_only = read_only
+        self._session_id = None
+
+        if client_id:
+            self._session_id = client_id[0]
+            self._session_passwd = client_id[1]
+        else:
+            self._session_id = None
+            self._session_passwd = str(bytearray([0] * 16))
+
+        # ZK uses milliseconds
+        self._session_timeout = int(timeout * 1000)
 
         # We use events like twitter's client to track current and desired
         # state (connected, and whether to shutdown)
         self._live = self.handler.event_object()
+        self._writer_stopped = self.handler.event_object()
         self._stopped = self.handler.event_object()
         self._stopped.set()
 
-        self._connection_timed_out = False
+        self._queue = self.handler.peekable_queue()
+        self._pending = self.handler.peekable_queue()
+
+        self._child_watchers = defaultdict(set)
+        self._data_watchers = defaultdict(set)
 
         self.retry = KazooRetry(
             max_tries=max_retries,
@@ -274,19 +113,22 @@ class KazooClient(object):
             max_jitter=retry_jitter,
             sleep_func=self.handler.sleep_func
         )
-
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
-        self.retry_backoff = retry_backoff
-        self.retry_jitter = int(retry_jitter * 100)
-        self._connection_attempts = None
+        self.retry_sleeper = self.retry.retry_sleeper.copy()
 
         # Curator like simplified state tracking, and listeners for state
         # transitions
+        self._state_lock = self.handler.rlock_object()
+        self._state = KeeperState.CLOSED
         self.state = KazooState.LOST
         self.state_listeners = set()
 
         # convenience API
+        from kazoo.recipe.barrier import Barrier
+        from kazoo.recipe.barrier import DoubleBarrier
+        from kazoo.recipe.partitioner import SetPartitioner
+        from kazoo.recipe.watchers import ChildrenWatch
+        from kazoo.recipe.watchers import DataWatch
+
         self.Barrier = partial(Barrier, self)
         self.DoubleBarrier = partial(DoubleBarrier, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
@@ -296,48 +138,6 @@ class KazooClient(object):
         self.Party = partial(Party, self)
         self.SetPartitioner = partial(SetPartitioner, self)
         self.ShallowParty = partial(ShallowParty, self)
-
-    def _safe_call(self, func, async_result, *args, **kwargs):
-        """Safely call a zookeeper function and handle errors related
-        to a bad zhandle and state bugs
-
-        In older zkpython bindings, a SystemError can arise if some
-        functions are called when the session handle is expired. This
-        client clears the old handle as soon as possible, but its
-        possible a command may run against the old handle that is
-        expired resulting in this error being thrown. See
-        https://issues.apache.org/jira/browse/ZOOKEEPER-1318
-
-        """
-        try:
-            return func(self._handle, *args)
-        except BadArgumentsException:
-            # Validate the path to throw a better except
-            if isinstance(args[0], basestring) and not args[0].startswith('/'):
-                raise ValueError("invalid path '%s'. must start with /" %
-                                 args[0])
-            else:
-                raise
-        except (TypeError, SystemError) as exc:
-            # Handle was cleared or isn't set. If it was cleared and we are
-            # supposed to be running, it means we had session expiration and
-            # are attempting to reconnect. We treat it as a session expiration
-            # in that case for appropriate behavior.
-            if self._stopped.is_set():
-                async_result.set_exception(
-                    ZookeeperStoppedError(
-                    "The Kazoo client is stopped, call connect before running "
-                    "commands that talk to Zookeeper"))
-            elif isinstance(exc, SystemError):
-                # Set this to the error it should be for appropriate handling
-                async_result.set_exception(
-                    self.zookeeper.InvalidStateException(
-                        "invalid handle state"))
-            elif self._handle is None or 'an integer is required' in exc:
-                async_result.set_exception(
-                    self.zookeeper.SessionExpiredException("session expired"))
-            else:
-                raise
 
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
@@ -362,30 +162,9 @@ class KazooClient(object):
     @property
     def client_id(self):
         """Returns the client id for this Zookeeper session if connected"""
-        if self._handle is not None:
-            return self.zookeeper.client_id(self._handle)
+        if self._live.is_set():
+            return (self._session_id, self._session_passwd)
         return None
-
-    def _wrap_session_callback(self, func):
-        def wrapper(handle, type, state, path):
-            callback = Callback('session', func, (handle, type, state, path))
-            self.handler.dispatch_callback(callback)
-        return wrapper
-
-    def _wrap_watch_callback(self, func):
-        def func_wrapper(*args):
-            try:
-                func(*args)
-            except Exception:
-                log.exception("Exception in kazoo callback <func: %s>" % func)
-
-        def wrapper(handle, type, state, path):
-            # don't send session events to all watchers
-            if type != self.zookeeper.SESSION_EVENT:
-                event = WatchedEvent(type, state, path)
-                callback = Callback('watch', func_wrapper, (event,))
-                self.handler.dispatch_callback(callback)
-        return wrapper
 
     def _make_state_change(self, state):
         # skip if state is current
@@ -403,68 +182,43 @@ class KazooClient(object):
             except Exception:
                 log.exception("Error in connection state listener")
 
-    def _session_callback(self, handle, type, state, path):
-        log.debug("Client Instance: %s, Handle: %s, Type: %s, State: %s"
-                  ", Path: %s", id(self), handle, ZK_TYPES.get(type, type),
-                  ZK_STATES.get(state, state),
-                  path)
-
-        if type != EventType.SESSION:
-            return
-
-        if self._handle != handle:
-            try:
-                # latent handle callback from previous connection
-                self.zookeeper.close(handle)
-            except Exception:
-                pass
-            return
-
+    def _session_callback(self, state):
         if self._stopped.is_set():
             # Any events at this point can be ignored
             return
 
+        if state == self._state:
+            return
+
+        with self._state_lock:
+            self._state = state
+
         if state == KeeperState.CONNECTED:
             log.info("Zookeeper connection established")
             self._live.set()
-            self._connection_attempts = None
-
-            # Clear the client id when we successfully connect
-            self._provided_client_id = None
-
             self._make_state_change(KazooState.CONNECTED)
         elif state in (KeeperState.EXPIRED_SESSION,
                        KeeperState.AUTH_FAILED):
             log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
-            self._handle = None
-
-            # This session callback already runs in the handler so
-            # its safe to spawn the start_async call so this function
-            # can return immediately
-            self.handler.spawn(self._reconnect)
         else:
             log.info("Zookeeper connection lost")
             # Connection lost
             self._live.clear()
             self._make_state_change(KazooState.SUSPENDED)
 
-        if self._watcher:
-            self._watcher(WatchedEvent(type, state, path))
-
     def _safe_close(self):
-        if self._handle is not None:
-            # Stop the handler
-            self.handler.stop()
-            zh, self._handle = self._handle, None
+        self.handler.stop()
+
+        if not self._writer_stopped.is_set():
             try:
-                self.zookeeper.close(zh)
-            except self.zookeeper.ZooKeeperException:
-                # Corrupt session or otherwise disconnected
-                pass
-            self._live.clear()
-            self._make_state_change(KazooState.LOST)
+                self._writer_stopped.wait(10)
+            except self.handler.timeout_exception:
+                raise Exception("Writer still open from prior connection"
+                                " and wouldn't close after 10 seconds")
+
+        self._make_state_change(KazooState.LOST)
 
     def start_async(self):
         """Asynchronously initiate connection to ZK
@@ -481,36 +235,17 @@ class KazooClient(object):
         # Make sure we're safely closed
         self._safe_close()
 
-        # We've been asked to connect, clear the stop
+        # We've been asked to connect, clear the stop and our writer
+        # thread indicator
         self._stopped.clear()
+        self._writer_stopped.clear()
 
         # Start the handler
         self.handler.start()
 
-        cb = self._wrap_session_callback(self._session_callback)
-        self._connection_attempts = 1
-        self._connection_delay = self.retry_delay
-        if self._provided_client_id:
-            self._handle = self.zookeeper.init(self._hosts, cb, self._timeout,
-                self._provided_client_id)
-        else:
-            self._handle = self.zookeeper.init(self._hosts, cb, self._timeout)
+        # Start the connection writer to establish the connection
+        self.handler.spawn(proto_writer, self)
         return self._live
-    connect_async = start_async
-
-    def _reconnect(self):
-        """Reconnect to Zookeeper, staggering connection attempts"""
-        if not self._connection_attempts:
-            self._connection_attempts = 1
-            self._connection_delay = self.retry_delay
-        else:
-            if self._connection_attempts == self.max_retries:
-                raise self.handler.timeout_exception("Time out reconnecting")
-            self._connection_attempts += 1
-            jitter = random.randint(0, self.retry_jitter) / 100.0
-            self.handler.sleep_func(self._connection_delay + jitter)
-            self._connection_delay *= self.retry_delay
-        self.start_async()
 
     def start(self, timeout=15):
         """Initiate connection to ZK
@@ -528,17 +263,19 @@ class KazooClient(object):
             # We time-out, ensure we are disconnected
             self.stop()
             raise self.handler.timeout_exception("Connection time-out")
-    connect = start
 
     def stop(self):
         """Gracefully stop this Zookeeper session"""
+        if self._stopped.is_set():
+            return
+
         self._stopped.set()
+        self._queue.put((Close(), None))
         self._safe_close()
 
     def restart(self):
         """Stop and restart the Zookeeper session."""
-        self._safe_close()
-        self._stopped.clear()
+        self.stop()
         self.start()
 
     def add_auth_async(self, scheme, credential):
@@ -590,7 +327,7 @@ class KazooClient(object):
             self._inner_ensure_path(parent, acl)
         try:
             self.create_async(path, "", acl=acl).get()
-        except self.zookeeper.NodeExistsException:
+        except self.zookeeper.NodeExistsError:
             # someone else created the node. how sweet!
             pass
 
@@ -657,7 +394,7 @@ class KazooClient(object):
             realpath = self.create_async(path, value, acl=acl,
                 ephemeral=ephemeral, sequence=sequence).get()
 
-        except NoNodeException:
+        except NoNodeError:
             # some or all of the parent path doesn't exist. if makepath is set
             # we will create it and retry. If it fails again, someone must be
             # actively deleting ZNodes and we'd best bail out.
@@ -833,7 +570,7 @@ class KazooClient(object):
     def _delete_recursive(self, path):
         try:
             children = self.get_children(path)
-        except self.zookeeper.NoNodeException:
+        except self.zookeeper.NoNodeError:
             return
 
         if children:
@@ -846,5 +583,5 @@ class KazooClient(object):
                 self._delete_recursive(child_path)
         try:
             self.delete(path)
-        except self.zookeeper.NoNodeException:
+        except self.zookeeper.NoNodeError:
             pass
