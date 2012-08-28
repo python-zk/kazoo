@@ -6,8 +6,6 @@ from collections import namedtuple
 from functools import partial
 from os.path import split
 
-import zookeeper
-
 from kazoo.exceptions import BadArgumentsException
 from kazoo.exceptions import ConfigurationError
 from kazoo.exceptions import ZookeeperStoppedError
@@ -21,127 +19,6 @@ from kazoo.recipe.election import Election
 from kazoo.retry import KazooRetry
 
 log = logging.getLogger(__name__)
-
-ZK_OPEN_ACL_UNSAFE = {"perms": zookeeper.PERM_ALL, "scheme": "world",
-                       "id": "anyone"}
-ZK_STATES = {}
-ZK_TYPES = {}
-for name, val in zookeeper.__dict__.items():
-    if name.endswith('_STATE'):
-        ZK_STATES[val] = name
-    if name.endswith('EVENT'):
-        ZK_TYPES[val] = name
-
-
-## Client State and Event objects
-
-class KazooState(object):
-    """High level connection state values
-
-    States inspired by Netflix Curator.
-
-    .. attribute:: SUSPENDED
-
-        The connection has been lost but may be recovered. We should
-        operate in a "safe mode" until then.
-
-    .. attribute:: CONNECTED
-
-        The connection is alive and well.
-
-    .. attribute:: LOST
-
-        The connection has been confirmed dead. Any ephemeral nodes
-        will need to be recreated upon re-establishing a connection.
-
-    """
-    SUSPENDED = "SUSPENDED"
-    CONNECTED = "CONNECTED"
-    LOST = "LOST"
-
-
-class KeeperState(object):
-    """Zookeeper State
-
-    Represents the Zookeeper state. Watch functions will receive a
-    :class:`KeeperState` attribute as their state argument.
-
-    .. attribute:: ASSOCIATING
-
-        The Zookeeper ASSOCIATING state
-
-    .. attribute:: AUTH_FAILED
-
-        Authentication has failed, this is an unrecoverable error.
-
-    .. attribute:: CONNECTED
-
-        Zookeeper is connected.
-
-    .. attribute:: CONNECTING
-
-        Zookeeper is currently attempting to establish a connection.
-
-    .. attribute:: EXPIRED_SESSION
-
-        The prior session was invalid, all prior ephemeral nodes are
-        gone.
-
-    """
-    ASSOCIATING = zookeeper.ASSOCIATING_STATE
-    AUTH_FAILED = zookeeper.AUTH_FAILED_STATE
-    CONNECTED = zookeeper.CONNECTED_STATE
-    CONNECTING = zookeeper.CONNECTING_STATE
-    EXPIRED_SESSION = zookeeper.EXPIRED_SESSION_STATE
-
-
-class EventType(object):
-    """Zookeeper Event
-
-    Represents a Zookeeper event. Events trigger watch functions which
-    will receive a :class:`EventType` attribute as their event
-    argument.
-
-    .. attribute:: NOTWATCHING
-
-        This event type was added to Zookeeper in the event that
-        watches get overloaded. It's never been used though and will
-        likely be removed in a future Zookeeper version. **This event
-        will never actually be set, don't bother testing for it.**
-
-    .. attribute:: SESSION
-
-        A Zookeeper session event. Watch functions do not receive
-        session events. A session event watch can be registered with
-        :class:`KazooClient` during creation that can receive these
-        events. It's recommended to add a listener for connection state
-        changes instead.
-
-    .. attribute:: CREATED
-
-        A node has been created.
-
-    .. attribute:: DELETED
-
-        A node has been deleted.
-
-    .. attribute:: CHANGED
-
-        The data for a node has changed.
-
-    .. attribute:: CHILD
-
-        The children under a node have changed (a child was added or
-        removed). This event does not indicate the data for a child
-        node has changed, which must have its own watch established.
-
-    """
-    NOTWATCHING = zookeeper.NOTWATCHING_EVENT
-    SESSION = zookeeper.SESSION_EVENT
-    CREATED = zookeeper.CREATED_EVENT
-    DELETED = zookeeper.DELETED_EVENT
-    CHANGED = zookeeper.CHANGED_EVENT
-    CHILD = zookeeper.CHILD_EVENT
 
 
 class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
@@ -317,9 +194,6 @@ class KazooClient(object):
     called with a single argument, a :class:`WatchedEvent` instance.
 
     """
-    # for testing purposes
-    zookeeper = zookeeper
-
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
                  timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
                  retry_backoff=2, retry_jitter=0.8, handler=None,
