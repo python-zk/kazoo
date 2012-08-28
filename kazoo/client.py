@@ -79,9 +79,15 @@ class KazooClient(object):
         else:
             self.chroot = ''
 
-        self.last_zxid = 0
+        # Curator like simplified state tracking, and listeners for state
+        # transitions
+        self._state_lock = self.handler.rlock_object()
+        self._state = KeeperState.CLOSED
+        self.state = KazooState.LOST
+        self.state_listeners = set()
+
+        self._reset()
         self.read_only = read_only
-        self._session_id = None
 
         if client_id:
             self._session_id = client_id[0]
@@ -100,12 +106,6 @@ class KazooClient(object):
         self._stopped = self.handler.event_object()
         self._stopped.set()
 
-        self._queue = self.handler.peekable_queue()
-        self._pending = self.handler.peekable_queue()
-
-        self._child_watchers = defaultdict(set)
-        self._data_watchers = defaultdict(set)
-
         self.retry = KazooRetry(
             max_tries=max_retries,
             delay=retry_delay,
@@ -114,13 +114,6 @@ class KazooClient(object):
             sleep_func=self.handler.sleep_func
         )
         self.retry_sleeper = self.retry.retry_sleeper.copy()
-
-        # Curator like simplified state tracking, and listeners for state
-        # transitions
-        self._state_lock = self.handler.rlock_object()
-        self._state = KeeperState.CLOSED
-        self.state = KazooState.LOST
-        self.state_listeners = set()
 
         # convenience API
         from kazoo.recipe.barrier import Barrier
@@ -138,6 +131,18 @@ class KazooClient(object):
         self.Party = partial(Party, self)
         self.SetPartitioner = partial(SetPartitioner, self)
         self.ShallowParty = partial(ShallowParty, self)
+
+    def _reset(self):
+        """Resets a variety of client states for a new connection"""
+        with self._state_lock:
+            self._queue = self.handler.peekable_queue()
+            self._pending = self.handler.peekable_queue()
+            self._child_watchers = defaultdict(set)
+            self._data_watchers = defaultdict(set)
+
+        self._session_id = None
+        self._session_passwd = str(bytearray([0] * 16))
+        self.last_zxid = 0
 
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
@@ -183,10 +188,6 @@ class KazooClient(object):
                 log.exception("Error in connection state listener")
 
     def _session_callback(self, state):
-        if self._stopped.is_set():
-            # Any events at this point can be ignored
-            return
-
         if state == self._state:
             return
 
@@ -218,6 +219,8 @@ class KazooClient(object):
                 raise Exception("Writer still open from prior connection"
                                 " and wouldn't close after 10 seconds")
 
+        self._reset()
+        self._live.clear()
         self._make_state_change(KazooState.LOST)
 
     def start_async(self):
