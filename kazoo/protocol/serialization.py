@@ -56,7 +56,7 @@ def read_buffer(bytes, offset):
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return None, offset
+        return "", offset
     else:
         index = offset
         offset += length
