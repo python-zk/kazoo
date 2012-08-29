@@ -55,7 +55,7 @@ class KazooClient(object):
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
                  timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
                  retry_backoff=2, retry_jitter=0.8, handler=None,
-                 default_acl=None, read_only=None):
+                 default_acl=None, auth_data=None, read_only=None):
         """Create a KazooClient instance. All time arguments are in seconds.
 
         :param hosts: Comma-separated list of hosts to connect to
@@ -78,7 +78,9 @@ class KazooClient(object):
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling.
         :param default_acl: A default ACL used on node creation.
-
+        :param auth_data: A list of authentication credentials to use for the
+                          connection. Should be a list of (scheme, credential)
+                          tuples as :meth:`add_auth_async` takes.
 
         Retry parameters will be used for connection establishment attempts
         and reconnects.
@@ -90,6 +92,7 @@ class KazooClient(object):
             raise ConfigurationError("Handler must be an instance of a class, "
                                      "not the class: %s" % self.handler)
 
+        self.auth_data = auth_data if auth_data else set([])
         self.default_acl = default_acl
         self.hosts, chroot = collect_hosts(hosts)
         if chroot:

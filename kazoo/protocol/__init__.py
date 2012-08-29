@@ -267,11 +267,11 @@ def _connect(client, s, host, port):
 
     client._session_callback(KeeperState.CONNECTED)
 
-    # for scheme, auth in client.auth_data:
-    #     ap = AuthPacket(0, scheme, auth)
-    #     zxid = _invoke(s, connect_timeout, ap, xid=-4)
-    #     if zxid:
-    #         client.last_zxid = zxid
+    for scheme, auth in client.auth_data:
+        ap = Auth(0, scheme, auth)
+        zxid = _invoke(s, connect_timeout, ap, xid=-4)
+        if zxid:
+            client.last_zxid = zxid
     return read_timeout, connect_timeout
 
 
