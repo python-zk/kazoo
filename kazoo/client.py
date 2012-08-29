@@ -308,7 +308,13 @@ class KazooClient(object):
             raise self.handler.timeout_exception("Connection time-out")
 
     def stop(self):
-        """Gracefully stop this Zookeeper session"""
+        """Gracefully stop this Zookeeper session.
+
+        Once the connection is closed, its session becomes invalid. All the
+        ephemeral nodes in the ZooKeeper server associated with the session
+        will be removed. The watches left on those nodes (and on their
+        parents) will be triggered.
+        """
         if self._stopped.is_set():
             return
 
@@ -416,7 +422,37 @@ class KazooClient(object):
 
     def create(self, path, value, acl=None, ephemeral=False, sequence=False,
                makepath=False):
-        """Create a ZNode
+        """Create a node with the given value as its data. Optionally set an
+        acl on the node.
+
+        The ephemeral and sequence arguments determine the type of the node.
+
+        An ephemeral node will be automatically removed by ZooKeeper when
+        the session associated with the creation of the node expires.
+
+        A sequential node will be given the specified path plus a suffix `i`
+        where i is the current sequential number of the node. The sequence
+        number is always fixed length of 10 digits, 0 padded. Once such a
+        node is created, the sequential number will be incremented by one.
+
+        If a node with the same actual path already exists in ZooKeeper, a
+        NodeExistsError will be raised. Note that since a different actual
+        path is used for each invocation of creating sequential nodes with the
+        same path argument, the call will never raise NodeExistsError.
+
+        If the parent node does not exist in ZooKeeper, a NoNodeError will be
+        raised. Setting the optional `makepath` argument to True will create
+        all missing parent nodes instead.
+
+        An ephemeral node cannot have children. If the parent node of the
+        given path is ephemeral, a NoChildrenForEphemeralsError will be raised.
+
+        This operation, if successful, will trigger all the watches left on
+        the node of the given path by `exists` and `get` API calls, and the
+        watches left on the parent node by `get_children` API calls.
+
+        The maximum allowable size of the data array is 1 MiB.
+        Values larger than this will cause a ZookeeperError to be raised.
 
         :param path: path of node
         :param value: initial value of node
@@ -468,7 +504,13 @@ class KazooClient(object):
         return async_result
 
     def exists(self, path, watch=None):
-        """Check if a node exists
+        """Check if a node exists.
+
+        Return False if no such node exists.
+
+        If a watch is provided, it will be left on the node with the given
+        path. The watch will be triggered by a successful operation that
+        creates/deletes the node or sets the data on the node.
 
         :param path: path of node
         :param watch: optional watch callback to set for future changes
@@ -496,7 +538,13 @@ class KazooClient(object):
         return async_result
 
     def get(self, path, watch=None):
-        """Get the value of a node
+        """Get the value of a node.
+
+        If a watch is provided, it will be left on the node with the given
+        path. The watch will be triggered by a successful operation that sets
+        data on the node, or deletes the node.
+
+        NoNodeError will be raised if no node with the given path exists.
 
         :param path: path of node
         :param watch: optional watch callback to set for future changes
@@ -523,7 +571,17 @@ class KazooClient(object):
         return async_result
 
     def get_children(self, path, watch=None):
-        """Get a list of child nodes of a path
+        """Get a list of child nodes of a path.
+
+        If a watch is provided it will be left on the node with the given
+        path. The watch will be triggered by a successful operation that
+        deletes the node of the given path or creates/deletes a child under
+        the node.
+
+        The list of children returned is not sorted and no guarantee is
+        provided as to its natural or lexical order.
+
+        NoNodeError will be raised if no node with the given path exists.
 
         :param path: path of node to list
         :param watch: optional watch callback to set for future changes
@@ -612,11 +670,19 @@ class KazooClient(object):
         return async_result
 
     def set(self, path, data, version=-1):
-        """Set the value of a node
+        """Set the value of a node.
 
         If the version of the node being updated is newer than the
         supplied version (and the supplied version is not -1), a
         BadVersionException will be raised.
+
+        This operation, if successful, will trigger all the watches on the
+        node of the given path left by `get` API calls.
+
+        NoNodeError will be raised if no node with the given path exists.
+
+        The maximum allowable size of the data array is 1 MiB.
+        Values larger than this will cause a ZookeeperError to be raised.
 
         :param path: path of node to set
         :param data: new data value
@@ -640,7 +706,22 @@ class KazooClient(object):
         return async_result
 
     def delete(self, path, version=-1, recursive=False):
-        """Delete a node
+        """Delete a node.
+
+        The call will succeed if such a node exists, and the given version
+        matches the node's version (if the given version is -1, the default,
+        it matches any node's versions).
+
+        A NoNodeError will be raised if the nodes does not exist.
+
+        A BadVersionError will be raised if the given version does not match
+        the node's version.
+
+        A NotEmptyError will be raised if the node has children.
+
+        This operation, if successful, will trigger all the watches on the
+        node of the given path left by `exists` API calls, and the watches on
+        the parent node left by `get_children` API calls.
 
         :param path: path of node to delete
         :param version: version of node to delete, or -1 for any
