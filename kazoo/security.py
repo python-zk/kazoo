@@ -77,7 +77,7 @@ def make_acl(scheme, credential, read=False, write=False,
             permissions |= Permissions.DELETE
         if admin:
             permissions |= Permissions.ADMIN
-    return dict(scheme=scheme, id=credential, perms=permissions)
+    return ACL(permissions, Id(scheme, credential))
 
 
 def make_digest_acl(username, password, read=False, write=False,
