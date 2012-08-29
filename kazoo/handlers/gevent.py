@@ -199,7 +199,7 @@ class SequentialGeventHandler(object):
         is created in (which should be the gevent/main thread).
 
         """
-        return AsyncResult(self)
+        return AsyncResult()
 
     def spawn(self, func, *args, **kwargs):
         """Spawn a function to run asynchronously"""
