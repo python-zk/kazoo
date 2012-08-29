@@ -495,7 +495,7 @@ class KazooClient(object):
         :param watch: optional watch callback to set for future changes
                       to this path
         :returns: stat of the node if it exists, else None
-        :rtype: `dict` or `None`
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
         async_result = self.handler.async_result()
@@ -594,7 +594,10 @@ class KazooClient(object):
     def get_acls_async(self, path):
         """Return the ACL and stat of the node of the given path
 
-        async version of :meth:`get_acls`
+        :path: the given path for the node
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        :raises: :exc:`ZookeeperError` if the server returns a
+                 non-zero error code
 
         """
         async_result = self.handler.async_result()
@@ -618,7 +621,10 @@ class KazooClient(object):
     def set_acls_async(self, path, acls, version=-1):
         """ Set the ACL for the node of the given path
 
-        async version of :meth:`set_acls`
+        :path: the given path for the node
+        :acl: the ACLs to set
+        :version: the expected matching version
+
         """
         async_result = self.handler.async_result()
         self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
