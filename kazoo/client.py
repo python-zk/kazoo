@@ -245,9 +245,11 @@ class KazooClient(object):
             exc = ConnectionLoss()
         while not self._pending.empty():
             request, async_object, xid = self._pending.get()
+            if async_object:
             async_object.set_exception(exc)
         while not self._queue.empty():
             request, async_object = self._queue.get()
+            if async_object:
             async_object.set_exception(exc)
 
     def _safe_close(self):
