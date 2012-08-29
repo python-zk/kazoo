@@ -213,6 +213,7 @@ class KazooClient(object):
             log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
+            self._reset()
         else:
             log.info("Zookeeper connection lost")
             # Connection lost
@@ -227,9 +228,6 @@ class KazooClient(object):
             if not self._writer_stopped.is_set():
                 raise Exception("Writer still open from prior connection"
                                 " and wouldn't close after 10 seconds")
-
-        self._reset()
-        self._live.clear()
 
     def _call(self, request, async_object):
         with self._state_lock:
