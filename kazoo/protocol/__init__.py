@@ -170,6 +170,13 @@ def connect_loop(client, retry):
                 try:
                     request, async_object = client._queue.peek(
                         True, read_timeout / 2000.0)
+
+                    # Special case for auth packets
+                    if request.type == Auth.type:
+                        _submit(client, s, request, connect_timeout, -4)
+                        client._queue.get()
+                        continue
+
                     xid += 1
                     log.debug('xid: %r', xid)
 

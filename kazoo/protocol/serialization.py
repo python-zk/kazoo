@@ -29,13 +29,7 @@ def read_string(buffer, offset):
         return str(buffer[index:index + length].decode('utf-8')), offset
 
 
-def write_acl(acl):
-    b = bytearray()
-    b.extend(int_struct.pack(acl.perms))
-
-
 def read_acl(bytes, offset):
-    b = bytearray()
     perms = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     scheme, offset = read_string(bytes, offset)
@@ -119,8 +113,8 @@ class Create(namedtuple('Create', 'path data acl flags')):
         b.extend(write_buffer(self.data))
         b.extend(int_struct.pack(len(self.acl)))
         for acl in self.acl:
-            b.extend(int_struct.pack(acl.perms) + write_string(acl.id.scheme)
-                     + write_string(acl.id.id))
+            b.extend(int_struct.pack(acl.perms) +
+                     write_string(acl.id.scheme) + write_string(acl.id.id))
         b.extend(int_struct.pack(self.flags))
         return b
 
@@ -218,8 +212,8 @@ class SetACL(namedtuple('SetACL', 'path acls version')):
         b.extend(write_string(self.path))
         b.extend(int_struct.pack(len(self.acl)))
         for acl in self.acl:
-            b.extend(int_struct.pack(acl.perms) + write_string(acl.id.scheme)
-                     + write_string(acl.id.id))
+            b.extend(int_struct.pack(acl.perms) +
+                     write_string(acl.id.scheme) + write_string(acl.id.id))
         b.extend(int_struct.pack(self.version))
         return b
 
@@ -249,6 +243,14 @@ class GetChildren(namedtuple('GetChildren', 'path children watcher')):
             child, offset = read_string(bytes, offset)
             children.append(child)
         return children
+
+
+class Auth(namedtuple('Auth', 'auth_type scheme auth')):
+    type = 100
+
+    def serialize(self):
+        return bytearray(int_struct.pack(self.auth_type) +
+                         write_string(self.scheme) + write_buffer(self.auth))
 
 
 class Watch(namedtuple('Watch', 'type state path')):

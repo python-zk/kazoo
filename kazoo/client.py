@@ -246,11 +246,11 @@ class KazooClient(object):
         while not self._pending.empty():
             request, async_object, xid = self._pending.get()
             if async_object:
-            async_object.set_exception(exc)
+                async_object.set_exception(exc)
         while not self._queue.empty():
             request, async_object = self._queue.get()
             if async_object:
-            async_object.set_exception(exc)
+                async_object.set_exception(exc)
 
     def _safe_close(self):
         self.handler.stop()
@@ -344,15 +344,8 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self.handler.async_result()
-
-        self._safe_call(self.zookeeper.add_auth, async_result, scheme,
-                        credential)
-
-        # Compensate for io polling bug on auth by running an exists call
-        # See https://issues.apache.org/jira/browse/ZOOKEEPER-770
-        self.exists_async("/")
-        return async_result
+        self._call(Auth(0, scheme, credential), None)
+        return True
 
     def add_auth(self, scheme, credential):
         """Send credentials to server
@@ -362,7 +355,7 @@ class KazooClient(object):
         :param credential: the credential -- value depends on scheme
 
         """
-        return self.add_auth_async(scheme, credential).get()
+        return self.add_auth_async(scheme, credential)
 
     def ensure_path(self, path, acl=None):
         """Recursively create a path if it doesn't exist
