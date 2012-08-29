@@ -45,6 +45,7 @@ def _zookeeper_exception(code):
             return klass(args, kwargs)
 
         EXCEPTIONS[code] = create
+        klass.code = code
         return klass
 
     return decorator
