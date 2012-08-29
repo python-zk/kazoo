@@ -11,7 +11,7 @@ import kazoo.client
 import kazoo.klog
 from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
-from kazoo.exceptions import NoNodeException
+from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthException
 from kazoo.tests.util import InstalledHandler
 from kazoo.tests.util import wait
@@ -185,8 +185,8 @@ class TestClient(KazooTestCase):
         self.assertTrue(client.exists("/1/2/3/4"))
 
     def test_create_no_makepath(self):
-        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1")
-        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1",
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
             makepath=False)
 
     def test_bad_create_args(self):

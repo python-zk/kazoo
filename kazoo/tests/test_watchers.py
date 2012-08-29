@@ -220,11 +220,11 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         eq_(asy.ready(), True)
 
     def test_exception(self):
-        from kazoo.exceptions import NoNodeException
+        from kazoo.exceptions import NoNodeError
         watcher = self._makeOne(self.client, self.path, 0.1)
         result = watcher.start()
 
-        @raises(NoNodeException)
+        @raises(NoNodeError)
         def testit():
             result.get()
         testit()

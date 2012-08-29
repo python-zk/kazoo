@@ -15,7 +15,7 @@ class TestExceptions(unittest.TestCase):
 
     def test_error_with_message(self):
         exc = self._makeOne(zookeeper.NONODE, msg="oops")
-        assert isinstance(exc, zookeeper.NoNodeException)
+        assert isinstance(exc, zookeeper.NoNodeError)
         eq_(str(exc), "no node: oops")
 
     def test_generic_error_code(self):
