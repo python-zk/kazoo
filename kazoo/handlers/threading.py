@@ -245,8 +245,10 @@ class SequentialThreadingHandler(object):
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)
 
-    def socket(self, *args, **kwargs):
-        return socket.socket(*args, **kwargs)
+    def socket(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return sock
 
     def peekable_queue(self, *args, **kwargs):
         return _PeekableQueue(*args, **kwargs)

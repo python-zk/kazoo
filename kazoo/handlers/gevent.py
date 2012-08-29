@@ -9,10 +9,10 @@ import gevent.coros
 import gevent.event
 import gevent.thread
 import gevent.select
-import gevent.socket
 
 from gevent.queue import Empty
 from gevent.queue import Queue
+from gevent import socket
 from zope.interface import implementer
 
 from kazoo.interfaces import IAsyncResult
@@ -150,6 +150,9 @@ class SequentialGeventHandler(object):
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
         with self._state_change:
+            if not self._running:
+                return
+
             self._running = False
 
             for queue in (self.completion_queue, self.callback_queue,
@@ -169,7 +172,9 @@ class SequentialGeventHandler(object):
         return gevent.select.select(*args, **kwargs)
 
     def socket(self, *args, **kwargs):
-        return gevent.socket.socket(*args, **kwargs)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return sock
 
     def peekable_queue(self, *args, **kwargs):
         return _PeekableQueue(*args, **kwargs)
