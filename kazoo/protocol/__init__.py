@@ -1,9 +1,12 @@
 """Zookeeper Protocol Implementation"""
+import errno
 import logging
+import socket
 
 from kazoo.exceptions import AuthFailedError
 from kazoo.exceptions import ConnectionDropped
 from kazoo.exceptions import EXCEPTIONS
+from kazoo.exceptions import SessionExpiredError
 from kazoo.protocol.serialization import int_struct
 from kazoo.protocol.serialization import ReplyHeader
 from kazoo.protocol.serialization import Close
@@ -114,8 +117,6 @@ def proto_writer(client):
     log.debug('Starting writer')
     retry = client.retry_sleeper.copy()
     while not client._stopped.is_set():
-        log.debug("Client stopped?: %s", client._stopped.is_set())
-
         # If the connect_loop returns False, stop retrying
         if connect_loop(client, retry) is False:
             break
@@ -123,7 +124,6 @@ def proto_writer(client):
         # Still going, increment our retry then go through the
         # list of hosts again
         if not client._stopped.is_set():
-            log.debug("Incrementing and waiting")
             retry.increment()
     log.debug('Writer stopped')
     client._writer_stopped.set()
@@ -190,6 +190,9 @@ def connect_loop(client, retry):
             log.warning('AUTH_FAILED closing')
             client._session_callback(KeeperState.AUTH_FAILED)
             return False
+        except SessionExpiredError:
+            log.warning('Session has expired')
+            client._session_callback(KeeperState.EXPIRED_SESSION)
         except Exception as e:
             log.exception(e)
             raise
@@ -209,8 +212,6 @@ def _connect(client, s, host, port):
     s.connect((host, port))
     s.setblocking(0)
 
-    log.debug('Connected')
-
     connect = Connect(
         0,
         client.last_zxid,
@@ -221,10 +222,8 @@ def _connect(client, s, host, port):
 
     connect_result, zxid = _invoke(client, s, client._session_timeout, connect)
 
-    if connect_result.time_out < 0:
-        log.error('Session expired')
-        client._session_callback(KeeperState.EXPIRED_SESSION)
-        raise RuntimeError('Session expired')
+    if connect_result.time_out <= 0:
+        raise SessionExpiredError("Session has expired")
 
     if zxid:
         client.last_zxid = zxid
@@ -260,9 +259,7 @@ def _invoke(client, socket, timeout, request, xid=None):
         b.extend(int_struct.pack(request.type))
     b.extend(request.serialize())
     buff = int_struct.pack(len(b)) + b
-
     _write(client, socket, buff, timeout)
-    log.debug("Wrote out initial request")
 
     zxid = None
     if xid:
@@ -280,8 +277,6 @@ def _invoke(client, socket, timeout, request, xid=None):
 
     msg = _read(client, socket, 4, timeout)
     length = int_struct.unpack(msg)[0]
-
-    log.debug("Reading full packet")
     msg = _read(client, socket, length, timeout)
 
     if hasattr(request, 'deserialize'):
@@ -292,46 +287,60 @@ def _invoke(client, socket, timeout, request, xid=None):
     return zxid
 
 
-def _submit(client, socket, request, timeout, xid=None):
+def _submit(client, s, request, timeout, xid=None):
     b = bytearray()
     b.extend(int_struct.pack(xid))
     if request.type:
         b.extend(int_struct.pack(request.type))
     b += request.serialize()
     b = int_struct.pack(len(b)) + b
-    _write(client, socket, b, timeout)
+    _write(client, s, b, timeout)
 
 
-def _write(client, socket, msg, timeout):
+def _write(client, s, msg, timeout):
     sent = 0
     msg_length = len(msg)
-    select = client.handler.select
-    while sent < msg_length:
-        _, ready_to_write, _ = select([], [socket], [], timeout)
-        msg_slice = buffer(msg, sent)
-        bytes_sent = ready_to_write[0].send(msg_slice)
-        if not bytes_sent:
-            raise ConnectionDropped('socket connection broken')
-        sent += bytes_sent
+    try:
+        while sent < msg_length:
+            _, sock, _ = client.handler.select([], [s], [], timeout)
+            msg_slice = buffer(msg, sent)
+            bytes_sent = sock[0].send(msg_slice)
+            if not bytes_sent:
+                raise ConnectionDropped('socket connection broken')
+            sent += bytes_sent
+    except socket.error, e:
+        if isinstance(e.args, tuple):
+            if e[0] == errno.EPIPE:
+                # remote peer disconnected
+                raise ConnectionDropped('socket connection dropped')
+            else:
+                raise
 
 
-def _read_header(client, socket, timeout):
-    b = _read(client, socket, 4, timeout)
+def _read_header(client, s, timeout):
+    b = _read(client, s, 4, timeout)
     length = int_struct.unpack(b)[0]
-    b = _read(client, socket, length, timeout)
+    b = _read(client, s, length, timeout)
     header, offset = ReplyHeader.deserialize(b, 0)
     return header, b, offset
 
 
-def _read(client, socket, length, timeout):
+def _read(client, s, length, timeout):
     msgparts = []
     remaining = length
-    select = client.handler.select
-    while remaining > 0:
-        ready_to_read, _, _ = select([socket], [], [], timeout)
-        chunk = ready_to_read[0].recv(remaining)
-        if chunk == '':
-            raise ConnectionDropped('socket connection broken')
-        msgparts.append(chunk)
-        remaining -= len(chunk)
-    return b"".join(msgparts)
+    try:
+        while remaining > 0:
+            sock, _, _ = client.handler.select([s], [], [], timeout)
+            chunk = sock[0].recv(remaining)
+            if chunk == '':
+                raise ConnectionDropped('socket connection broken')
+            msgparts.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(msgparts)
+    except socket.error, e:
+        if isinstance(e.args, tuple):
+            if e[0] == errno.EPIPE:
+                # remote peer disconnected
+                raise ConnectionDropped('socket connection dropped')
+            else:
+                raise
