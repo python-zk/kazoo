@@ -7,7 +7,30 @@ import hashlib
 
 # Represents a Zookeeper ID and ACL object
 Id = namedtuple('Id', 'scheme id')
-ACL = namedtuple('ACL', 'perms id')
+
+
+class ACL(namedtuple('ACL', 'perms id')):
+    @property
+    def acl_list(self):
+        perms = []
+        if self.perms & Permissions.ALL == Permissions.ALL:
+            perms.append('ALL')
+            return perms
+        if self.perms & Permissions.READ == Permissions.READ:
+            perms.append('READ')
+        if self.perms & Permissions.WRITE == Permissions.WRITE:
+            perms.append('WRITE')
+        if self.perms & Permissions.CREATE == Permissions.CREATE:
+            perms.append('CREATE')
+        if self.perms & Permissions.DELETE == Permissions.DELETE:
+            perms.append('DELETE')
+        if self.perms & Permissions.ADMIN == Permissions.ADMIN:
+            perms.append('ADMIN')
+        return perms
+
+    def __repr__(self):
+        return 'ACL(perms=%r, readable_perms=%s, id=%r)' % (
+            self.perms, self.acl_list, self.id)
 
 
 class Permissions(object):
