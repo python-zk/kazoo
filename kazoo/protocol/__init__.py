@@ -58,10 +58,8 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                                       client._state, path)
 
                 client.handler.dispatch_callback(
-                    Callback('watch',
-                             lambda: map(lambda w: w(ev), watchers),
-                             ()
-                    )
+                    Callback('watch', lambda: map(lambda w: w(ev), watchers),
+                             ())
                 )
             else:
                 log.debug('Reading for header %r', header)
@@ -81,6 +79,8 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                         async_object.set_exception(callback_exception)
                 elif request and async_object:
                     if exists_request and header.err == -101:
+                        # It's a NoNodeError, which is fine for an exists
+                        # request
                         async_object.set(False)
                     else:
                         response = request.deserialize(buffer, offset)
@@ -156,8 +156,6 @@ def connect_loop(client, retry):
                 try:
                     request, async_object = client._queue.peek(
                         True, read_timeout / 2000.0)
-                    log.debug('Sending %r', request)
-
                     xid += 1
                     log.debug('xid: %r', xid)
 
@@ -193,6 +191,8 @@ def connect_loop(client, retry):
         except SessionExpiredError:
             log.warning('Session has expired')
             client._session_callback(KeeperState.EXPIRED_SESSION)
+            if async_obj[0]:
+                async_obj[0].set_exception(AuthFailedError())
         except Exception as e:
             log.exception(e)
             raise
@@ -212,13 +212,9 @@ def _connect(client, s, host, port):
     s.connect((host, port))
     s.setblocking(0)
 
-    connect = Connect(
-        0,
-        client.last_zxid,
-        client._session_timeout,
-        client._session_id or 0,
-        client._session_passwd,
-        client.read_only)
+    connect = Connect(0, client.last_zxid, client._session_timeout,
+                      client._session_id or 0, client._session_passwd,
+                      client.read_only)
 
     connect_result, zxid = _invoke(client, s, client._session_timeout, connect)
 
@@ -310,7 +306,7 @@ def _write(client, s, msg, timeout):
             sent += bytes_sent
     except socket.error, e:
         if isinstance(e.args, tuple):
-            if e[0] == errno.EPIPE:
+            if e[0] in (errno.EPIPE, errno.ECONNRESET):
                 # remote peer disconnected
                 raise ConnectionDropped('socket connection dropped')
             else:
@@ -339,7 +335,7 @@ def _read(client, s, length, timeout):
         return b"".join(msgparts)
     except socket.error, e:
         if isinstance(e.args, tuple):
-            if e[0] == errno.EPIPE:
+            if e[0] in (errno.EPIPE, errno.ECONNRESET):
                 # remote peer disconnected
                 raise ConnectionDropped('socket connection dropped')
             else:
