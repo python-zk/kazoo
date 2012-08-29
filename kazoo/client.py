@@ -25,6 +25,7 @@ from kazoo.protocol.serialization import Close
 from kazoo.protocol.serialization import Exists
 from kazoo.protocol.serialization import GetChildren
 from kazoo.protocol.serialization import GetData
+from kazoo.protocol.serialization import SetData
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
 from kazoo.protocol import proto_writer
@@ -545,10 +546,8 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
-
-        self._safe_call(self.zookeeper.aset, async_result, path, data, version,
-                        callback)
+        self._call(SetData(_prefix_root(self.chroot, path), data, version),
+                   async_result)
         return async_result
 
     def set(self, path, data, version=-1):

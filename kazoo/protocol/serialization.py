@@ -155,6 +155,21 @@ class GetData(namedtuple('GetData', 'path watcher')):
         return data, stat
 
 
+class SetData(namedtuple('SetData', 'path data version')):
+    type = 5
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(self.version))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+
+
 class Close(object):
     __slots__ = ['type']
     type = -11
