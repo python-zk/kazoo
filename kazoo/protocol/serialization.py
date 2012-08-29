@@ -139,6 +139,22 @@ class Exists(namedtuple('Exists', 'path watcher')):
         return stat if stat.czxid != -1 else None
 
 
+class GetData(namedtuple('GetData', 'path watcher')):
+    type = 4
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend([1 if self.watcher else 0])
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        data, offset = read_buffer(bytes, offset)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return data, stat
+
+
 class Close(object):
     __slots__ = ['type']
     type = -11

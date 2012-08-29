@@ -24,6 +24,7 @@ from kazoo.protocol.serialization import Create
 from kazoo.protocol.serialization import Close
 from kazoo.protocol.serialization import Exists
 from kazoo.protocol.serialization import GetChildren
+from kazoo.protocol.serialization import GetData
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
 from kazoo.protocol import proto_writer
@@ -225,7 +226,8 @@ class KazooClient(object):
             self._make_state_change(KazooState.SUSPENDED)
 
     def _notify_pending(self, state):
-        """Used to clear a pending response queue during connection drops"""
+        """Used to clear a pending response queue and request queue
+        during connection drops"""
         if state == KeeperState.AUTH_FAILED:
             exc = AuthFailedError()
         elif state == KeeperState.EXPIRED_SESSION:
@@ -234,6 +236,9 @@ class KazooClient(object):
             exc = ConnectionLoss()
         while not self._pending.empty():
             request, async_object, xid = self._pending.get()
+            async_object.set_exception(exc)
+        while not self._queue.empty():
+            request, async_object = self._queue.get()
             async_object.set_exception(exc)
 
     def _safe_close(self):
@@ -482,7 +487,8 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        self._safe_call(self.zookeeper.aget, async_result, path)
+        self._call(GetData(_prefix_root(self.chroot, path), watch),
+                   async_result)
         return async_result
 
     def get(self, path, watch=None):
