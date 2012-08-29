@@ -168,7 +168,7 @@ Example:
 Some commands may have unique behavior that doesn't warrant automatic retries
 on a per command basis. For example, if one creates a node a connection might
 be lost before the command returns successfully but the node actually got
-created. This results in a :exc:`kazoo.exceptions.NodeExistsException` being
+created. This results in a :exc:`kazoo.exceptions.NodeExistsError` being
 raised when it runs again.
 
 A similar unique situation arises when a node is created with ephemeral and
