@@ -7,6 +7,7 @@ from kazoo.exceptions import AuthFailedError
 from kazoo.exceptions import ConnectionDropped
 from kazoo.exceptions import EXCEPTIONS
 from kazoo.exceptions import SessionExpiredError
+from kazoo.exceptions import NoNodeError
 from kazoo.protocol.serialization import int_struct
 from kazoo.protocol.serialization import ReplyHeader
 from kazoo.protocol.serialization import Close
@@ -78,7 +79,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     if async_object:
                         async_object.set_exception(callback_exception)
                 elif request and async_object:
-                    if exists_request and header.err == -101:
+                    if exists_request and header.err == NoNodeError.code:
                         # It's a NoNodeError, which is fine for an exists
                         # request
                         async_object.set(False)
@@ -191,8 +192,6 @@ def connect_loop(client, retry):
         except SessionExpiredError:
             log.warning('Session has expired')
             client._session_callback(KeeperState.EXPIRED_SESSION)
-            if async_obj[0]:
-                async_obj[0].set_exception(AuthFailedError())
         except Exception as e:
             log.exception(e)
             raise
