@@ -103,14 +103,14 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
 
                     # Determine if watchers should be registered
                     with client._state_lock:
-                        if (not client._stopped.is_set() and
-                            hasattr(request, 'watcher')):
+                        watcher = getattr(request, 'watcher', None)
+                        if not client._stopped.is_set() and watcher:
                             if isinstance(request, GetChildren):
                                 client._child_watchers[request.path].add(
-                                    request.watcher)
+                                    watcher)
                             else:
                                 client._data_watchers[request.path].add(
-                                    request.watcher)
+                                    watcher)
 
                 if isinstance(request, Close):
                     log.debug('Read close response')
