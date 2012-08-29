@@ -3,15 +3,16 @@ import atexit
 import logging
 import os
 import uuid
-import sys
 from collections import namedtuple
 import threading
 import unittest
 
 import zookeeper
-from kazoo.client import Callback
 from kazoo.client import KazooClient
-from kazoo.client import KazooState
+from kazoo.protocol.states import (
+    Callback,
+    KazooState
+)
 from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
