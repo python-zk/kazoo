@@ -140,10 +140,9 @@ class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """
 
 
-class ZnodeStat(namedtuple('ZnodeStat', ('aversion', 'ctime', 'cversion',
-                                         'czxid', 'dataLength',
-                                         'ephemeralOwner', 'mtime', 'mzxid',
-                                         'numChildren', 'pzxid', 'version'))):
+class ZnodeStat(namedtuple('ZnodeStat', 'czxid mzxid ctime mtime version'
+                           ' cversion aversion ephemeralOwner dataLength'
+                           ' numChildren pzxid')):
     """A ZnodeStat structure with convenience properties
 
     When getting the value of a node from Zookeeper, the properties for

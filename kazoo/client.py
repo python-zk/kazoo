@@ -5,20 +5,28 @@ from collections import defaultdict
 from functools import partial
 from os.path import split
 
+from kazoo.exceptions import AuthFailedError
+from kazoo.exceptions import ConnectionClosedError
 from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import ConfigurationError
 from kazoo.handlers.threading import SequentialThreadingHandler
+from kazoo.hosts import collect_hosts
 from kazoo.recipe.lock import Lock
 from kazoo.recipe.party import Party
 from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
+from kazoo.protocol.paths import normpath
+from kazoo.protocol.paths import _prefix_root
+from kazoo.protocol.serialization import Create
+from kazoo.protocol.serialization import Close
+from kazoo.protocol.serialization import Exists
+from kazoo.protocol.serialization import GetChildren
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
 from kazoo.protocol import proto_writer
 from kazoo.retry import KazooRetry
-from kazoo.hosts import collect_hosts
-from kazoo.protocol.serialization import Close
-from kazoo.protocol.paths import normpath
+from kazoo.security import OPEN_ACL_UNSAFE
 
 log = logging.getLogger(__name__)
 
@@ -199,7 +207,8 @@ class KazooClient(object):
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
         elif state in (KeeperState.EXPIRED_SESSION,
-                       KeeperState.AUTH_FAILED):
+                       KeeperState.AUTH_FAILED,
+                       KeeperState.CLOSED):
             log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
@@ -221,7 +230,15 @@ class KazooClient(object):
 
         self._reset()
         self._live.clear()
-        self._make_state_change(KazooState.LOST)
+
+    def _call(self, request, async_object):
+        with self._state_lock:
+            if self._state == KeeperState.AUTH_FAILED:
+                raise AuthFailedError()
+            if self._state == KeeperState.CLOSED:
+                raise ConnectionClosedError("Connection has been closed")
+
+            self._queue.put((request, async_object))
 
     def start_async(self):
         """Asynchronously initiate connection to ZK
@@ -292,10 +309,9 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
 
         self._safe_call(self.zookeeper.add_auth, async_result, scheme,
-                        credential, callback)
+                        credential)
 
         # Compensate for io polling bug on auth by running an exists call
         # See https://issues.apache.org/jira/browse/ZOOKEEPER-770
@@ -330,7 +346,7 @@ class KazooClient(object):
             self._inner_ensure_path(parent, acl)
         try:
             self.create_async(path, "", acl=acl).get()
-        except self.zookeeper.NodeExistsError:
+        except NodeExistsError:
             # someone else created the node. how sweet!
             pass
 
@@ -364,17 +380,15 @@ class KazooClient(object):
 
         flags = 0
         if ephemeral:
-            flags |= self.zookeeper.EPHEMERAL
+            flags |= 1
         if sequence:
-            flags |= self.zookeeper.SEQUENCE
+            flags |= 2
         if acl is None:
-            acl = (ZK_OPEN_ACL_UNSAFE,)
+            acl = OPEN_ACL_UNSAFE
 
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
-
-        self._safe_call(self.zookeeper.acreate, async_result, path, value,
-                        list(acl), flags, callback)
+        self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
+                   async_result)
         return async_result
 
     def create(self, path, value, acl=None, ephemeral=False, sequence=False,
@@ -426,11 +440,8 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        callback = partial(_exists_callback, async_result)
-        watch_callback = self._wrap_watch_callback(watch) if watch else None
-
-        self._safe_call(self.zookeeper.aexists, async_result, path,
-                        watch_callback, callback)
+        self._call(Exists(_prefix_root(self.chroot, path), watch),
+                   async_result)
         return async_result
 
     def exists(self, path, watch=None):
@@ -457,11 +468,7 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
-        watch_callback = self._wrap_watch_callback(watch) if watch else None
-
-        self._safe_call(self.zookeeper.aget, async_result, path,
-                        watch_callback, callback)
+        self._safe_call(self.zookeeper.aget, async_result, path)
         return async_result
 
     def get(self, path, watch=None):
@@ -487,11 +494,8 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
-        watch_callback = self._wrap_watch_callback(watch) if watch else None
-
-        self._safe_call(self.zookeeper.aget_children, async_result, path,
-                        watch_callback, callback)
+        self._call(GetChildren(_prefix_root(self.chroot, path),
+                               None, watch), async_result)
         return async_result
 
     def get_children(self, path, watch=None):

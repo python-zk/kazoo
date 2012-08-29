@@ -10,6 +10,8 @@ from kazoo.protocol.serialization import Close
 from kazoo.protocol.serialization import Connect
 from kazoo.protocol.serialization import Ping
 from kazoo.protocol.serialization import Watch
+from kazoo.protocol.serialization import GetChildren
+from kazoo.protocol.serialization import Exists
 from kazoo.protocol.states import KeeperState
 from kazoo.protocol.states import WatchedEvent
 from kazoo.protocol.states import Callback
@@ -26,7 +28,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
         try:
             header, buffer, offset = _read_header(client, s, read_timeout)
             if header.xid == -2:
-                log.debug('Received PING')
+                # log.debug('Received PING')
                 continue
             elif header.xid == -4:
                 log.debug('Received AUTH')
@@ -68,22 +70,30 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     raise RuntimeError('xids do not match, expected %r '
                                        'received %r', xid, header.xid)
 
-                if header.err:
+                exists_request = isinstance(request, Exists)
+                if header.err and not exists_request:
                     callback_exception = EXCEPTIONS[header.err]()
                     log.debug('Received error %r', callback_exception)
                     if async_object:
                         async_object.set_exception(callback_exception)
                 elif request and async_object:
-                    response = request.deserialize(buffer, offset)
-                    log.debug('Received response: %r', response)
-                    async_object.set(response)
+                    if exists_request and header.err == -101:
+                        async_object.set(False)
+                    else:
+                        response = request.deserialize(buffer, offset)
+                        log.debug('Received response: %r', response)
+                        async_object.set(response)
 
                     # Determine if watchers should be registered
                     with client._state_lock:
                         if (not client._stopped.is_set() and
                             hasattr(request, 'watcher')):
-                            path = _prefix_root(client.chroot, request.path)
-                            request.watch_dict[path].add(request.watcher)
+                            if isinstance(request, GetChildren):
+                                client._child_watchers[request.path].add(
+                                    request.watcher)
+                            else:
+                                client._data_watchers[request.path].add(
+                                    request.watcher)
 
                 if isinstance(request, Close):
                     log.debug('Read close response')
@@ -160,7 +170,7 @@ def connect_loop(client, retry):
                     client._queue.get()
                     client._pending.put((request, async_object, xid))
                 except client.handler.empty:
-                    log.debug('Queue timeout.  Sending PING')
+                    # log.debug('Queue timeout.  Sending PING')
                     _submit(client, s, Ping, connect_timeout, -2)
                 except Exception as e:
                     log.exception(e)
@@ -171,6 +181,7 @@ def connect_loop(client, retry):
             log.info('Closing connection to %s:%s', host, port)
 
             if writer_done:
+                client._session_callback(KeeperState.CLOSED)
                 return False
         except ConnectionDropped:
             log.warning('Connection dropped')
