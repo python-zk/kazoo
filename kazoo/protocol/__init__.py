@@ -25,6 +25,12 @@ from kazoo.protocol.paths import _prefix_root
 log = logging.getLogger(__name__)
 
 
+CREATED_EVENT = 1
+DELETED_EVENT = 2
+CHANGED_EVENT = 3
+CHILD_EVENT = 4
+
+
 def proto_reader(client, s, reader_started, reader_done, read_timeout):
     reader_started.set()
 
@@ -48,9 +54,10 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     if client._stopped.is_set():
                         continue
 
-                    if watch.type in (1, 2, 3):
+                    if watch.type in (CREATED_EVENT, DELETED_EVENT,
+                                      CHANGED_EVENT):
                         watchers |= client._data_watchers.pop(path, set())
-                    elif watch.type == 4:
+                    elif watch.type == CHILD_EVENT:
                         watchers |= client._child_watchers.pop(path, set())
                     else:
                         log.warn('Received unknown event %r', watch.type)
