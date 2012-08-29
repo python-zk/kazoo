@@ -1,7 +1,7 @@
 import random
 
 
-class RandomHostIterator:
+class RandomHostIterator(object):
     """ An iterator that returns a randomly selected host.  A host is
         guaranteed to not be selected twice unless there is only one
         host in the collection.
