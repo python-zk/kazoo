@@ -3,24 +3,30 @@ import errno
 import logging
 import socket
 
-from kazoo.exceptions import AuthFailedError
-from kazoo.exceptions import ConnectionDropped
-from kazoo.exceptions import EXCEPTIONS
-from kazoo.exceptions import SessionExpiredError
-from kazoo.exceptions import NoNodeError
-from kazoo.protocol.serialization import int_struct
-from kazoo.protocol.serialization import ReplyHeader
-from kazoo.protocol.serialization import Close
-from kazoo.protocol.serialization import Connect
-from kazoo.protocol.serialization import Ping
-from kazoo.protocol.serialization import Watch
-from kazoo.protocol.serialization import GetChildren
-from kazoo.protocol.serialization import Exists
-from kazoo.protocol.states import KeeperState
-from kazoo.protocol.states import WatchedEvent
-from kazoo.protocol.states import Callback
-from kazoo.protocol.states import EVENT_TYPE_MAP
-from kazoo.protocol.paths import _prefix_root
+from kazoo.exceptions import (
+    AuthFailedError,
+    ConnectionDropped,
+    EXCEPTIONS,
+    SessionExpiredError,
+    NoNodeError
+)
+from kazoo.protocol.serialization import (
+    Auth,
+    Close,
+    Connect,
+    Exists,
+    GetChildren,
+    Ping,
+    ReplyHeader,
+    Watch,
+    int_struct
+)
+from kazoo.protocol.states import (
+    Callback,
+    KeeperState,
+    WatchedEvent,
+    EVENT_TYPE_MAP,
+)
 
 log = logging.getLogger(__name__)
 

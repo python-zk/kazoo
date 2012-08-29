@@ -5,13 +5,15 @@ from collections import defaultdict
 from functools import partial
 from os.path import split
 
-from kazoo.exceptions import AuthFailedError
-from kazoo.exceptions import ConnectionClosedError
-from kazoo.exceptions import ConnectionLoss
-from kazoo.exceptions import NoNodeError
-from kazoo.exceptions import NodeExistsError
-from kazoo.exceptions import ConfigurationError
-from kazoo.exceptions import SessionExpiredError
+from kazoo.exceptions import (
+    AuthFailedError,
+    ConnectionClosedError,
+    ConnectionLoss,
+    NoNodeError,
+    NodeExistsError,
+    ConfigurationError,
+    SessionExpiredError
+)
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.hosts import collect_hosts
 from kazoo.recipe.lock import Lock
@@ -20,15 +22,18 @@ from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
 from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
-from kazoo.protocol.serialization import Create
-from kazoo.protocol.serialization import Close
-from kazoo.protocol.serialization import Delete
-from kazoo.protocol.serialization import Exists
-from kazoo.protocol.serialization import GetChildren
-from kazoo.protocol.serialization import GetACL
-from kazoo.protocol.serialization import SetACL
-from kazoo.protocol.serialization import GetData
-from kazoo.protocol.serialization import SetData
+from kazoo.protocol.serialization import (
+    Auth,
+    Close,
+    Create,
+    Delete,
+    Exists,
+    GetChildren,
+    GetACL,
+    SetACL,
+    GetData,
+    SetData
+)
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
 from kazoo.protocol import proto_writer
