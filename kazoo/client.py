@@ -7,9 +7,11 @@ from os.path import split
 
 from kazoo.exceptions import AuthFailedError
 from kazoo.exceptions import ConnectionClosedError
+from kazoo.exceptions import ConnectionLoss
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import ConfigurationError
+from kazoo.exceptions import SessionExpiredError
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.hosts import collect_hosts
 from kazoo.recipe.lock import Lock
@@ -213,12 +215,26 @@ class KazooClient(object):
             log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
+            self._notify_pending(state)
             self._reset()
         else:
             log.info("Zookeeper connection lost")
             # Connection lost
             self._live.clear()
+            self._notify_pending(state)
             self._make_state_change(KazooState.SUSPENDED)
+
+    def _notify_pending(self, state):
+        """Used to clear a pending response queue during connection drops"""
+        if state == KeeperState.AUTH_FAILED:
+            exc = AuthFailedError()
+        elif state == KeeperState.EXPIRED_SESSION:
+            exc = SessionExpiredError()
+        else:
+            exc = ConnectionLoss()
+        while not self._pending.empty():
+            request, async_object, xid = self._pending.get()
+            async_object.set_exception(exc)
 
     def _safe_close(self):
         self.handler.stop()
