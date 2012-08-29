@@ -22,6 +22,7 @@ from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.serialization import Create
 from kazoo.protocol.serialization import Close
+from kazoo.protocol.serialization import Delete
 from kazoo.protocol.serialization import Exists
 from kazoo.protocol.serialization import GetChildren
 from kazoo.protocol.serialization import GetData
@@ -574,10 +575,8 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
         async_result = self.handler.async_result()
-        callback = partial(_generic_callback, async_result)
-
-        self._safe_call(self.zookeeper.adelete, async_result, path, version,
-                        callback)
+        self._call(Delete(_prefix_root(self.chroot, path), version),
+                   async_result)
         return async_result
 
     def delete(self, path, version=-1, recursive=False):
@@ -596,7 +595,7 @@ class KazooClient(object):
     def _delete_recursive(self, path):
         try:
             children = self.get_children(path)
-        except self.zookeeper.NoNodeError:
+        except NoNodeError:
             return
 
         if children:
@@ -609,5 +608,5 @@ class KazooClient(object):
                 self._delete_recursive(child_path)
         try:
             self.delete(path)
-        except self.zookeeper.NoNodeError:
+        except NoNodeError:
             pass
