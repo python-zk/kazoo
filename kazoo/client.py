@@ -113,6 +113,7 @@ class KazooClient(object):
         self._writer_stopped = self.handler.event_object()
         self._stopped = self.handler.event_object()
         self._stopped.set()
+        self._writer_stopped.set()
 
         self.retry = KazooRetry(
             max_tries=max_retries,
@@ -222,9 +223,8 @@ class KazooClient(object):
         self.handler.stop()
 
         if not self._writer_stopped.is_set():
-            try:
-                self._writer_stopped.wait(10)
-            except self.handler.timeout_exception:
+            self._writer_stopped.wait(10)
+            if not self._writer_stopped.is_set():
                 raise Exception("Writer still open from prior connection"
                                 " and wouldn't close after 10 seconds")
 
