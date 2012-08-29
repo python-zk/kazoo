@@ -117,8 +117,8 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     s.close()
                     reader_done.set()
                     break
-        except ConnectionDropped:
-            log.debug('Connection dropped for reader')
+        except ConnectionDropped as e:
+            log.debug('Connection dropped for reader: %s', e)
             break
         except Exception as e:
             log.exception(e)
@@ -204,7 +204,8 @@ def connect_loop(client, retry):
                 return False
         except ConnectionDropped:
             log.warning('Connection dropped')
-            client._session_callback(KeeperState.CONNECTING)
+            if client._state != KeeperState.CONNECTING:
+                client._session_callback(KeeperState.CONNECTING)
         except AuthFailedError:
             log.warning('AUTH_FAILED closing')
             client._session_callback(KeeperState.AUTH_FAILED)
@@ -228,7 +229,15 @@ def _connect(client, s, host, port):
     log.debug('    Using session_id: %r session_passwd: 0x%s',
               client._session_id, client._session_passwd.encode('hex'))
 
-    s.connect((host, port))
+    try:
+        s.connect((host, port))
+    except socket.error, e:
+        if isinstance(e.args, tuple):
+            raise ConnectionDropped("socket connection error: %s",
+                                    errno.errorcode[e[0]])
+        else:
+            raise
+
     s.setblocking(0)
 
     connect = Connect(0, client.last_zxid, client._session_timeout,
@@ -325,11 +334,10 @@ def _write(client, s, msg, timeout):
             sent += bytes_sent
     except socket.error, e:
         if isinstance(e.args, tuple):
-            if e[0] in (errno.EPIPE, errno.ECONNRESET):
-                # remote peer disconnected
-                raise ConnectionDropped('socket connection dropped')
-            else:
-                raise
+            raise ConnectionDropped("socket connection error: %s",
+                                    errno.errorcode[e[0]])
+        else:
+            raise
 
 
 def _read_header(client, s, timeout):
@@ -354,8 +362,7 @@ def _read(client, s, length, timeout):
         return b"".join(msgparts)
     except socket.error, e:
         if isinstance(e.args, tuple):
-            if e[0] in (errno.EPIPE, errno.ECONNRESET):
-                # remote peer disconnected
-                raise ConnectionDropped('socket connection dropped')
-            else:
-                raise
+            raise ConnectionDropped("socket connection error: %s",
+                                    errno.errorcode[e[0]])
+        else:
+            raise
