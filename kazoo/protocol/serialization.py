@@ -3,7 +3,8 @@ from collections import namedtuple
 import struct
 
 from kazoo.protocol.states import ZnodeStat
-
+from kazoo.security import ACL
+from kazoo.security import Id
 
 # Struct objects with formats compiled
 int_struct = struct.Struct('!i')
@@ -33,6 +34,15 @@ def write_acl(acl):
     b.extend(int_struct.pack(acl.perms))
 
 
+def read_acl(bytes, offset):
+    b = bytearray()
+    perms = int_struct.unpack_from(bytes, offset)[0]
+    offset += int_struct.size
+    scheme, offset = read_string(bytes, offset)
+    id, offset = read_string(bytes, offset)
+    return ACL(perms, Id(scheme, id)), offset
+
+
 def write_string(bytes):
     if not bytes:
         return int_struct.pack(-1)
@@ -57,6 +67,24 @@ def read_buffer(bytes, offset):
         index = offset
         offset += length
         return bytes[index:index + length], offset
+
+
+class Close(object):
+    __slots__ = ['type']
+    type = -11
+
+    @classmethod
+    def serialize(cls):
+        return ''
+
+
+class Ping(object):
+    __slots__ = ['type']
+    type = 11
+
+    @classmethod
+    def serialize(cls):
+        return ''
 
 
 class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'
@@ -101,27 +129,18 @@ class Create(namedtuple('Create', 'path data acl flags')):
         return read_string(bytes, offset)[0]
 
 
-class GetChildren(namedtuple('GetChildren', 'path children watcher')):
-    type = 8
+class Delete(namedtuple('Delete', 'path version')):
+    type = 2
 
     def serialize(self):
         b = bytearray()
         b.extend(write_string(self.path))
-        b.extend([1 if self.watcher else 0])
+        b.extend(int_struct.pack(self.version))
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
-        count = int_struct.unpack_from(bytes, offset)[0]
-        offset += int_struct.size
-        if count == -1:
-            return []
-
-        children = []
-        for c in range(count):
-            child, offset = read_string(bytes, offset)
-            children.append(child)
-        return children
+    def deserialize(self, bytes, offset):
+        return True
 
 
 class Exists(namedtuple('Exists', 'path watcher')):
@@ -170,22 +189,66 @@ class SetData(namedtuple('SetData', 'path data version')):
         return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
 
 
-class Close(object):
-    __slots__ = ['type']
-    type = -11
+class GetACL(namedtuple('GetACL', 'path')):
+    type = 6
+
+    def serialize(self):
+        return bytearray(write_string(self.path))
 
     @classmethod
-    def serialize(cls):
-        return ''
+    def deserialize(cls, bytes, offset):
+        count = int_struct.unpack_from(bytes, offset)[0]
+        offset += int_struct.size
+        if count == -1:
+            return []
+
+        acls = []
+        for c in range(count):
+            acl, offset = read_acl(bytes, offset)
+            acls.append(acl)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return acls, stat
 
 
-class Ping(object):
-    __slots__ = ['type']
-    type = 11
+class SetACL(namedtuple('SetACL', 'path acls version')):
+    type = 7
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(int_struct.pack(acl.perms) + write_string(acl.id.scheme)
+                     + write_string(acl.id.id))
+        b.extend(int_struct.pack(self.version))
+        return b
 
     @classmethod
-    def serialize(cls):
-        return ''
+    def deserialize(cls, bytes, offset):
+        return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+
+
+class GetChildren(namedtuple('GetChildren', 'path children watcher')):
+    type = 8
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend([1 if self.watcher else 0])
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        count = int_struct.unpack_from(bytes, offset)[0]
+        offset += int_struct.size
+        if count == -1:
+            return []
+
+        children = []
+        for c in range(count):
+            child, offset = read_string(bytes, offset)
+            children.append(child)
+        return children
 
 
 class Watch(namedtuple('Watch', 'type state path')):

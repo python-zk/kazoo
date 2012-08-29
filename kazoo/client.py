@@ -25,6 +25,8 @@ from kazoo.protocol.serialization import Close
 from kazoo.protocol.serialization import Delete
 from kazoo.protocol.serialization import Exists
 from kazoo.protocol.serialization import GetChildren
+from kazoo.protocol.serialization import GetACL
+from kazoo.protocol.serialization import SetACL
 from kazoo.protocol.serialization import GetData
 from kazoo.protocol.serialization import SetData
 from kazoo.protocol.states import KazooState
@@ -530,6 +532,64 @@ class KazooClient(object):
 
         """
         return self.get_children_async(path, watch).get()
+
+    def get_acls_async(self, path):
+        """Return the ACL and stat of the node of the given path
+
+        async version of :meth:`get_acls`
+
+        """
+        async_result = self.handler.async_result()
+        self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
+        return async_result
+
+    def get_acls(self, path):
+        """Return the ACL and stat of the node of the given path
+
+        NoNodeError will be raised if no node with the given path
+        exists.
+
+        :path: the given path for the node
+        :returns: The ACL array of the given node
+        :raises: :exc:`ZookeeperError` if the server returns a
+                 non-zero error code
+
+        """
+        return self.get_acls_async(path).get()
+
+    def set_acls_async(self, path, acls, version=-1):
+        """ Set the ACL for the node of the given path
+
+        async version of :meth:`set_acls`
+        """
+        async_result = self.handler.async_result()
+        self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
+                   async_result)
+        return async_result
+
+    def set_acls(self, path, acls, version=-1):
+        """ Set the ACL for the node of the given path
+
+        Set the ACL for the node of the given path if such a node exists and the
+        given version matches the version of the node. Return the stat of the
+        node.
+
+        NoNodeError will be raised if no node with the given path exists.
+
+        BadVersionError will be raised if the given version does not match the node's version.
+
+        :path: the given path for the node
+        :acl: the ACLs to set
+        :version: the expected matching version
+
+        :returns: The stat of the node.
+
+        :raises:
+            :exc:`ZookeeperError` if the server returns a non-zero error code
+            :exc`InvalidACLError` if the acl is invalid
+
+        """
+        return self.set_acls_async(path, acls, version).get()
 
     def set_async(self, path, data, version=-1):
         """Set the value of a node
