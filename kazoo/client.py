@@ -656,8 +656,8 @@ class KazooClient(object):
 
         :path: the given path for the node
         :returns: The ACL array of the given node
-        :raises: :exc:`ZookeeperError` if the server returns a
-                 non-zero error code
+        :raises: :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
+            a non-zero error code
 
         """
         return self.get_acls_async(path).get()
