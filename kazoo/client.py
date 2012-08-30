@@ -680,10 +680,6 @@ class KazooClient(object):
         same arguments as :meth:`get_acls`.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
-        :raises:
-            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
-            a non-zero error code
-
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
