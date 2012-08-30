@@ -49,14 +49,16 @@ class KazooClient(object):
 
     Watch functions registered with this class will not get session
     events, unlike the default Zookeeper watch's. They will also be
-    called with a single argument, a :class:`WatchedEvent` instance.
+    called with a single argument, a
+    :class:`~kazoo.protocol.states.WatchedEvent` instance.
 
     """
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
                  timeout=10.0, client_id=None, max_retries=None, retry_delay=0.1,
                  retry_backoff=2, retry_jitter=0.8, handler=None,
                  default_acl=None, auth_data=None, read_only=None):
-        """Create a KazooClient instance. All time arguments are in seconds.
+        """Create a :class:`KazooClient` instance. All time arguments are in
+        seconds.
 
         :param hosts: Comma-separated list of hosts to connect to
                       (e.g. 127.0.0.1:2181,127.0.0.1:2182).
@@ -171,8 +173,9 @@ class KazooClient(object):
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
 
-        This function will be called with a :class:`KazooState`
-        instance indicating the new connection state.
+        This function will be called with a
+        :class:`~kazoo.protocol.states.KazooState` instance indicating the new
+        connection state.
 
         """
         if not (listener and callable(listener)):
