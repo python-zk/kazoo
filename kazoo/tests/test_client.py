@@ -99,9 +99,9 @@ class TestConnection(KazooTestCase):
         eq_(states[0], KazooState.CONNECTED)
 
     def test_no_connection(self):
-        from kazoo.exceptions import ConnectionClosedError
+        from kazoo.exceptions import SessionExpiredError
         self.client.stop()
-        self.assertRaises(ConnectionClosedError, self.client.exists, '/')
+        self.assertRaises(SessionExpiredError, self.client.exists, '/')
 
 
 class TestClient(KazooTestCase):
