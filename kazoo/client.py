@@ -537,7 +537,7 @@ class KazooClient(object):
     def exists(self, path, watch=None):
         """Check if a node exists.
 
-        Return False if no such node exists.
+        Return None if no such node exists.
 
         If a watch is provided, it will be left on the node with the given
         path. The watch will be triggered by a successful operation that
