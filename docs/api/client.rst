@@ -12,19 +12,3 @@ Public API
         :members:
 
         .. automethod:: __init__
-
-    .. autoclass:: EventType
-
-    .. autoclass:: KazooState
-
-    .. autoclass:: KeeperState
-
-    .. autoclass:: WatchedEvent
-
-    .. autoclass:: ZnodeStat
-
-
-Private API
-+++++++++++
-
-    .. autoclass:: Callback
