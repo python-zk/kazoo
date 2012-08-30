@@ -313,7 +313,7 @@ class KazooClient(object):
 
         :param timeout: Time in seconds to wait for connection to
                         succeed.
-        :throws: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
+        :raises: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
                  if the connection wasn't established within `timeout`
                  seconds.
 
@@ -490,6 +490,22 @@ class KazooClient(object):
         :param makepath: Whether the path should be created if it
                          doesn't exist
         :returns: real path of the new node
+        :rtype: str
+
+        :raises:
+            :exc:`~kazoo.exceptions.NodeExistsError` if the node already
+            exists
+
+            :exc:`~kazoo.exceptions.NoNodeError` if parent nodes are missing
+
+            :exc:`~kazoo.exceptions.NoChildrenForEphemeralsError` if the
+            parent node is an ephemeral node
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the provided value is
+            too large
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
 
         """
         try:
@@ -549,6 +565,10 @@ class KazooClient(object):
         :returns: stat of the node if it exists, else None
         :rtype: `dict` or `None`
 
+        :raises:
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
+
         """
         return self.exists_async(path, watch).get()
 
@@ -586,6 +606,13 @@ class KazooClient(object):
         :param watch: optional watch callback to set for future changes
                       to this path
         :returns: tuple (value, :class:`ZnodeStat`) of node
+        :rtype: tuple
+
+        :raises:
+            :exc:`~kazoo.exceptions.NoNodeError` if the node doesn't exist
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
 
         """
         return self.get_async(path, watch).get()
@@ -628,6 +655,13 @@ class KazooClient(object):
         :param watch: optional watch callback to set for future changes
                       to this path
         :returns: list of child node names
+        :rtype: list
+
+        :raises:
+            :exc:`~kazoo.exceptions.NoNodeError` if the node doesn't exist
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
 
         """
         return self.get_children_async(path, watch).get()
@@ -637,8 +671,9 @@ class KazooClient(object):
 
         :path: the given path for the node
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
-        :raises: :exc:`ZookeeperError` if the server returns a
-                 non-zero error code
+        :raises:
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
+            a non-zero error code
 
         """
         if not isinstance(path, basestring):
@@ -656,7 +691,8 @@ class KazooClient(object):
 
         :path: the given path for the node
         :returns: The ACL array of the given node
-        :raises: :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
+        :raises:
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
             a non-zero error code
 
         """
@@ -697,12 +733,14 @@ class KazooClient(object):
         :path: the given path for the node
         :acl: the ACLs to set
         :version: the expected matching version
-
         :returns: The stat of the node.
-
         :raises:
-            :exc:`ZookeeperError` if the server returns a non-zero error code
-            :exc:`InvalidACLError` if the acl is invalid
+            :exc:`~kazoo.exceptions.InvalidACLError` if the acl is invalid
+
+            :exc:`~kazoo.exceptions.BadVersionError` if version doesn't match
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
 
         """
         return self.set_acls_async(path, acls, version).get()
@@ -712,7 +750,7 @@ class KazooClient(object):
 
         If the version of the node being updated is newer than the
         supplied version (and the supplied version is not -1), a
-        BadVersionException will be raised.
+        BadVersionError will be raised.
 
         :param path: path of node to set
         :type path: str
@@ -742,7 +780,7 @@ class KazooClient(object):
 
         If the version of the node being updated is newer than the
         supplied version (and the supplied version is not -1), a
-        BadVersionException will be raised.
+        BadVersionError will be raised.
 
         This operation, if successful, will trigger all the watches on the
         node of the given path left by `get` API calls.
@@ -759,6 +797,17 @@ class KazooClient(object):
         :param version: version of node being updated, or -1
         :type version: int
         :returns: updated :class:`ZnodeStat` of the node
+
+        :raises:
+            :exc:`~kazoo.exceptions.NoNodeError` if the node doesn't exist
+
+            :exc:`~kazoo.exceptions.BadVersionError` if version doesn't match
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the provided value is
+            too large
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
 
         """
         return self.set_async(path, data, version).get()
@@ -802,6 +851,17 @@ class KazooClient(object):
         :param version: version of node to delete, or -1 for any
         :param recursive: Recursively delete node and all its children,
             defaults to False.
+
+        :raises:
+            :exc:`~kazoo.exceptions.NoNodeError` if node does not exist
+
+            :exc:`~kazoo.exceptions.BadVersionError` if version doesn't match
+
+            :exc:`~kazoo.exceptions.NotEmptyError` if the node has children
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
+
         """
         if not isinstance(recursive, bool):
             raise TypeError("recursive must be a bool")
