@@ -347,6 +347,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if not isinstance(scheme, basestring):
+            raise TypeError("Invalid type for scheme")
+        if not isinstance(credential, basestring):
+            raise TypeError("Invalid type for credential")
         self._call(Auth(0, scheme, credential), None)
         return True
 
@@ -409,6 +413,17 @@ class KazooClient(object):
         """
         if acl is None and self.default_acl:
             acl = self.default_acl
+
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if acl and not isinstance(acl, (tuple, list)):
+            raise TypeError("acl must be a tuple/list of ACL's")
+        if not isinstance(value, basestring):
+            raise TypeError("value must be a string")
+        if not isinstance(ephemeral, bool):
+            raise TypeError("ephemeral must be a bool")
+        if not isinstance(sequence, bool):
+            raise TypeError("sequence must be a bool")
 
         flags = 0
         if ephemeral:
@@ -501,6 +516,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if watch and not callable(watch):
+            raise TypeError("watch must be a callable")
+
         async_result = self.handler.async_result()
         self._call(Exists(_prefix_root(self.chroot, path), watch),
                    async_result)
@@ -535,6 +555,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if watch and not callable(watch):
+            raise TypeError("watch must be a callable")
+
         async_result = self.handler.async_result()
         self._call(GetData(_prefix_root(self.chroot, path), watch),
                    async_result)
@@ -568,6 +593,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if watch and not callable(watch):
+            raise TypeError("watch must be a callable")
+
         async_result = self.handler.async_result()
         self._call(GetChildren(_prefix_root(self.chroot, path),
                                None, watch), async_result)
@@ -603,6 +633,9 @@ class KazooClient(object):
                  non-zero error code
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+
         async_result = self.handler.async_result()
         self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
         return async_result
@@ -629,6 +662,13 @@ class KazooClient(object):
         :version: the expected matching version
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(acls, (tuple, list)):
+            raise TypeError("acl must be a tuple/list of ACL's")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+
         async_result = self.handler.async_result()
         self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
                    async_result)
@@ -666,13 +706,23 @@ class KazooClient(object):
         BadVersionException will be raised.
 
         :param path: path of node to set
+        :type path: str
         :param data: new data value
+        :type data: str
         :param version: version of node being updated, or -1
+        :type version: int
         :returns: AsyncResult set with new node :class:`ZnodeStat` on
                   success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(data, basestring):
+            raise TypeError("data must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+
         async_result = self.handler.async_result()
         self._call(SetData(_prefix_root(self.chroot, path), data, version),
                    async_result)
@@ -694,8 +744,11 @@ class KazooClient(object):
         Values larger than this will cause a ZookeeperError to be raised.
 
         :param path: path of node to set
+        :type path: str
         :param data: new data value
+        :type data: str
         :param version: version of node being updated, or -1
+        :type version: int
         :returns: updated :class:`ZnodeStat` of the node
 
         """
@@ -709,6 +762,10 @@ class KazooClient(object):
         :returns: AyncResult set upon completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
         async_result = self.handler.async_result()
         self._call(Delete(_prefix_root(self.chroot, path), version),
                    async_result)
@@ -737,6 +794,9 @@ class KazooClient(object):
         :param recursive: Recursively delete node and all its children,
             defaults to False.
         """
+        if not isinstance(recursive, bool):
+            raise TypeError("recursive must be a bool")
+
         if recursive:
             self._delete_recursive(path)
         else:
