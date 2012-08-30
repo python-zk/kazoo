@@ -19,7 +19,13 @@ Public API
         The :class:`~kazoo.interfaces.IHandler` strategy used by this client.
         Gives access to appropriate synchronization objects.
 
-        .. attribute:: retry
+        .. method:: retry(func, *args, **kwargs)
 
-        An instance of :class:`~kazoo.retry.KazooRetry` acting as a wrapper
-        to retry other methods, See :ref:`retrying_commands`.
+        Runs the given function with the provided arguments, retrying if it
+        fails because the ZooKeeper connection is lost,
+        see :ref:`retrying_commands`.
+
+        .. attribute:: state
+
+        A :class:`~kazoo.protocol.states.KazooState` attribute indicating the
+        current higher-level connection state.
