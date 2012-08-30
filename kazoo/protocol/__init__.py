@@ -48,6 +48,15 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                 continue
             elif header.xid == -4:
                 log.debug('Received AUTH')
+                if header.err:
+                    # We go ahead and fail out the connection, mainly because
+                    # thats what Zookeeper client docs think is appropriate
+
+                    # XXX TODO: Should we fail out? Or handle auth failure
+                    # differently here since the session id is actually valid!
+                    client._session_callback(KeeperState.AUTH_FAILED)
+                    reader_done.set()
+                    break
                 continue
             elif header.xid == -1:
                 watch, offset = Watch.deserialize(buffer, offset)
