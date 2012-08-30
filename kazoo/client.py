@@ -187,16 +187,16 @@ class KazooClient(object):
         self.state_listeners.discard(listener)
 
     @property
-    def connected(self):
-        """Returns whether the Zookeeper connection has been established"""
-        return self._live.is_set()
-
-    @property
     def client_id(self):
         """Returns the client id for this Zookeeper session if connected"""
         if self._live.is_set():
             return (self._session_id, self._session_passwd)
         return None
+
+    @property
+    def connected(self):
+        """Returns whether the Zookeeper connection has been established"""
+        return self._live.is_set()
 
     def _make_state_change(self, state):
         # skip if state is current
@@ -286,6 +286,23 @@ class KazooClient(object):
                 raise SessionExpiredError()
             self._queue.put((request, async_object))
 
+    def start(self, timeout=15):
+        """Initiate connection to ZK
+
+        :param timeout: Time in seconds to wait for connection to
+                        succeed.
+        :raises: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
+                 if the connection wasn't established within `timeout`
+                 seconds.
+
+        """
+        event = self.start_async()
+        event.wait(timeout=timeout)
+        if not self.connected:
+            # We time-out, ensure we are disconnected
+            self.stop()
+            raise self.handler.timeout_exception("Connection time-out")
+
     def start_async(self):
         """Asynchronously initiate connection to ZK
 
@@ -313,23 +330,6 @@ class KazooClient(object):
         self.handler.spawn(proto_writer, self)
         return self._live
 
-    def start(self, timeout=15):
-        """Initiate connection to ZK
-
-        :param timeout: Time in seconds to wait for connection to
-                        succeed.
-        :raises: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
-                 if the connection wasn't established within `timeout`
-                 seconds.
-
-        """
-        event = self.start_async()
-        event.wait(timeout=timeout)
-        if not self.connected:
-            # We time-out, ensure we are disconnected
-            self.stop()
-            raise self.handler.timeout_exception("Connection time-out")
-
     def stop(self):
         """Gracefully stop this Zookeeper session.
 
@@ -350,6 +350,15 @@ class KazooClient(object):
         self.stop()
         self.start()
 
+    def add_auth(self, scheme, credential):
+        """Send credentials to server
+
+        :param scheme: authentication scheme (default supported:
+                       "digest")
+        :param credential: the credential -- value depends on scheme
+        """
+        return self.add_auth_async(scheme, credential)
+
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server. Takes the same
         arguments as :meth:`add_auth`.
@@ -364,16 +373,6 @@ class KazooClient(object):
             raise TypeError("Invalid type for credential")
         self._call(Auth(0, scheme, credential), None)
         return True
-
-    def add_auth(self, scheme, credential):
-        """Send credentials to server
-
-        :param scheme: authentication scheme (default supported:
-                       "digest")
-        :param credential: the credential -- value depends on scheme
-
-        """
-        return self.add_auth_async(scheme, credential)
 
     def ensure_path(self, path, acl=None):
         """Recursively create a path if it doesn't exist
@@ -405,43 +404,6 @@ class KazooClient(object):
             return path[len(self.chroot):]
         else:
             return path
-
-    def create_async(self, path, value, acl=None, ephemeral=False,
-                     sequence=False):
-        """Asynchronously create a ZNode. Takes the same
-        arguments as :meth:`create`, with the exception of `makepath`.
-
-        :returns: AsyncResult object set on completion with the real
-                  path of the new node
-        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
-
-        """
-        if acl is None and self.default_acl:
-            acl = self.default_acl
-
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
-        if acl and not isinstance(acl, (tuple, list)):
-            raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(value, basestring):
-            raise TypeError("value must be a string")
-        if not isinstance(ephemeral, bool):
-            raise TypeError("ephemeral must be a bool")
-        if not isinstance(sequence, bool):
-            raise TypeError("sequence must be a bool")
-
-        flags = 0
-        if ephemeral:
-            flags |= 1
-        if sequence:
-            flags |= 2
-        if acl is None:
-            acl = OPEN_ACL_UNSAFE
-
-        async_result = self.handler.async_result()
-        self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
-                   async_result)
-        return async_result
 
     def create(self, path, value, acl=None, ephemeral=False, sequence=False,
                makepath=False):
@@ -527,21 +489,40 @@ class KazooClient(object):
 
         return self.unchroot(realpath)
 
-    def exists_async(self, path, watch=None):
-        """Asynchronously check if a node exists. Takes the same
-        arguments as :meth:`exists`.
+    def create_async(self, path, value, acl=None, ephemeral=False,
+                     sequence=False):
+        """Asynchronously create a ZNode. Takes the same
+        arguments as :meth:`create`, with the exception of `makepath`.
 
-        :returns: stat of the node if it exists, else None
+        :returns: AsyncResult object set on completion with the real
+                  path of the new node
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        if acl is None and self.default_acl:
+            acl = self.default_acl
+
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if watch and not callable(watch):
-            raise TypeError("watch must be a callable")
+        if acl and not isinstance(acl, (tuple, list)):
+            raise TypeError("acl must be a tuple/list of ACL's")
+        if not isinstance(value, basestring):
+            raise TypeError("value must be a string")
+        if not isinstance(ephemeral, bool):
+            raise TypeError("ephemeral must be a bool")
+        if not isinstance(sequence, bool):
+            raise TypeError("sequence must be a bool")
+
+        flags = 0
+        if ephemeral:
+            flags |= 1
+        if sequence:
+            flags |= 2
+        if acl is None:
+            acl = OPEN_ACL_UNSAFE
 
         async_result = self.handler.async_result()
-        self._call(Exists(_prefix_root(self.chroot, path), watch),
+        self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
                    async_result)
         return async_result
 
@@ -567,12 +548,11 @@ class KazooClient(object):
         """
         return self.exists_async(path, watch).get()
 
-    def get_async(self, path, watch=None):
-        """Asynchronously get the value of a node. Takes the same
-        arguments as :meth:`get`.
+    def exists_async(self, path, watch=None):
+        """Asynchronously check if a node exists. Takes the same
+        arguments as :meth:`exists`.
 
-        :returns: AsyncResult set with tuple (value,
-                  :class:`~kazoo.protocol.states.ZnodeStat`) of node on success
+        :returns: stat of the node if it exists, else None
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -582,7 +562,7 @@ class KazooClient(object):
             raise TypeError("watch must be a callable")
 
         async_result = self.handler.async_result()
-        self._call(GetData(_prefix_root(self.chroot, path), watch),
+        self._call(Exists(_prefix_root(self.chroot, path), watch),
                    async_result)
         return async_result
 
@@ -611,12 +591,12 @@ class KazooClient(object):
         """
         return self.get_async(path, watch).get()
 
-    def get_children_async(self, path, watch=None):
-        """Asynchronously get a list of child nodes of a path. Takes the same
-        arguments as :meth:`get_children`.
+    def get_async(self, path, watch=None):
+        """Asynchronously get the value of a node. Takes the same
+        arguments as :meth:`get`.
 
-        :returns: AsyncResult set with list of child node names on
-                  success
+        :returns: AsyncResult set with tuple (value,
+                  :class:`~kazoo.protocol.states.ZnodeStat`) of node on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -626,8 +606,8 @@ class KazooClient(object):
             raise TypeError("watch must be a callable")
 
         async_result = self.handler.async_result()
-        self._call(GetChildren(_prefix_root(self.chroot, path),
-                               None, watch), async_result)
+        self._call(GetData(_prefix_root(self.chroot, path), watch),
+                   async_result)
         return async_result
 
     def get_children(self, path, watch=None):
@@ -658,21 +638,23 @@ class KazooClient(object):
         """
         return self.get_children_async(path, watch).get()
 
-    def get_acls_async(self, path):
-        """Return the ACL and stat of the node of the given path. Takes the
-        same arguments as :meth:`get_acls`.
+    def get_children_async(self, path, watch=None):
+        """Asynchronously get a list of child nodes of a path. Takes the same
+        arguments as :meth:`get_children`.
 
+        :returns: AsyncResult set with list of child node names on
+                  success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
-        :raises:
-            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
-            a non-zero error code
 
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
+        if watch and not callable(watch):
+            raise TypeError("watch must be a callable")
 
         async_result = self.handler.async_result()
-        self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
+        self._call(GetChildren(_prefix_root(self.chroot, path),
+                               None, watch), async_result)
         return async_result
 
     def get_acls(self, path):
@@ -690,20 +672,21 @@ class KazooClient(object):
         """
         return self.get_acls_async(path).get()
 
-    def set_acls_async(self, path, acls, version=-1):
-        """ Set the ACL for the node of the given path. Takes the same
-        arguments as :meth:`set_acls`.
+    def get_acls_async(self, path):
+        """Return the ACL and stat of the node of the given path. Takes the
+        same arguments as :meth:`get_acls`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        :raises:
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
+            a non-zero error code
+
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(acls, (tuple, list)):
-            raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(version, int):
-            raise TypeError("version must be an int")
 
         async_result = self.handler.async_result()
-        self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
-                   async_result)
+        self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
         return async_result
 
     def set_acls(self, path, acls, version=-1):
@@ -733,23 +716,19 @@ class KazooClient(object):
         """
         return self.set_acls_async(path, acls, version).get()
 
-    def set_async(self, path, data, version=-1):
-        """Set the value of a node. Takes the same arguments as :meth:`set`.
-
-        :returns: AsyncResult set with new node
-                  :class:`~kazoo.protocol.states.ZnodeStat` on success
-        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
-
+    def set_acls_async(self, path, acls, version=-1):
+        """ Set the ACL for the node of the given path. Takes the same
+        arguments as :meth:`set_acls`.
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(data, basestring):
-            raise TypeError("data must be a string")
+        if not isinstance(acls, (tuple, list)):
+            raise TypeError("acl must be a tuple/list of ACL's")
         if not isinstance(version, int):
             raise TypeError("version must be an int")
 
         async_result = self.handler.async_result()
-        self._call(SetData(_prefix_root(self.chroot, path), data, version),
+        self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
                    async_result)
         return async_result
 
@@ -790,19 +769,23 @@ class KazooClient(object):
         """
         return self.set_async(path, data, version).get()
 
-    def delete_async(self, path, version=-1):
-        """Asynchronously delete a node. Takes the same
-        arguments as :meth:`delete`, with the exception of `recursive`.
+    def set_async(self, path, data, version=-1):
+        """Set the value of a node. Takes the same arguments as :meth:`set`.
 
-        :returns: AyncResult set upon completion
+        :returns: AsyncResult set with new node
+                  :class:`~kazoo.protocol.states.ZnodeStat` on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
+        if not isinstance(data, basestring):
+            raise TypeError("data must be a string")
         if not isinstance(version, int):
             raise TypeError("version must be an int")
+
         async_result = self.handler.async_result()
-        self._call(Delete(_prefix_root(self.chroot, path), version),
+        self._call(SetData(_prefix_root(self.chroot, path), data, version),
                    async_result)
         return async_result
 
@@ -847,6 +830,22 @@ class KazooClient(object):
             self._delete_recursive(path)
         else:
             self.delete_async(path, version).get()
+
+    def delete_async(self, path, version=-1):
+        """Asynchronously delete a node. Takes the same
+        arguments as :meth:`delete`, with the exception of `recursive`.
+
+        :returns: AyncResult set upon completion
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+        async_result = self.handler.async_result()
+        self._call(Delete(_prefix_root(self.chroot, path), version),
+                   async_result)
+        return async_result
 
     def _delete_recursive(self, path):
         try:
