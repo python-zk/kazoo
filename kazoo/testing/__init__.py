@@ -242,10 +242,10 @@ class KazooTestHarness(object):
 
         self.client.add_listener(watch_loss)
 
-        client = KazooClient(self.cluster[1].address, client_id=client_id, timeout=0.8)
+        client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
         client.start()
         client.stop()
-        lost.wait(0.5)
+        lost.wait()
 
     def setup_zookeeper(self):
         """Create a ZK cluster and chrooted :class:`KazooClient`
@@ -281,7 +281,7 @@ class KazooTestHarness(object):
             del client
 
     def add_errors(self, errors):
-        self.client.zookeeper = ZookeeperErrors(errors, self.client._handler)
+        self.client.zookeeper = ZookeeperErrors(errors, self.client.handler)
 
 
 class KazooTestCase(unittest.TestCase, KazooTestHarness):
