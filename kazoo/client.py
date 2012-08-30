@@ -375,7 +375,10 @@ class KazooClient(object):
         return True
 
     def ensure_path(self, path, acl=None):
-        """Recursively create a path if it doesn't exist
+        """Recursively create a path if it doesn't exist.
+
+        :param path: path of node
+        :param acl: permissions for node
         """
         self._inner_ensure_path(path, acl)
 
