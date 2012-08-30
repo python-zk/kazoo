@@ -351,11 +351,9 @@ class KazooClient(object):
         self.start()
 
     def add_auth_async(self, scheme, credential):
-        """Asynchronously send credentials to server
+        """Asynchronously send credentials to server. Takes the same
+        arguments as :meth:`add_auth`.
 
-        :param scheme: authentication scheme (default supported:
-                       "digest")
-        :param credential: the credential -- value depends on scheme
         :returns: AsyncResult object set on completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
@@ -410,15 +408,9 @@ class KazooClient(object):
 
     def create_async(self, path, value, acl=None, ephemeral=False,
                      sequence=False):
-        """Asynchronously create a ZNode
+        """Asynchronously create a ZNode. Takes the same
+        arguments as :meth:`create`, with the exception of `makepath`.
 
-        :param path: path of node
-        :param value: initial value of node
-        :param acl: permissions for node
-        :param ephemeral: boolean indicating whether node is ephemeral
-                          (tied to this session)
-        :param sequence: boolean indicating whether path is suffixed
-                         with a unique index
         :returns: AsyncResult object set on completion with the real
                   path of the new node
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -536,11 +528,9 @@ class KazooClient(object):
         return self.unchroot(realpath)
 
     def exists_async(self, path, watch=None):
-        """Asynchronously check if a node exists
+        """Asynchronously check if a node exists. Takes the same
+        arguments as :meth:`exists`.
 
-        :param path: path of node
-        :param watch: optional watch callback to set for future changes
-                      to this path
         :returns: stat of the node if it exists, else None
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
@@ -578,11 +568,9 @@ class KazooClient(object):
         return self.exists_async(path, watch).get()
 
     def get_async(self, path, watch=None):
-        """Asynchronously get the value of a node
+        """Asynchronously get the value of a node. Takes the same
+        arguments as :meth:`get`.
 
-        :param path: path of node
-        :param watch: optional watch callback to set for future changes
-                      to this path
         :returns: AsyncResult set with tuple (value,
                   :class:`~kazoo.protocol.states.ZnodeStat`) of node on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -624,11 +612,9 @@ class KazooClient(object):
         return self.get_async(path, watch).get()
 
     def get_children_async(self, path, watch=None):
-        """Asynchronously get a list of child nodes of a path
+        """Asynchronously get a list of child nodes of a path. Takes the same
+        arguments as :meth:`get_children`.
 
-        :param path: path of node to list
-        :param watch: optional watch callback to set for future changes
-                      to this path
         :returns: AsyncResult set with list of child node names on
                   success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -673,9 +659,9 @@ class KazooClient(object):
         return self.get_children_async(path, watch).get()
 
     def get_acls_async(self, path):
-        """Return the ACL and stat of the node of the given path
+        """Return the ACL and stat of the node of the given path. Takes the
+        same arguments as :meth:`get_acls`.
 
-        :path: the given path for the node
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         :raises:
             :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
@@ -690,12 +676,12 @@ class KazooClient(object):
         return async_result
 
     def get_acls(self, path):
-        """Return the ACL and stat of the node of the given path
+        """Return the ACL and stat of the node of the given path.
 
         NoNodeError will be raised if no node with the given path
         exists.
 
-        :path: the given path for the node
+        :param path: the given path for the node
         :returns: The ACL array of the given node
         :raises:
             :exc:`~kazoo.exceptions.ZookeeperError` if the server returns
@@ -705,12 +691,8 @@ class KazooClient(object):
         return self.get_acls_async(path).get()
 
     def set_acls_async(self, path, acls, version=-1):
-        """ Set the ACL for the node of the given path
-
-        :path: the given path for the node
-        :acl: the ACLs to set
-        :version: the expected matching version
-
+        """ Set the ACL for the node of the given path. Takes the same
+        arguments as :meth:`set_acls`.
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
@@ -725,7 +707,7 @@ class KazooClient(object):
         return async_result
 
     def set_acls(self, path, acls, version=-1):
-        """ Set the ACL for the node of the given path
+        """ Set the ACL for the node of the given path.
 
         Set the ACL for the node of the given path if such a node exists and
         the given version matches the version of the node. Return the stat of
@@ -736,9 +718,9 @@ class KazooClient(object):
         BadVersionError will be raised if the given version does not match the
         node's version.
 
-        :path: the given path for the node
-        :acl: the ACLs to set
-        :version: the expected matching version
+        :param path: the given path for the node
+        :param acl: the ACLs to set
+        :param version: the expected matching version
         :returns: The stat of the node.
         :raises:
             :exc:`~kazoo.exceptions.InvalidACLError` if the acl is invalid
@@ -752,18 +734,8 @@ class KazooClient(object):
         return self.set_acls_async(path, acls, version).get()
 
     def set_async(self, path, data, version=-1):
-        """Set the value of a node
+        """Set the value of a node. Takes the same arguments as :meth:`set`.
 
-        If the version of the node being updated is newer than the
-        supplied version (and the supplied version is not -1), a
-        BadVersionError will be raised.
-
-        :param path: path of node to set
-        :type path: str
-        :param data: new data value
-        :type data: str
-        :param version: version of node being updated, or -1
-        :type version: int
         :returns: AsyncResult set with new node
                   :class:`~kazoo.protocol.states.ZnodeStat` on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -819,10 +791,9 @@ class KazooClient(object):
         return self.set_async(path, data, version).get()
 
     def delete_async(self, path, version=-1):
-        """Asynchronously delete a node
+        """Asynchronously delete a node. Takes the same
+        arguments as :meth:`delete`, with the exception of `recursive`.
 
-        :param path: path of node to delete
-        :param version: version of node to delete, or -1 for any
         :returns: AyncResult set upon completion
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
         """
