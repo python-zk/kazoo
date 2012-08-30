@@ -331,8 +331,7 @@ def _submit(client, s, request, timeout, xid=None):
     if request.type:
         b.extend(int_struct.pack(request.type))
     b += request.serialize()
-    b = int_struct.pack(len(b)) + b
-    _write(client, s, b, timeout)
+    _write(client, s, int_struct.pack(len(b)) + b, timeout)
 
 
 def _write(client, s, msg, timeout):
