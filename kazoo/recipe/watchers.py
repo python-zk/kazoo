@@ -31,9 +31,6 @@ class DataWatch(object):
 
         # Above function is called immediately and prints
 
-    Error Handling
-    --------------
-
     In the event the node does not exist, the function will be called
     with ``(None, None)`` and will not be called again. This should be
     considered the last function call. This behavior will also occur
