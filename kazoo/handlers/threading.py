@@ -13,11 +13,12 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
-import Queue
+import logging
 import select
 import socket
 import time
 import threading
+import Queue
 
 from zope.interface import implementer
 
@@ -27,6 +28,9 @@ from kazoo.interfaces import IHandler
 # sentinal objects
 _NONE = object()
 _STOP = object()
+
+
+log = logging.getLogger(__name__)
 
 
 class TimeoutError(Exception):
@@ -191,6 +195,9 @@ class SequentialThreadingHandler(object):
                         if func is _STOP:
                             break
                         func()
+                    except Exception as exc:
+                        log.warning("Exception in worker queue thread")
+                        log.exception(exc)
                     finally:
                         queue.task_done()
                 except Queue.Empty:

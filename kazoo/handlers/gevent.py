@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import atexit
+import logging
 
 import gevent
 import gevent.queue
@@ -24,6 +25,8 @@ if gevent.__version__.startswith('1.'):
 else:
     _using_libevent = True
 
+
+log = logging.getLogger(__name__)
 
 _STOP = object()
 
@@ -127,6 +130,9 @@ class SequentialGeventHandler(object):
                     func()
                 except Empty:
                     continue
+                except Exception as exc:
+                    log.warning("Exception in worker greenlet")
+                    log.exception(exc)
         return gevent.spawn(greenlet_worker)
 
     def start(self):
@@ -216,4 +222,3 @@ class SequentialGeventHandler(object):
             self.session_queue.put(lambda: callback.func(*callback.args))
         else:
             self.callback_queue.put(lambda: callback.func(*callback.args))
-        self.wake()
