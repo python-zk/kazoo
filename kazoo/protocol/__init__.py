@@ -68,10 +68,15 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     else:
                         log.warn('Received unknown event %r', watch.type)
                         continue
-                    ev = WatchedEvent(EVENT_TYPE_MAP[watch.type],
-                                      client._state, path)
 
-                client.handler.dispatch_callback(
+                    # Strip the chroot if needed
+                    if client.chroot:
+                        path = path[len(client.chroot):]
+
+                ev = WatchedEvent(EVENT_TYPE_MAP[watch.type],
+                                  client._state, path)
+
+                    client.handler.dispatch_callback(
                     Callback('watch', lambda: map(lambda w: w(ev), watchers),
                              ())
                 )
