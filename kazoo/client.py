@@ -215,8 +215,16 @@ class KazooClient(object):
         if state == self._state:
             return
 
+        orig_state = self._state
+
         with self._state_lock:
             self._state = state
+
+        # If we are closed down, and are now connecting, don't bother
+        # with the rest of the transitions
+        if (orig_state == KeeperState.CLOSED and
+            state == KeeperState.CONNECTING):
+            return
 
         if state == KeeperState.CONNECTED:
             log.info("Zookeeper connection established")

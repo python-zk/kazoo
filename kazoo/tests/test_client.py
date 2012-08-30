@@ -95,9 +95,8 @@ class TestConnection(KazooTestCase):
             if not states:
                 condition.wait(5)
 
-        eq_(len(states), 2)
-        eq_(states[0], KazooState.SUSPENDED)
-        eq_(states[1], KazooState.CONNECTED)
+        eq_(len(states), 1)
+        eq_(states[0], KazooState.CONNECTED)
 
     def test_no_connection(self):
         from kazoo.exceptions import ConnectionClosedError

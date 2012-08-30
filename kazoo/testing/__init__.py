@@ -258,7 +258,7 @@ class KazooTestHarness(object):
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
 
-        self.client = self._get_client()
+        self.client = self._get_client(timeout=0.8)
         self.client.start()
         self.client.ensure_path("/")
 
