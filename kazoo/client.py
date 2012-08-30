@@ -7,8 +7,8 @@ from os.path import split
 
 from kazoo.exceptions import (
     AuthFailedError,
-    ConnectionClosedError,
     ConnectionLoss,
+    ConnectionClosedError,
     NoNodeError,
     NodeExistsError,
     ConfigurationError,
@@ -218,14 +218,14 @@ class KazooClient(object):
         if state == self._state:
             return
 
-        orig_state = self._state
+        prior_state = self._state
 
         with self._state_lock:
             self._state = state
 
         # If we are closed down, and are now connecting, don't bother
         # with the rest of the transitions
-        if (orig_state == KeeperState.CLOSED and
+        if (prior_state == KeeperState.CLOSED and
             state == KeeperState.CONNECTING):
             return
 
@@ -279,9 +279,11 @@ class KazooClient(object):
         with self._state_lock:
             if self._state == KeeperState.AUTH_FAILED:
                 raise AuthFailedError()
-            if self._state == KeeperState.CLOSED:
-                raise SessionExpiredError("Connection has been closed")
-
+            elif self._state == KeeperState.CLOSED:
+                raise ConnectionClosedError("Connection has been closed")
+            elif self._state in (KeeperState.EXPIRED_SESSION,
+                                 KeeperState.CONNECTING):
+                raise SessionExpiredError()
             self._queue.put((request, async_object))
 
     def start_async(self):

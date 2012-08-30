@@ -28,10 +28,6 @@ class ConnectionDropped(KazooException):
     """ Internal error for jumping out of loops """
 
 
-class ConnectionClosedError(ZookeeperError):
-    """Connection is closed"""
-
-
 def _invalid_error_code():
     raise RuntimeError('Invalid error code')
 
@@ -149,3 +145,7 @@ class InvalidACLError(ZookeeperError):
 @_zookeeper_exception(-115)
 class AuthFailedError(ZookeeperError):
     pass
+
+
+class ConnectionClosedError(SessionExpiredError):
+    """Connection is closed"""
