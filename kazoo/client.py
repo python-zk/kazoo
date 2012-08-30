@@ -277,7 +277,7 @@ class KazooClient(object):
             if self._state == KeeperState.AUTH_FAILED:
                 raise AuthFailedError()
             if self._state == KeeperState.CLOSED:
-                raise ConnectionClosedError("Connection has been closed")
+                raise SessionExpiredError("Connection has been closed")
 
             self._queue.put((request, async_object))
 
