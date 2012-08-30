@@ -578,8 +578,8 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes
                       to this path
-        :returns: AsyncResult set with tuple (value, :class:`ZnodeStat`
-                  ) of node on success
+        :returns: AsyncResult set with tuple (value,
+                  :class:`~kazoo.protocol.states.ZnodeStat`) of node on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -605,7 +605,8 @@ class KazooClient(object):
         :param path: path of node
         :param watch: optional watch callback to set for future changes
                       to this path
-        :returns: tuple (value, :class:`ZnodeStat`) of node
+        :returns: tuple (value, :class:`~kazoo.protocol.states.ZnodeStat`) of
+                  node
         :rtype: tuple
 
         :raises:
@@ -758,8 +759,8 @@ class KazooClient(object):
         :type data: str
         :param version: version of node being updated, or -1
         :type version: int
-        :returns: AsyncResult set with new node :class:`ZnodeStat` on
-                  success
+        :returns: AsyncResult set with new node
+                  :class:`~kazoo.protocol.states.ZnodeStat` on success
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
@@ -796,7 +797,7 @@ class KazooClient(object):
         :type data: str
         :param version: version of node being updated, or -1
         :type version: int
-        :returns: updated :class:`ZnodeStat` of the node
+        :returns: updated :class:`~kazoo.protocol.states.ZnodeStat` of the node
 
         :raises:
             :exc:`~kazoo.exceptions.NoNodeError` if the node doesn't exist
