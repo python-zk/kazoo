@@ -225,12 +225,10 @@ class KazooClient(object):
             return
 
         prior_state = self._state
-
-        with self._state_lock:
-            self._state = state
+        self._state = state
 
         # If we are closed down, and are now connecting, don't bother
-        # with the rest of the transitions
+        # with the rest of the transitions.
         if (prior_state == KeeperState.CLOSED and
             state == KeeperState.CONNECTING):
             return
