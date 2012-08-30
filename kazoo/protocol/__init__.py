@@ -76,10 +76,10 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                 ev = WatchedEvent(EVENT_TYPE_MAP[watch.type],
                                   client._state, path)
 
+                # Dump the watchers to the watch thread
+                for watch in watchers:
                     client.handler.dispatch_callback(
-                    Callback('watch', lambda: map(lambda w: w(ev), watchers),
-                             ())
-                )
+                        Callback('watch', watch, (ev,)))
             else:
                 log.debug('Reading for header %r', header)
                 request, async_object, xid = client._pending.get()
