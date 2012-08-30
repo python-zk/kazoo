@@ -58,7 +58,8 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
 
                     # XXX TODO: Should we fail out? Or handle auth failure
                     # differently here since the session id is actually valid!
-                    client._session_callback(KeeperState.AUTH_FAILED)
+                    with client._state_lock:
+                        client._session_callback(KeeperState.AUTH_FAILED)
                     reader_done.set()
                     break
                 continue
@@ -169,7 +170,8 @@ def connect_loop(client, retry):
         s = client.handler.socket()
 
         if client._state != KeeperState.CONNECTING:
-            client._session_callback(KeeperState.CONNECTING)
+            with client._state_lock:
+                client._session_callback(KeeperState.CONNECTING)
 
         try:
             read_timeout, connect_timeout = _connect(
@@ -193,21 +195,22 @@ def connect_loop(client, retry):
 
                     # Special case for auth packets
                     if request.type == Auth.type:
-                        _submit(client, s, request, connect_timeout, AUTH_XID)
-                        client._queue.get()
+                        with client._state_lock:
+                            _submit(client, s, request, connect_timeout, AUTH_XID)
+                            client._queue.get()
                         continue
 
                     xid += 1
                     log.debug('xid: %r', xid)
+                    with client._state_lock:
+                        _submit(client, s, request, connect_timeout, xid)
 
-                    _submit(client, s, request, connect_timeout, xid)
+                        if isinstance(request, Close):
+                            log.debug('Received close request, closing')
+                            writer_done = True
 
-                    if isinstance(request, Close):
-                        log.debug('Received close request, closing')
-                        writer_done = True
-
-                    client._queue.get()
-                    client._pending.put((request, async_object, xid))
+                        client._queue.get()
+                        client._pending.put((request, async_object, xid))
                 except client.handler.empty:
                     # log.debug('Queue timeout.  Sending PING')
                     _submit(client, s, Ping, connect_timeout, PING_XID)
@@ -220,19 +223,23 @@ def connect_loop(client, retry):
             log.info('Closing connection to %s:%s', host, port)
 
             if writer_done:
-                client._session_callback(KeeperState.CLOSED)
+                with client._state_lock:
+                    client._session_callback(KeeperState.CLOSED)
                 return False
         except ConnectionDropped:
             log.warning('Connection dropped')
             if client._state != KeeperState.CONNECTING:
-                client._session_callback(KeeperState.CONNECTING)
+                with client._state_lock:
+                    client._session_callback(KeeperState.CONNECTING)
         except AuthFailedError:
             log.warning('AUTH_FAILED closing')
-            client._session_callback(KeeperState.AUTH_FAILED)
+            with client._state_lock:
+                client._session_callback(KeeperState.AUTH_FAILED)
             return False
         except SessionExpiredError:
             log.warning('Session has expired')
-            client._session_callback(KeeperState.EXPIRED_SESSION)
+            with client._state_lock:
+                client._session_callback(KeeperState.EXPIRED_SESSION)
         except Exception as e:
             log.exception(e)
             raise
