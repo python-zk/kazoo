@@ -4,7 +4,7 @@ from gevent.event import Event
 from nose.tools import eq_
 from nose.tools import raises
 
-from kazoo.client import Callback
+from kazoo.protocol.states import Callback
 from kazoo.testing import KazooTestCase
 
 

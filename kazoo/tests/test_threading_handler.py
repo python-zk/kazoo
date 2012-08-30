@@ -5,7 +5,7 @@ import mock
 from nose.tools import eq_
 from nose.tools import raises
 
-from kazoo.client import Callback
+from kazoo.protocol.states import Callback
 
 
 class TestThreadingHandler(unittest.TestCase):
