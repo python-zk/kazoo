@@ -100,7 +100,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     if exists_request and header.err == NoNodeError.code:
                         # It's a NoNodeError, which is fine for an exists
                         # request
-                        async_object.set(False)
+                        async_object.set(None)
                     else:
                         response = request.deserialize(buffer, offset)
                         log.debug('Received response: %r', response)
