@@ -10,5 +10,6 @@ Public API
 
     .. autoclass:: KazooClient()
         :members:
+        :member-order: bysource
 
         .. automethod:: __init__
