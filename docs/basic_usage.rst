@@ -98,7 +98,8 @@ Methods:
 :meth:`~kazoo.client.KazooClient.exists` checks to see if a node exists.
 
 :meth:`~kazoo.client.KazooClient.get` fetches the data of the node along with
-detailed node information in a :class:`~kazoo.client.ZnodeStat` structure.
+detailed node information in a :class:`~kazoo.protocol.states.ZnodeStat`
+structure.
 
 :meth:`~kazoo.client.KazooClient.get_children` gets a list of the children of
 a given node.
@@ -126,7 +127,7 @@ Methods:
 
 :meth:`~kazoo.client.KazooClient.set` updates the data for a given node. A
 version for the node can be supplied, which will be required to match before
-updating the data, or a :exc:`~kazoo.exceptions.BadVersionException` will be
+updating the data, or a :exc:`~kazoo.exceptions.BadVersionError` will be
 raised instead of updating.
 
 .. code-block:: python
@@ -143,7 +144,7 @@ Methods:
 :meth:`~kazoo.client.KazooClient.delete` deletes a node, and can optionally
 recursively delete the entire path up to the node as well. A version can be
 supplied when deleting a node which will be required to match the version of
-the node before deleting it or a :exc:`~kazoo.exceptions.BadVersionException`
+the node before deleting it or a :exc:`~kazoo.exceptions.BadVersionError`
 will be raised instead of deleting.
 
 .. code-block:: python
@@ -154,7 +155,7 @@ Retrying Commands
 =================
 
 Connections to Zookeeper may get interrupted if the Zookeeper server goes down
-or becomes unreachable. By default, kazoo does not retry commands so these
+or becomes unreachable. By default, kazoo does not retry commands, so these
 failures will result in an exception being raised. To assist with failures
 kazoo comes with a :meth:`~kazoo.client.KazooClient.retry` helper that will
 retry a function should one of the Zookeeper connection exceptions get raised.
@@ -240,7 +241,7 @@ passed to one of these methods:
 A watch function passed to :meth:`~kazoo.client.KazooClient.get` or
 :meth:`~kazoo.client.KazooClient.exists` will be called when the data on the
 node changes or the node itself is deleted. It will be passed a
-:class:`~kazoo.client.WatchedEvent` instance.
+:class:`~kazoo.protocol.states.WatchedEvent` instance.
 
 .. code-block:: python
 
@@ -253,11 +254,11 @@ node changes or the node itself is deleted. It will be passed a
 Kazoo includes a higher level API that watches for data and children
 modifications that's easier to use as it doesn't require re-setting the watch
 every time the event is triggered. It also passes in the data and
-:class:`~kazoo.client.ZnodeStat` when watching a node or the list of children
-when watching a nodes children. Watch functions registered with this API will
-be called immediately and every time there's a change, or until the function
-returns False. If `allow_session_lost` is set to `True`, then the function will
-no longer be called if the session is lost.
+:class:`~kazoo.protocol.states.ZnodeStat` when watching a node or the list of
+children when watching a nodes children. Watch functions registered with this
+API will be called immediately and every time there's a change, or until the
+function returns False. If `allow_session_lost` is set to `True`, then the
+function will no longer be called if the session is lost.
 
 The following methods provide this functionality:
 

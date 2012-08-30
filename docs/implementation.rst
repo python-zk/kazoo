@@ -4,15 +4,14 @@
 Implementation Details
 ======================
 
-Under the hood, the Python Zookeeper library is a small binding to the
-Zookeeper C library. This library creates an OS thread used for Zookeeper
-session events and watches. Because the watch events are run in the same thread
-used for session events, it can be error-prone writing watch callbacks that
-might need to query Zookeeper. The most noticeable error is when a watch
-function uses a blocking Zookeeper query and the connection is lost. Since the
-blocking query is running in the same OS thread used for session events the
-client will be unable to recognize when it has reconnected as all session
-events are blocked.
+Up to version 0.3 kazoo used the Python bindings to the Zookeeper C library.
+Unfortunately those bindings are fairly buggy and required a fair share of
+weird workarounds to interface with the native OS thread used in those
+bindings.
+
+Starting with version 0.4 kazoo implements the entire Zookeeper wire protocol
+itself in pure Python. Doing so removed the need for the workarounds and made
+it much easier to implement the features missing in the C bindings.
 
 Handlers
 ========
