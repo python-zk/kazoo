@@ -2,12 +2,9 @@ import logging
 import random
 import time
 
-from zookeeper import (
-    ClosingException,
-    ConnectionLossException,
-    InvalidStateException,
-    OperationTimeoutException,
-    SessionExpiredException
+from kazoo.exceptions import (
+    ConnectionLoss,
+    SessionExpiredError
 )
 
 log = logging.getLogger(__name__)
@@ -64,19 +61,12 @@ class RetySleeper(object):
 class KazooRetry(object):
     """Helper for retrying a method in the face of retry-able exceptions"""
     RETRY_EXCEPTIONS = (
-        ClosingException,
-        ConnectionLossException,
-        OperationTimeoutException,
+        ConnectionLoss,
         ForceRetryError
     )
 
     EXPIRED_EXCEPTIONS = (
-        SessionExpiredException,
-
-        # Occurs when a command is run on a session handle that expired, if it
-        # manages to run exactly when it expired but before the handle was
-        # removed for reconnection
-        InvalidStateException,
+        SessionExpiredError,
     )
 
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
