@@ -170,6 +170,18 @@ class KazooClient(object):
         self._session_passwd = str(bytearray([0] * 16))
         self.last_zxid = 0
 
+    @property
+    def client_id(self):
+        """Returns the client id for this Zookeeper session if connected"""
+        if self._live.is_set():
+            return (self._session_id, self._session_passwd)
+        return None
+
+    @property
+    def connected(self):
+        """Returns whether the Zookeeper connection has been established"""
+        return self._live.is_set()
+
     def add_listener(self, listener):
         """Add a function to be called for connection state changes
 
@@ -185,18 +197,6 @@ class KazooClient(object):
     def remove_listener(self, listener):
         """Remove a listener function"""
         self.state_listeners.discard(listener)
-
-    @property
-    def client_id(self):
-        """Returns the client id for this Zookeeper session if connected"""
-        if self._live.is_set():
-            return (self._session_id, self._session_passwd)
-        return None
-
-    @property
-    def connected(self):
-        """Returns whether the Zookeeper connection has been established"""
-        return self._live.is_set()
 
     def _make_state_change(self, state):
         # skip if state is current
