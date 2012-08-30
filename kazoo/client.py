@@ -685,13 +685,14 @@ class KazooClient(object):
     def set_acls(self, path, acls, version=-1):
         """ Set the ACL for the node of the given path
 
-        Set the ACL for the node of the given path if such a node exists and the
-        given version matches the version of the node. Return the stat of the
-        node.
+        Set the ACL for the node of the given path if such a node exists and
+        the given version matches the version of the node. Return the stat of
+        the node.
 
         NoNodeError will be raised if no node with the given path exists.
 
-        BadVersionError will be raised if the given version does not match the node's version.
+        BadVersionError will be raised if the given version does not match the
+        node's version.
 
         :path: the given path for the node
         :acl: the ACLs to set
@@ -701,7 +702,7 @@ class KazooClient(object):
 
         :raises:
             :exc:`ZookeeperError` if the server returns a non-zero error code
-            :exc`InvalidACLError` if the acl is invalid
+            :exc:`InvalidACLError` if the acl is invalid
 
         """
         return self.set_acls_async(path, acls, version).get()
