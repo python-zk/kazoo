@@ -374,31 +374,6 @@ class KazooClient(object):
         self._call(Auth(0, scheme, credential), None)
         return True
 
-    def ensure_path(self, path, acl=None):
-        """Recursively create a path if it doesn't exist.
-
-        :param path: path of node
-        :param acl: permissions for node
-        """
-        self._inner_ensure_path(path, acl)
-
-    def _inner_ensure_path(self, path, acl):
-        if self.exists(path):
-            return
-
-        if acl is None and self.default_acl:
-            acl = self.default_acl
-
-        parent, node = split(path)
-
-        if node:
-            self._inner_ensure_path(parent, acl)
-        try:
-            self.create_async(path, "", acl=acl).get()
-        except NodeExistsError:
-            # someone else created the node. how sweet!
-            pass
-
     def unchroot(self, path):
         if not self.chroot:
             return path
@@ -528,6 +503,31 @@ class KazooClient(object):
         self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
                    async_result)
         return async_result
+
+    def ensure_path(self, path, acl=None):
+        """Recursively create a path if it doesn't exist.
+
+        :param path: path of node
+        :param acl: permissions for node
+        """
+        self._inner_ensure_path(path, acl)
+
+    def _inner_ensure_path(self, path, acl):
+        if self.exists(path):
+            return
+
+        if acl is None and self.default_acl:
+            acl = self.default_acl
+
+        parent, node = split(path)
+
+        if node:
+            self._inner_ensure_path(parent, acl)
+        try:
+            self.create_async(path, "", acl=acl).get()
+        except NodeExistsError:
+            # someone else created the node. how sweet!
+            pass
 
     def exists(self, path, watch=None):
         """Check if a node exists.
