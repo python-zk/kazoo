@@ -245,6 +245,7 @@ class KazooTestHarness(object):
         client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
         client.start()
         client.stop()
+        self.client.get_async('/')
         lost.wait()
 
     def setup_zookeeper(self):
