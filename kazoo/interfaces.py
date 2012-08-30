@@ -15,7 +15,7 @@ class IHandler(Interface):
     calling :class:`IAsyncResult` callback functions.
 
     These functions are used to abstract differences between a Python
-    threading environment and asynchonous single-threaded environments
+    threading environment and asynchronous single-threaded environments
     like gevent. The minimum functionality needed for Kazoo to handle
     these differences are encompassed in this interface.
 
