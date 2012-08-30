@@ -44,8 +44,8 @@ log = logging.getLogger(__name__)
 
 
 class KazooClient(object):
-    """An Apache Zookeeper Python wrapper supporting alternate callback
-    handlers and high-level functionality
+    """An Apache Zookeeper Python client supporting alternate callback
+    handlers and high-level functionality.
 
     Watch functions registered with this class will not get session
     events, unlike the default Zookeeper watch's. They will also be

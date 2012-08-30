@@ -81,8 +81,8 @@ AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 class SequentialGeventHandler(object):
     """Gevent handler for sequentially executing callbacks.
 
-    This handler executes callbacks in a sequential manner from the Zookeeper
-    thread. A queue is created for each of the callback events, so that each
+    This handler executes callbacks in a sequential manner.
+    A queue is created for each of the callback events, so that each
     type of event has its callback type run sequentially. These are split into
     three queues, therefore it's possible that a session event arriving after a
     watch event may have its callback executed at the same time or slightly

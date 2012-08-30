@@ -1,4 +1,4 @@
-"""Kaoo Exceptions"""
+"""Kazoo Exceptions"""
 from collections import defaultdict
 
 
