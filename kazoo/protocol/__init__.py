@@ -69,9 +69,11 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     if client._stopped.is_set():
                         continue
 
-                    if watch.type in (CREATED_EVENT, DELETED_EVENT,
-                                      CHANGED_EVENT):
+                    if watch.type in (CREATED_EVENT, CHANGED_EVENT):
                         watchers |= client._data_watchers.pop(path, set())
+                    elif watch.type == DELETED_EVENT:
+                        watchers |= client._data_watchers.pop(path, set())
+                        watchers |= client._child_watchers.pop(path, set())
                     elif watch.type == CHILD_EVENT:
                         watchers |= client._child_watchers.pop(path, set())
                     else:
