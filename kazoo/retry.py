@@ -3,6 +3,7 @@ import random
 import time
 
 from kazoo.exceptions import (
+    ConnectionClosedError,
     ConnectionLoss,
     SessionExpiredError
 )
@@ -99,6 +100,7 @@ class KazooRetry(object):
         while True:
             try:
                 return func(*args, **kwargs)
-
+            except ConnectionClosedError:
+                raise
             except self.retry_exceptions:
                 self.retry_sleeper.increment()
