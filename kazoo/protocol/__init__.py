@@ -36,6 +36,10 @@ DELETED_EVENT = 2
 CHANGED_EVENT = 3
 CHILD_EVENT = 4
 
+WATCH_XID = -1
+PING_XID = -2
+AUTH_XID = -4
+
 
 def proto_reader(client, s, reader_started, reader_done, read_timeout):
     reader_started.set()
@@ -43,10 +47,10 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
     while True:
         try:
             header, buffer, offset = _read_header(client, s, read_timeout)
-            if header.xid == -2:
+            if header.xid == PING_XID:
                 # log.debug('Received PING')
                 continue
-            elif header.xid == -4:
+            elif header.xid == AUTH_XID:
                 log.debug('Received AUTH')
                 if header.err:
                     # We go ahead and fail out the connection, mainly because
@@ -58,7 +62,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     reader_done.set()
                     break
                 continue
-            elif header.xid == -1:
+            elif header.xid == WATCH_XID:
                 watch, offset = Watch.deserialize(buffer, offset)
                 path = watch.path
                 log.debug('Received EVENT: %s', watch)
@@ -189,7 +193,7 @@ def connect_loop(client, retry):
 
                     # Special case for auth packets
                     if request.type == Auth.type:
-                        _submit(client, s, request, connect_timeout, -4)
+                        _submit(client, s, request, connect_timeout, AUTH_XID)
                         client._queue.get()
                         continue
 
@@ -206,7 +210,7 @@ def connect_loop(client, retry):
                     client._pending.put((request, async_object, xid))
                 except client.handler.empty:
                     # log.debug('Queue timeout.  Sending PING')
-                    _submit(client, s, Ping, connect_timeout, -2)
+                    _submit(client, s, Ping, connect_timeout, PING_XID)
                 except Exception as e:
                     log.exception(e)
                     break
