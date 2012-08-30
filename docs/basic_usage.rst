@@ -151,6 +151,8 @@ will be raised instead of deleting.
 
     zk.delete("/my/favorite/node", recursive=True)
 
+.. _retrying_commands:
+
 Retrying Commands
 =================
 

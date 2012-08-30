@@ -87,6 +87,12 @@ class KazooClient(object):
         Retry parameters will be used for connection establishment attempts
         and reconnects.
 
+        As a convenience all recipe classes are available as attributes and
+        get automatically bound to the client. For example::
+
+            zk = KazooClient()
+            lock = zk.Lock('/lock_path')
+
         """
         # Record the handler strategy used
         self.handler = handler if handler else SequentialThreadingHandler()
