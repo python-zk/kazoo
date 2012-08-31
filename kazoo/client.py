@@ -387,8 +387,8 @@ class KazooClient(object):
         else:
             return path
 
-    def create(self, path, value, acl=None, ephemeral=False, sequence=False,
-               makepath=False):
+    def create(self, path, value="", acl=None, ephemeral=False,
+               sequence=False, makepath=False):
         """Create a node with the given value as its data. Optionally set an
         acl on the node.
 
@@ -471,7 +471,7 @@ class KazooClient(object):
 
         return self.unchroot(realpath)
 
-    def create_async(self, path, value, acl=None, ephemeral=False,
+    def create_async(self, path, value="", acl=None, ephemeral=False,
                      sequence=False):
         """Asynchronously create a ZNode. Takes the same
         arguments as :meth:`create`, with the exception of `makepath`.
