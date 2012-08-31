@@ -100,14 +100,27 @@ class TestConnection(KazooTestCase):
 
     def test_no_connection(self):
         from kazoo.exceptions import SessionExpiredError
-        self.client.stop()
-        self.assertRaises(SessionExpiredError, self.client.exists, '/')
+        client = self.client
+        client.stop()
+        self.assertFalse(client.connected)
+        self.assertTrue(client.client_id is None)
+        self.assertRaises(SessionExpiredError, client.exists, '/')
 
 
 class TestClient(KazooTestCase):
     def _getKazooState(self):
         from kazoo.protocol.states import KazooState
         return KazooState
+
+    def test_client_id(self):
+        client_id = self.client.client_id
+        self.assertEqual(type(client_id), tuple)
+        # make sure password is of correct length
+        self.assertEqual(len(client_id[1]), 16)
+
+    def test_connected(self):
+        client = self.client
+        self.assertTrue(client.connected)
 
     def test_bad_argument(self):
         client = self.client
