@@ -8,6 +8,7 @@ from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
+from kazoo.exceptions import ZookeeperError
 
 
 class TestConnection(KazooTestCase):
@@ -126,6 +127,15 @@ class TestClient(KazooTestCase):
         client = self.client
         client.create("/1", "")
         self.assertTrue(client.exists("/1"))
+
+    def test_create_large_value(self):
+        client = self.client
+        kb_512 = "a" * (512 * 1024)
+        client.create("/1", kb_512)
+        self.assertTrue(client.exists("/1"))
+        mb_2 = "a" * (2 * 1024 * 1024)
+        # XXX currently deadlocks
+        # self.assertRaises(ZookeeperError, client.create, "/2", mb_2)
 
     def test_create_ephemeral(self):
         client = self.client
