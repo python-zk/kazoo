@@ -28,44 +28,7 @@ _STOP = object()
 
 
 if _using_libevent:
-    from gevent.timeout import Timeout
-    from gevent.hub import Waiter, getcurrent
-
-    # No peek method on queue in 0.13, so add one from gevent 1.0
-    class _PeekableQueue(gevent.queue.Queue):
-        def _peek(self):
-            return self.queue[0]
-
-        def peek(self, block=True, timeout=None):
-            if self.qsize():
-                return self._peek()
-            elif self.hub is getcurrent():
-                # special case to make peek(False) runnable in the mainloop
-                # greenlet there are no items in the queue; try to fix the
-                # situation by unlocking putters
-                while self.putters:
-                    self.putters.pop().put_and_switch()
-                    if self.qsize():
-                        return self._peek()
-                raise Empty
-            elif block:
-                waiter = Waiter()
-                timeout = Timeout.start_new(timeout, Empty)
-                try:
-                    self.getters.add(waiter)
-                    if self.putters:
-                        self._schedule_unlock()
-                    result = waiter.get()
-                    assert result is waiter, 'Invalid switch into Queue.peek: %r' % (result, )
-                    return self._peek()
-                finally:
-                    self.getters.discard(waiter)
-                    timeout.cancel()
-            else:
-                raise Empty
-
-        def peek_nowait(self):
-            return self.peek(False)
+    from .gevent_pqueue import PeekableQueue as _PeekableQueue
 else:
     _PeekableQueue = gevent.queue.Queue
 
