@@ -1,7 +1,7 @@
 import unittest
 
 from nose.tools import eq_
-import zookeeper
+from kazoo.security import Permissions
 
 
 class TestACL(unittest.TestCase):
@@ -11,13 +11,13 @@ class TestACL(unittest.TestCase):
 
     def test_read_acl(self):
         acl = self._makeOne("digest", ":", read=True)
-        eq_(acl.perms & zookeeper.PERM_READ, zookeeper.PERM_READ)
+        eq_(acl.perms & Permissions.READ, Permissions.READ)
 
     def test_all_perms(self):
-        acl = self._makeOne("digest", ":", write=True, create=True,
-                            delete=True, admin=True)
-        for perm in [zookeeper.PERM_WRITE, zookeeper.PERM_CREATE,
-                     zookeeper.PERM_DELETE, zookeeper.PERM_ADMIN]:
+        acl = self._makeOne("digest", ":", read=True, write=True,
+                            create=True, delete=True, admin=True)
+        for perm in [Permissions.READ, Permissions.CREATE, Permissions.WRITE,
+                     Permissions.DELETE, Permissions.ADMIN]:
             eq_(acl.perms & perm, perm)
 
     def test_perm_listing(self):

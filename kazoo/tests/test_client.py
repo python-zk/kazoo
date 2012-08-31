@@ -5,11 +5,9 @@ import unittest
 from nose.tools import eq_
 
 from kazoo.testing import KazooTestCase
-from kazoo.testing import ZooError
 from kazoo.exceptions import BadArgumentsError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
-from kazoo.exceptions import ZookeeperError
 from kazoo.exceptions import ConnectionLoss
 
 

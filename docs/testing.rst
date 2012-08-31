@@ -59,35 +59,3 @@ equivalent test to the one above:
             self.client.ensure_path('/test/path')
             result = self.client.get('/test/path')
             ...
-
-Faking Zookeeper Results
-========================
-
-It can be useful to simulate errors or a connection loss when running test code
-to ensure that your program functions in a robust manner. Kazoo provides a
-:meth:`~kazoo.testing.KazooTestHarness.add_errors` method that can be passed
-an error structure composed of :class:`~kazoo.testing.ZooError` that will be
-used for the underlying Python `Zookeeper` library calls.
-
-Example:
-
-.. code-block:: python
-
-    from kazoo.testing import KazooTestCase
-    from kazoo.testing import ZooError
-
-    class MyTest(KazooTestCase):
-        def testmycode(self):
-            errors = dict(
-                acreate=[
-                    ZooError('completion', zookeeper.CONNECTIONLOSS, False),
-                    True,
-                    ZooError('call', SystemError(), False)
-                ]
-            )
-
-            self.client.add_errors(errors)
-
-            # ensure_path internally calls acreate
-            self.client.ensure_path('/test/path')
-            result = self.client.get('/test/path')
