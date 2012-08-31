@@ -140,6 +140,15 @@ class TestClient(KazooTestCase):
         data, stat = client.get("/1")
         self.assertFalse(stat.ephemeralOwner)
 
+    def test_create_ephemeral_no_children(self):
+        from kazoo.exceptions import NoChildrenForEphemeralsError
+        client = self.client
+        client.create("/1", "ephemeral", ephemeral=True)
+        self.assertRaises(NoChildrenForEphemeralsError,
+            client.create, "/1/2", "val1")
+        self.assertRaises(NoChildrenForEphemeralsError,
+            client.create, "/1/2", "val1", ephemeral=True)
+
     def test_create_sequence(self):
         client = self.client
         client.create("/folder", "")
