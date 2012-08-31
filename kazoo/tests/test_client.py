@@ -190,6 +190,12 @@ class TestClient(KazooTestCase):
         self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
             makepath=False)
 
+    def test_create_exists(self):
+        from kazoo.exceptions import NodeExistsError
+        client = self.client
+        path = client.create("/1", "")
+        self.assertRaises(NodeExistsError, client.create, path, "")
+
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
 
