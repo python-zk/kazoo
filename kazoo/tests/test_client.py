@@ -137,9 +137,7 @@ class TestClient(KazooTestCase):
 
     def test_create_unicode_value(self):
         client = self.client
-        client.create("/1", u"\xe4hm")
-        data, stat = client.get("/1")
-        eq_(data, u"\xe4hm".encode("utf-8"))
+        self.assertRaises(TypeError, client.create, "/1", u"\xe4hm")
 
     def test_create_large_value(self):
         client = self.client
