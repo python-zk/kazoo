@@ -145,6 +145,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
             log.exception(e)
             break
 
+    reader_done.set()
     log.debug('Reader stopped')
 
 
