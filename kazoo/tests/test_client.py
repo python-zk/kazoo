@@ -10,6 +10,7 @@ from kazoo.exceptions import BadArgumentsError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ZookeeperError
+from kazoo.exceptions import ConnectionLoss
 
 
 class TestConnection(KazooTestCase):
@@ -161,8 +162,7 @@ class TestClient(KazooTestCase):
         client.create("/1", kb_512)
         self.assertTrue(client.exists("/1"))
         mb_2 = "a" * (2 * 1024 * 1024)
-        # XXX currently deadlocks
-        # self.assertRaises(ZookeeperError, client.create, "/2", mb_2)
+        self.assertRaises(ConnectionLoss, client.create, "/2", mb_2)
 
     def test_create_ephemeral(self):
         client = self.client
