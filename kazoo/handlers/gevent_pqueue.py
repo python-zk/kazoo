@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import sys
 
 from gevent.timeout import Timeout
-from gevent.hub import Waiter, _NONE
+from gevent.hub import get_hub, Waiter, getcurrent, _NONE
 from gevent.queue import (
     Empty,
     Full,
@@ -14,7 +14,7 @@ from gevent.queue import (
 
 
 # No peek method on queue in 0.13, so add one from gevent 1.0
-class PeekableQueue(Queue):
+class PeekableQueue(Queue):  # pragma: nocover
     def put(self, item, block=True, timeout=None):
         """Put an item into the queue.
 
@@ -31,6 +31,17 @@ class PeekableQueue(Queue):
             self._put(item)
             if self.getters:
                 self._schedule_unlock()
+        elif not block and get_hub() is getcurrent():
+            # we're in the mainloop, so we cannot wait; we can switch() to other greenlets though
+            # find a getter and deliver an item to it
+
+            while self.getters and self.qsize() and self.qsize() >= self.maxsize:
+                getter = self.getters.pop()
+                getter.switch(getter)
+            if self.qsize() < self.maxsize:
+                self._put(item)
+                return
+            raise Full
         elif block:
             waiter = ItemWaiter(item)
             self.putters.add(waiter)
@@ -62,6 +73,16 @@ class PeekableQueue(Queue):
             if self.putters:
                 self._schedule_unlock()
             return self._get()
+        elif not block and get_hub() is getcurrent():
+            # special case to make get_nowait() runnable in the mainloop greenlet
+            # there are no items in the queue; try to fix the situation by unlocking putters
+            while self.putters:
+                putter = self.putters.pop()
+                if putter:
+                    putter.switch(putter)
+                    if self.qsize():
+                        return self._get()
+            raise Empty
         elif block:
             waiter = Waiter()
             timeout = Timeout.start_new(timeout, Empty)
@@ -86,6 +107,17 @@ class PeekableQueue(Queue):
             if self.putters:
                 self._schedule_unlock()
             return self._peek()
+        elif not block and get_hub() is getcurrent():
+            # special case to make peek(False) runnable in the mainloop
+            # greenlet there are no items in the queue; try to fix the
+            # situation by unlocking putters
+            while self.putters:
+                putter = self.putters.pop()
+                if putter:
+                    putter.switch(putter)
+                    if self.qsize():
+                        return self._peek()
+            raise Empty
         elif block:
             waiter = Waiter()
             timeout = Timeout.start_new(timeout, Empty)
