@@ -122,19 +122,6 @@ class TestClient(KazooTestCase):
         client = self.client
         self.assertTrue(client.connected)
 
-    def test_bad_argument(self):
-        client = self.client
-        client.ensure_path("/1")
-        self.assertRaises(TypeError, self.client.set, "/1", 1)
-
-    def test_ensure_path(self):
-        client = self.client
-        client.ensure_path("/1/2")
-        self.assertTrue(client.exists("/1/2"))
-
-        client.ensure_path("/1/2/3/4")
-        self.assertTrue(client.exists("/1/2/3/4"))
-
     def test_create_no_makepath(self):
         self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
         self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
@@ -181,6 +168,19 @@ class TestClient(KazooTestCase):
 
         data, stat = self.client.get(realpath)
         eq_(data, "sandwich")
+
+    def test_bad_argument(self):
+        client = self.client
+        client.ensure_path("/1")
+        self.assertRaises(TypeError, self.client.set, "/1", 1)
+
+    def test_ensure_path(self):
+        client = self.client
+        client.ensure_path("/1/2")
+        self.assertTrue(client.exists("/1/2"))
+
+        client.ensure_path("/1/2/3/4")
+        self.assertTrue(client.exists("/1/2/3/4"))
 
     def test_exists(self):
         nodepath = "/" + uuid.uuid4().hex
