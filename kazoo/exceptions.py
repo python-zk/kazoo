@@ -3,13 +3,13 @@ from collections import defaultdict
 
 
 class KazooException(Exception):
-    """Base Kazoo exception that all other kazoo library exceptions inherit
-    from"""
+    """Base Kazoo exception that all other kazoo library exceptions
+    inherit from"""
 
 
 class ZookeeperError(KazooException):
-    """Base Zookeeper exception for errors originating from the Zookeeper
-    server"""
+    """Base Zookeeper exception for errors originating from the
+    Zookeeper server"""
 
 
 class CancelledError(KazooException):
