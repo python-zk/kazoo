@@ -117,7 +117,7 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     if async_object:
                         async_object.set_exception(callback_exception)
                 elif request and async_object:
-                    if exists_request and header.err == NoNodeError.code:
+                    if exists_error:
                         # It's a NoNodeError, which is fine for an exists
                         # request
                         async_object.set(None)
