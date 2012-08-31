@@ -6,6 +6,7 @@ from nose.tools import eq_
 
 from kazoo.testing import KazooTestCase
 from kazoo.testing import ZooError
+from kazoo.exceptions import BadArgumentsError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ZookeeperError
@@ -128,6 +129,13 @@ class TestClient(KazooTestCase):
         path = client.create("/1")
         eq_(path, "/1")
         self.assertTrue(client.exists("/1"))
+
+    def test_create_invalid_path(self):
+        client = self.client
+        self.assertRaises(ValueError, client.create, ".")
+        self.assertRaises(ValueError, client.create, "/a/../b")
+        self.assertRaises(BadArgumentsError, client.create, "/b\x00")
+        self.assertRaises(BadArgumentsError, client.create, "/b\x1e")
 
     def test_create_value(self):
         client = self.client
