@@ -106,8 +106,12 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                     raise RuntimeError('xids do not match, expected %r '
                                        'received %r', xid, header.xid)
 
+                # Determine if its an exists request and a no node error
                 exists_request = isinstance(request, Exists)
-                if header.err and not exists_request:
+                exists_error = header.err == NoNodeError.code and exists_request
+
+                # Set the exception if its not an exists error
+                if header.err and not exists_error:
                     callback_exception = EXCEPTIONS[header.err]()
                     log.debug('Received error %r', callback_exception)
                     if async_object:
@@ -130,8 +134,8 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                         async_object.set(response)
 
                     # Determine if watchers should be registered
+                    watcher = getattr(request, 'watcher', None)
                     with client._state_lock:
-                        watcher = getattr(request, 'watcher', None)
                         if not client._stopped.is_set() and watcher:
                             if isinstance(request, GetChildren):
                                 client._child_watchers[request.path].add(
