@@ -122,10 +122,39 @@ class TestClient(KazooTestCase):
         client = self.client
         self.assertTrue(client.connected)
 
-    def test_create_no_makepath(self):
-        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
-        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
-            makepath=False)
+    def test_create(self):
+        client = self.client
+        client.create("/1", "")
+        self.assertTrue(client.exists("/1"))
+
+    def test_create_ephemeral(self):
+        client = self.client
+        client.create("/1", "ephemeral", ephemeral=True)
+        data, stat = client.get("/1")
+        eq_(data, "ephemeral")
+        eq_(stat.ephemeralOwner, client.client_id[0])
+
+    def test_create_no_ephemeral(self):
+        client = self.client
+        client.create("/1", "val1")
+        data, stat = client.get("/1")
+        self.assertFalse(stat.ephemeralOwner)
+
+    def test_create_sequence(self):
+        client = self.client
+        client.create("/folder", "")
+        path = client.create("/folder/a", "sequence", sequence=True)
+        eq_(path, "/folder/a0000000000")
+        path2 = client.create("/folder/a", "sequence", sequence=True)
+        eq_(path2, "/folder/a0000000001")
+
+    def test_create_ephemeral_sequence(self):
+        basepath = "/" + uuid.uuid4().hex
+        realpath = self.client.create(basepath, "sandwich", sequence=True,
+            ephemeral=True)
+        self.assertTrue(basepath != realpath and realpath.startswith(basepath))
+        data, stat = self.client.get(realpath)
+        eq_(data, "sandwich")
 
     def test_create_makepath(self):
         self.client.create("/1/2", "val1", makepath=True)
@@ -135,6 +164,11 @@ class TestClient(KazooTestCase):
         self.client.create("/1/2/3/4/5", "val2", makepath=True)
         data, stat = self.client.get("/1/2/3/4/5")
         eq_(data, "val2")
+
+    def test_create_no_makepath(self):
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
+            makepath=False)
 
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -158,16 +192,6 @@ class TestClient(KazooTestCase):
         eq_(newstat.data_length, newstat.dataLength)
         eq_(newstat.children_count, stat.numChildren)
         eq_(newstat.children_version, stat.cversion)
-
-    def test_create_get_sequential(self):
-        basepath = "/" + uuid.uuid4().hex
-        realpath = self.client.create(basepath, "sandwich", sequence=True,
-            ephemeral=True)
-
-        self.assertTrue(basepath != realpath and realpath.startswith(basepath))
-
-        data, stat = self.client.get(realpath)
-        eq_(data, "sandwich")
 
     def test_bad_argument(self):
         client = self.client
