@@ -249,8 +249,8 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
     type = 100
 
     def serialize(self):
-        return bytearray(int_struct.pack(self.auth_type) +
-                         write_string(self.scheme) + write_buffer(self.auth))
+        return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
+                write_buffer(self.auth))
 
 
 class Watch(namedtuple('Watch', 'type state path')):
