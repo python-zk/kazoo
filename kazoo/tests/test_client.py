@@ -125,7 +125,8 @@ class TestClient(KazooTestCase):
 
     def test_create(self):
         client = self.client
-        client.create("/1", "")
+        path = client.create("/1", "")
+        eq_(path, "/1")
         self.assertTrue(client.exists("/1"))
 
     def test_create_large_value(self):
