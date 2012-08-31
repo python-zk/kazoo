@@ -26,7 +26,7 @@ def read_string(buffer, offset):
     else:
         index = offset
         offset += length
-        return str(buffer[index:index + length].decode('utf-8')), offset
+        return buffer[index:index + length].decode('utf-8'), offset
 
 
 def read_acl(bytes, offset):
