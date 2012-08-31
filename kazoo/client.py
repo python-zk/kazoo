@@ -413,9 +413,7 @@ class KazooClient(object):
             non-zero error code
 
         """
-        async_result = self.handler.async_result()
-        self._call(Sync(_prefix_root(self.chroot, path)), async_result)
-        return async_result.get()
+        return self.sync_async(path).get()
 
     def create(self, path, value="", acl=None, ephemeral=False,
                sequence=False, makepath=False):
