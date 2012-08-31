@@ -118,7 +118,14 @@ def proto_reader(client, s, reader_started, reader_done, read_timeout):
                         # request
                         async_object.set(None)
                     else:
+                        try:
                         response = request.deserialize(buffer, offset)
+                        except Exception as exc:
+                            log.debug("Exception raised during deserialization"
+                                      " of request: %s", request)
+                            log.exception(exc)
+                            async_object.set_exception(exc)
+                            continue
                         log.debug('Received response: %r', response)
                         async_object.set(response)
 
