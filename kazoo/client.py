@@ -830,9 +830,9 @@ class KazooClient(object):
             raise TypeError("recursive must be a bool")
 
         if recursive:
-            self._delete_recursive(path)
+            return self._delete_recursive(path)
         else:
-            self.delete_async(path, version).get()
+            return self.delete_async(path, version).get()
 
     def delete_async(self, path, version=-1):
         """Asynchronously delete a node. Takes the same
@@ -854,7 +854,7 @@ class KazooClient(object):
         try:
             children = self.get_children(path)
         except NoNodeError:
-            return
+            return True
 
         if children:
             for child in children:
