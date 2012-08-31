@@ -422,7 +422,8 @@ class KazooClient(object):
         Values larger than this will cause a ZookeeperError to be raised.
 
         :param path: path of node
-        :param value: initial value of node
+        :param value: Initial bytes value of node. Unicode values will be
+            encoded as utf-8.
         :param acl: permissions for node
         :param ephemeral: boolean indicating whether node is ephemeral
                           (tied to this session)
@@ -490,6 +491,8 @@ class KazooClient(object):
             raise TypeError("acl must be a tuple/list of ACL's")
         if not isinstance(value, basestring):
             raise TypeError("value must be a string")
+        elif isinstance(value, unicode):
+            value = value.encode("utf-8")
         if not isinstance(ephemeral, bool):
             raise TypeError("ephemeral must be a bool")
         if not isinstance(sequence, bool):
