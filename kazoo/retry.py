@@ -15,7 +15,7 @@ class ForceRetryError(Exception):
     """Raised when some recipe logic wants to force a retry"""
 
 
-class RetySleeper(object):
+class RetrySleeper(object):
     """A retry sleeper that will track its jitter, backoff and
     sleep appropriately when asked"""
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
@@ -55,7 +55,7 @@ class RetySleeper(object):
 
     def copy(self):
         """Return a clone of this retry sleeper"""
-        return RetySleeper(self.max_tries, self.delay, self.backoff,
+        return RetrySleeper(self.max_tries, self.delay, self.backoff,
                            self.max_jitter / 100.0, self.sleep_func)
 
 
@@ -84,15 +84,12 @@ class KazooRetry(object):
                               and treated as a retry-able command.
 
         """
-        self.retry_sleeper = RetySleeper(max_tries, delay, backoff, max_jitter,
+        self.retry_sleeper = RetrySleeper(max_tries, delay, backoff, max_jitter,
                                          sleep_func)
         self.sleep_func = sleep_func
         self.retry_exceptions = self.RETRY_EXCEPTIONS
         if ignore_expire:
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
-
-    def run(self, func, *args, **kwargs):
-        self(func, *args, **kwargs)
 
     def __call__(self, func, *args, **kwargs):
         self.retry_sleeper.reset()

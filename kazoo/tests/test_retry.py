@@ -1,0 +1,26 @@
+import unittest
+
+from nose.tools import eq_
+from nose.tools import raises
+
+
+class TestRetrySleeper(unittest.TestCase):
+    def _makeOne(self, *args, **kwargs):
+        from kazoo.retry import RetrySleeper
+        return RetrySleeper(*args, **kwargs)
+
+    def test_reset(self):
+        retry = self._makeOne(delay=0)
+        retry.increment()
+        eq_(retry._attempts, 1)
+        retry.reset()
+        eq_(retry._attempts, 0)
+
+    def test_too_many_tries(self):
+        retry = self._makeOne(delay=0)
+        retry.increment()
+
+        @raises(Exception)
+        def testit():
+            retry.increment()
+        testit()
