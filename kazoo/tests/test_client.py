@@ -130,6 +130,14 @@ class TestClient(KazooTestCase):
         eq_(path, "/1")
         self.assertTrue(client.exists("/1"))
 
+    def test_create_unicode_path(self):
+        client = self.client
+        path = client.create(u"/ascii")
+        eq_(path, u"/ascii")
+        # XXX currently deadlocks
+        # path = client.create(u"/\xe4hm")
+        # eq_(path, u"/\xe4hm")
+
     def test_create_invalid_path(self):
         client = self.client
         self.assertRaises(ValueError, client.create, ".")
