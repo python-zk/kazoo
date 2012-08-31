@@ -39,14 +39,14 @@ class DataWatch(object):
     """
     def __init__(self, client, path, func=None,
                  allow_session_lost=True):
-        """Create a children watcher for a path
+        """Create a data watcher for a path
 
         :param client: A zookeeper client
         :type client: :class:`~kazoo.client.KazooClient`
-        :param path: The path to watch for children on
+        :param path: The path to watch for data changes on
         :type path: str
         :param func: Function to call initially and every time the
-                     children change. `func` will be called with a
+                     node changes. `func` will be called with a
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance
         :type func: callable
@@ -55,7 +55,7 @@ class DataWatch(object):
                                    session is lost.
         :type allow_session_lost: bool
 
-        The path must already exist for the children watcher to
+        The path must already exist for the data watcher to
         run.
 
         """
@@ -79,7 +79,7 @@ class DataWatch(object):
         """Callable version for use as a decorator
 
         :param func: Function to call initially and every time the
-                     children change. `func` will be called with a
+                     data changes. `func` will be called with a
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance
         :type func: callable
