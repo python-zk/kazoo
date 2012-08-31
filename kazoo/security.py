@@ -29,7 +29,7 @@ class ACL(namedtuple('ACL', 'perms id')):
         return perms
 
     def __repr__(self):
-        return 'ACL(perms=%r, readable_perms=%s, id=%r)' % (
+        return 'ACL(perms=%r, acl_list=%s, id=%r)' % (
             self.perms, self.acl_list, self.id)
 
 
