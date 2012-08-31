@@ -10,5 +10,4 @@ mock==1.0b1
 nose==1.1.2
 repoze.sphinx.autointerface==0.7.0
 wsgiref==0.1.2
-zc-zookeeper-static==3.4.3-5
 zope.interface==4.0.1
