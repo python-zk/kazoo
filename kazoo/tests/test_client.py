@@ -255,6 +255,10 @@ class TestClient(KazooTestCase):
         client.ensure_path("/1/2/3/4")
         self.assertTrue(client.exists("/1/2/3/4"))
 
+    def test_sync(self):
+        client = self.client
+        self.assertTrue(client.sync('/'), '/')
+
     def test_exists(self):
         nodepath = "/" + uuid.uuid4().hex
 

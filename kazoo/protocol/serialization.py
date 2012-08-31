@@ -245,6 +245,17 @@ class GetChildren(namedtuple('GetChildren', 'path children watcher')):
         return children
 
 
+class Sync(namedtuple('Sync', 'path')):
+    type = 9
+
+    def serialize(self):
+        return write_string(self.path)
+
+    @classmethod
+    def deserialize(cls, buffer, offset):
+        return read_string(buffer, offset)[0]
+
+
 class Auth(namedtuple('Auth', 'auth_type scheme auth')):
     type = 100
 

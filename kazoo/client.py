@@ -32,7 +32,8 @@ from kazoo.protocol.serialization import (
     GetACL,
     SetACL,
     GetData,
-    SetData
+    SetData,
+    Sync
 )
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
@@ -386,6 +387,35 @@ class KazooClient(object):
             return path[len(self.chroot):]
         else:
             return path
+
+    def sync_async(self, path):
+        """Asynchronous sync, blocks until response is acknowledged
+        :param path: path of node
+
+        :returns: AsyncResult object set on completion with the real
+                  path of the new node
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        """
+        async_result = self.handler.async_result()
+        self._call(Sync(_prefix_root(self.chroot, path)), async_result)
+        return async_result
+
+    def sync(self, path):
+        """Asynchronous sync
+
+        Flushes channel between process and leader.
+
+        :param path: path of node
+        :returns: The node path that was sync'd
+        :raises:
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server returns a
+            non-zero error code
+
+        """
+        async_result = self.handler.async_result()
+        self._call(Sync(_prefix_root(self.chroot, path)), async_result)
+        return async_result.get()
 
     def create(self, path, value="", acl=None, ephemeral=False,
                sequence=False, makepath=False):
