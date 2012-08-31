@@ -20,11 +20,7 @@ from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
 
-if gevent.__version__.startswith('1.'):
-    _using_libevent = False
-else:
-    _using_libevent = True
-
+_using_libevent = gevent.__version__.startswith('0.')
 
 log = logging.getLogger(__name__)
 
