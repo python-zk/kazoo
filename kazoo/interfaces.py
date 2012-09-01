@@ -14,6 +14,11 @@ class IHandler(Interface):
     how completion / watch callbacks are handled as well as the method for
     calling :class:`IAsyncResult` callback functions.
 
+    These functions are used to abstract differences between a Python
+    threading environment and asynchronous single-threaded environments
+    like gevent. The minimum functionality needed for Kazoo to handle
+    these differences are encompassed in this interface.
+
     The Handler should document how callbacks are called for:
 
     * Zookeeper completion events
@@ -32,12 +37,28 @@ class IHandler(Interface):
         """Appropriate sleep function that can be called with a single
         argument and sleep.""")
 
+    empty = Attribute(
+        """Exception class that should be thrown and captured if the queue
+        is empty within the given time""")
+
     def start():
         """Start the handler, used for setting up the handler."""
 
     def stop():
         """Stop the handler. Should block until the handler is safely
         stopped."""
+
+    def select():
+        """A select method that implements Python's select.select
+        API"""
+
+    def socket():
+        """A socket method that implements Python's socket.socket
+        API"""
+
+    def peekable_queue():
+        """Return an appropriate object that implements Python's
+        Queue.Queue API with a .peek method"""
 
     def event_object():
         """Return an appropriate object that implements Python's

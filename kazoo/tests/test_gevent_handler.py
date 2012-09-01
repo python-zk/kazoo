@@ -4,7 +4,7 @@ from gevent.event import Event
 from nose.tools import eq_
 from nose.tools import raises
 
-from kazoo.client import Callback
+from kazoo.protocol.states import Callback
 from kazoo.testing import KazooTestCase
 
 
@@ -72,6 +72,19 @@ class TestGeventHandler(unittest.TestCase):
             raise h.timeout_exception("This is a timeout")
         testit()
 
+    def test_peeking(self):
+        from kazoo.handlers.gevent import _PeekableQueue
+        from kazoo.handlers.gevent import Empty
+        queue = _PeekableQueue()
+        queue.put('fred')
+        eq_(queue.peek(), 'fred')
+        eq_(queue.get(), 'fred')
+
+        @raises(Empty)
+        def testit():
+            queue.peek(block=False)
+        testit()
+
 
 class TestGeventClient(KazooTestCase):
     def _makeOne(self, *args):
@@ -83,3 +96,15 @@ class TestGeventClient(KazooTestCase):
         client.start()
         assert client.state == 'CONNECTED'
         client.stop()
+
+    def test_basic_commands(self):
+        client = self._get_client(handler=self._makeOne())
+        client.start()
+        try:
+            assert client.state == 'CONNECTED'
+            client.create('/anode', 'fred')
+            eq_(client.get('/anode')[0], 'fred')
+            eq_(client.delete('/anode'), True)
+            eq_(client.exists('/anode'), None)
+        finally:
+            client.stop()

@@ -17,7 +17,6 @@ Example Use-Case
 import logging
 import os
 import socket
-import threading
 from functools import partial
 
 from kazoo.client import KazooState
@@ -363,8 +362,8 @@ class SetPartitioner(object):
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         if state == KazooState.LOST:
-            self._client.remove_listener(self._establish_sessionwatch)
             self._fail_out()
+            return True
 
     def _partitioner(self, identifier, members, partitions):
         # Ensure consistent order of partitions/members

@@ -1,54 +1,14 @@
-import logging
-import os
 import threading
 import uuid
 import unittest
 
-import zookeeper
 from nose.tools import eq_
 
-import kazoo.client
-import kazoo.klog
 from kazoo.testing import KazooTestCase
-from kazoo.testing import ZooError
-from kazoo.exceptions import NoNodeException
-from kazoo.exceptions import NoAuthException
-from kazoo.tests.util import InstalledHandler
-from kazoo.tests.util import wait
-
-
-class LoggingTests(unittest.TestCase):
-    def test_logging(self):
-        handler = InstalledHandler('ZooKeeper')
-        try:
-            handle = zookeeper.init('zookeeper.example.com:2181')
-            zookeeper.close(handle)
-        except Exception:
-            pass
-
-        wait(lambda: [r for r in handler.records
-                       if 'environment' in r.getMessage()]
-             )
-        handler.clear()
-        kazoo.klog.setup_logging()
-
-        # Test that the filter for the "Exceeded deadline by" noise works.
-        # cheat and bypass zk by writing to the pipe directly.
-        os.write(kazoo.klog._logging_pipe[1],
-                 '2012-01-06 16:45:44,572:43673(0x1004f6000):ZOO_WARN@'
-                 'zookeeper_interest@1461: Exceeded deadline by 27747ms\n')
-        wait(lambda: [r for r in handler.records
-                       if ('Exceeded deadline by' in r.getMessage()
-                           and r.levelno == logging.DEBUG)
-                       ]
-             )
-
-        self.assertFalse([r for r in handler.records
-                          if ('Exceeded deadline by' in r.getMessage()
-                              and r.levelno == logging.WARNING)
-                          ])
-
-        handler.uninstall()
+from kazoo.exceptions import BadArgumentsError
+from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoAuthError
+from kazoo.exceptions import ConnectionLoss
 
 
 class TestConnection(KazooTestCase):
@@ -74,18 +34,18 @@ class TestConnection(KazooTestCase):
         eve.start()
 
         try:
-            self.assertRaises(NoAuthException, eve.get, "/1/2")
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
 
             # try again with the wrong auth token
             eve.add_auth("digest", "badbad:bad")
 
-            self.assertRaises(NoAuthException, eve.get, "/1/2")
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
             # Ensure we remove the ACL protected nodes
             self.client.delete("/1", recursive=True)
 
     def test_session_expire(self):
-        from kazoo.client import KazooState
+        from kazoo.protocol.states import KazooState
 
         cv = threading.Event()
 
@@ -99,7 +59,7 @@ class TestConnection(KazooTestCase):
         assert cv.is_set()
 
     def test_bad_session_expire(self):
-        from kazoo.client import KazooState
+        from kazoo.protocol.states import KazooState
 
         cv = threading.Event()
         ab = threading.Event()
@@ -118,7 +78,7 @@ class TestConnection(KazooTestCase):
         assert not cv.is_set()
 
     def test_state_listener(self):
-        from kazoo.client import KazooState
+        from kazoo.protocol.states import KazooState
         states = []
         condition = threading.Condition()
 
@@ -128,6 +88,7 @@ class TestConnection(KazooTestCase):
                 condition.notify_all()
 
         self.client.stop()
+        eq_(self.client.state, KazooState.LOST)
         self.client.add_listener(listener)
         self.client.start(5)
 
@@ -139,64 +100,104 @@ class TestConnection(KazooTestCase):
         eq_(states[0], KazooState.CONNECTED)
 
     def test_no_connection(self):
-        from kazoo.exceptions import ZookeeperStoppedError
-        self.client.stop()
-        self.assertRaises(ZookeeperStoppedError, self.client.exists, '/')
+        from kazoo.exceptions import SessionExpiredError
+        client = self.client
+        client.stop()
+        self.assertFalse(client.connected)
+        self.assertTrue(client.client_id is None)
+        self.assertRaises(SessionExpiredError, client.exists, '/')
 
 
 class TestClient(KazooTestCase):
     def _getKazooState(self):
-        from kazoo.client import KazooState
+        from kazoo.protocol.states import KazooState
         return KazooState
 
-    def test_legacy_error(self):
-        self.add_errors(dict(
-            acreate=[ZooError('call', SystemError, False)]
-        ))
-        self.assertRaises(zookeeper.InvalidStateException, self.client.create,
-                          "/1", "val1")
+    def test_client_id(self):
+        client_id = self.client.client_id
+        self.assertEqual(type(client_id), tuple)
+        # make sure password is of correct length
+        self.assertEqual(len(client_id[1]), 16)
 
-    def test_bad_arguments(self):
-        self.add_errors(dict(
-            acreate=[ZooError('call', zookeeper.BadArgumentsException, False)]
-        ))
-        self.assertRaises(zookeeper.BadArgumentsException, self.client.create,
-                          "/1", "val1")
-
-    def test_bad_handle_type_error(self):
-        self.add_errors(dict(
-            acreate=[ZooError('call', TypeError("an integer is required"),
-                              False)]
-        ))
-        self.assertRaises(zookeeper.SessionExpiredException, self.client.create,
-                          "/1", "val1")
-
-    def test_bad_argument(self):
+    def test_connected(self):
         client = self.client
-        client.ensure_path("/1")
-        self.assertRaises(TypeError, self.client.set, "/1", 1)
+        self.assertTrue(client.connected)
 
-    def test_ensure_path(self):
+    def test_create(self):
         client = self.client
-        client.ensure_path("/1/2")
-        self.assertTrue(client.exists("/1/2"))
+        path = client.create("/1")
+        eq_(path, "/1")
+        self.assertTrue(client.exists("/1"))
 
-        client.ensure_path("/1/2/3/4")
-        self.assertTrue(client.exists("/1/2/3/4"))
+    def test_create_unicode_path(self):
+        client = self.client
+        path = client.create(u"/ascii")
+        eq_(path, u"/ascii")
+        path = client.create(u"/\xe4hm")
+        eq_(path, u"/\xe4hm")
 
-    def test_create_no_makepath(self):
-        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1")
-        self.assertRaises(NoNodeException, self.client.create, "/1/2", "val1",
-            makepath=False)
+    def test_create_invalid_path(self):
+        client = self.client
+        self.assertRaises(ValueError, client.create, ".")
+        self.assertRaises(ValueError, client.create, "/a/../b")
+        self.assertRaises(BadArgumentsError, client.create, "/b\x00")
+        self.assertRaises(BadArgumentsError, client.create, "/b\x1e")
 
-    def test_bad_create_args(self):
-        # We need a non-namespaced client for this test
-        client = self._get_nonchroot_client()
-        try:
-            client.start()
-            self.assertRaises(ValueError, client.create, "1/2", "val1")
-        finally:
-            client.stop()
+    def test_create_value(self):
+        client = self.client
+        client.create("/1", "bytes")
+        data, stat = client.get("/1")
+        eq_(data, "bytes")
+
+    def test_create_unicode_value(self):
+        client = self.client
+        self.assertRaises(TypeError, client.create, "/1", u"\xe4hm")
+
+    def test_create_large_value(self):
+        client = self.client
+        kb_512 = "a" * (512 * 1024)
+        client.create("/1", kb_512)
+        self.assertTrue(client.exists("/1"))
+        mb_2 = "a" * (2 * 1024 * 1024)
+        self.assertRaises(ConnectionLoss, client.create, "/2", mb_2)
+
+    def test_create_ephemeral(self):
+        client = self.client
+        client.create("/1", "ephemeral", ephemeral=True)
+        data, stat = client.get("/1")
+        eq_(data, "ephemeral")
+        eq_(stat.ephemeralOwner, client.client_id[0])
+
+    def test_create_no_ephemeral(self):
+        client = self.client
+        client.create("/1", "val1")
+        data, stat = client.get("/1")
+        self.assertFalse(stat.ephemeralOwner)
+
+    def test_create_ephemeral_no_children(self):
+        from kazoo.exceptions import NoChildrenForEphemeralsError
+        client = self.client
+        client.create("/1", "ephemeral", ephemeral=True)
+        self.assertRaises(NoChildrenForEphemeralsError,
+            client.create, "/1/2", "val1")
+        self.assertRaises(NoChildrenForEphemeralsError,
+            client.create, "/1/2", "val1", ephemeral=True)
+
+    def test_create_sequence(self):
+        client = self.client
+        client.create("/folder", "")
+        path = client.create("/folder/a", "sequence", sequence=True)
+        eq_(path, "/folder/a0000000000")
+        path2 = client.create("/folder/a", "sequence", sequence=True)
+        eq_(path2, "/folder/a0000000001")
+
+    def test_create_ephemeral_sequence(self):
+        basepath = "/" + uuid.uuid4().hex
+        realpath = self.client.create(basepath, "sandwich", sequence=True,
+            ephemeral=True)
+        self.assertTrue(basepath != realpath and realpath.startswith(basepath))
+        data, stat = self.client.get(realpath)
+        eq_(data, "sandwich")
 
     def test_create_makepath(self):
         self.client.create("/1/2", "val1", makepath=True)
@@ -206,6 +207,17 @@ class TestClient(KazooTestCase):
         self.client.create("/1/2/3/4/5", "val2", makepath=True)
         data, stat = self.client.get("/1/2/3/4/5")
         eq_(data, "val2")
+
+    def test_create_no_makepath(self):
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
+            makepath=False)
+
+    def test_create_exists(self):
+        from kazoo.exceptions import NodeExistsError
+        client = self.client
+        path = client.create("/1", "")
+        self.assertRaises(NodeExistsError, client.create, path, "")
 
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -230,15 +242,22 @@ class TestClient(KazooTestCase):
         eq_(newstat.children_count, stat.numChildren)
         eq_(newstat.children_version, stat.cversion)
 
-    def test_create_get_sequential(self):
-        basepath = "/" + uuid.uuid4().hex
-        realpath = self.client.create(basepath, "sandwich", sequence=True,
-            ephemeral=True)
+    def test_bad_argument(self):
+        client = self.client
+        client.ensure_path("/1")
+        self.assertRaises(TypeError, self.client.set, "/1", 1)
 
-        self.assertTrue(basepath != realpath and realpath.startswith(basepath))
+    def test_ensure_path(self):
+        client = self.client
+        client.ensure_path("/1/2")
+        self.assertTrue(client.exists("/1/2"))
 
-        data, stat = self.client.get(realpath)
-        eq_(data, "sandwich")
+        client.ensure_path("/1/2/3/4")
+        self.assertTrue(client.exists("/1/2/3/4"))
+
+    def test_sync(self):
+        client = self.client
+        self.assertTrue(client.sync('/'), '/')
 
     def test_exists(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -249,7 +268,7 @@ class TestClient(KazooTestCase):
         self.client.create(nodepath, "sandwich", ephemeral=True)
         exists = self.client.exists(nodepath)
         self.assertTrue(exists)
-        assert "version" in exists
+        assert isinstance(exists.version, int)
 
         multi_node_nonexistent = "/" + uuid.uuid4().hex + "/hats"
         exists = self.client.exists(multi_node_nonexistent)
@@ -310,91 +329,31 @@ dummy_dict = {
 
 
 class TestCallbacks(unittest.TestCase):
-    def test_exists_callback(self):
-        from kazoo.client import _exists_callback
-        from kazoo.handlers.threading import SequentialThreadingHandler
-        handler = SequentialThreadingHandler()
-        asy = handler.async_result()
-        _exists_callback(asy, 0, zookeeper.OK, True)
-        eq_(asy.get(), True)
-
-        asy = handler.async_result()
-        _exists_callback(asy, 0, zookeeper.CONNECTIONLOSS, False)
-        self.assertRaises(zookeeper.ConnectionLossException, asy.get)
-
-    def test_generic_callback_ok(self):
-        from kazoo.client import _generic_callback
-        from kazoo.handlers.threading import SequentialThreadingHandler
-        handler = SequentialThreadingHandler()
-
-        # No args
-        asy = handler.async_result()
-        _generic_callback(asy, 0, zookeeper.OK)
-        eq_(asy.get(), None)
-
-        # One arg thats not a dict
-        asy = handler.async_result()
-        _generic_callback(asy, 0, zookeeper.OK, 12)
-        eq_(asy.get(), 12)
-
-        # One arg thats a node struct
-        asy = handler.async_result()
-        _generic_callback(asy, 0, zookeeper.OK, dummy_dict)
-        eq_(asy.get().acl_version, 1)
-
-        # two args, second is struct
-        asy = handler.async_result()
-        _generic_callback(asy, 0, zookeeper.OK, 11, dummy_dict)
-        val = asy.get()
-        eq_(val[1].acl_version, 1)
-        eq_(val[0], 11)
-
-    def test_generic_callback_error(self):
-        from kazoo.client import _generic_callback
-        from kazoo.handlers.threading import SequentialThreadingHandler
-        handler = SequentialThreadingHandler()
-
-        asy = handler.async_result()
-        _generic_callback(asy, 0, zookeeper.CONNECTIONLOSS)
-        self.assertRaises(zookeeper.ConnectionLossException, asy.get)
-
     def test_session_callback_states(self):
-        from kazoo.client import (KazooClient, KazooState, KeeperState,
-            EventType)
+        from kazoo.protocol.states import KazooState, KeeperState
+        from kazoo.client import KazooClient
 
         client = KazooClient()
         client._handle = 1
         client._live.set()
 
-        result = client._session_callback(1, EventType.CREATED,
-                                          KeeperState.CONNECTED, '/')
+        result = client._session_callback(KeeperState.CONNECTED)
         eq_(result, None)
 
         # Now with stopped
         client._stopped.set()
-        result = client._session_callback(1, EventType.SESSION,
-                                          KeeperState.CONNECTED, '/')
+        result = client._session_callback(KeeperState.CONNECTED)
         eq_(result, None)
 
         # Test several state transitions
         client._stopped.clear()
         client.start_async = lambda: True
-        client._session_callback(1, EventType.SESSION, KeeperState.CONNECTED,
-                                 None)
+        client._session_callback(KeeperState.CONNECTED)
         eq_(client.state, KazooState.CONNECTED)
 
-        client._session_callback(1, EventType.SESSION, KeeperState.AUTH_FAILED,
-                                 None)
-        eq_(client._handle, None)
+        client._session_callback(KeeperState.AUTH_FAILED)
         eq_(client.state, KazooState.LOST)
 
         client._handle = 1
-        client._session_callback(1, EventType.SESSION, -250, None)
-        eq_(client.state, KazooState.SUSPENDED)
-
-        # handle mismatch
-        client._handle = 0
-        # This will be ignored due to handle mismatch
-        client._session_callback(1, EventType.SESSION, KeeperState.CONNECTED,
-                                 None)
+        client._session_callback(-250)
         eq_(client.state, KazooState.SUSPENDED)

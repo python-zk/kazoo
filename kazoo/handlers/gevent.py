@@ -2,86 +2,46 @@
 from __future__ import absolute_import
 
 import atexit
-import fcntl
-import os
+import logging
 
 import gevent
+import gevent.queue
 import gevent.coros
 import gevent.event
 import gevent.thread
-try:
-    from gevent import get_hub
-except ImportError:  # pragma: nocover
-    from gevent.hub import get_hub
+import gevent.select
 
 from gevent.queue import Empty
 from gevent.queue import Queue
+from gevent import socket
 from zope.interface import implementer
 
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
 
-if gevent.__version__.startswith('1.'):
-    _using_libevent = False
-else:
-    _using_libevent = True
+_using_libevent = gevent.__version__.startswith('0.')
 
+log = logging.getLogger(__name__)
 
 _STOP = object()
 
 
-# Simple wrapper to os.pipe() - but sets to non-block
-def _pipe():
-    r, w = os.pipe()
-    fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
-    fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
-    return r, w
-
-_core_pipe_read, _core_pipe_write = _pipe()
-
-
-def _core_pipe_read_callback(event, evtype):
-    try:
-        os.read(event.fd, 1)
-    except Exception:
-        pass
-
 if _using_libevent:
-    # The os pipe trick to wake gevent is only need for gevent pre-1.0
-    gevent.core.event(gevent.core.EV_READ | gevent.core.EV_PERSIST,
-                     _core_pipe_read, _core_pipe_read_callback).add()
+    from .gevent_pqueue import PeekableQueue as _PeekableQueue
+else:
+    _PeekableQueue = gevent.queue.Queue
 
 
-@implementer(IAsyncResult)
-class AsyncResult(gevent.event.AsyncResult):
-    """A gevent AsyncResult capable of waking the gevent thread when used
-    from the Zookeeper thread"""
-    def __init__(self, handler):
-        self._handler = handler
-        gevent.event.AsyncResult.__init__(self)
-
-    def set(self, value=None):
-        # Proxy the set call to the gevent thread
-        self._handler.completion_queue.put(
-            lambda: gevent.event.AsyncResult.set(self, value)
-        )
-        self._handler.wake()
-
-    def set_exception(self, exception):
-        # Proxy the set_exception call to the gevent thread
-        self._handler.completion_queue.put(
-            lambda: gevent.event.AsyncResult.set_exception(self, exception)
-        )
-        self._handler.wake()
+AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 
 
 @implementer(IHandler)
 class SequentialGeventHandler(object):
     """Gevent handler for sequentially executing callbacks.
 
-    This handler executes callbacks in a sequential manner from the Zookeeper
-    thread. A queue is created for each of the callback events, so that each
+    This handler executes callbacks in a sequential manner.
+    A queue is created for each of the callback events, so that each
     type of event has its callback type run sequentially. These are split into
     three queues, therefore it's possible that a session event arriving after a
     watch event may have its callback executed at the same time or slightly
@@ -102,23 +62,18 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     sleep_func = staticmethod(gevent.sleep)
+    empty = staticmethod(gevent.queue.Empty)
 
-    def __init__(self, hub=None):
+    def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
         self.completion_queue = Queue()
         self.callback_queue = Queue()
         self.session_queue = Queue()
         self._running = False
-        self._hub = hub or get_hub()
         self._async = None
         self._state_change = gevent.coros.Semaphore()
         self._workers = []
         atexit.register(self.stop)
-
-        # Startup the async watcher to notify the gevent loop from other
-        # threads when using gevent 1.0
-        if not _using_libevent:
-            self._async = self._hub.loop.async()
 
     class timeout_exception(gevent.event.Timeout):
         def __init__(self, msg):
@@ -134,15 +89,10 @@ class SequentialGeventHandler(object):
                     func()
                 except Empty:
                     continue
+                except Exception as exc:
+                    log.warning("Exception in worker greenlet")
+                    log.exception(exc)
         return gevent.spawn(greenlet_worker)
-
-    def wake(self):
-        """Wake the gevent hub the appropriate way"""
-        if _using_libevent:
-            # Wake gevent wait/gets
-            os.write(_core_pipe_write, '\0')
-        else:
-            self._async.send()
 
     def start(self):
         """Start the greenlet workers."""
@@ -165,6 +115,9 @@ class SequentialGeventHandler(object):
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
         with self._state_change:
+            if not self._running:
+                return
+
             self._running = False
 
             for queue in (self.completion_queue, self.callback_queue,
@@ -179,6 +132,17 @@ class SequentialGeventHandler(object):
             self.completion_queue = Queue()
             self.callback_queue = Queue()
             self.session_queue = Queue()
+
+    def select(self, *args, **kwargs):
+        return gevent.select.select(*args, **kwargs)
+
+    def socket(self, *args, **kwargs):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return sock
+
+    def peekable_queue(self, *args, **kwargs):
+        return _PeekableQueue(*args, **kwargs)
 
     def event_object(self):
         """Create an appropriate Event object"""
@@ -200,7 +164,7 @@ class SequentialGeventHandler(object):
         is created in (which should be the gevent/main thread).
 
         """
-        return AsyncResult(self)
+        return AsyncResult()
 
     def spawn(self, func, *args, **kwargs):
         """Spawn a function to run asynchronously"""
@@ -217,4 +181,3 @@ class SequentialGeventHandler(object):
             self.session_queue.put(lambda: callback.func(*callback.args))
         else:
             self.callback_queue.put(lambda: callback.func(*callback.args))
-        self.wake()

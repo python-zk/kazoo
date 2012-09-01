@@ -12,10 +12,10 @@ Kazoo features:
 * Lock, Party, Election, and Partitioner recipe implementations (more
   implementations are in development)
 * Data and Children Watchers
-* Workarounds for Zookeeper Python binding bugs in the released libraries
 * Integrated testing helpers for Zookeeper clusters
 * Simplified Zookeeper connection state tracking
-* Logging redirection to standard Python logging system
+* Pure-Python based implementation of the wire protocol, avoiding all the
+  memory leaks, lacking features and debugging madness of the C library
 
 Kazoo is heavily inspired by `Netflix Curator`_ simplifications and helpers.
 

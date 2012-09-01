@@ -10,21 +10,22 @@ Public API
 
     .. autoclass:: KazooClient()
         :members:
+        :member-order: bysource
 
         .. automethod:: __init__
 
-    .. autoclass:: EventType
+        .. attribute:: handler
 
-    .. autoclass:: KazooState
+        The :class:`~kazoo.interfaces.IHandler` strategy used by this client.
+        Gives access to appropriate synchronization objects.
 
-    .. autoclass:: KeeperState
+        .. method:: retry(func, *args, **kwargs)
 
-    .. autoclass:: WatchedEvent
+        Runs the given function with the provided arguments, retrying if it
+        fails because the ZooKeeper connection is lost,
+        see :ref:`retrying_commands`.
 
-    .. autoclass:: ZnodeStat
+        .. attribute:: state
 
-
-Private API
-+++++++++++
-
-    .. autoclass:: Callback
+        A :class:`~kazoo.protocol.states.KazooState` attribute indicating the
+        current higher-level connection state.

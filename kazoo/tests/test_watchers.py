@@ -12,9 +12,9 @@ class KazooDataWatcherTests(KazooTestCase):
     def setUp(self):
         super(KazooDataWatcherTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
-
-    def test_child_watcher(self):
         self.client.ensure_path(self.path)
+
+    def test_data_watcher(self):
         update = threading.Event()
         data = [True]
 
@@ -33,8 +33,46 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data[0], 'fred')
         update.clear()
 
+    def test_func_style_data_watch(self):
+        update = threading.Event()
+        data = [True]
+
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+        self.client.DataWatch(self.path, changed)
+
+        update.wait()
+        eq_(data, [""])
+        update.clear()
+
+        self.client.set(self.path, 'fred')
+        update.wait()
+        eq_(data[0], 'fred')
+        update.clear()
+
+    def test_datawatch_across_session_expire(self):
+        update = threading.Event()
+        data = [True]
+
+        @self.client.DataWatch(self.path)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait()
+        eq_(data, [""])
+        update.clear()
+
+        self.expire_session()
+        eq_(update.is_set(), False)
+        self.client.retry(self.client.set, self.path, 'fred')
+        update.wait()
+        eq_(data[0], 'fred')
+
     def test_func_stops(self):
-        self.client.ensure_path(self.path)
         update = threading.Event()
         data = [True]
 
@@ -59,7 +97,7 @@ class KazooDataWatcherTests(KazooTestCase):
         update.clear()
 
         self.client.set(self.path, 'asdfasdf')
-        update.wait(0.5)
+        update.wait(0.2)
         eq_(data[0], 'fred')
 
         d, stat = self.client.get(self.path)
@@ -74,14 +112,27 @@ class KazooDataWatcherTests(KazooTestCase):
 
         eq_(args, [None, None])
 
+    def test_bad_watch_func(self):
+        counter = 0
+
+        @self.client.DataWatch(self.path)
+        def changed(d, stat):
+            if counter > 0:
+                raise Exception("oops")
+
+        raises(Exception)(changed)
+
+        counter += 1
+        self.client.set(self.path, 'asdfasdf')
+
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
         super(KazooChildrenWatcherTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
+        self.client.ensure_path(self.path)
 
     def test_child_watcher(self):
-        self.client.ensure_path(self.path)
         update = threading.Event()
         all_children = ['fred']
 
@@ -105,8 +156,32 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.wait()
         eq_(sorted(all_children), ['george', 'smith'])
 
+    def test_func_style_child_watcher(self):
+        update = threading.Event()
+        all_children = ['fred']
+
+        def changed(children):
+            while all_children:
+                all_children.pop()
+            all_children.extend(children)
+            update.set()
+
+        self.client.ChildrenWatch(self.path, changed)
+
+        update.wait()
+        eq_(all_children, [])
+        update.clear()
+
+        self.client.create(self.path + '/' + 'smith', '0')
+        update.wait()
+        eq_(all_children, ['smith'])
+        update.clear()
+
+        self.client.create(self.path + '/' + 'george', '0')
+        update.wait()
+        eq_(sorted(all_children), ['george', 'smith'])
+
     def test_func_stops(self):
-        self.client.ensure_path(self.path)
         update = threading.Event()
         all_children = ['fred']
 
@@ -136,7 +211,6 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(all_children, ['smith'])
 
     def test_child_watch_session_loss(self):
-        self.client.ensure_path(self.path)
         update = threading.Event()
         all_children = ['fred']
 
@@ -165,7 +239,6 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(sorted(all_children), ['george', 'smith'])
 
     def test_child_stop_on_session_loss(self):
-        self.client.ensure_path(self.path)
         update = threading.Event()
         all_children = ['fred']
 
@@ -197,6 +270,18 @@ class KazooChildrenWatcherTests(KazooTestCase):
         children = self.client.get_children(self.path)
         eq_(sorted(children), ['george', 'smith'])
 
+    def test_bad_children_watch_func(self):
+        counter = 0
+
+        @self.client.ChildrenWatch(self.path)
+        def changed(children):
+            if counter > 0:
+                raise Exception("oops")
+
+        raises(Exception)(changed)
+        counter += 1
+        self.client.create(self.path + '/' + 'smith', '0')
+
 
 class KazooPatientChildrenWatcherTests(KazooTestCase):
     def setUp(self):
@@ -220,11 +305,11 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         eq_(asy.ready(), True)
 
     def test_exception(self):
-        from kazoo.exceptions import NoNodeException
+        from kazoo.exceptions import NoNodeError
         watcher = self._makeOne(self.client, self.path, 0.1)
         result = watcher.start()
 
-        @raises(NoNodeException)
+        @raises(NoNodeError)
         def testit():
             result.get()
         testit()

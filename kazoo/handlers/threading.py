@@ -13,9 +13,12 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
-import Queue
+import logging
+import select
+import socket
 import time
 import threading
+import Queue
 
 from zope.interface import implementer
 
@@ -25,6 +28,9 @@ from kazoo.interfaces import IHandler
 # sentinal objects
 _NONE = object()
 _STOP = object()
+
+
+log = logging.getLogger(__name__)
 
 
 class TimeoutError(Exception):
@@ -138,10 +144,10 @@ class AsyncResult(object):
 
 @implementer(IHandler)
 class SequentialThreadingHandler(object):
-    """threading Handler for sequentially executing callbacks
+    """Threading handler for sequentially executing callbacks.
 
-    This handler executes callbacks in a sequential manner from the Zookeeper
-    thread. A queue is created for each of the callback events, so that each
+    This handler executes callbacks in a sequential manner.
+    A queue is created for each of the callback events, so that each
     type of event has its callback type run sequentially. These are split into
     three queues, therefore it's possible that a session event arriving after a
     watch event may have its callback executed at the same time or slightly
@@ -168,6 +174,7 @@ class SequentialThreadingHandler(object):
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
     sleep_func = time.sleep
+    empty = staticmethod(Queue.Empty)
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""
@@ -188,6 +195,9 @@ class SequentialThreadingHandler(object):
                         if func is _STOP:
                             break
                         func()
+                    except Exception as exc:
+                        log.warning("Exception in worker queue thread")
+                        log.exception(exc)
                     finally:
                         queue.task_done()
                 except Queue.Empty:
@@ -239,6 +249,17 @@ class SequentialThreadingHandler(object):
             self.session_queue = Queue.Queue()
             self.completion_queue = Queue.Queue()
 
+    def select(self, *args, **kwargs):
+        return select.select(*args, **kwargs)
+
+    def socket(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return sock
+
+    def peekable_queue(self, *args, **kwargs):
+        return _PeekableQueue(*args, **kwargs)
+
     def event_object(self):
         """Create an appropriate Event object"""
         return threading.Event()
@@ -271,3 +292,38 @@ class SequentialThreadingHandler(object):
             self.session_queue.put(lambda: callback.func(*callback.args))
         else:
             self.callback_queue.put(lambda: callback.func(*callback.args))
+
+
+class _PeekableQueue(Queue.Queue):
+    def peek(self, block=True, timeout=None):
+        """Return the first item in the queue but do not remove it from the queue.
+
+        If optional args 'block' is true and 'timeout' is None (the default),
+        block if necessary until an item is available. If 'timeout' is
+        a positive number, it blocks at most 'timeout' seconds and raises
+        the Empty exception if no item was available within that time.
+        Otherwise ('block' is false), return an item if one is immediately
+        available, else raise the Empty exception ('timeout' is ignored
+        in that case).
+        """
+        self.not_empty.acquire()
+        try:
+            if not block:
+                if not self._qsize():
+                    raise Queue.Empty
+            elif timeout is None:
+                while not self._qsize():
+                    self.not_empty.wait()
+            elif timeout < 0:
+                raise ValueError("'timeout' must be a positive number")
+            else:
+                endtime = time.time() + timeout
+                while not self._qsize():
+                    remaining = endtime - time.time()
+                    if remaining <= 0.0:
+                        raise Queue.Empty
+                    self.not_empty.wait(remaining)
+            item = self.queue[0]
+            return item
+        finally:
+            self.not_empty.release()

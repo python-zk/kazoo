@@ -1,32 +1,15 @@
-"""Zookeeper exceptions and mappings"""
-import zookeeper
-from zookeeper import (
-    SystemErrorException,
-    RuntimeInconsistencyException,
-    DataInconsistencyException,
-    ConnectionLossException,
-    MarshallingErrorException,
-    UnimplementedException,
-    OperationTimeoutException,
-    BadArgumentsException,
-    ApiErrorException,
-    NoNodeException,
-    NoAuthException,
-    BadVersionException,
-    NoChildrenForEphemeralsException,
-    NodeExistsException,
-    InvalidACLException,
-    AuthFailedException,
-    NotEmptyException,
-    SessionExpiredException,
-    InvalidCallbackException,
-    InvalidStateException
-)
+"""Kazoo Exceptions"""
+from collections import defaultdict
 
 
 class KazooException(Exception):
-    """Base Kazoo exception that all other kazoo library exceptions inherit
-    from"""
+    """Base Kazoo exception that all other kazoo library exceptions
+    inherit from"""
+
+
+class ZookeeperError(KazooException):
+    """Base Zookeeper exception for errors originating from the
+    Zookeeper server"""
 
 
 class CancelledError(KazooException):
@@ -41,52 +24,128 @@ class ZookeeperStoppedError(KazooException):
     """Raised when the kazoo client stopped (and thus not connected)"""
 
 
-# this dictionary is a port of err_to_exception() from zkpython zookeeper.c
-_ERR_TO_EXCEPTION = {
-    zookeeper.SYSTEMERROR: SystemErrorException,
-    zookeeper.RUNTIMEINCONSISTENCY: RuntimeInconsistencyException,
-    zookeeper.DATAINCONSISTENCY: DataInconsistencyException,
-    zookeeper.CONNECTIONLOSS: ConnectionLossException,
-    zookeeper.MARSHALLINGERROR: MarshallingErrorException,
-    zookeeper.UNIMPLEMENTED: UnimplementedException,
-    zookeeper.OPERATIONTIMEOUT: OperationTimeoutException,
-    zookeeper.BADARGUMENTS: BadArgumentsException,
-    zookeeper.APIERROR: ApiErrorException,
-    zookeeper.NONODE: NoNodeException,
-    zookeeper.NOAUTH: NoAuthException,
-    zookeeper.BADVERSION: BadVersionException,
-    zookeeper.NOCHILDRENFOREPHEMERALS: NoChildrenForEphemeralsException,
-    zookeeper.NODEEXISTS: NodeExistsException,
-    zookeeper.INVALIDACL: InvalidACLException,
-    zookeeper.AUTHFAILED: AuthFailedException,
-    zookeeper.NOTEMPTY: NotEmptyException,
-    zookeeper.SESSIONEXPIRED: SessionExpiredException,
-    zookeeper.INVALIDCALLBACK: InvalidCallbackException,
-    zookeeper.INVALIDSTATE: InvalidStateException,
-}
+class ConnectionDropped(KazooException):
+    """ Internal error for jumping out of loops """
 
 
-def err_to_exception(error_code, msg=None):
-    """Return an exception object for a Zookeeper error code
-    """
-    try:
-        zkmsg = zookeeper.zerror(error_code)
-    except Exception:
-        zkmsg = ""
+def _invalid_error_code():
+    raise RuntimeError('Invalid error code')
 
-    if msg:
-        if zkmsg:
-            msg = "%s: %s" % (zkmsg, msg)
-    else:
-        msg = zkmsg
 
-    exc = _ERR_TO_EXCEPTION.get(error_code)
-    if exc is None:
+EXCEPTIONS = defaultdict(_invalid_error_code)
 
-        # double check that it isn't an ok resonse
-        if error_code == zookeeper.OK:
-            return None
 
-        # otherwise generic exception
-        exc = Exception
-    return exc(msg)
+def _zookeeper_exception(code):
+    def decorator(klass):
+        def create(*args, **kwargs):
+            return klass(args, kwargs)
+
+        EXCEPTIONS[code] = create
+        klass.code = code
+        return klass
+
+    return decorator
+
+
+@_zookeeper_exception(0)
+class RolledBackError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-1)
+class SystemZookeeperError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-2)
+class RuntimeInconsistency(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-3)
+class DataInconsistency(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-4)
+class ConnectionLoss(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-5)
+class MarshallingError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-6)
+class UnimplementedError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-7)
+class OperationTimeoutError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-8)
+class BadArgumentsError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-100)
+class APIError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-101)
+class NoNodeError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-102)
+class NoAuthError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-103)
+class BadVersionError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-108)
+class NoChildrenForEphemeralsError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-110)
+class NodeExistsError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-111)
+class NotEmptyError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-112)
+class SessionExpiredError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-113)
+class InvalidCallbackError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-114)
+class InvalidACLError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-115)
+class AuthFailedError(ZookeeperError):
+    pass
+
+
+class ConnectionClosedError(SessionExpiredError):
+    """Connection is closed"""

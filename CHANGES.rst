@@ -1,6 +1,22 @@
 Changelog
 =========
 
+0.4 (unreleased)
+----------------
+
+API Changes
+***********
+
+- The data value argument for the create and create_async methods of the
+  client was made optional and defaults to an empty byte string. The data
+  value must be a byte string. Unicode values are no longer allowed and
+  will raise a TypeError.
+
+
+Bug Handling
+************
+
+
 0.3 (8/23/2012)
 ---------------
 

@@ -5,7 +5,7 @@ import time
 from functools import partial
 
 from kazoo.client import KazooState
-from kazoo.exceptions import NoNodeException
+from kazoo.exceptions import NoNodeError
 
 log = logging.getLogger(__name__)
 
@@ -31,9 +31,6 @@ class DataWatch(object):
 
         # Above function is called immediately and prints
 
-    Error Handling
-    --------------
-
     In the event the node does not exist, the function will be called
     with ``(None, None)`` and will not be called again. This should be
     considered the last function call. This behavior will also occur
@@ -42,14 +39,14 @@ class DataWatch(object):
     """
     def __init__(self, client, path, func=None,
                  allow_session_lost=True):
-        """Create a children watcher for a path
+        """Create a data watcher for a path
 
         :param client: A zookeeper client
         :type client: :class:`~kazoo.client.KazooClient`
-        :param path: The path to watch for children on
+        :param path: The path to watch for data changes on
         :type path: str
         :param func: Function to call initially and every time the
-                     children change. `func` will be called with a
+                     node changes. `func` will be called with a
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance
         :type func: callable
@@ -58,7 +55,7 @@ class DataWatch(object):
                                    session is lost.
         :type allow_session_lost: bool
 
-        The path must already exist for the children watcher to
+        The path must already exist for the data watcher to
         run.
 
         """
@@ -82,7 +79,7 @@ class DataWatch(object):
         """Callable version for use as a decorator
 
         :param func: Function to call initially and every time the
-                     children change. `func` will be called with a
+                     data changes. `func` will be called with a
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance
         :type func: callable
@@ -103,7 +100,7 @@ class DataWatch(object):
             try:
                 data, stat = self._client.retry(self._client.get,
                                                 self._path, self._watcher)
-            except NoNodeException:
+            except NoNodeError:
                 self._stopped = True
                 self._func(None, None)
                 return

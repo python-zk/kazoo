@@ -10,5 +10,3 @@ Public API
 
     .. autoclass:: KazooTestHarness
     .. autoclass:: KazooTestCase
-    .. autoclass:: ZookeeperErrors
-    .. autoclass:: ZooError
