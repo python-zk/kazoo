@@ -1,20 +1,36 @@
 Changelog
 =========
 
-0.4 (unreleased)
+0.5 (unreleased)
 ----------------
+
+Skipping a version to reflect the magnitude of the change. Kazoo is now a pure
+Python client with no C bindings.
+
+Documentation
+*************
+
+- Docs have been restructured to handle the new classes and locations of the
+  methods from the Python refactor.
+
+Bug Handling
+************
+
+This change may introduce new bugs, however there is no longer the possibility
+of a complete Python seg-fault due to errors in the C library and/or the C
+binding.
 
 API Changes
 ***********
 
+- Backwards compatible exception class aliases are provided for now in kazoo
+  exceptions for the prior C exception names.
+- Unicode strings now work fine for node names and are properly converted to
+  and from unicode objects.
 - The data value argument for the create and create_async methods of the
   client was made optional and defaults to an empty byte string. The data
   value must be a byte string. Unicode values are no longer allowed and
   will raise a TypeError.
-
-
-Bug Handling
-************
 
 
 0.3 (8/23/2012)
