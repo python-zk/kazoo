@@ -149,3 +149,25 @@ class AuthFailedError(ZookeeperError):
 
 class ConnectionClosedError(SessionExpiredError):
     """Connection is closed"""
+
+
+# BW Compat aliases for C lib style exceptions
+ConnectionLossException = ConnectionLoss
+MarshallingErrorException = MarshallingError
+SystemErrorException = SystemZookeeperError
+RuntimeInconsistencyException = RuntimeInconsistency
+DataInconsistencyException = DataInconsistency
+UnimplementedException = UnimplementedError
+OperationTimeoutException = OperationTimeoutError
+BadArgumentsException = BadArgumentsError
+ApiErrorException = APIError
+NoNodeException = NoNodeError
+NoAuthException = NoAuthError
+BadVersionException = BadVersionError
+NoChildrenForEphemeralsException = NoChildrenForEphemeralsError
+NodeExistsException = NodeExistsError
+InvalidACLException = InvalidACLError
+AuthFailedException = AuthFailedError
+NotEmptyException = NotEmptyError
+SessionExpiredException = SessionExpiredError
+InvalidCallbackException = InvalidCallbackError
