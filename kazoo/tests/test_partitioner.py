@@ -15,6 +15,7 @@ class KazooPartitionerTests(KazooTestCase):
     def test_party_of_one(self):
         partitioner = self.client.SetPartitioner(
             self.path, set=(1, 2, 3), time_boundary=0.2)
+        eq_(partitioner.allocating, True)
         eq_(partitioner.acquired, False)
         partitioner.wait_for_acquire(1)
         eq_(partitioner.acquired, True)
@@ -80,3 +81,13 @@ class KazooPartitionerTests(KazooTestCase):
 
         for p in partitioners:
             p.finish()
+
+    def test_party_session_failure(self):
+        partitioner = self.client.SetPartitioner(
+            self.path, set=(1, 2, 3), time_boundary=0.2)
+        partitioner.wait_for_acquire(1)
+        eq_(partitioner.acquired, True)
+        # simulate session failure
+        partitioner._fail_out()
+        partitioner.release_set()
+        self.assertTrue(partitioner.failed)
