@@ -6,9 +6,30 @@ from nose.tools import eq_
 
 from kazoo.testing import KazooTestCase
 from kazoo.exceptions import BadArgumentsError
+from kazoo.exceptions import ConfigurationError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
+
+
+class TestClientConstructor(unittest.TestCase):
+
+    def _makeOne(self, *args, **kw):
+        from kazoo.client import KazooClient
+        return KazooClient(*args, **kw)
+
+    def test_invalid_handler(self):
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        self.assertRaises(ConfigurationError,
+            self._makeOne, handler=SequentialThreadingHandler)
+
+    def test_chroot(self):
+        self.assertEqual(self._makeOne(hosts='127.0.0.1:2181/').chroot, '')
+        self.assertEqual(self._makeOne(hosts='127.0.0.1:2181/a').chroot, '/a')
+        self.assertEqual(self._makeOne(hosts='127.0.0.1/a').chroot, '/a')
+        self.assertEqual(self._makeOne(hosts='127.0.0.1/a/b').chroot, '/a/b')
+        self.assertEqual(self._makeOne(
+            hosts='127.0.0.1:2181,127.0.0.1:2182/a/b').chroot, '/a/b')
 
 
 class TestConnection(KazooTestCase):

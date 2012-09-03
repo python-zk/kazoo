@@ -108,8 +108,6 @@ class KazooClient(object):
         self.hosts, chroot = collect_hosts(hosts)
         if chroot:
             self.chroot = normpath(chroot)
-            if not self.chroot.startswith('/'):
-                raise ValueError('chroot not absolute')
         else:
             self.chroot = ''
 
