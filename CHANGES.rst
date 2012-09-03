@@ -23,6 +23,7 @@ binding.
 API Changes
 ***********
 
+- The kazoo.handlers.util module was removed.
 - Backwards compatible exception class aliases are provided for now in kazoo
   exceptions for the prior C exception names.
 - Unicode strings now work fine for node names and are properly converted to
