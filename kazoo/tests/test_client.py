@@ -31,6 +31,12 @@ class TestClientConstructor(unittest.TestCase):
         self.assertEqual(self._makeOne(
             hosts='127.0.0.1:2181,127.0.0.1:2182/a/b').chroot, '/a/b')
 
+    def test_connection_timeout(self):
+        from kazoo.handlers.threading import TimeoutError
+        client = self._makeOne(hosts='127.0.0.1:9')
+        self.assertTrue(client.handler.timeout_exception is TimeoutError)
+        self.assertRaises(TimeoutError, client.start, 0.1)
+
 
 class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
@@ -161,6 +167,22 @@ class TestConnection(KazooTestCase):
         self.assertFalse(client.connected)
         self.assertTrue(client.client_id is None)
         self.assertRaises(SessionExpiredError, client.exists, '/')
+
+    def test_double_start(self):
+        self.assertTrue(self.client.connected)
+        self.client.start()
+        self.assertTrue(self.client.connected)
+
+    def test_double_stop(self):
+        self.client.stop()
+        self.assertFalse(self.client.connected)
+        self.client.stop()
+        self.assertFalse(self.client.connected)
+
+    def test_restart(self):
+        self.assertTrue(self.client.connected)
+        self.client.restart()
+        self.assertTrue(self.client.connected)
 
 
 class TestClient(KazooTestCase):
