@@ -47,6 +47,7 @@ class BaseParty(object):
 
     def leave(self):
         """Leave the party"""
+        self.participating = False
         return self.client.retry(self._inner_leave)
 
     def _inner_leave(self):
@@ -83,7 +84,7 @@ class Party(BaseParty):
                 d, _ = self.client.retry(self.client.get, self.path +
                                          "/" + child)
                 yield d
-            except NoNodeError:
+            except NoNodeError:  # pragma: nocover
                 pass
 
     def _get_children(self):

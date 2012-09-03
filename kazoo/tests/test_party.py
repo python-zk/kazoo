@@ -12,7 +12,7 @@ class KazooPartyTests(KazooTestCase):
 
     def test_party(self):
         parties = [self.client.Party(self.path, "p%s" % i)
-                    for i in range(5)]
+                   for i in range(5)]
 
         one_party = parties[0]
 
@@ -34,6 +34,25 @@ class KazooPartyTests(KazooTestCase):
             eq_(set(party), participants)
             eq_(len(party), len(participants))
 
+    def test_party_reuse_node(self):
+        party = self.client.Party(self.path, "p1")
+        self.client.ensure_path(self.path)
+        self.client.create(party.create_path)
+        party.join()
+        self.assertTrue(party.participating)
+        party.leave()
+        self.assertFalse(party.participating)
+        self.assertEqual(len(party), 0)
+
+    def test_party_vanishing_node(self):
+        party = self.client.Party(self.path, "p1")
+        party.join()
+        self.assertTrue(party.participating)
+        self.client.delete(party.create_path)
+        party.leave()
+        self.assertFalse(party.participating)
+        self.assertEqual(len(party), 0)
+
 
 class KazooShallowPartyTests(KazooTestCase):
     def setUp(self):
@@ -42,7 +61,7 @@ class KazooShallowPartyTests(KazooTestCase):
 
     def test_party(self):
         parties = [self.client.ShallowParty(self.path, "p%s" % i)
-                    for i in range(5)]
+                   for i in range(5)]
 
         one_party = parties[0]
 

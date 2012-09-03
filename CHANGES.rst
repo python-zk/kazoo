@@ -20,6 +20,9 @@ This change may introduce new bugs, however there is no longer the possibility
 of a complete Python seg-fault due to errors in the C library and/or the C
 binding.
 
+- The party recipes didn't set their participating flag to False after
+  leaving.
+
 API Changes
 ***********
 
