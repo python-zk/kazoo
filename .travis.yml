@@ -9,9 +9,12 @@ notifications:
     - ben@groovie.org
   irc: "irc.mozilla.org#services-dev"
 
+before_install:
+    - sudo apt-get install zookeeper
+
 install:
     - make
-    - make zookeeper
 
 script:
+    - export ZOOKEEPER_PATH=/usr/share/java
     - make test
