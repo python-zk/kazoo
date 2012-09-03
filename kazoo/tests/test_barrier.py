@@ -23,6 +23,7 @@ class KazooBarrierTests(KazooTestCase):
 
 
 class KazooDoubleBarrierTests(KazooTestCase):
+
     def test_basic_barrier(self):
         b = self.client.DoubleBarrier("/some/path", 1)
         eq_(b.participating, False)
@@ -132,3 +133,21 @@ class KazooDoubleBarrierTests(KazooTestCase):
         eq_(b1.participating, False)
         eq_(b2.participating, False)
         eq_(b3.participating, False)
+
+    def test_barrier_existing_parent_node(self):
+        b = self.client.DoubleBarrier('/some/path', 1)
+        self.assertFalse(b.participating)
+        self.client.create('/some', ephemeral=True)
+        # the barrier cannot create children under an ephemeral node
+        b.enter()
+        self.assertFalse(b.participating)
+
+    def test_barrier_existing_node(self):
+        b = self.client.DoubleBarrier('/some', 1)
+        self.assertFalse(b.participating)
+        self.client.ensure_path(b.path)
+        self.client.create(b.create_path, ephemeral=True)
+        # the barrier will re-use an existing node
+        b.enter()
+        self.assertTrue(b.participating)
+        b.leave()
