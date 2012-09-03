@@ -136,6 +136,24 @@ class TestConnection(KazooTestCase):
         eq_(len(states), 1)
         eq_(states[0], KazooState.CONNECTED)
 
+    def test_invalid_listener(self):
+        self.assertRaises(ConfigurationError, self.client.add_listener, 15)
+
+    def test_listener_only_called_on_real_state_change(self):
+        from kazoo.protocol.states import KazooState
+        self.assertTrue(self.client.state, KazooState.CONNECTED)
+        called = [False]
+        condition = threading.Event()
+
+        def listener(state):
+            called[0] = True
+            condition.set()
+
+        self.client.add_listener(listener)
+        self.client._make_state_change(KazooState.CONNECTED)
+        condition.wait(3)
+        self.assertFalse(called[0])
+
     def test_no_connection(self):
         from kazoo.exceptions import SessionExpiredError
         client = self.client
