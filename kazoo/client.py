@@ -20,6 +20,7 @@ from kazoo.recipe.lock import Lock
 from kazoo.recipe.party import Party
 from kazoo.recipe.party import ShallowParty
 from kazoo.recipe.election import Election
+from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.serialization import (
@@ -37,7 +38,6 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
-from kazoo.protocol import ConnectionHandler
 from kazoo.retry import KazooRetry
 from kazoo.security import OPEN_ACL_UNSAFE
 
