@@ -3,10 +3,7 @@ import threading
 
 from nose.tools import eq_
 
-from kazoo.exceptions import (
-    CancelledError,
-    ConnectionLoss
-)
+from kazoo.exceptions import CancelledError
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
 
