@@ -152,7 +152,7 @@ class DoubleBarrier(object):
         """Leave the barrier, blocks until all nodes have left"""
         try:
             self.client.retry(self._inner_leave)
-        except Exception:
+        except Exception:  # pragma: nocover
             # Failed to cleanly leave
             self._best_effort_cleanup()
         self.participating = False
