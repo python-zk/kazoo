@@ -170,3 +170,10 @@ class KazooLockTests(KazooTestCase):
         event1.set()
         thread1.join()
         client2.stop()
+
+    def test_lock_double_calls(self):
+        lock1 = self.client.Lock(self.lockpath, "one")
+        lock1.acquire()
+        lock1.acquire()
+        lock1.release()
+        lock1.release()

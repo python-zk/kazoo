@@ -109,7 +109,7 @@ class Lock(object):
 
             try:
                 our_index = children.index(node)
-            except ValueError:
+            except ValueError:  # pragma: nocover
                 # somehow we aren't in the children -- probably we are
                 # recovering from a session failure and our ephemeral
                 # node was removed
@@ -148,7 +148,7 @@ class Lock(object):
             node = self._find_node()
             if node:
                 self.client.delete(self.path + "/" + node)
-        except Exception:
+        except Exception:  # pragma: nocover
             pass
 
     def release(self):
@@ -186,7 +186,7 @@ class Lock(object):
             try:
                 data, stat = self.client.get(self.path + "/" + child)
                 contenders.append(data)
-            except NoNodeError:
+            except NoNodeError:  # pragma: nocover
                 pass
         return contenders
 
