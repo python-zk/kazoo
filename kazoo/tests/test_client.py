@@ -44,6 +44,22 @@ class TestConnection(KazooTestCase):
             # Ensure we remove the ACL protected nodes
             self.client.delete("/1", recursive=True)
 
+    def test_connect_auth(self):
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
+
+        digest_auth = "%s:%s" % (username, password)
+        acl = self._makeAuth(username, password, all=True)
+
+        client = self._get_client(auth_data=[('digest', digest_auth)])
+        client.start()
+        try:
+            client.create('/1', "", acl=(acl,))
+            self.assertRaises(NoAuthError, self.client.get, "/1")
+        finally:
+            client.delete('/1')
+            client.stop()
+
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
 
