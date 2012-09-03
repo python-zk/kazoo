@@ -5,6 +5,7 @@ from nose.tools import raises
 
 
 class TestRetrySleeper(unittest.TestCase):
+
     def _makeOne(self, *args, **kwargs):
         from kazoo.retry import RetrySleeper
         return RetrySleeper(*args, **kwargs)
@@ -24,3 +25,18 @@ class TestRetrySleeper(unittest.TestCase):
         def testit():
             retry.increment()
         testit()
+
+
+class TestKazooRetry(unittest.TestCase):
+
+    def _makeOne(self):
+        from kazoo.retry import KazooRetry
+        return KazooRetry()
+
+    def test_connection_closed(self):
+        from kazoo.exceptions import ConnectionClosedError
+        retry = self._makeOne()
+
+        def testit():
+            raise ConnectionClosedError()
+        self.assertRaises(ConnectionClosedError, retry, testit)
