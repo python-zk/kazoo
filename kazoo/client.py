@@ -37,7 +37,7 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
-from kazoo.protocol import proto_writer
+from kazoo.protocol import ConnectionHandler
 from kazoo.retry import KazooRetry
 from kazoo.security import OPEN_ACL_UNSAFE
 
@@ -95,6 +95,8 @@ class KazooClient(object):
             lock = zk.Lock('/lock_path')
 
         """
+        self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
+
         # Record the handler strategy used
         self.handler = handler if handler else SequentialThreadingHandler()
         if inspect.isclass(self.handler):
@@ -147,6 +149,9 @@ class KazooClient(object):
             sleep_func=self.handler.sleep_func
         )
         self.retry_sleeper = self.retry.retry_sleeper.copy()
+
+        self._connection = ConnectionHandler(
+            self, self.retry.retry_sleeper.copy(), log_debug=self.log_debug)
 
         # convenience API
         from kazoo.recipe.barrier import Barrier
@@ -273,12 +278,9 @@ class KazooClient(object):
 
     def _safe_close(self):
         self.handler.stop()
-
-        if not self._writer_stopped.is_set():
-            self._writer_stopped.wait(10)
-            if not self._writer_stopped.is_set():
-                raise Exception("Writer still open from prior connection"
-                                " and wouldn't close after 10 seconds")
+        if not self._connection.stop(10):
+            raise Exception("Writer still open from prior connection"
+                            " and wouldn't close after 10 seconds")
 
     def _call(self, request, async_object):
         with self._state_lock:
@@ -331,8 +333,8 @@ class KazooClient(object):
         # Start the handler
         self.handler.start()
 
-        # Start the connection writer to establish the connection
-        self.handler.spawn(proto_writer, self)
+        # Start the connection
+        self._connection.start()
         return self._live
 
     def stop(self):
