@@ -73,6 +73,15 @@ class TestThreadingHandler(unittest.TestCase):
             raise h.timeout_exception("This is a timeout")
         testit()
 
+    def test_double_start_stop(self):
+        h = self._makeOne()
+        h.start()
+        self.assertTrue(h._running)
+        h.start()
+        h.stop()
+        h.stop()
+        self.assertFalse(h._running)
+
 
 class TestThreadingAsync(unittest.TestCase):
     def _makeOne(self, *args):
