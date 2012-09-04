@@ -501,6 +501,22 @@ class TestClient(KazooTestCase):
         self.assertRaises(TypeError, client.delete, ('a', 'b'))
         self.assertRaises(TypeError, client.delete, '/a/b', version='V1')
 
+    def test_get_children(self):
+        client = self.client
+        client.ensure_path('/a/b/c')
+        client.ensure_path('/a/b/d')
+        self.assertEqual(client.get_children('/a'), ['b'])
+        self.assertEqual(set(client.get_children('/a/b')), set(['c', 'd']))
+        self.assertEqual(client.get_children('/a/b/c'), [])
+
+    def test_get_children_no_node(self):
+        client = self.client
+        self.assertRaises(NoNodeError, client.get_children, '/none')
+
+    def test_get_children_invalid_path(self):
+        client = self.client
+        self.assertRaises(ValueError, client.get_children, '../a')
+
     def test_get_children_invalid_arguments(self):
         client = self.client
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
