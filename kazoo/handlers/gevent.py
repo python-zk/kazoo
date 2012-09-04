@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 _STOP = object()
 
 
-if _using_libevent:
+if _using_libevent:  # pragma: nocover
     from .gevent_pqueue import PeekableQueue as _PeekableQueue
 else:
     _PeekableQueue = gevent.queue.Queue
@@ -129,9 +129,9 @@ class SequentialGeventHandler(object):
                 worker.join()
 
             # Clear the queues
-            self.completion_queue = Queue()
-            self.callback_queue = Queue()
-            self.session_queue = Queue()
+            self.completion_queue = Queue()  # pragma: nocover
+            self.callback_queue = Queue()  # pragma: nocover
+            self.session_queue = Queue()  # pragma: nocover
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
