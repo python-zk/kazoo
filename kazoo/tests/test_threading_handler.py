@@ -183,6 +183,31 @@ class TestThreadingAsync(unittest.TestCase):
         cv.wait()
         eq_(lst, ['oops'])
 
+    def test_wait(self):
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+        bv = threading.Event()
+        cv = threading.Event()
+
+        def wait_for_val():
+            bv.set()
+            try:
+                val = async.wait()
+            except ImportError:
+                lst.append('oops')
+            else:
+                lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        bv.wait()
+
+        async.set("fred")
+        cv.wait()
+        eq_(lst, [True])
+
     def test_set_before_wait(self):
         mock_handler = mock.Mock()
         async = self._makeOne(mock_handler)
@@ -273,3 +298,46 @@ class TestThreadingAsync(unittest.TestCase):
         async.unlink(add_on)
         async.set('fred')
         assert not mock_handler.completion_queue.put.called
+
+
+class TestPeekableQueue(unittest.TestCase):
+    def _makeOne(self):
+        from kazoo.handlers.threading import _PeekableQueue
+        return _PeekableQueue()
+
+    def test_noblock(self):
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        q = self._makeOne()
+
+        @raises(SequentialThreadingHandler.empty)
+        def testit():
+            return q.peek(block=False)
+        testit()
+
+    def test_peek_bad_timeout(self):
+        q = self._makeOne()
+
+        @raises(ValueError)
+        def testit():
+            return q.peek(timeout=-1)
+        testit()
+
+    def test_peek_value_add(self):
+        q = self._makeOne()
+        lst = []
+        cv = threading.Event()
+        bv = threading.Event()
+
+        def wait_for_val():
+            bv.set()
+            val = q.peek()
+            lst.append(val)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        bv.wait()
+
+        eq_(lst, [])
+        q.put(1)
+        cv.wait()
+        eq_(lst, [1])
