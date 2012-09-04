@@ -896,5 +896,5 @@ class KazooClient(object):
                 self._delete_recursive(child_path)
         try:
             self.delete(path)
-        except NoNodeError:
+        except NoNodeError:  # pragma: nocover
             pass

@@ -460,6 +460,41 @@ class TestClient(KazooTestCase):
         self.assertRaises(TypeError, client.set_acls, 'a', 'all')
         self.assertRaises(TypeError, client.set_acls, 'a', [single_acl], 'V1')
 
+    def test_set(self):
+        client = self.client
+        client.create('a', 'first')
+        client.set('a', 'second')
+        self.assertEqual(client.get('a')[0], 'second')
+
+    def test_set_invalid_arguments(self):
+        client = self.client
+        client.create('a', 'first')
+        self.assertRaises(TypeError, client.set, ('a', 'b'), 'value')
+        self.assertRaises(TypeError, client.set, 'a', ['v', 'w'])
+        self.assertRaises(TypeError, client.set, 'a', 'value', 'V1')
+
+    def test_delete(self):
+        client = self.client
+        client.ensure_path('/a/b')
+        self.assertTrue('b' in client.get_children('a'))
+        client.delete('/a/b')
+        self.assertFalse('b' in client.get_children('a'))
+
+    def test_delete_recursive(self):
+        client = self.client
+        client.ensure_path('/a/b/c')
+        client.ensure_path('/a/b/d')
+        client.delete('/a/b', recursive=True)
+        client.delete('/a/b/c', recursive=True)
+        self.assertFalse('b' in client.get_children('a'))
+
+    def test_delete_invalid_arguments(self):
+        client = self.client
+        client.ensure_path('/a/b')
+        self.assertRaises(TypeError, client.delete, '/a/b', recursive='all')
+        self.assertRaises(TypeError, client.delete, ('a', 'b'))
+        self.assertRaises(TypeError, client.delete, '/a/b', version='V1')
+
     def test_get_children_invalid_arguments(self):
         client = self.client
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
