@@ -210,8 +210,8 @@ class SetACL(namedtuple('SetACL', 'path acls version')):
     def serialize(self):
         b = bytearray()
         b.extend(write_string(self.path))
-        b.extend(int_struct.pack(len(self.acl)))
-        for acl in self.acl:
+        b.extend(int_struct.pack(len(self.acls)))
+        for acl in self.acls:
             b.extend(int_struct.pack(acl.perms) +
                      write_string(acl.id.scheme) + write_string(acl.id.id))
         b.extend(int_struct.pack(self.version))

@@ -440,6 +440,26 @@ class TestClient(KazooTestCase):
         client = self.client
         self.assertRaises(TypeError, client.get_acls, ('a', 'b'))
 
+    def test_set_acls(self):
+        from kazoo.security import make_digest_acl
+        acl = make_digest_acl('user', 'pass', all=True)
+        client = self.client
+        client.create('/a')
+        try:
+            client.set_acls('/a', [acl])
+            self.assertTrue(acl in client.get_acls('/a')[0])
+        finally:
+            client.delete('/a')
+
+    def test_set_acls_invalid_arguments(self):
+        from kazoo.security import OPEN_ACL_UNSAFE
+        single_acl = OPEN_ACL_UNSAFE[0]
+        client = self.client
+        self.assertRaises(TypeError, client.set_acls, ('a', 'b'), ())
+        self.assertRaises(TypeError, client.set_acls, 'a', single_acl)
+        self.assertRaises(TypeError, client.set_acls, 'a', 'all')
+        self.assertRaises(TypeError, client.set_acls, 'a', [single_acl], 'V1')
+
     def test_get_children_invalid_arguments(self):
         client = self.client
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
