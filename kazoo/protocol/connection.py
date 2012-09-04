@@ -50,7 +50,8 @@ def socket_error_handling():
         if isinstance(e.args, tuple):
             raise ConnectionDropped("socket connection error: %s",
                                     errno.errorcode[e[0]])
-        else:
+        else:  # pragma: nocover
+            # This is only possible on Python 2.5 or earlier
             raise ConnectionDropped("socket connection error: %s", e)
 
 
@@ -202,8 +203,7 @@ class ConnectionHandler(object):
                                'received %r', xid, header.xid)
 
         # Determine if its an exists request and a no node error
-        exists_request = isinstance(request, Exists)
-        exists_error = header.err == NoNodeError.code and exists_request
+        exists_error = header.err == NoNodeError.code and request.type == 3
 
         # Set the exception if its not an exists error
         if header.err and not exists_error:
