@@ -26,6 +26,9 @@ binding.
 API Changes
 ***********
 
+- The testing helpers have been moved from `testing.__init__` into a
+  `testing.harness` module. The official API's of `KazooTestCase` and
+  `KazooTestHarness` can still be directly imported from `testing`.
 - The kazoo.handlers.util module was removed.
 - Backwards compatible exception class aliases are provided for now in kazoo
   exceptions for the prior C exception names.

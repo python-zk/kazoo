@@ -19,8 +19,8 @@ a `zookeeper-*.jar` and a `lib` directory containing at least a `log4j-*.jar`.
 Kazoo Test Harness
 ==================
 
-The :class:`~kazoo.testing.KazooTestHarness` can be used directly or mixed in
-with your test code.
+The :class:`~kazoo.testing.harness.KazooTestHarness` can be used directly or
+mixed in with your test code.
 
 Example:
 
@@ -46,9 +46,10 @@ Example:
 Kazoo Test Case
 ===============
 
-The :class:`~kazoo.testing.KazooTestCase` is complete test case that is
-equivalent to the mixin setup of :class:`~kazoo.testing.KazooTestHarness`. An
-equivalent test to the one above:
+The :class:`~kazoo.testing.harness.KazooTestCase` is complete test case that
+is equivalent to the mixin setup of
+:class:`~kazoo.testing.harness.KazooTestHarness`. An equivalent test to the
+one above:
 
 .. code-block:: python
 
