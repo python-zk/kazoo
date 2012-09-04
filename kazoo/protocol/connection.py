@@ -2,6 +2,7 @@
 import errno
 import logging
 import socket
+from contextlib import contextmanager
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -41,6 +42,18 @@ PING_XID = -2
 AUTH_XID = -4
 
 
+@contextmanager
+def socket_error_handling():
+    try:
+        yield
+    except socket.error as e:
+        if isinstance(e.args, tuple):
+            raise ConnectionDropped("socket connection error: %s",
+                                    errno.errorcode[e[0]])
+        else:
+            raise ConnectionDropped("socket connection error: %s", e)
+
+
 class ConnectionHandler(object):
     """Zookeeper connection handler"""
     def __init__(self, client, retry_sleeper, log_debug=False):
@@ -77,7 +90,7 @@ class ConnectionHandler(object):
     def _read(self, length, timeout):
         msgparts = []
         remaining = length
-        try:
+        with socket_error_handling():
             while remaining > 0:
                 s = self.handler.select([self._socket], [], [], timeout)[0]
                 chunk = s[0].recv(remaining)
@@ -86,12 +99,6 @@ class ConnectionHandler(object):
                 msgparts.append(chunk)
                 remaining -= len(chunk)
             return b"".join(msgparts)
-        except socket.error, e:
-            if isinstance(e.args, tuple):
-                raise ConnectionDropped("socket connection error: %s",
-                                        errno.errorcode[e[0]])
-            else:
-                raise
 
     def _invoke(self, timeout, request, xid=None):
         """A special writer used during connection establishment only"""
@@ -141,7 +148,7 @@ class ConnectionHandler(object):
         """Write a raw msg to the socket"""
         sent = 0
         msg_length = len(msg)
-        try:
+        with socket_error_handling():
             while sent < msg_length:
                 s = self.handler.select([], [self._socket], [], timeout)[1]
                 msg_slice = buffer(msg, sent)
@@ -149,12 +156,6 @@ class ConnectionHandler(object):
                 if not bytes_sent:
                     raise ConnectionDropped('socket connection broken')
                 sent += bytes_sent
-        except socket.error, e:
-            if isinstance(e.args, tuple):
-                raise ConnectionDropped("socket connection error: %s",
-                                        errno.errorcode[e[0]])
-            else:
-                raise
 
     def _read_watch_event(self, buffer, offset):
         client = self.client
