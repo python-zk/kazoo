@@ -193,7 +193,7 @@ class GetACL(namedtuple('GetACL', 'path')):
     def deserialize(cls, bytes, offset):
         count = int_struct.unpack_from(bytes, offset)[0]
         offset += int_struct.size
-        if count == -1:
+        if count == -1:  # pragma: nocover
             return []
 
         acls = []

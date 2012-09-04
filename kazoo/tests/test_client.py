@@ -7,6 +7,7 @@ from nose.tools import eq_
 from kazoo.testing import KazooTestCase
 from kazoo.exceptions import BadArgumentsError
 from kazoo.exceptions import ConfigurationError
+from kazoo.exceptions import InvalidACLError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
@@ -450,6 +451,11 @@ class TestClient(KazooTestCase):
             self.assertTrue(acl in client.get_acls('/a')[0])
         finally:
             client.delete('/a')
+
+    def test_set_acls_empty(self):
+        client = self.client
+        client.create('/a')
+        self.assertRaises(InvalidACLError, client.set_acls, '/a', [])
 
     def test_set_acls_invalid_arguments(self):
         from kazoo.security import OPEN_ACL_UNSAFE
