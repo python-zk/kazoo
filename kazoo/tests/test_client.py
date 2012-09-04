@@ -54,8 +54,9 @@ class TestConnection(KazooTestCase):
 
         self.client.default_acl = (acl,)
 
-        self.client.create("/1", "")
-        self.client.create("/1/2", "")
+        self.client.create("/1")
+        self.client.create("/1/2")
+        self.client.ensure_path("/1/2/3")
 
         eve = self._get_client()
         eve.start()
@@ -86,6 +87,12 @@ class TestConnection(KazooTestCase):
         finally:
             client.delete('/1')
             client.stop()
+
+    def test_invalid_auth(self):
+        self.assertRaises(TypeError, self.client.add_auth,
+            'digest', ('user', 'pass'))
+        self.assertRaises(TypeError, self.client.add_auth,
+            None, ('user', 'pass'))
 
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
@@ -215,10 +222,21 @@ class TestClient(KazooTestCase):
 
     def test_create_invalid_path(self):
         client = self.client
+        self.assertRaises(TypeError, client.create, ('a', ))
         self.assertRaises(ValueError, client.create, ".")
         self.assertRaises(ValueError, client.create, "/a/../b")
         self.assertRaises(BadArgumentsError, client.create, "/b\x00")
         self.assertRaises(BadArgumentsError, client.create, "/b\x1e")
+
+    def test_create_invalid_arguments(self):
+        from kazoo.security import OPEN_ACL_UNSAFE
+        single_acl = OPEN_ACL_UNSAFE[0]
+        client = self.client
+        self.assertRaises(TypeError, client.create, 'a', acl='all')
+        self.assertRaises(TypeError, client.create, 'a', acl=single_acl)
+        self.assertRaises(TypeError, client.create, 'a', value=['a'])
+        self.assertRaises(TypeError, client.create, 'a', ephemeral='yes')
+        self.assertRaises(TypeError, client.create, 'a', sequence='yes')
 
     def test_create_value(self):
         client = self.client
@@ -319,6 +337,11 @@ class TestClient(KazooTestCase):
         eq_(newstat.children_count, stat.numChildren)
         eq_(newstat.children_version, stat.cversion)
 
+    def test_get_invalid_arguments(self):
+        client = self.client
+        self.assertRaises(TypeError, client.get, ('a', 'b'))
+        self.assertRaises(TypeError, client.get, 'a', watch=True)
+
     def test_bad_argument(self):
         client = self.client
         client.ensure_path("/1")
@@ -350,6 +373,11 @@ class TestClient(KazooTestCase):
         multi_node_nonexistent = "/" + uuid.uuid4().hex + "/hats"
         exists = self.client.exists(multi_node_nonexistent)
         eq_(exists, None)
+
+    def test_exists_invalid_arguments(self):
+        client = self.client
+        self.assertRaises(TypeError, client.exists, ('a', 'b'))
+        self.assertRaises(TypeError, client.exists, 'a', watch=True)
 
     def test_exists_watch(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -398,6 +426,16 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath)
         eq_(exists, None)
 
+    def test_get_acls_invalid_arguments(self):
+        client = self.client
+        self.assertRaises(TypeError, client.get_acls, ('a', 'b'))
+
+    def test_get_children_invalid_arguments(self):
+        client = self.client
+        self.assertRaises(TypeError, client.get_children, ('a', 'b'))
+        self.assertRaises(TypeError, client.get_children, 'a', watch=True)
+
+
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,
     'czxid': 110, 'dataLength': 1, 'ephemeralOwner': 'ben',
@@ -434,3 +472,21 @@ class TestCallbacks(unittest.TestCase):
         client._handle = 1
         client._session_callback(-250)
         eq_(client.state, KazooState.SUSPENDED)
+
+
+class TestNonChrootClient(KazooTestCase):
+
+    def test_create(self):
+        client = self._get_nonchroot_client()
+        self.assertEqual(client.chroot, '')
+        client.start()
+        node = uuid.uuid4().hex
+        path = client.create(node, ephemeral=True)
+        client.delete(path)
+        client.stop()
+
+    def test_unchroot(self):
+        client = self._get_nonchroot_client()
+        client.chroot = '/a'
+        self.assertEquals(client.unchroot('/a/b'), '/b')
+        self.assertEquals(client.unchroot('/b/c'), '/b/c')
