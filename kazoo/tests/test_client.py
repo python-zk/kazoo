@@ -3,6 +3,7 @@ import uuid
 import unittest
 
 from nose.tools import eq_
+from nose.tools import raises
 
 from kazoo.testing import KazooTestCase
 from kazoo.exceptions import BadArgumentsError
@@ -521,6 +522,27 @@ class TestClient(KazooTestCase):
         client = self.client
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
         self.assertRaises(TypeError, client.get_children, 'a', watch=True)
+
+    def test_invalid_auth(self):
+        from kazoo.exceptions import AuthFailedError
+        from kazoo.protocol.states import KeeperState
+
+        client = self.client
+        client.stop()
+        client._state = KeeperState.AUTH_FAILED
+
+        @raises(AuthFailedError)
+        def testit():
+            client.get('/')
+        testit()
+
+    def test_bad_safeclose(self):
+        client = self.client
+
+        @raises(Exception)
+        def testit():
+            client._safe_close()
+        testit()
 
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,
