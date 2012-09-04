@@ -39,6 +39,7 @@ from kazoo.protocol.serialization import (
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
 from kazoo.retry import KazooRetry
+from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
 log = logging.getLogger(__name__)
@@ -514,7 +515,8 @@ class KazooClient(object):
 
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if acl and not isinstance(acl, (tuple, list)):
+        if acl and (isinstance(acl, ACL) or
+                    not isinstance(acl, (tuple, list))):
             raise TypeError("acl must be a tuple/list of ACL's")
         if not isinstance(value, str):
             raise TypeError("value must be a byte string")
@@ -733,7 +735,7 @@ class KazooClient(object):
         node's version.
 
         :param path: the given path for the node
-        :param acl: the ACLs to set
+        :param acls: the ACLs to set
         :param version: the expected matching version
         :returns: The stat of the node.
         :raises:
@@ -753,7 +755,7 @@ class KazooClient(object):
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(acls, (tuple, list)):
+        if isinstance(acls, ACL) or not isinstance(acls, (tuple, list)):
             raise TypeError("acl must be a tuple/list of ACL's")
         if not isinstance(version, int):
             raise TypeError("version must be an int")

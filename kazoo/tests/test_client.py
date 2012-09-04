@@ -426,6 +426,16 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath)
         eq_(exists, None)
 
+    def test_get_acls(self):
+        from kazoo.security import make_digest_acl
+        acl = make_digest_acl('user', 'pass', all=True)
+        client = self.client
+        try:
+            client.create('/a', acl=[acl])
+            self.assertTrue(acl in client.get_acls('/a')[0])
+        finally:
+            client.delete('/a')
+
     def test_get_acls_invalid_arguments(self):
         client = self.client
         self.assertRaises(TypeError, client.get_acls, ('a', 'b'))
