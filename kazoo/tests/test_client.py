@@ -522,7 +522,6 @@ class TestClient(KazooTestCase):
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
         self.assertRaises(TypeError, client.get_children, 'a', watch=True)
 
-
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,
     'czxid': 110, 'dataLength': 1, 'ephemeralOwner': 'ben',
