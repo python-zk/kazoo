@@ -10,6 +10,14 @@ Id = namedtuple('Id', 'scheme id')
 
 
 class ACL(namedtuple('ACL', 'perms id')):
+    """An ACL for a Zookeeper Node
+
+    An ACL object is created by using an :class:`Id` object along with
+    a :class:`Permissions` setting. For conveinence, :meth:`make_acl`
+    should be used to create an ACL object with the desired scheme, id,
+    and permissions.
+
+    """
     @property
     def acl_list(self):
         perms = []
@@ -61,8 +69,25 @@ def make_digest_acl_credential(username, password):
 
 def make_acl(scheme, credential, read=False, write=False,
              create=False, delete=False, admin=False, all=False):
-    """Given a scheme and credential, return an ACL dict appropriate for
-    Zookeeper"""
+    """Given a scheme and credential, return an :class:`ACL` object
+    appropriate Kazoo.
+
+    :param scheme: The scheme to use. I.e. `digest`.
+    :param credential:
+        A colon separated username, password. The password should be
+        hashed with the `scheme` specified. The
+        :meth:`make_digest_acl_credential` method will create and
+        return a crediential appropriate for use with the `digest`
+        scheme.
+    :param write: Write permission.
+    :param create: Create permission.
+    :param delete: Delete permission.
+    :param admin: Admin permission.
+    :param all: All permissions.
+
+    :rtype: :class:`ACL`
+
+    """
     if all:
         permissions = Permissions.ALL
     else:
@@ -82,7 +107,23 @@ def make_acl(scheme, credential, read=False, write=False,
 
 def make_digest_acl(username, password, read=False, write=False,
                     create=False, delete=False, admin=False, all=False):
-    """Create a digest ACL for Zookeeper with the given permissions"""
+    """Create a digest ACL for Zookeeper with the given permissions
+
+    This method combines :meth:`make_digest_acl_credential` and
+    :meth:`make_acl` to create an :class:`ACL` object appropriate for
+    use with Kazoo's ACL methods.
+
+    :param username: Username to use for the ACL.
+    :param password: A plain-text password to hash.
+    :param write: Write permission.
+    :param create: Create permission.
+    :param delete: Delete permission.
+    :param admin: Admin permission.
+    :param all: All permissions.
+
+    :rtype: :class:`ACL`
+
+    """
     cred = make_digest_acl_credential(username, password)
     return make_acl("digest", cred, read=read, write=write, create=create,
         delete=delete, admin=admin, all=all)
