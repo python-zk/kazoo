@@ -5,8 +5,8 @@ environments that use threads.
 
 .. warning::
 
-    Do not use :class:`SequentialThreadingHandler` with applications using
-    asynchronous event loops (like gevent). Use the
+    Do not use :class:`SequentialThreadingHandler` with applications
+    using asynchronous event loops (like gevent). Use the
     :class:`~kazoo.handlers.gevent.SequentialGeventHandler` instead.
 
 """
@@ -48,7 +48,8 @@ class AsyncResult(object):
         self._callbacks = []
 
     def ready(self):
-        """Return true if and only if it holds a value or an exception"""
+        """Return true if and only if it holds a value or an
+        exception"""
         return self._exception is not _NONE
 
     def successful(self):
@@ -119,7 +120,8 @@ class AsyncResult(object):
         return self._exception is not _NONE
 
     def rawlink(self, callback):
-        """Register a callback to call when a value or an exception is set"""
+        """Register a callback to call when a value or an exception is
+        set"""
         with self._condition:
             # Are we already set? Dispatch it now
             if self.ready():
@@ -146,29 +148,29 @@ class AsyncResult(object):
 class SequentialThreadingHandler(object):
     """Threading handler for sequentially executing callbacks.
 
-    This handler executes callbacks in a sequential manner.
-    A queue is created for each of the callback events, so that each
-    type of event has its callback type run sequentially. These are split into
-    three queues, therefore it's possible that a session event arriving after a
-    watch event may have its callback executed at the same time or slightly
-    before the watch event callback.
+    This handler executes callbacks in a sequential manner. A queue is
+    created for each of the callback events, so that each type of event
+    has its callback type run sequentially. These are split into two
+    queues, one for watch events and one for async result completion
+    callbacks.
 
-    Each queue type has a thread worker that pulls the callback event off the
-    queue and runs it in the order Zookeeper sent it.
+    Each queue type has a thread worker that pulls the callback event
+    off the queue and runs it in the order the client sees it.
 
     This split helps ensure that watch callbacks won't block session
-    re-establishment should the connection be lost during a Zookeeper client
-    call.
+    re-establishment should the connection be lost during a Zookeeper
+    client call.
 
-    Watch, session, and completion callbacks should avoid blocking behavior as
-    the next callback of that type won't be run until it completes. If you need
-    to block, spawn a new thread and return immediately so callbacks can
-    proceed.
+    Watch and completion callbacks should avoid blocking behavior as
+    the next callback of that type won't be run until it completes. If
+    you need to block, spawn a new thread and return immediately so
+    callbacks can proceed.
 
     .. note::
 
-        Completion callbacks can block to wait on Zookeeper calls, but no
-        other completion callbacks will execute until the callback returns.
+        Completion callbacks can block to wait on Zookeeper calls, but
+        no other completion callbacks will execute until the callback
+        returns.
 
     """
     name = "sequential_threading_handler"
@@ -179,7 +181,6 @@ class SequentialThreadingHandler(object):
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""
         self.callback_queue = Queue.Queue()
-        self.session_queue = Queue.Queue()
         self.completion_queue = Queue.Queue()
         self._running = False
         self._state_change = threading.Lock()
@@ -221,8 +222,7 @@ class SequentialThreadingHandler(object):
             # - A callback worker for watch events to be called
             # - A session worker for session events to be called
             # - A completion worker for completion events to be called
-            for queue in (self.completion_queue, self.callback_queue,
-                          self.session_queue):
+            for queue in (self.completion_queue, self.callback_queue):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
@@ -235,8 +235,7 @@ class SequentialThreadingHandler(object):
 
             self._running = False
 
-            for queue in (self.completion_queue, self.callback_queue,
-                          self.session_queue):
+            for queue in (self.completion_queue, self.callback_queue):
                 queue.put(_STOP)
 
             self._workers.reverse()
@@ -246,7 +245,6 @@ class SequentialThreadingHandler(object):
 
             # Clear the queues
             self.callback_queue = Queue.Queue()
-            self.session_queue = Queue.Queue()
             self.completion_queue = Queue.Queue()
 
     def select(self, *args, **kwargs):
@@ -284,27 +282,26 @@ class SequentialThreadingHandler(object):
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
 
-        The callback is put on separate queues to run depending on the type
-        as documented for the :class:`SequentialThreadingHandler`.
+        The callback is put on separate queues to run depending on the
+        type as documented for the :class:`SequentialThreadingHandler`.
 
         """
-        if callback.type == 'session':
-            self.session_queue.put(lambda: callback.func(*callback.args))
-        else:
-            self.callback_queue.put(lambda: callback.func(*callback.args))
+        self.callback_queue.put(lambda: callback.func(*callback.args))
 
 
 class _PeekableQueue(Queue.Queue):
     def peek(self, block=True, timeout=None):
-        """Return the first item in the queue but do not remove it from the queue.
+        """Return the first item in the queue but do not remove it from
+        the queue.
 
-        If optional args 'block' is true and 'timeout' is None (the default),
-        block if necessary until an item is available. If 'timeout' is
-        a positive number, it blocks at most 'timeout' seconds and raises
-        the Empty exception if no item was available within that time.
-        Otherwise ('block' is false), return an item if one is immediately
-        available, else raise the Empty exception ('timeout' is ignored
-        in that case).
+        If optional args 'block' is true and 'timeout' is None (the
+        default), block if necessary until an item is available. If
+        'timeout' is a positive number, it blocks at most 'timeout'
+        seconds and raises the Empty exception if no item was available
+        within that time. Otherwise ('block' is false), return an item
+        if one is immediately available, else raise the Empty exception
+        ('timeout' is ignored in that case).
+
         """
         self.not_empty.acquire()
         try:

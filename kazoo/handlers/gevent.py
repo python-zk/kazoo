@@ -40,23 +40,20 @@ AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 class SequentialGeventHandler(object):
     """Gevent handler for sequentially executing callbacks.
 
-    This handler executes callbacks in a sequential manner.
-    A queue is created for each of the callback events, so that each
-    type of event has its callback type run sequentially. These are split into
-    three queues, therefore it's possible that a session event arriving after a
-    watch event may have its callback executed at the same time or slightly
-    before the watch event callback.
+    This handler executes callbacks in a sequential manner. A queue is
+    created for each of the callback events, so that each type of event
+    has its callback type run sequentially.
 
-    Each queue type has a greenlet worker that pulls the callback event off the
-    queue and runs it in the order Zookeeper sent it.
+    Each queue type has a greenlet worker that pulls the callback event
+    off the queue and runs it in the order the client sees it.
 
     This split helps ensure that watch callbacks won't block session
-    re-establishment should the connection be lost during a Zookeeper client
-    call.
+    re-establishment should the connection be lost during a Zookeeper
+    client call.
 
-    Watch callbacks and session callbacks should avoid blocking behavior as the
-    next callback of that type won't be run until it completes. If you need
-    to block, spawn a new greenlet and return immediately so callbacks can
+    Watch callbacks should avoid blocking behavior as the next callback
+    of that type won't be run until it completes. If you need to block,
+    spawn a new greenlet and return immediately so callbacks can
     proceed.
 
     """
@@ -66,9 +63,7 @@ class SequentialGeventHandler(object):
 
     def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.completion_queue = Queue()
         self.callback_queue = Queue()
-        self.session_queue = Queue()
         self._running = False
         self._async = None
         self._state_change = gevent.coros.Semaphore()
@@ -107,8 +102,7 @@ class SequentialGeventHandler(object):
             #   the AsyncResult object
             # - A callback worker for watch events to be called
             # - A session worker for session events to be called
-            for queue in (self.completion_queue, self.callback_queue,
-                          self.session_queue):
+            for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
 
@@ -120,8 +114,7 @@ class SequentialGeventHandler(object):
 
             self._running = False
 
-            for queue in (self.completion_queue, self.callback_queue,
-                          self.session_queue):
+            for queue in (self.callback_queue,):
                 queue.put(_STOP)
 
             while self._workers:
@@ -129,9 +122,7 @@ class SequentialGeventHandler(object):
                 worker.join()
 
             # Clear the queues
-            self.completion_queue = Queue()  # pragma: nocover
             self.callback_queue = Queue()  # pragma: nocover
-            self.session_queue = Queue()  # pragma: nocover
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
@@ -177,7 +168,4 @@ class SequentialGeventHandler(object):
         as documented for the :class:`SequentialGeventHandler`.
 
         """
-        if callback.type == 'session':
-            self.session_queue.put(lambda: callback.func(*callback.args))
-        else:
-            self.callback_queue.put(lambda: callback.func(*callback.args))
+        self.callback_queue.put(lambda: callback.func(*callback.args))
