@@ -366,7 +366,11 @@ class KazooClient(object):
 
         :returns: An unstructured textual response.
         :rtype: unicode
+
         """
+        if not self._live.is_set():
+            raise ConnectionLoss("No connection to server")
+
         sock = self.handler.socket()
         sock.settimeout(self._session_timeout)
         peer = self._connection._socket.getpeername()
