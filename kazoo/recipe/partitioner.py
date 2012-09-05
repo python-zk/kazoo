@@ -341,7 +341,7 @@ class SetPartitioner(object):
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         if state == KazooState.LOST:
-            self._fail_out()
+            self._client.handler.spawn(self._fail_out)
             return True
 
     def _partitioner(self, identifier, members, partitions):
