@@ -166,19 +166,19 @@ class ConnectionHandler(object):
         if self.log_debug:
             log.debug('Received EVENT: %s', watch)
 
-        watchers = set()
+        watchers = []
         with client._state_lock:
             # Ignore watches if we've been stopped
             if client._stopped.is_set():
                 return
 
             if watch.type in (CREATED_EVENT, CHANGED_EVENT):
-                watchers |= self.client._data_watchers.pop(path, set())
+                watchers.extend(self.client._data_watchers.pop(path, []))
             elif watch.type == DELETED_EVENT:
-                watchers |= self.client._data_watchers.pop(path, set())
-                watchers |= self.client._child_watchers.pop(path, set())
+                watchers.extend(self.client._data_watchers.pop(path, []))
+                watchers.extend(self.client._child_watchers.pop(path, []))
             elif watch.type == CHILD_EVENT:
-                watchers |= self.client._child_watchers.pop(path, set())
+                watchers.extend(self.client._child_watchers.pop(path, []))
             else:
                 log.warn('Received unknown event %r', watch.type)
                 return
@@ -235,9 +235,9 @@ class ConnectionHandler(object):
             with client._state_lock:
                 if not client._stopped.is_set() and watcher:
                     if isinstance(request, GetChildren):
-                        client._child_watchers[request.path].add(watcher)
+                        client._child_watchers[request.path].append(watcher)
                     else:
-                        client._data_watchers[request.path].add(watcher)
+                        client._data_watchers[request.path].append(watcher)
 
         if isinstance(request, Close):
             if self.log_debug:

@@ -191,8 +191,8 @@ class KazooClient(object):
         with self._state_lock:
             self._queue = self.handler.peekable_queue()
             self._pending = self.handler.peekable_queue()
-            self._child_watchers = defaultdict(set)
-            self._data_watchers = defaultdict(set)
+            self._child_watchers = defaultdict(list)
+            self._data_watchers = defaultdict(list)
 
         self._session_id = None
         self._session_passwd = str(bytearray([0] * 16))
