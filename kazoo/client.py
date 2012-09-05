@@ -224,6 +224,13 @@ class KazooClient(object):
         :class:`~kazoo.protocol.states.KazooState` instance indicating
         the new connection state on state transitions.
 
+        .. warning::
+
+            This function must not block. If its at all likely that it
+            might need data or a value that could result in blocking
+            than the :meth:`~kazoo.interfaces.IHandler.spawn` method
+            should be used so that the listener can return immediately.
+
         """
         if not (listener and callable(listener)):
             raise ConfigurationError("listener must be callable")
