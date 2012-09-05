@@ -70,28 +70,7 @@ class SetPartitioner(object):
     :attr:`~PartitionState.FAILURE` state, it is unrecoverable
     and a new :class:`SetPartitioner` should be created.
 
-
-    Simple Example:
-
-    .. code-block:: python
-
-        from kazoo.client import KazooClient
-        client = KazooClient()
-
-        qp = client.SetPartitioner(
-            path='/work_queues', set=('queue-1', 'queue-2', 'queue-3'))
-
-        def use_setlist(partitions):
-            # do something with a partition passed in
-
-        # Run the use_setlist function when partitions are acquired
-        # repeatedly
-        qp.run(func=use_setlist)
-
-    Sometimes, more control is needed over handling the state
-    transitions. Or the program may need to do other things during
-    specific states, in which case a more verbose example that allows
-    for finer grained control is needed:
+    Example:
 
     .. code-block:: python
 
