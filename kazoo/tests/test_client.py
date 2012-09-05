@@ -458,6 +458,11 @@ class TestClient(KazooTestCase):
         client.create('/a')
         self.assertRaises(InvalidACLError, client.set_acls, '/a', [])
 
+    def test_set_acls_no_node(self):
+        from kazoo.security import OPEN_ACL_UNSAFE
+        client = self.client
+        self.assertRaises(NoNodeError, client.set_acls, '/a', OPEN_ACL_UNSAFE)
+
     def test_set_acls_invalid_arguments(self):
         from kazoo.security import OPEN_ACL_UNSAFE
         single_acl = OPEN_ACL_UNSAFE[0]
@@ -470,8 +475,10 @@ class TestClient(KazooTestCase):
     def test_set(self):
         client = self.client
         client.create('a', 'first')
-        client.set('a', 'second')
-        self.assertEqual(client.get('a')[0], 'second')
+        stat = client.set('a', 'second')
+        data, stat2 = client.get('a')
+        self.assertEqual(data, 'second')
+        self.assertEqual(stat, stat2)
 
     def test_set_invalid_arguments(self):
         client = self.client
