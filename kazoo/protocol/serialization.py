@@ -222,7 +222,7 @@ class SetACL(namedtuple('SetACL', 'path acls version')):
         return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
 
 
-class GetChildren(namedtuple('GetChildren', 'path children watcher')):
+class GetChildren(namedtuple('GetChildren', 'path watcher')):
     type = 8
 
     def serialize(self):
@@ -254,6 +254,30 @@ class Sync(namedtuple('Sync', 'path')):
     @classmethod
     def deserialize(cls, buffer, offset):
         return read_string(buffer, offset)[0]
+
+
+class GetChildren2(namedtuple('GetChildren2', 'path watcher')):
+    type = 12
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend([1 if self.watcher else 0])
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        count = int_struct.unpack_from(bytes, offset)[0]
+        offset += int_struct.size
+        if count == -1:  # pragma: nocover
+            return []
+
+        children = []
+        for c in range(count):
+            child, offset = read_string(bytes, offset)
+            children.append(child)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return children, stat
 
 
 class Auth(namedtuple('Auth', 'auth_type scheme auth')):

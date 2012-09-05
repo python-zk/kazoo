@@ -510,6 +510,14 @@ class TestClient(KazooTestCase):
         self.assertEqual(set(client.get_children('/a/b')), set(['c', 'd']))
         self.assertEqual(client.get_children('/a/b/c'), [])
 
+    def test_get_children2(self):
+        client = self.client
+        client.ensure_path('/a/b')
+        children, stat = client.get_children('/a', include_data=True)
+        value, stat2 = client.get('/a')
+        self.assertEqual(children, ['b'])
+        self.assertEqual(stat2.version, stat.version)
+
     def test_get_children_no_node(self):
         client = self.client
         self.assertRaises(NoNodeError, client.get_children, '/none')

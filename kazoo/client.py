@@ -30,6 +30,7 @@ from kazoo.protocol.serialization import (
     Delete,
     Exists,
     GetChildren,
+    GetChildren2,
     GetACL,
     SetACL,
     GetData,
@@ -647,7 +648,7 @@ class KazooClient(object):
                    async_result)
         return async_result
 
-    def get_children(self, path, watch=None):
+    def get_children(self, path, watch=None, include_data=False):
         """Get a list of child nodes of a path.
 
         If a watch is provided it will be left on the node with the given
@@ -663,6 +664,11 @@ class KazooClient(object):
         :param path: path of node to list
         :param watch: optional watch callback to set for future changes
                       to this path
+        :param include_data: Include the :class:`ZnodeStat` of the node
+                             in addition to the children. Available
+                             with Zookeeper 3.4 and above, this option
+                             changes the return value to be a tuple of
+                             (children, stat).
         :returns: list of child node names
         :rtype: list
 
@@ -673,9 +679,9 @@ class KazooClient(object):
             non-zero error code
 
         """
-        return self.get_children_async(path, watch).get()
+        return self.get_children_async(path, watch, include_data).get()
 
-    def get_children_async(self, path, watch=None):
+    def get_children_async(self, path, watch=None, include_data=False):
         """Asynchronously get a list of child nodes of a path. Takes the same
         arguments as :meth:`get_children`.
 
@@ -690,8 +696,11 @@ class KazooClient(object):
             raise TypeError("watch must be a callable")
 
         async_result = self.handler.async_result()
-        self._call(GetChildren(_prefix_root(self.chroot, path),
-                               None, watch), async_result)
+        if include_data:
+            req = GetChildren2(_prefix_root(self.chroot, path), watch)
+        else:
+            req = GetChildren(_prefix_root(self.chroot, path), watch)
+        self._call(req, async_result)
         return async_result
 
     def get_acls(self, path):
