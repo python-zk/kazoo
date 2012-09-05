@@ -10,7 +10,10 @@ class KazooState(object):
     .. attribute:: SUSPENDED
 
         The connection has been lost but may be recovered. We should
-        operate in a "safe mode" until then.
+        operate in a "safe mode" until then. When the connection is
+        resumed, it may be discovered that the session expired. A
+        client should not assume that locks are valid during this
+        time.
 
     .. attribute:: CONNECTED
 
@@ -20,6 +23,8 @@ class KazooState(object):
 
         The connection has been confirmed dead. Any ephemeral nodes
         will need to be recreated upon re-establishing a connection.
+        If locks were acquired or recipes using ephemeral nodes are in
+        use, they can be considered lost as well.
 
     """
     SUSPENDED = "SUSPENDED"
