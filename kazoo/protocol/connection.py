@@ -184,8 +184,7 @@ class ConnectionHandler(object):
                 return
 
             # Strip the chroot if needed
-            if self.client.chroot:
-                path = path[len(self.client.chroot):]
+            path = self.client.unchroot(path)
 
         ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path)
 
