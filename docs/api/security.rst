@@ -8,6 +8,10 @@
 Public API
 ++++++++++
 
+    .. autoclass:: ACL
+
+    .. autoclass:: Id
+
     .. autofunction:: make_digest_acl
 
 Private API
