@@ -949,6 +949,7 @@ class KazooClient(object):
         :meth:`delete`, with the exception of `recursive`.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
