@@ -518,9 +518,21 @@ class TestClient(KazooTestCase):
         self.assertEqual(children, ['b'])
         self.assertEqual(stat2.version, stat.version)
 
+    def test_get_children2_many_nodes(self):
+        client = self.client
+        client.ensure_path('/a/b')
+        client.ensure_path('/a/c')
+        client.ensure_path('/a/d')
+        children, stat = client.get_children('/a', include_data=True)
+        value, stat2 = client.get('/a')
+        self.assertEqual(set(children), set(['b', 'c', 'd']))
+        self.assertEqual(stat2.version, stat.version)
+
     def test_get_children_no_node(self):
         client = self.client
         self.assertRaises(NoNodeError, client.get_children, '/none')
+        self.assertRaises(NoNodeError, client.get_children,
+            '/none', include_data=True)
 
     def test_get_children_invalid_path(self):
         client = self.client
@@ -530,6 +542,8 @@ class TestClient(KazooTestCase):
         client = self.client
         self.assertRaises(TypeError, client.get_children, ('a', 'b'))
         self.assertRaises(TypeError, client.get_children, 'a', watch=True)
+        self.assertRaises(TypeError, client.get_children,
+            'a', include_data='yes')
 
     def test_invalid_auth(self):
         from kazoo.exceptions import AuthFailedError

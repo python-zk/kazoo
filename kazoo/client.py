@@ -694,6 +694,8 @@ class KazooClient(object):
             raise TypeError("path must be a string")
         if watch and not callable(watch):
             raise TypeError("watch must be a callable")
+        if not isinstance(include_data, bool):
+            raise TypeError("include_data must be a bool")
 
         async_result = self.handler.async_result()
         if include_data:
