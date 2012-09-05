@@ -258,6 +258,16 @@ class TestClient(KazooTestCase):
         mb_2 = "a" * (2 * 1024 * 1024)
         self.assertRaises(ConnectionLoss, client.create, "/2", mb_2)
 
+    def test_create_acl_duplicate(self):
+        from kazoo.security import OPEN_ACL_UNSAFE
+        single_acl = OPEN_ACL_UNSAFE[0]
+        client = self.client
+        client.create("/1", acl=[single_acl, single_acl])
+        acls, stat = client.get_acls("/1")
+        # ZK >3.4 removes duplicate ACL entries
+        version = client.server_version()
+        self.assertEqual(len(acls), 1 if version > (3, 4) else 2)
+
     def test_create_ephemeral(self):
         client = self.client
         client.create("/1", "ephemeral", ephemeral=True)
