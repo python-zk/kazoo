@@ -202,7 +202,8 @@ class ConnectionHandler(object):
                                'received %r', xid, header.xid)
 
         # Determine if its an exists request and a no node error
-        exists_error = header.err == NoNodeError.code and request.type == 3
+        exists_error = header.err == NoNodeError.code and \
+                       request.type == Exists.type
 
         # Set the exception if its not an exists error
         if header.err and not exists_error:
