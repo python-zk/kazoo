@@ -49,7 +49,7 @@ class KazooClient(object):
     handlers and high-level functionality.
 
     Watch functions registered with this class will not get session
-    events, unlike the default Zookeeper watch's. They will also be
+    events, unlike the default Zookeeper watches. They will also be
     called with a single argument, a
     :class:`~kazoo.protocol.states.WatchedEvent` instance.
 
@@ -74,7 +74,7 @@ class KazooClient(object):
         :param retry_delay: Initial delay when retrying a call.
         :param retry_backoff:
             Backoff multiplier between retry attempts. Defaults to 2
-            for exponential backoff.
+            for exponential back-off.
         :param retry_jitter:
             How much jitter delay to introduce per call. An amount of
             time up to this will be added per retry call to avoid
@@ -88,8 +88,8 @@ class KazooClient(object):
             connection. Should be a list of (scheme, credential)
             tuples as :meth:`add_auth` takes.
 
-        Retry parameters will be used for connection establishment attempts
-        and reconnects.
+        Retry parameters will be used for connection establishment
+        attempts and reconnects.
 
 
         Basic Example:
@@ -101,8 +101,8 @@ class KazooClient(object):
             children = zk.get_children('/')
             zk.stop()
 
-        As a convenience all recipe classes are available as attributes and
-        get automatically bound to the client. For example::
+        As a convenience all recipe classes are available as attributes
+        and get automatically bound to the client. For example::
 
             zk = KazooClient()
             zk.start()
@@ -483,7 +483,7 @@ class KazooClient(object):
     def create(self, path, value="", acl=None, ephemeral=False,
                sequence=False, makepath=False):
         """Create a node with the given value as its data. Optionally
-        set an acl on the node.
+        set an ACL on the node.
 
         The ephemeral and sequence arguments determine the type of the
         node.
@@ -823,7 +823,7 @@ class KazooClient(object):
             :exc:`~kazoo.exceptions.NoNodeError` if the node doesn't
             exist.
 
-            :exc:`~kazoo.exceptions.InvalidACLError` if the acl is
+            :exc:`~kazoo.exceptions.InvalidACLError` if the ACL is
             invalid.
 
             :exc:`~kazoo.exceptions.ZookeeperError` if the server

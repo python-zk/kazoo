@@ -13,7 +13,7 @@ class ACL(namedtuple('ACL', 'perms id')):
     """An ACL for a Zookeeper Node
 
     An ACL object is created by using an :class:`Id` object along with
-    a :class:`Permissions` setting. For conveinence, :meth:`make_acl`
+    a :class:`Permissions` setting. For convenience, :meth:`make_acl`
     should be used to create an ACL object with the desired scheme, id,
     and permissions.
 
@@ -77,7 +77,7 @@ def make_acl(scheme, credential, read=False, write=False,
         A colon separated username, password. The password should be
         hashed with the `scheme` specified. The
         :meth:`make_digest_acl_credential` method will create and
-        return a crediential appropriate for use with the `digest`
+        return a credential appropriate for use with the `digest`
         scheme.
     :param write: Write permission.
     :param create: Create permission.
