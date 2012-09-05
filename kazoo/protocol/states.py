@@ -138,7 +138,7 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
 class Callback(namedtuple('Callback', ('type', 'func', 'args'))):
     """A callback that is handed to a handler for dispatch
 
-    :param type: Type of the callback, can be 'session' or 'watch'
+    :param type: Type of the callback, currently is only 'watch'
     :param func: Callback function
     :param args: Argument list for the callback function
 
