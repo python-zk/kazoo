@@ -268,6 +268,13 @@ class TestClient(KazooTestCase):
         version = client.server_version()
         self.assertEqual(len(acls), 1 if version > (3, 4) else 2)
 
+    def test_version_no_connection(self):
+        @raises(ConnectionLoss)
+        def testit():
+            self.client.server_version()
+        self.client.stop()
+        testit()
+
     def test_create_ephemeral(self):
         client = self.client
         client.create("/1", "ephemeral", ephemeral=True)
