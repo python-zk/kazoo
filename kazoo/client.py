@@ -1,6 +1,7 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
+import re
 from collections import defaultdict
 from functools import partial
 from os.path import split
@@ -43,6 +44,7 @@ from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
+ENVI_VERSION = re.compile('[\w\s:.]*=([\d\.]*).*', re.DOTALL)
 log = logging.getLogger(__name__)
 
 
@@ -356,6 +358,33 @@ class KazooClient(object):
         """Stop and restart the Zookeeper session."""
         self.stop()
         self.start()
+
+    def command(self, cmd=b'ruok'):
+        """Sent a management command to the current ZK server.
+
+        Examples are `ruok`, `envi` or `stat`.
+
+        :returns: An unstructured textual response.
+        :rtype: unicode
+        """
+        sock = self.handler.socket()
+        sock.settimeout(self._session_timeout)
+        peer = self._connection._socket.getpeername()
+        sock.connect(peer)
+        sock.sendall(cmd)
+        result = sock.recv(8192)
+        sock.close()
+        return result.decode('utf-8', 'replace')
+
+    def server_version(self):
+        """Get the version of the currently connected ZK server.
+
+        :returns: The server version, for example (3, 4, 3).
+        :rtype: tuple
+        """
+        data = self.command(b'envi')
+        string = ENVI_VERSION.match(data).group(1)
+        return tuple([int(i) for i in string.split('.')])
 
     def add_auth(self, scheme, credential):
         """Send credentials to server

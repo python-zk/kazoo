@@ -23,6 +23,12 @@ binding.
 - The party recipes didn't set their participating flag to False after
   leaving.
 
+Features
+********
+
+- New `client.command` and `client.server_version` API, exposing Zookeeper's
+  four letter commands and giving access to structured version information.
+
 API Changes
 ***********
 
