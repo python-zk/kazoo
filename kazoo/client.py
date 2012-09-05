@@ -87,7 +87,7 @@ class KazooClient(object):
         :param default_acl: A default ACL used on node creation.
         :param auth_data: A list of authentication credentials to use for the
                           connection. Should be a list of (scheme, credential)
-                          tuples as :meth:`add_auth_async` takes.
+                          tuples as :meth:`add_auth` takes.
 
         Retry parameters will be used for connection establishment attempts
         and reconnects.
