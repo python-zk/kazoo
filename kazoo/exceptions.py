@@ -17,7 +17,8 @@ class CancelledError(KazooException):
 
 
 class ConfigurationError(KazooException):
-    """Raised if the configuration arguments to an object are invalid"""
+    """Raised if the configuration arguments to an object are
+    invalid"""
 
 
 class ZookeeperStoppedError(KazooException):

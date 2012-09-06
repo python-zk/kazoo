@@ -291,8 +291,8 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
 class Watch(namedtuple('Watch', 'type state path')):
     @classmethod
     def deserialize(cls, buffer, offset):
-        """Given a buffer and the current buffer offset, return the type,
-        state, path, and new offset"""
+        """Given a buffer and the current buffer offset, return the
+        type, state, path, and new offset"""
         type, state = int_int_struct.unpack_from(buffer, offset)
         offset += int_int_struct.size
         path, offset = read_string(buffer, offset)

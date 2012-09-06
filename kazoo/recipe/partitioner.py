@@ -46,8 +46,8 @@ class PartitionState(object):
     .. attribute:: FAILURE
 
         The set partition has failed. This occurs when the maximum
-        time to partition the set is exceeded or the Zookeeper session is
-        lost. The partitioner is unusable after this state and must
+        time to partition the set is exceeded or the Zookeeper session
+        is lost. The partitioner is unusable after this state and must
         be recreated.
 
     """
@@ -63,8 +63,8 @@ class SetPartitioner(object):
     This class will partition a set amongst members of a party such
     that each member will be given zero or more items of the set and
     each set item will be given to a single member. When new members
-    enter or leave the party, the set will be re-partitioned amongst the
-    members.
+    enter or leave the party, the set will be re-partitioned amongst
+    the members.
 
     When the :class:`SetPartitioner` enters the
     :attr:`~PartitionState.FAILURE` state, it is unrecoverable

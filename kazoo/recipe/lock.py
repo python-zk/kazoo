@@ -167,7 +167,8 @@ class Lock(object):
         return True
 
     def contenders(self):
-        """Return an ordered list of the current contenders for the lock
+        """Return an ordered list of the current contenders for the
+        lock
 
         .. note::
 

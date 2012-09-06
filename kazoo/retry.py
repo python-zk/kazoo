@@ -24,10 +24,10 @@ class RetrySleeper(object):
 
         :param max_tries: How many times to retry the command.
         :param delay: Initial delay between retry attempts
-        :param backoff: Backoff multiplier between retry attempts. Defaults
-                        to 2 for exponential backoff.
-        :param max_jitter: Additional max jitter period to wait between retry
-                           attempts to avoid slamming the server.
+        :param backoff: Backoff multiplier between retry attempts.
+                        Defaults to 2 for exponential backoff.
+        :param max_jitter: Additional max jitter period to wait between
+                           retry attempts to avoid slamming the server.
 
         """
         self.sleep_func = sleep_func
@@ -60,7 +60,8 @@ class RetrySleeper(object):
 
 
 class KazooRetry(object):
-    """Helper for retrying a method in the face of retry-able exceptions"""
+    """Helper for retrying a method in the face of retry-able
+    exceptions"""
     RETRY_EXCEPTIONS = (
         ConnectionLoss,
         ForceRetryError
@@ -76,12 +77,13 @@ class KazooRetry(object):
 
         :param max_tries: How many times to retry the command.
         :param delay: Initial delay between retry attempts
-        :param backoff: Backoff multiplier between retry attempts. Defaults
-                        to 2 for exponential backoff.
-        :param max_jitter: Additional max jitter period to wait between retry
-                           attempts to avoid slamming the server.
-        :param ignore_expire: Whether a session expiration should be ignored
-                              and treated as a retry-able command.
+        :param backoff: Backoff multiplier between retry attempts.
+                        Defaults to 2 for exponential backoff.
+        :param max_jitter: Additional max jitter period to wait between
+                           retry attempts to avoid slamming the server.
+        :param ignore_expire:
+            Whether a session expiration should be ignored and treated
+            as a retry-able command.
 
         """
         self.retry_sleeper = RetrySleeper(max_tries, delay, backoff, max_jitter,

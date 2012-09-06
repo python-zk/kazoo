@@ -102,7 +102,8 @@ class ConnectionHandler(object):
             return b"".join(msgparts)
 
     def _invoke(self, timeout, request, xid=None):
-        """A special writer used during connection establishment only"""
+        """A special writer used during connection establishment
+        only"""
         b = bytearray()
         if xid:
             b.extend(int_struct.pack(xid))
@@ -137,7 +138,8 @@ class ConnectionHandler(object):
         return zxid
 
     def _submit(self, request, timeout, xid=None):
-        """Submit a request object with a timeout value and optional xid"""
+        """Submit a request object with a timeout value and optional
+        xid"""
         b = bytearray()
         b.extend(int_struct.pack(xid))
         if request.type:
@@ -296,8 +298,8 @@ class ConnectionHandler(object):
             log.debug('Reader stopped')
 
     def writer(self):
-        """Main writer function that writes to the ZK connection and handles
-        other state management"""
+        """Main writer function that writes to the ZK connection and
+        handles other state management"""
         if self.log_debug:
             log.debug('Writer started')
 
@@ -419,8 +421,8 @@ class ConnectionHandler(object):
                   '    negotiated session timeout: %s\n'
                   '    connect timeout: %s\n'
                   '    read timeout: %s', client._session_id,
-                  client._session_passwd.encode('hex'), negotiated_session_timeout,
-                  connect_timeout, read_timeout)
+                  client._session_passwd.encode('hex'),
+                  negotiated_session_timeout, connect_timeout, read_timeout)
 
         client._session_callback(KeeperState.CONNECTED)
 

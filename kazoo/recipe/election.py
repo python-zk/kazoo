@@ -10,7 +10,8 @@ class Election(object):
         zk = KazooClient()
         election = zk.Election("/electionpath", "my-identifier")
 
-        # blocks until the election is won, then calls my_leader_function()
+        # blocks until the election is won, then calls
+        # my_leader_function()
         election.run(my_leader_function)
 
     """
@@ -29,11 +30,12 @@ class Election(object):
     def run(self, func, *args, **kwargs):
         """Contend for the leadership
 
-        This call will block until either this contender is cancelled or this
-        contender wins the election and the provided leadership function
-        subsequently returns or fails.
+        This call will block until either this contender is cancelled
+        or this contender wins the election and the provided leadership
+        function subsequently returns or fails.
 
-        :param func: A function to be called if/when the election is won
+        :param func: A function to be called if/when the election is
+                     won
         :param args: Arguments to leadership function
         :param kwargs: Keyword arguments to leadership function
         """
@@ -52,13 +54,15 @@ class Election(object):
 
         .. note::
 
-            If this contender has already been elected leader, this method
-            will not interrupt the leadership function.
+            If this contender has already been elected leader, this
+            method will not interrupt the leadership function.
+
         """
         self.lock.cancel()
 
     def contenders(self):
-        """Return an ordered list of the current contenders in the election
+        """Return an ordered list of the current contenders in the
+        election
 
         .. note::
 

@@ -151,8 +151,9 @@ class SequentialGeventHandler(object):
         """Create a :class:`AsyncResult` instance
 
         The :class:`AsyncResult` instance will have its completion
-        callbacks executed in the thread the :class:`SequentialGeventHandler`
-        is created in (which should be the gevent/main thread).
+        callbacks executed in the thread the
+        :class:`SequentialGeventHandler` is created in (which should be
+        the gevent/main thread).
 
         """
         return AsyncResult()
@@ -164,8 +165,8 @@ class SequentialGeventHandler(object):
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
 
-        The callback is put on separate queues to run depending on the type
-        as documented for the :class:`SequentialGeventHandler`.
+        The callback is put on separate queues to run depending on the
+        type as documented for the :class:`SequentialGeventHandler`.
 
         """
         self.callback_queue.put(lambda: callback.func(*callback.args))
