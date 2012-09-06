@@ -320,13 +320,13 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         result = watcher.start()
         eq_(result.ready(), False)
 
-        time.sleep(0.2)
+        time.sleep(0.08)
         self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
         eq_(result.ready(), False)
-        time.sleep(0.2)
+        time.sleep(0.08)
         eq_(result.ready(), False)
         self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
-        time.sleep(0.2)
+        time.sleep(0.08)
         eq_(result.ready(), False)
 
         children, asy = result.get()
