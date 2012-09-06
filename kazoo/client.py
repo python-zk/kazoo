@@ -420,6 +420,8 @@ class KazooClient(object):
             possibly a :exc:`socket.error` if there's a problem with
             the connection used just for this command.
 
+        .. versionadded:: 0.5
+
         """
         if not self._live.is_set():
             raise ConnectionLoss("No connection to server")
@@ -438,6 +440,8 @@ class KazooClient(object):
 
         :returns: The server version, for example (3, 4, 3).
         :rtype: tuple
+
+        .. versionadded:: 0.5
 
         """
         data = self.command(b'envi')
@@ -497,6 +501,8 @@ class KazooClient(object):
         :raises:
             :exc:`~kazoo.exceptions.ZookeeperError` if the server
             returns a non-zero error code.
+
+        .. versionadded:: 0.5
 
         """
         return self.sync_async(path).get()
@@ -807,6 +813,8 @@ class KazooClient(object):
             :exc:`~kazoo.exceptions.ZookeeperError` if the server
             returns a non-zero error code
 
+        .. versionadded:: 0.5
+
         """
         return self.get_acls_async(path).get()
 
@@ -847,6 +855,8 @@ class KazooClient(object):
 
             :exc:`~kazoo.exceptions.ZookeeperError` if the server
             returns a non-zero error code.
+
+        .. versionadded:: 0.5
 
         """
         return self.set_acls_async(path, acls, version).get()
