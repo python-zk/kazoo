@@ -33,7 +33,7 @@ Features
 - New `client.command` and `client.server_version` API, exposing Zookeeper's
   four letter commands and giving access to structured version information.
 - Added 'include_data' option for get_children to include the node's Stat
-  object. Available for use with Zookeeper 3.4+.
+  object.
 - Substantial increase in logging data with debug mode. All correspondence with
   the Zookeeper server can now be seen to help in debugging.
 
