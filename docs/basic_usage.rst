@@ -92,16 +92,16 @@ a session expires or when you stop the clients connection.
 
 **Valid State Transitions**
 
-- *`LOST` -> `CONNECTED`*
+- *LOST -> CONNECTED*
   New connection, or previously lost one becoming connected.
-- *`CONNECTED` -> `SUSPENDED`*
+- *CONNECTED -> SUSPENDED*
   Connection loss to server occurred on a connection.
-- *`CONNECTED` -> `LOST`*
+- *CONNECTED -> LOST*
   Only occurs if invalid authentication credentials are provided after the
   connection was established.
-- *`SUSPENDED` -> `LOST`*
+- *SUSPENDED -> LOST*
   Connection resumed to server, but then lost as the session was expired.
-- *`SUSPENDED` -> `CONNECTED`*
+- *SUSPENDED -> CONNECTED*
   Connection that was lost has been restored.
 
 Zookeeper CRUD
