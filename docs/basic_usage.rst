@@ -55,6 +55,55 @@ When using the :class:`kazoo.recipe.lock.Lock` or creating ephemeral nodes, its
 highly recommended to add a state listener so that your program can properly
 deal with connection interruptions or a Zookeeper session loss.
 
+Understanding Kazoo States
+--------------------------
+
+The :class:`~kazoo.protocol.states.KazooState` object represents several states
+the client transitions through. The current state of the client can always be
+determined by viewing the :attr:`~kazoo.client.KazooClient.state` property. The
+possible states are:
+
+- LOST
+- CONNECTED
+- SUSPENDED
+
+When a :class:`~kazoo.client.KazooClient` instance is first created, it is in
+the `LOST` state. After a connection is established it transitions to the
+`CONNECTED` state. If any connection issues come up, or it needs to change
+Zookeeper connections, it will transition to `SUSPENDED` to let you know that
+commands cannot currently be run. Upon re-establishing a connection the client
+could transition to `LOST` if the session has expired, or `CONNECTED` if the
+session is still valid.
+
+These states should be monitored so that the client behaves properly depending
+on the state of the connection.
+
+When a connection transitions to `SUSPENDED`, if the client is performing an
+action that requires agreement with other systems (using the Lock recipe for
+example), it should pause what it's doing. When the connection has been
+re-established the client can continue depending on if the state is `LOST` or
+transitions directly to `CONNECTED` again.
+
+When a connection transitions to `LOST`, any ephemeral nodes that have been
+created will be removed by Zookeeper. This affects all recipes that create
+ephemeral nodes, such as the Lock recipe. Lock's will need to be re-acquired
+after the state transitions to `CONNECTED` again. This transition occurs when
+a session expires or when you stop the clients connection.
+
+**Valid State Transitions**
+
+- *`LOST` -> `CONNECTED`*
+  New connection, or previously lost one becoming connected.
+- *`CONNECTED` -> `SUSPENDED`*
+  Connection loss to server occurred on a connection.
+- *`CONNECTED` -> `LOST`*
+  Only occurs if invalid authentication credentials are provided after the
+  connection was established.
+- *`SUSPENDED` -> `LOST`*
+  Connection resumed to server, but then lost as the session was expired.
+- *`SUSPENDED` -> `CONNECTED`*
+  Connection that was lost has been restored.
+
 Zookeeper CRUD
 ==============
 

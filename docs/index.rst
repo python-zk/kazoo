@@ -15,7 +15,7 @@ Kazoo features:
 * Integrated testing helpers for Zookeeper clusters
 * Simplified Zookeeper connection state tracking
 * Pure-Python based implementation of the wire protocol, avoiding all the
-  memory leaks, lacking features and debugging madness of the C library
+  memory leaks, lacking features, and debugging madness of the C library
 
 Kazoo is heavily inspired by `Netflix Curator`_ simplifications and helpers.
 
@@ -45,8 +45,11 @@ Using :term:`Zookeeper` in a safe manner can be difficult due to the variety of
 edge-cases in :term:`Zookeeper` and other bugs that have been present in the
 Python C binding. Due to how the C library utilizes a separate C thread for
 :term:`Zookeeper` communication some libraries like `gevent`_ also don't work
-properly by default. Kazoo handles all of these cases and provides a new
-asynchronous API which is consistent when using threads or `gevent`_ greenlets.
+properly by default.
+
+By utilizing a pure Python implementation, Kazoo handles all of these
+cases and provides a new asynchronous API which is consistent when
+using threads or `gevent`_ greenlets.
 
 Source Code
 ===========
