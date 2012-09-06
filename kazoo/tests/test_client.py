@@ -14,6 +14,33 @@ from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
 
 
+class TestClientTransitions(KazooTestCase):
+    def test_connection_and_disconnection(self):
+        from kazoo.client import KazooState
+        states = []
+        rc = threading.Event()
+
+        @self.client.add_listener
+        def listener(state):
+            states.append(state)
+            if state == KazooState.CONNECTED:
+                rc.set()
+
+        self.client.stop()
+        eq_(states, [KazooState.LOST])
+        states.pop()
+
+        self.client.start()
+        rc.wait(2)
+        eq_(states, [KazooState.CONNECTED])
+        rc.clear()
+        states.pop()
+        self.expire_session()
+        rc.wait(2)
+        eq_(states, [KazooState.SUSPENDED, KazooState.LOST,
+                     KazooState.CONNECTED])
+
+
 class TestClientConstructor(unittest.TestCase):
 
     def _makeOne(self, *args, **kw):

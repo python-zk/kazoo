@@ -41,7 +41,7 @@ class TestConnectionHandler(KazooTestCase):
         ev = threading.Event()
 
         def expired(state):
-            if state == KazooState.SUSPENDED:
+            if state == KazooState.CONNECTED:
                 ev.set()
 
         password = os.urandom(16)

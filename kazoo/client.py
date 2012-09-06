@@ -40,6 +40,8 @@ from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
+LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
+               KeeperState.CLOSED)
 ENVI_VERSION = re.compile('[\w\s:.]*=([\d\.]*).*', re.DOTALL)
 log = logging.getLogger(__name__)
 
@@ -199,6 +201,16 @@ class KazooClient(object):
         self.last_zxid = 0
 
     @property
+    def client_state(self):
+        """Returns the last Zookeeper client state
+
+        This is the non-simplified state information and is generally
+        not as useful as the simplified KazooState information.
+
+        """
+        return self._state
+
+    @property
     def client_id(self):
         """Returns the client id for this Zookeeper session if
         connected.
@@ -244,6 +256,7 @@ class KazooClient(object):
         # skip if state is current
         if self.state == state:
             return
+
         self.state = state
 
         # Create copy of listeners for iteration in case one needs to
@@ -260,22 +273,23 @@ class KazooClient(object):
         if state == self._state:
             return
 
-        prior_state = self._state
+        # Note that we don't check self.state == LOST since thats also
+        # the clients initial state
+        dead_state = self._state in LOST_STATES
         self._state = state
 
-        # If we are closed down, and are now connecting, don't bother
-        # with the rest of the transitions.
-        if (prior_state == KeeperState.CLOSED and
-            state == KeeperState.CONNECTING):
+        # If we were previously closed or had an expired session, and
+        # are now connecting, don't bother with the rest of the
+        # transitions since they only apply after
+        # we've established a connection
+        if dead_state and state == KeeperState.CONNECTING:
             return
 
         if state == KeeperState.CONNECTED:
             log.info("Zookeeper connection established")
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
-        elif state in (KeeperState.EXPIRED_SESSION,
-                       KeeperState.AUTH_FAILED,
-                       KeeperState.CLOSED):
+        elif state in LOST_STATES:
             log.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
