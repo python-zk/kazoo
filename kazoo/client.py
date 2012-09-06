@@ -760,8 +760,6 @@ class KazooClient(object):
             the node in addition to the children. This option changes
             the return value to be a tuple of (children, stat).
 
-            .. versionadded:: 0.5
-
         :returns: List of child node names, or tuple if `include_data`
                   is `True`.
         :rtype: list
@@ -772,6 +770,9 @@ class KazooClient(object):
 
             :exc:`~kazoo.exceptions.ZookeeperError` if the server
             returns a non-zero error code.
+
+        .. versionadded:: 0.5
+            The `include_data` option.
 
         """
         return self.get_children_async(path, watch, include_data).get()
