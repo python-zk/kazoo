@@ -80,10 +80,15 @@ def make_acl(scheme, credential, read=False, write=False,
         return a credential appropriate for use with the `digest`
         scheme.
     :param write: Write permission.
+    :type write: bool
     :param create: Create permission.
+    :type create: bool
     :param delete: Delete permission.
+    :type delete: bool
     :param admin: Admin permission.
+    :type admin: bool
     :param all: All permissions.
+    :type all: bool
 
     :rtype: :class:`ACL`
 

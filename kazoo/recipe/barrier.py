@@ -25,8 +25,8 @@ class Barrier(object):
     def __init__(self, client, path):
         """Create a Kazoo Barrier
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The barrier path to use
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The barrier path to use.
 
         """
         self.client = client
@@ -90,10 +90,10 @@ class DoubleBarrier(object):
     def __init__(self, client, path, num_clients, identifier=None):
         """Create a Double Barrier
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The barrier path to use
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The barrier path to use.
         :param num_clients: How many clients must enter the barrier to
-                            proceed
+                            proceed.
         :type num_clients: int
         :param identifier: An identifier to use for this member of the
                            barrier when participating. Defaults to the

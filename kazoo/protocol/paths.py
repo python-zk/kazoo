@@ -1,6 +1,5 @@
 def normpath(path):
-    """Normalize path, eliminating double slashes, etc.
-    """
+    """Normalize path, eliminating double slashes, etc."""
     comps = path.split('/')
     new_comps = []
     for comp in comps:
@@ -18,8 +17,10 @@ def normpath(path):
 
 def join(a, *p):
     """Join two or more pathname components, inserting '/' as needed.
+
     If any component is an absolute path, all previous path components
     will be discarded.
+
     """
     path = a
     for b in p:
@@ -33,7 +34,7 @@ def join(a, *p):
 
 
 def isabs(s):
-    """Test whether a path is absolute. """
+    """Test whether a path is absolute"""
     return s.startswith('/')
 
 
@@ -44,7 +45,7 @@ def basename(p):
 
 
 def _prefix_root(root, path):
-    """ Prepend a root to a path. """
+    """Prepend a root to a path. """
     return normpath(join(_norm_root(root), path.lstrip('/')))
 
 

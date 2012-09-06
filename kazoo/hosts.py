@@ -2,11 +2,12 @@ import random
 
 
 class RandomHostIterator(object):
-    """ An iterator that returns a randomly selected host.  A host is
-        guaranteed to not be selected twice unless there is only one
-        host in the collection.
-    """
+    """An iterator that returns a randomly selected host.
 
+    A host is guaranteed to not be selected twice unless there is only
+    one host in the collection.
+
+    """
     def __init__(self, hosts):
         self.last = 0
         self.hosts = hosts
@@ -22,8 +23,7 @@ class RandomHostIterator(object):
 
 
 def collect_hosts(hosts):
-    """ Collect a set of hosts and an optional chroot from a string.
-    """
+    """Collect a set of hosts and an optional chroot from a string."""
     host_ports, chroot = hosts.partition("/")[::2]
     chroot = "/" + chroot if chroot else None
 

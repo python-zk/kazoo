@@ -34,8 +34,8 @@ class Lock(object):
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo Lock
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The lock path to use
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The lock path to use.
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.

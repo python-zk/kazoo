@@ -15,15 +15,15 @@ class Election(object):
         election.run(my_leader_function)
 
     """
-
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo Leader Election
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The election path to use
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The election path to use.
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
+
         """
         self.lock = client.Lock(path, identifier)
 
@@ -35,9 +35,10 @@ class Election(object):
         function subsequently returns or fails.
 
         :param func: A function to be called if/when the election is
-                     won
-        :param args: Arguments to leadership function
-        :param kwargs: Keyword arguments to leadership function
+                     won.
+        :param args: Arguments to leadership function.
+        :param kwargs: Keyword arguments to leadership function.
+
         """
         if not callable(func):
             raise ValueError("leader function is not callable")

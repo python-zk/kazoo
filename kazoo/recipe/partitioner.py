@@ -133,16 +133,16 @@ class SetPartitioner(object):
                  identifier=None, time_boundary=30):
         """Create a :class:`~SetPartitioner` instance
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance
-        :param path: The partition path to use
-        :param set: The set of items to partition
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The partition path to use.
+        :param set: The set of items to partition.
         :param partition_func: A function to use to decide how to
-                               partition the set
+                               partition the set.
         :param identifier: An identifier to use for this member of the
                            party when participating. Defaults to the
                            hostname + process id.
         :param time_boundary: How long the party members must be stable
-                              before allocation can complete
+                              before allocation can complete.
 
         """
         self.state = PartitionState.ALLOCATING
@@ -208,7 +208,8 @@ class SetPartitioner(object):
     def wait_for_acquire(self, timeout=30):
         """Wait for the set to be partitioned and acquired
 
-        :param timeout: How long to wait before returning
+        :param timeout: How long to wait before returning.
+        :type timeout: int
 
         """
         self._acquire_event.wait(timeout)

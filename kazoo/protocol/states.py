@@ -115,7 +115,7 @@ class WatchedEvent(namedtuple('WatchedEvent', ('type', 'state', 'path'))):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
     The :class:`WatchedEvent` includes exactly what happened, the
-    current state of ZooKeeper, and the path of the znode that was
+    current state of ZooKeeper, and the path of the node that was
     involved in the event. An instance of :class:`WatchedEvent` will be
     passed to registered watch functions.
 

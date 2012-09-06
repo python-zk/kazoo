@@ -41,14 +41,14 @@ class DataWatch(object):
                  allow_session_lost=True):
         """Create a data watcher for a path
 
-        :param client: A zookeeper client
+        :param client: A zookeeper client.
         :type client: :class:`~kazoo.client.KazooClient`
-        :param path: The path to watch for data changes on
+        :param path: The path to watch for data changes on.
         :type path: str
         :param func: Function to call initially and every time the
                      node changes. `func` will be called with a
                      tuple, the value of the node and a
-                     :class:`~kazoo.client.ZnodeStat` instance
+                     :class:`~kazoo.client.ZnodeStat` instance.
         :type func: callable
         :param allow_session_lost: Whether the watch should be
                                    re-registered if the zookeeper
@@ -81,7 +81,7 @@ class DataWatch(object):
         :param func: Function to call initially and every time the
                      data changes. `func` will be called with a
                      tuple, the value of the node and a
-                     :class:`~kazoo.client.ZnodeStat` instance
+                     :class:`~kazoo.client.ZnodeStat` instance.
         :type func: callable
 
         """
@@ -160,9 +160,9 @@ class ChildrenWatch(object):
                  allow_session_lost=True):
         """Create a children watcher for a path
 
-        :param client: A zookeeper client
+        :param client: A zookeeper client.
         :type client: :class:`~kazoo.client.KazooClient`
-        :param path: The path to watch for children on
+        :param path: The path to watch for children on.
         :type path: str
         :param func: Function to call initially and every time the
                      children change. `func` will be called with a

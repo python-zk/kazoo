@@ -79,8 +79,8 @@ class IHandler(Interface):
     def spawn(func, *args, **kwargs):
         """Spawn a function to run asynchronously
 
-        :param args: args to call the function with
-        :param kwargs: keyword args to call the function with
+        :param args: args to call the function with.
+        :param kwargs: keyword args to call the function with.
 
         This method should return immediately and execute the function
         with the provided args and kwargs in an asynchronous manner.
@@ -91,7 +91,7 @@ class IHandler(Interface):
         """Dispatch to the callback object
 
         :param callback: A :class:`~kazoo.protocol.states.Callback`
-                         object to be called
+                         object to be called.
 
         """
 
@@ -127,7 +127,7 @@ class IAsyncResult(Interface):
     def set(value=None):
         """Store the value. Wake up the waiters.
 
-        :param value: Value to store as the result
+        :param value: Value to store as the result.
 
         Any waiters blocking on :meth:`get` or :meth:`wait` are woken
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
@@ -136,7 +136,7 @@ class IAsyncResult(Interface):
     def set_exception(exception):
         """Store the exception. Wake up the waiters.
 
-        :param exception: Exception to raise when fetching the value
+        :param exception: Exception to raise when fetching the value.
 
         Any waiters blocking on :meth:`get` or :meth:`wait` are woken
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
@@ -146,10 +146,10 @@ class IAsyncResult(Interface):
         """Return the stored value or raise the exception
 
         :param block: Whether this method should block or return
-                      immediately
+                      immediately.
         :type block: bool
         :param timeout: How long to wait for a value when `block` is
-                        `True`
+                        `True`.
         :type timeout: float
 
         If this instance already holds a value / an exception, return /
@@ -167,7 +167,7 @@ class IAsyncResult(Interface):
         """Block until the instance is ready.
 
         :param timeout: How long to wait for a value when `block` is
-                        `True`
+                        `True`.
         :type timeout: float
 
         If this instance already holds a value / an exception, return /
@@ -190,7 +190,7 @@ class IAsyncResult(Interface):
     def unlink(callback):
         """Remove the callback set by :meth:`rawlink`
 
-        :param callback: A callback function to remove
+        :param callback: A callback function to remove.
         :type callback: func
 
         """
