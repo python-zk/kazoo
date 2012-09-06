@@ -755,8 +755,6 @@ class KazooClient(object):
             the return value to be a tuple of (children, stat).
 
             .. versionadded:: 0.5
-                Requires Zookeeper 3.4+.
-
 
         :returns: List of child node names, or tuple if `include_data`
                   is `True`.
