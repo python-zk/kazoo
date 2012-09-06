@@ -1,25 +1,29 @@
 Changelog
 =========
 
-0.5 (unreleased)
-----------------
+0.5 (9/6/2012)
+--------------
 
 Skipping a version to reflect the magnitude of the change. Kazoo is now a pure
-Python client with no C bindings.
+Python client with no C bindings. This release should run without a problem
+on alternate Python implementations such as PyPy and Jython. Porting to Python
+3 in the future should also be much easier.
 
 Documentation
 *************
 
 - Docs have been restructured to handle the new classes and locations of the
-  methods from the Python refactor.
+  methods from the pure Python refactor.
 
 Bug Handling
 ************
 
 This change may introduce new bugs, however there is no longer the possibility
-of a complete Python seg-fault due to errors in the C library and/or the C
+of a complete Python segfault due to errors in the C library and/or the C
 binding.
 
+- Possible segfaults from the C lib are gone.
+- Password mangling due to the C lib is gone.
 - The party recipes didn't set their participating flag to False after
   leaving.
 
@@ -28,6 +32,10 @@ Features
 
 - New `client.command` and `client.server_version` API, exposing Zookeeper's
   four letter commands and giving access to structured version information.
+- Added 'include_data' option for get_children to include the node's Stat
+  object. Available for use with Zookeeper 3.4+.
+- Substantial increase in logging data with debug mode. All correspondence with
+  the Zookeeper server can now be seen to help in debugging.
 
 API Changes
 ***********
