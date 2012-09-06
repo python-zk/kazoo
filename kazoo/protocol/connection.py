@@ -384,9 +384,11 @@ class ConnectionHandler(object):
     def _connect(self, host, port):
         client = self.client
         log.info('Connecting to %s:%s', host, port)
-        log.debug('    Using session_id: %r session_passwd: 0x%s',
-                  client._session_id,
-                  client._session_passwd.encode('hex'))
+
+        if self.log_debug:
+            log.debug('    Using session_id: %r session_passwd: 0x%s',
+                      client._session_id,
+                      client._session_passwd.encode('hex'))
 
         with socket_error_handling():
             self._socket.connect((host, port))
@@ -411,12 +413,15 @@ class ConnectionHandler(object):
         connect_timeout = negotiated_session_timeout / len(client.hosts)
         read_timeout = negotiated_session_timeout * 2.0 / 3.0
         client._session_passwd = connect_result.passwd
-        log.debug('Session created, session_id: %r session_passwd: 0x%s\n'
-                  '    negotiated session timeout: %s\n'
-                  '    connect timeout: %s\n'
-                  '    read timeout: %s', client._session_id,
-                  client._session_passwd.encode('hex'),
-                  negotiated_session_timeout, connect_timeout, read_timeout)
+
+        if self.log_debug:
+            log.debug('Session created, session_id: %r session_passwd: 0x%s\n'
+                      '    negotiated session timeout: %s\n'
+                      '    connect timeout: %s\n'
+                      '    read timeout: %s', client._session_id,
+                      client._session_passwd.encode('hex'),
+                      negotiated_session_timeout, connect_timeout,
+                      read_timeout)
 
         client._session_callback(KeeperState.CONNECTED)
 
