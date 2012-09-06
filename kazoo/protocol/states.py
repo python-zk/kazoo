@@ -38,10 +38,6 @@ class KeeperState(object):
     Represents the Zookeeper state. Watch functions will receive a
     :class:`KeeperState` attribute as their state argument.
 
-    .. attribute:: ASSOCIATING
-
-        The Zookeeper ASSOCIATING state
-
     .. attribute:: AUTH_FAILED
 
         Authentication has failed, this is an unrecoverable error.
