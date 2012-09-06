@@ -69,11 +69,14 @@ possible states are:
 
 When a :class:`~kazoo.client.KazooClient` instance is first created, it is in
 the `LOST` state. After a connection is established it transitions to the
-`CONNECTED` state. If any connection issues come up, or it needs to change
-Zookeeper connections, it will transition to `SUSPENDED` to let you know that
-commands cannot currently be run. Upon re-establishing a connection the client
-could transition to `LOST` if the session has expired, or `CONNECTED` if the
-session is still valid.
+`CONNECTED` state. If any connection issues come up or if it needs to connect
+to a different Zookeeper cluster node, it will transition to `SUSPENDED` to let
+you know that commands cannot currently be run. The connection will also be
+lost if the Zookeeper node is no longer part of the quorum, resulting in a
+`SUSPENDED` state.
+
+Upon re-establishing a connection the client could transition to `LOST` if the
+session has expired, or `CONNECTED` if the session is still valid.
 
 These states should be monitored so that the client behaves properly depending
 on the state of the connection.
