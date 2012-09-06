@@ -78,8 +78,11 @@ lost if the Zookeeper node is no longer part of the quorum, resulting in a
 Upon re-establishing a connection the client could transition to `LOST` if the
 session has expired, or `CONNECTED` if the session is still valid.
 
-These states should be monitored so that the client behaves properly depending
-on the state of the connection.
+.. note::
+
+    These states should be monitored using a listener as described previously
+    so that the client behaves properly depending on the state of the
+    connection.
 
 When a connection transitions to `SUSPENDED`, if the client is performing an
 action that requires agreement with other systems (using the Lock recipe for
