@@ -388,14 +388,8 @@ class ConnectionHandler(object):
                   client._session_id,
                   client._session_passwd.encode('hex'))
 
-        try:
+        with socket_error_handling():
             self._socket.connect((host, port))
-        except socket.error, e:
-            if isinstance(e.args, tuple):
-                raise ConnectionDropped("socket connection error: %s",
-                                        errno.errorcode[e[0]])
-            else:
-                raise
 
         self._socket.setblocking(0)
 
