@@ -1,8 +1,9 @@
 """Zookeeper Protocol Connection Handler"""
 import errno
 import logging
-import socket
+import random
 import select
+import socket
 import time
 from contextlib import contextmanager
 
@@ -80,7 +81,8 @@ class RWPinger(object):
             self.last_attempt = time.time()
         delay = 0.5
         while True:
-            if time.time() < self.last_attempt + delay:
+            jitter = random.randint(0, 100) / 100.0
+            if time.time() < self.last_attempt + delay + jitter:
                 # Skip rw ping checks if its too soon
                 yield False
                 continue
