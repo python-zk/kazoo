@@ -2,6 +2,8 @@
 import errno
 import logging
 import socket
+import select
+import time
 from contextlib import contextmanager
 
 from kazoo.exceptions import (
@@ -46,13 +48,63 @@ AUTH_XID = -4
 def socket_error_handling():
     try:
         yield
-    except socket.error as e:
+    except (socket.error, select.error) as e:
         if isinstance(e.args, tuple):
             raise ConnectionDropped("socket connection error: %s",
                                     errno.errorcode[e[0]])
         else:  # pragma: nocover
             # This is only possible on Python 2.5 or earlier
             raise ConnectionDropped("socket connection error: %s", e)
+
+
+class RWPinger(object):
+    """A Read/Write Server Pinger Iterable
+
+    This object is initialized with the hosts iterator object and the
+    socket creation function. Anytime `next` is called on its iterator
+    it yields either False, or a host, port tuple if it found a r/w
+    capable Zookeeper node.
+
+    After the first run-through of hosts, an exponential back-off delay
+    is added before the next run. This delay is tracked internally and
+    the iterator will yield False if called too soon.
+
+    """
+    def __init__(self, hosts, socket_func):
+        self.hosts = hosts
+        self.socket = socket_func
+        self.last_attempt = None
+
+    def __iter__(self):
+        if not self.last_attempt:
+            self.last_attempt = time.time()
+        delay = 0.5
+        while True:
+            if time.time() < self.last_attempt + delay:
+                # Skip rw ping checks if its too soon
+                yield False
+                continue
+            for host, port in self.hosts:
+                sock = self.socket()
+                log.debug("Pinging server for r/w: %s:%s", host, port)
+                self.last_attempt = time.time()
+                try:
+                    with socket_error_handling():
+                        sock.connect((host, port))
+                        sock.sendall("isro")
+                        result = sock.recv(8192)
+                        sock.close()
+                        if result == 'rw':
+                            yield (host, port)
+                        else:
+                            yield False
+                except ConnectionDropped:
+                    yield False
+            delay *= 2
+
+
+class RWServerAvailable(Exception):
+    """Thrown if a RW Server becomes available"""
 
 
 class ConnectionHandler(object):
@@ -71,6 +123,8 @@ class ConnectionHandler(object):
         self.log_debug = log_debug
         self._socket = None
         self._xid = None
+        self._rw_server = None
+        self._ro_mode = False
 
     def start(self):
         """Start the connection up"""
@@ -80,6 +134,11 @@ class ConnectionHandler(object):
         """Ensure the writer has stopped, wait to see if it does"""
         self.writer_stopped.wait(timeout)
         return self.writer_stopped.is_set()
+
+    def _server_pinger(self):
+        """Returns a server pinger iterable, that will ping the next
+        server in the list, and apply a back-off between attempts"""
+        return RWPinger(self.client.hosts, self.handler.socket)
 
     def _read_header(self, timeout):
         b = self._read(4, timeout)
@@ -110,6 +169,9 @@ class ConnectionHandler(object):
         if request.type:
             b.extend(int_struct.pack(request.type))
         b.extend(request.serialize())
+
+        if self.log_debug:
+            log.debug("Sending request: %s", request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
         zxid = None
@@ -326,6 +388,13 @@ class ConnectionHandler(object):
         for host, port in client.hosts:
             self._socket = self.handler.socket()
 
+            # Were we given a r/w server? If so, use that instead
+            if self._rw_server:
+                if self.log_debug:
+                    log.debug("Found r/w server to use, %s:%s", host, port)
+                host, port = self._rw_server
+                self._rw_server = None
+
             if client._state != KeeperState.CONNECTING:
                 with client._state_lock:
                     client._session_callback(KeeperState.CONNECTING)
@@ -371,6 +440,10 @@ class ConnectionHandler(object):
                 log.warning('Session has expired')
                 with client._state_lock:
                     client._session_callback(KeeperState.EXPIRED_SESSION)
+            except RWServerAvailable:
+                log.warning('Found a RW server, dropping connection')
+                with client._state_lock:
+                    client._session_callback(KeeperState.CONNECTING)
             except Exception as e:
                 log.exception(e)
                 raise
@@ -423,7 +496,12 @@ class ConnectionHandler(object):
                       negotiated_session_timeout, connect_timeout,
                       read_timeout)
 
-        client._session_callback(KeeperState.CONNECTED)
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         for scheme, auth in client.auth_data:
             ap = Auth(0, scheme, auth)
@@ -465,6 +543,13 @@ class ConnectionHandler(object):
             if self.log_debug:
                 log.debug('Queue timeout.  Sending PING')
             self._submit(Ping, connect_timeout, PING_XID)
+
+            # Determine if we need to check for a r/w server
+            if self._ro_mode:
+                result = self._ro_mode.next()
+                if result:
+                    self._rw_server = result
+                    raise RWServerAvailable()
         except Exception as e:
             log.exception(e)
             ret = True

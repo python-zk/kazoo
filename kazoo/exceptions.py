@@ -148,6 +148,17 @@ class AuthFailedError(ZookeeperError):
     pass
 
 
+@_zookeeper_exception(-118)
+class SessionMovedError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-119)
+class NotReadOnlyCallError(ZookeeperError):
+    """An API call that is not read-only was used while connected to
+    a read-only server"""
+
+
 class ConnectionClosedError(SessionExpiredError):
     """Connection is closed"""
 

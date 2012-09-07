@@ -285,8 +285,9 @@ class KazooClient(object):
         if dead_state and state == KeeperState.CONNECTING:
             return
 
-        if state == KeeperState.CONNECTED:
-            log.info("Zookeeper connection established")
+        if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
+            log.info("Zookeeper connection established, state: %s",
+                     state)
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
         elif state in LOST_STATES:

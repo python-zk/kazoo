@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.6 (**master**)
+----------------
+
+API Changes
+***********
+
+- New KeeperState.CONNECTED_RO state for Zookeeper servers connected in
+  read-only mode.
+- New NotReadOnlyCallError exception when issuing a write change against a
+  server thats currently read-only.
+
+Features
+********
+
+- Automatic background scanning for a Read/Write server when connected to a
+  server in read-only mode.
+- Handles connecting to Zookeeper 3.4+ read-only servers
+
 0.5 (9/6/2012)
 --------------
 

@@ -7,6 +7,7 @@ from kazoo.security import ACL
 from kazoo.security import Id
 
 # Struct objects with formats compiled
+bool_struct = struct.Struct('B')
 int_struct = struct.Struct('!i')
 int_int_struct = struct.Struct('!ii')
 int_int_long_struct = struct.Struct('!iiq')
@@ -100,7 +101,14 @@ class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'
             bytes, offset)
         offset += int_int_long_struct.size
         password, offset = read_buffer(bytes, offset)
-        return cls(proto_version, 0, timeout, session_id, password, 0), offset
+
+        try:
+            read_only = bool_struct.unpack_from(bytes, offset)[0] is 1
+            offset += bool_struct.size
+        except struct.error:
+            read_only = False
+        return cls(proto_version, 0, timeout, session_id, password,
+                   read_only), offset
 
 
 class Create(namedtuple('Create', 'path data acl flags')):
