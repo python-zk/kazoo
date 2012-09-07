@@ -3,18 +3,18 @@ python:
     - "2.6"
     - "2.7"
 
+env:
+    - ZOOKEEPER_VERSION=3.3.6
+    - ZOOKEEPER_VERSION=3.4.3
+
 notifications:
   email:
     - hschlichting@mozilla.com
     - ben@groovie.org
   irc: "irc.mozilla.org#services-dev"
 
-before_install:
-    - sudo apt-get install zookeeper
-
 install:
     - make
 
 script:
-    - export ZOOKEEPER_PATH=/usr/share/java
     - make test

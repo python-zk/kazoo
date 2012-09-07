@@ -10,7 +10,7 @@ INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 BUILD_DIRS = bin build include lib lib64 man share
 
 ZOOKEEPER = $(BIN)/zookeeper
-ZOOKEEPER_VERSION = 3.3.6
+ZOOKEEPER_VERSION ?= 3.3.6
 ZOOKEEPER_PATH ?= $(ZOOKEEPER)
 
 .PHONY: all build clean test zookeeper clean-zookeeper
