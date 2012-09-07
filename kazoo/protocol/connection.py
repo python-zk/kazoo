@@ -82,10 +82,9 @@ class RWPinger(object):
         delay = 0.5
         while True:
             jitter = random.randint(0, 100) / 100.0
-            if time.time() < self.last_attempt + delay + jitter:
+            while time.time() < self.last_attempt + delay + jitter:
                 # Skip rw ping checks if its too soon
                 yield False
-                continue
             for host, port in self.hosts:
                 sock = self.socket()
                 log.debug("Pinging server for r/w: %s:%s", host, port)
@@ -101,6 +100,10 @@ class RWPinger(object):
                         else:
                             yield False
                 except ConnectionDropped:
+                    yield False
+
+                # Add some jitter between host pings
+                while time.time() < self.last_attempt + jitter:
                     yield False
             delay *= 2
 
@@ -516,8 +519,8 @@ class ConnectionHandler(object):
         client = self.client
         ret = None
         try:
-            request, async_object = client._queue.peek(True,
-                read_timeout / 2000.0)
+            timeout = read_timeout / 2000.0 - random.randint(0, 40) / 100.0
+            request, async_object = client._queue.peek(True, timeout)
 
             # Special case for auth packets
             if request.type == Auth.type:
