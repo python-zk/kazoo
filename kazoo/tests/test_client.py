@@ -676,6 +676,88 @@ class TestClientTransactions(KazooTestCase):
         results = t.commit()
         eq_(results[0], True)
 
+    def test_bad_deletes(self):
+        args_list = [(True,), ('/smith', 'woops'), ]
+
+        @raises(TypeError)
+        def testit(args):
+            t = self.client.transaction()
+            t.delete(*args)
+
+        for args in args_list:
+            testit(args)
+
+    def test_set(self):
+        self.client.create('/fred', '01')
+        t = self.client.transaction()
+        t.set_data('/fred', 'oops')
+        t.commit()
+        res = self.client.get('/fred')
+        eq_(res[0], 'oops')
+
+    def test_bad_sets(self):
+        args_list = [(42, 52), ('/smith', False), ('/smith', '', 'oops')]
+
+        @raises(TypeError)
+        def testit(args):
+            t = self.client.transaction()
+            t.set_data(*args)
+
+        for args in args_list:
+            testit(args)
+
+    def test_check(self):
+        self.client.create('/fred')
+        version = self.client.get('/fred')[1].version
+        t = self.client.transaction()
+        t.check('/fred', version)
+        t.create('/blah')
+        results = t.commit()
+        eq_(results[0], True)
+        eq_(results[1], '/blah')
+
+    def test_bad_checks(self):
+        args_list = [(42, 52), ('/smith', 'oops')]
+
+        @raises(TypeError)
+        def testit(args):
+            t = self.client.transaction()
+            t.check(*args)
+
+        for args in args_list:
+            testit(args)
+
+    def test_bad_transaction(self):
+        from kazoo.exceptions import RolledBackError, NoNodeError
+        t = self.client.transaction()
+        t.create('/fred')
+        t.delete('/smith')
+        results = t.commit()
+        eq_(results[0].__class__, RolledBackError)
+        eq_(results[1].__class__, NoNodeError)
+
+    def test_bad_commit(self):
+        t = self.client.transaction()
+
+        @raises(ValueError)
+        def testit():
+            t.commit()
+
+        t.committed = True
+        testit()
+
+    def test_bad_context(self):
+        @raises(TypeError)
+        def testit():
+            with self.client.transaction() as t:
+                t.check(4232)
+        testit()
+
+    def test_context(self):
+        with self.client.transaction() as t:
+            t.create('/smith', '32')
+        eq_(self.client.get('/smith')[0], '32')
+
 
 class TestCallbacks(unittest.TestCase):
     def test_session_callback_states(self):
