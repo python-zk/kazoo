@@ -115,6 +115,7 @@ log4j.appender.ROLLINGFILE.File=""" + (
         self.process = subprocess.Popen(
             args=["java",
                   "-cp", self.classpath,
+                  "-Dreadonlymode.enabled=true",
                   "-Dzookeeper.log.dir=%s" % log_path,
                   "-Dzookeeper.root.logger=INFO,CONSOLE",
                   "-Dlog4j.configuration=file:%s" % log4j_path,

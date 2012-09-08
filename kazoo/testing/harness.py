@@ -130,9 +130,6 @@ class KazooTestHarness(object):
             client.stop()
             del client
 
-    def add_errors(self, errors):
-        self.client.zookeeper = ZookeeperErrors(errors, self.client.handler)
-
 
 class KazooTestCase(unittest.TestCase, KazooTestHarness):
     def setUp(self):

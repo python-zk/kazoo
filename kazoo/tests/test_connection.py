@@ -1,7 +1,9 @@
 from collections import namedtuple
 import os
 import threading
+import time
 
+from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
 
@@ -51,3 +53,48 @@ class TestConnectionHandler(KazooTestCase):
         ev.wait(15)
         eq_(ev.is_set(), True)
         client.stop()
+
+
+class TestReadOnlyMode(KazooTestCase):
+    def setUp(self):
+        KazooTestCase.setUp(self)
+        ver = self.client.server_version()
+        if ver[1] < 4:
+            raise SkipTest("Must use zookeeper 3.4 or above")
+
+    def test_read_only(self):
+        from kazoo.exceptions import NotReadOnlyCallError
+        from kazoo.protocol.states import KeeperState
+        self.client.stop()
+        client = self._get_client(read_only=True)
+        client.start()
+
+        states = []
+        ev = threading.Event()
+
+        @client.add_listener
+        def listen(state):
+            states.append(state)
+            if client.client_state == KeeperState.CONNECTED_RO:
+                ev.set()
+        try:
+            self.cluster[1].stop()
+            self.cluster[2].stop()
+            ev.wait(6)
+            eq_(client.client_state, KeeperState.CONNECTED_RO)
+
+            # Test read only command
+            eq_(client.get_children('/'), [])
+
+            # Test error with write command
+            @raises(NotReadOnlyCallError)
+            def testit():
+                client.create('/fred')
+            testit()
+
+            # Wait for a ping
+            time.sleep(15)
+        finally:
+            self.cluster[1].run()
+            self.cluster[2].run()
+            client.stop()
