@@ -2,6 +2,7 @@ import threading
 import uuid
 import unittest
 
+from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
 
@@ -630,6 +631,12 @@ dummy_dict = {
 
 
 class TestClientTransactions(KazooTestCase):
+    def setUp(self):
+        KazooTestCase.setUp(self)
+        ver = self.client.server_version()
+        if ver[1] < 4:
+            raise SkipTest("Must use zookeeper 3.4 or above")
+
     def test_basic_create(self):
         t = self.client.transaction()
         t.create('/freddy')
