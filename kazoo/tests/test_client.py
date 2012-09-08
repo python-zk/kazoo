@@ -617,11 +617,64 @@ class TestClient(KazooTestCase):
             client._safe_close()
         testit()
 
+    def test_client_state(self):
+        from kazoo.protocol.states import KeeperState
+        eq_(self.client.client_state, KeeperState.CONNECTED)
+
+
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,
     'czxid': 110, 'dataLength': 1, 'ephemeralOwner': 'ben',
     'mtime': 1, 'mzxid': 1, 'numChildren': 0, 'pzxid': 1, 'version': 1
 }
+
+
+class TestClientTransactions(KazooTestCase):
+    def test_basic_create(self):
+        t = self.client.transaction()
+        t.create('/freddy')
+        t.create('/fred', ephemeral=True)
+        t.create('/smith', sequence=True)
+        results = t.commit()
+        eq_(results[0], '/freddy')
+        eq_(len(results), 3)
+        self.assertTrue(results[2].startswith('/smith0'))
+
+    def test_bad_creates(self):
+        args_list = [(True,), ('/smith', 0), ('/smith', '', 'bleh'),
+                     ('/smith', '', None, 'fred'),
+                     ('/smith', '', None, True, 'fred')]
+
+        @raises(TypeError)
+        def testit(args):
+            t = self.client.transaction()
+            t.create(*args)
+
+        for args in args_list:
+            testit(args)
+
+    def test_default_acl(self):
+        from kazoo.security import make_digest_acl
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
+
+        digest_auth = "%s:%s" % (username, password)
+        acl = make_digest_acl(username, password, all=True)
+
+        self.client.add_auth("digest", digest_auth)
+        self.client.default_acl = (acl,)
+
+        t = self.client.transaction()
+        t.create('/freddy')
+        results = t.commit()
+        eq_(results[0], '/freddy')
+
+    def test_basic_delete(self):
+        self.client.create('/fred')
+        t = self.client.transaction()
+        t.delete('/fred')
+        results = t.commit()
+        eq_(results[0], True)
 
 
 class TestCallbacks(unittest.TestCase):

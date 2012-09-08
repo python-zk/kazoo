@@ -22,6 +22,7 @@ from kazoo.protocol.serialization import (
     GetChildren,
     Ping,
     ReplyHeader,
+    Transaction,
     Watch,
     int_struct
 )
@@ -297,6 +298,11 @@ class ConnectionHandler(object):
                     async_object.set_exception(exc)
                     return
                 log.debug('Received response: %r', response)
+
+                # We special case a Transaction as we have to unchroot things
+                if request.type == Transaction.type:
+                    response = Transaction.unchroot(client, response)
+
                 async_object.set(response)
 
             # Determine if watchers should be registered

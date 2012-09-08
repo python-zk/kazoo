@@ -22,6 +22,7 @@ from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.serialization import (
     Auth,
+    CheckVersion,
     Close,
     Create,
     Delete,
@@ -32,7 +33,8 @@ from kazoo.protocol.serialization import (
     SetACL,
     GetData,
     SetData,
-    Sync
+    Sync,
+    Transaction
 )
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
@@ -936,6 +938,20 @@ class KazooClient(object):
                    async_result)
         return async_result
 
+    def transaction(self):
+        """Create and return a :class:`TransactionRequest` object
+
+        Creates a :class:`TransactionRequest` object. A Transaction can
+        consist of multiple operations which can be committed as a
+        single atomic unit. Either all of the operations will succeed
+        or none of them.
+
+        :returns: A TransactionRequest.
+        :rtype: :class:`TransactionRequest`
+
+        """
+        return TransactionRequest(self)
+
     def delete(self, path, version=-1, recursive=False):
         """Delete a node.
 
@@ -1009,3 +1025,133 @@ class KazooClient(object):
             self.delete(path)
         except NoNodeError:  # pragma: nocover
             pass
+
+
+class TransactionRequest(object):
+    """A Zookeeper Transaction Request
+
+    A Transaction provides a builder object that can be used to
+    construct and commit an atomic set of operations. The transaction
+    must be committed before its sent.
+
+    Transactions are not thread-safe and should not be accessed from
+    multiple threads at once.
+
+    """
+    def __init__(self, client):
+        self.client = client
+        self.operations = []
+        self.committed = False
+
+    def create(self, path, value="", acl=None, ephemeral=False,
+               sequence=False):
+        """Add a create ZNode to the transaction. Takes the same
+        arguments as :meth:`KazooClient.create`, with the exception
+        of `makepath`.
+
+        :returns: None
+
+        """
+        if acl is None and self.client.default_acl:
+            acl = self.client.default_acl
+
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if acl and not isinstance(acl, (tuple, list)):
+            raise TypeError("acl must be a tuple/list of ACL's")
+        if not isinstance(value, str):
+            raise TypeError("value must be a byte string")
+        if not isinstance(ephemeral, bool):
+            raise TypeError("ephemeral must be a bool")
+        if not isinstance(sequence, bool):
+            raise TypeError("sequence must be a bool")
+
+        flags = 0
+        if ephemeral:
+            flags |= 1
+        if sequence:
+            flags |= 2
+        if acl is None:
+            acl = OPEN_ACL_UNSAFE
+
+        self._add(Create(_prefix_root(self.client.chroot, path), value, acl,
+                         flags), None)
+
+    def delete(self, path, version=-1):
+        """Add a delete ZNode to the transaction. Takes the same
+        arguments as :meth:`KazooClient.delete`, with the exception of
+        `recursive`.
+
+        """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+        self._add(Delete(_prefix_root(self.client.chroot, path), version))
+
+    def set_data(self, path, data, version=-1):
+        """Add a set ZNode value to the transaction. Takes the same
+        arguments as :meth:`KazooClient.set`.
+
+        """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(data, basestring):
+            raise TypeError("data must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+        self._add(SetData(_prefix_root(self.client.chroot, path), data,
+                  version))
+
+    def check(self, path, version):
+        """Add a Check Version to the transaction.
+
+        This command will fail and abort a transaction if the path
+        does not match the specified version.
+
+        """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(version, int):
+            raise TypeError("version must be an int")
+        self._add(CheckVersion(_prefix_root(self.client.chroot, path),
+                  version))
+
+    def commit_async(self):
+        """Commit the transaction asynchronously
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        """
+        self._check_tx_state()
+        self.committed = True
+        async_object = self.client.handler.async_result()
+        self.client._call(Transaction(self.operations), async_object)
+        return async_object
+
+    def commit(self):
+        """Commit the transaction
+
+        :returns: A list of the results for each operation in the
+                  transaction.
+
+        """
+        return self.commit_async().get()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """Commit and cleanup accumulated transaction data"""
+        if not exc_type:
+            self.commit()
+
+    def _check_tx_state(self):
+        if self.committed:
+            raise ValueError('Transaction already committed')
+
+    def _add(self, request, post_processor=None):
+        self._check_tx_state()
+        if self.client.log_debug:
+            log.debug('Added %r to %r', request, self)
+        self.operations.append(request)

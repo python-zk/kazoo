@@ -29,3 +29,7 @@ Public API
 
             A :class:`~kazoo.protocol.states.KazooState` attribute indicating
             the current higher-level connection state.
+
+    .. autoclass:: TransactionRequest
+        :members:
+        :member-order: bysource
