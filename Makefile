@@ -29,7 +29,7 @@ clean:
 	rm -rf $(BUILD_DIRS)
 
 test:
-	export ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) && \
+	ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) \
 	$(BIN)/nosetests -d --with-coverage kazoo -v
 
 html:
