@@ -112,6 +112,9 @@ class KazooClient(object):
             zk.start()
             lock = zk.Lock('/lock_path')
 
+        .. versionadded:: 0.6
+            The read_only option. Requires Zookeeper 3.4+
+
         """
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
 
@@ -949,6 +952,9 @@ class KazooClient(object):
         :returns: A TransactionRequest.
         :rtype: :class:`TransactionRequest`
 
+        .. versionadded:: 0.6
+            Requires Zookeeper 3.4+
+
         """
         return TransactionRequest(self)
 
@@ -1036,6 +1042,9 @@ class TransactionRequest(object):
 
     Transactions are not thread-safe and should not be accessed from
     multiple threads at once.
+
+    .. versionadded:: 0.6
+        Requires Zookeeper 3.4+
 
     """
     def __init__(self, client):
