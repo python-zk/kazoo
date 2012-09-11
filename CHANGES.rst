@@ -23,6 +23,7 @@ Bug Handling
 ************
 
 - Fix bug with set_data type check failing to catch unicode values.
+- Fix bug with gevent 0.13.x backport of peekable queue.
 
 0.5 (9/6/2012)
 --------------

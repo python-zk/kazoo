@@ -1,6 +1,7 @@
 import time
 import unittest
 
+import gevent
 from gevent.event import Event
 from nose.tools import eq_
 from nose.tools import raises
@@ -77,6 +78,29 @@ class TestGeventHandler(unittest.TestCase):
         def testit():
             queue.peek(block=False)
         testit()
+
+    def test_peekable_queue_switching(self):
+        h = self._makeOne()
+        queue = h.peekable_queue()
+
+        def getter():
+            peeked = queue.peek(True, timeout=5)
+            got = queue.get()
+            eq_(peeked, got)
+            return got
+
+        # try to make sure getter is running before putting
+        getter_thread = gevent.spawn(getter)
+        gevent.spawn_later(0, queue.put, 'fred')
+
+        eq_(getter_thread.get(), 'fred')
+
+        # repeat the process to make sure the queue signalling mechanism
+        # is reset correctly
+        getter_thread = gevent.spawn(getter)
+        gevent.spawn_later(0, queue.put, 'fred')
+
+        eq_(getter_thread.get(), 'fred')
 
 
 class TestGeventClient(KazooTestCase):

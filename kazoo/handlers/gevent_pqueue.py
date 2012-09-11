@@ -142,20 +142,23 @@ class PeekableQueue(Queue):  # pragma: nocover
         return self.peek(False)
 
     def _unlock(self):
-        while True:
-            repeat = False
-            if self.putters and (self.maxsize is None or self.qsize() < self.maxsize):
-                repeat = True
-                try:
-                    putter = self.putters.pop()
-                    self._put(putter.item)
-                except:
-                    putter.throw(*sys.exc_info())
-                else:
-                    putter.switch(putter)
-            if self.getters and self.qsize():
-                repeat = True
-                getter = self.getters.pop()
-                getter.switch(getter)
-            if not repeat:
-                return
+        try:
+            while True:
+                repeat = False
+                if self.putters and (self.maxsize is None or self.qsize() < self.maxsize):
+                    repeat = True
+                    try:
+                        putter = self.putters.pop()
+                        self._put(putter.item)
+                    except:
+                        putter.throw(*sys.exc_info())
+                    else:
+                        putter.switch(putter)
+                if self.getters and self.qsize():
+                    repeat = True
+                    getter = self.getters.pop()
+                    getter.switch(getter)
+                if not repeat:
+                    return
+        finally:
+            self._event_unlock = None
