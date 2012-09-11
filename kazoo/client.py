@@ -928,7 +928,7 @@ class KazooClient(object):
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(data, basestring):
+        if not isinstance(data, str):
             raise TypeError("data must be a string")
         if not isinstance(version, int):
             raise TypeError("version must be an int")

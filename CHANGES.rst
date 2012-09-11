@@ -19,6 +19,11 @@ Features
   server in read-only mode.
 - Handles connecting to Zookeeper 3.4+ read-only servers
 
+Bug Handling
+************
+
+- Fix bug with set_data type check failing to catch unicode values.
+
 0.5 (9/6/2012)
 --------------
 
