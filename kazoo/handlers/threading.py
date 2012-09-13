@@ -18,7 +18,11 @@ import select
 import socket
 import time
 import threading
-import Queue
+
+try:
+    import Queue
+except ImportError:  # pragma: nocover
+    import queue as Queue
 
 from zope.interface import implementer
 
