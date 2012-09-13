@@ -4,10 +4,12 @@ PYTHON = $(BIN)/python
 
 PIP_DOWNLOAD_CACHE ?= $(HERE)/.pip_cache
 INSTALL = $(BIN)/pip install
-INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) -U --use-mirrors
+INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 
 BUILD_DIRS = bin build include lib lib64 man share
+
+GEVENT_VERSION ?= 1.0b4
 
 ZOOKEEPER = $(BIN)/zookeeper
 ZOOKEEPER_VERSION ?= 3.3.6
@@ -21,7 +23,8 @@ $(PYTHON):
 	virtualenv --distribute .
 
 build: $(PYTHON)
-	$(INSTALL) -r requirements.txt
+	$(INSTALL) -U -r requirements.txt
+	$(INSTALL) gevent==$(GEVENT_VERSION)
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 
