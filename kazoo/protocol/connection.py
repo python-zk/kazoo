@@ -4,6 +4,7 @@ import logging
 import random
 import select
 import socket
+import sys
 import time
 from contextlib import contextmanager
 
@@ -44,6 +45,10 @@ CHILD_EVENT = 4
 WATCH_XID = -1
 PING_XID = -2
 AUTH_XID = -4
+
+if sys.version > '3':
+    def buffer(obj, offset=0):
+        return memoryview(obj)[offset:]
 
 
 @contextmanager
