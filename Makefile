@@ -9,7 +9,7 @@ INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 
 BUILD_DIRS = bin build include lib lib64 man share
 
-GEVENT_VERSION ?= 1.0b3
+GEVENT_VERSION ?= 1.0b4
 
 ZOOKEEPER = $(BIN)/zookeeper
 ZOOKEEPER_VERSION ?= 3.3.6
