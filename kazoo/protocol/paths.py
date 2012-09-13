@@ -8,10 +8,9 @@ def normpath(path):
         if comp in ('.', '..'):
             raise ValueError('relative paths not allowed')
         new_comps.append(comp)
-    slash = u'/' if isinstance(path, unicode) else '/'
-    new_path = slash.join(new_comps)
+    new_path = '/'.join(new_comps)
     if path.startswith('/'):
-        return slash + new_path
+        return '/' + new_path
     return new_path
 
 
