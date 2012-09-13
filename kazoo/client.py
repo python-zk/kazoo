@@ -42,6 +42,11 @@ from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
                KeeperState.CLOSED)
 ENVI_VERSION = re.compile('[\w\s:.]*=([\d\.]*).*', re.DOTALL)
