@@ -57,12 +57,8 @@ def socket_error_handling():
     try:
         yield
     except (socket.error, select.error) as e:
-        if isinstance(e.args, tuple):
-            raise ConnectionDropped("socket connection error: %s",
-                                    errno.errorcode[e[0]])
-        else:  # pragma: nocover
-            # This is only possible on Python 2.5 or earlier
-            raise ConnectionDropped("socket connection error: %s", e)
+        raise ConnectionDropped("socket connection error: %s",
+                                errno.errorcode[e.args[0]])
 
 
 class RWPinger(object):
