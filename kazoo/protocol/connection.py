@@ -6,6 +6,7 @@ import select
 import socket
 import sys
 import time
+from binascii import hexlify
 from contextlib import contextmanager
 
 from kazoo.exceptions import (
@@ -477,7 +478,7 @@ class ConnectionHandler(object):
         if self.log_debug:
             log.debug('    Using session_id: %r session_passwd: 0x%s',
                       client._session_id,
-                      client._session_passwd.encode('hex'))
+                      hexlify(client._session_passwd))
 
         with socket_error_handling():
             self._socket.connect((host, port))
@@ -508,7 +509,7 @@ class ConnectionHandler(object):
                       '    negotiated session timeout: %s\n'
                       '    connect timeout: %s\n'
                       '    read timeout: %s', client._session_id,
-                      client._session_passwd.encode('hex'),
+                      hexlify(client._session_passwd),
                       negotiated_session_timeout, connect_timeout,
                       read_timeout)
 

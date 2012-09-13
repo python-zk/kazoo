@@ -147,7 +147,7 @@ class KazooClient(object):
             self._session_passwd = client_id[1]
         else:
             self._session_id = None
-            self._session_passwd = str(bytearray([0] * 16))
+            self._session_passwd = bytearray([0] * 16)
 
         # ZK uses milliseconds
         self._session_timeout = int(timeout * 1000)
