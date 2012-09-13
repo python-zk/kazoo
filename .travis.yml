@@ -4,6 +4,8 @@ python:
     - "2.7"
 
 env:
+    - GEVENT_VERSION=0.13.8
+    - GEVENT_VERSION=1.0b3
     - ZOOKEEPER_VERSION=3.3.6
     - ZOOKEEPER_VERSION=3.4.3
 
@@ -12,6 +14,9 @@ notifications:
     - hschlichting@mozilla.com
     - ben@groovie.org
   irc: "irc.mozilla.org#services-dev"
+
+before_install:
+    - apt-get install libevent-dev
 
 install:
     - make

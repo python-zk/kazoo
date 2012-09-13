@@ -9,6 +9,8 @@ INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 
 BUILD_DIRS = bin build include lib lib64 man share
 
+GEVENT_VERSION = 1.0b3
+
 ZOOKEEPER = $(BIN)/zookeeper
 ZOOKEEPER_VERSION ?= 3.3.6
 ZOOKEEPER_PATH ?= $(ZOOKEEPER)
@@ -22,6 +24,7 @@ $(PYTHON):
 
 build: $(PYTHON)
 	$(INSTALL) -r requirements.txt
+	$(INSTALL) gevent==$(GEVENT_VERSION)
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 
