@@ -41,15 +41,15 @@ class DataWatch(object):
 
     """
     def __init__(self, client, path, func=None,
-                 allow_session_lost=True):
-        """Create a children watcher for a path
+                 allow_session_lost=True, allow_node_does_not_exist=False):
+        """Create a data watcher for a path
 
         :param client: A zookeeper client
         :type client: :class:`~kazoo.client.KazooClient`
-        :param path: The path to watch for children on
+        :param path: The path to watch for data changes on
         :type path: str
         :param func: Function to call initially and every time the
-                     children change. `func` will be called with a
+                     data change. `func` will be called with a
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance
         :type func: callable
@@ -57,6 +57,12 @@ class DataWatch(object):
                                    re-registered if the zookeeper
                                    session is lost.
         :type allow_session_lost: bool
+        :param allow_node_does_not_exist: Whether watches are 
+                                          allowed for nodes that
+                                          do no exist. If True,
+                                          function will be called
+                                          when node is created.
+        :type allow_node_does_not_exist: bool        
 
         The path must already exist for the children watcher to
         run.
@@ -68,6 +74,7 @@ class DataWatch(object):
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
+        self._allow_node_does_not_exist = allow_node_does_not_exist
         self._run_lock = client.handler.lock_object()
         self._prior_data = ()
 
@@ -101,8 +108,14 @@ class DataWatch(object):
                 return
 
             try:
-                data, stat = self._client.retry(self._client.get,
-                                                self._path, self._watcher)
+                if self._allow_node_does_not_exist:
+                    data = None
+                    # This leaves stat None if the node doesn't yet exist
+                    stat = self._client.retry(self._client.exists,
+                                              self._path, self._watcher)
+                else:
+                    data, stat = self._client.retry(self._client.get,
+                                                    self._path, self._watcher)
             except NoNodeException:
                 self._stopped = True
                 self._func(None, None)
@@ -114,9 +127,11 @@ class DataWatch(object):
                 # If we already had data, and it hasn't changed, this is a
                 # session re-establishment and nothing changed, don't call the
                 # func
-                if self._prior_data and \
-                   self._prior_data[1].mzxid == stat.mzxid:
-                    return
+                if self._prior_data:
+                    if self._prior_data[1] is None:
+                        return
+                    if self._prior_data[1].mzxid == stat.mzxid:
+                        return
 
             self._prior_data = data, stat
 
