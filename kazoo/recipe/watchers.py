@@ -5,6 +5,7 @@ import time
 from functools import partial
 
 from kazoo.client import KazooState
+from kazoo.client import ZnodeStat
 from kazoo.exceptions import NoNodeException
 
 log = logging.getLogger(__name__)
@@ -110,13 +111,18 @@ class DataWatch(object):
             try:
                 if self._allow_node_does_not_exist:
                     data = None
-                    # This leaves stat None if the node doesn't yet exist
-                    stat = self._client.retry(self._client.exists,
-                                              self._path, self._watcher)
+                    retry = self._client.retry(self._client.exists,
+                                               self._path, self._watcher)
+                    # Convert dictionary to ZnodeStat. This will set
+                    # 'stat' to None if the node doesn't yet exist.
+                    stat = None if retry is None else ZnodeStat(*retry)
                 else:
                     data, stat = self._client.retry(self._client.get,
                                                     self._path, self._watcher)
             except NoNodeException:
+                # This can only happen if _allow_node_does_not_exist
+                # is False, because when it is True we use the
+                # ZK 'retry' method, which can't have this exception.
                 self._stopped = True
                 self._func(None, None)
                 return
@@ -128,9 +134,15 @@ class DataWatch(object):
                 # session re-establishment and nothing changed, don't call the
                 # func
                 if self._prior_data:
+                    # If the the prior session had no data, then it was
+                    # watching a node that did not exist.
                     if self._prior_data[1] is None:
-                        return
-                    if self._prior_data[1].mzxid == stat.mzxid:
+                        # If the current session also has no data, then don't
+                        # call the func, since nothing has changed.
+                        if stat is None:
+                            return
+                    elif stat is not None and \
+                         self._prior_data[1].mzxid == stat.mzxid:
                         return
 
             self._prior_data = data, stat
