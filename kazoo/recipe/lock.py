@@ -79,8 +79,6 @@ class Lock(object):
             raise
 
     def _inner_acquire(self):
-        self.wake_event.clear()
-
         # make sure our election parent node exists
         if not self.assured_path:
             self.client.ensure_path(self.path)
@@ -100,6 +98,7 @@ class Lock(object):
         self.node = node
 
         while True:
+            self.wake_event.clear()
 
             # bail out with an exception if cancellation has been requested
             if self.cancelled:
