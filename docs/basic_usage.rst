@@ -115,6 +115,56 @@ a session expires or when you stop the clients connection.
 
   Connection that was lost has been restored.
 
+Read-Only Connections
+---------------------
+
+.. versionadded:: 0.6
+
+Zookeeper 3.4 and above `supports a read-only mode
+<http://wiki.apache.org/hadoop/ZooKeeper/GSoCReadOnlyMode>`_. This mode
+must be turned on for the servers in the Zookeeper cluster for the
+client to utilize it. To use this mode with Kazoo, the
+:class:`~kazoo.client.KazooClient` should be called with the
+`read_only` option set to `True`. This will let the client connect to
+a Zookeeper node that has gone read-only, and the client will continue
+to scan for other nodes that are read-write.
+
+.. code-block:: python
+
+
+    from kazoo.client import KazooClient
+
+    zk = KazooClient(read_only=True)
+    zk.start()
+
+A new attribute on :class:`~kazoo.protocol.states.KeeperState` has been
+added, `CONNECTED_RO`. The connection states above are still valid,
+however upon `CONNECTED`, you will need to check the clients non-
+simplified state to see if the connection is `CONNECTED_RO`. For
+example:
+
+.. code-block:: python
+
+    from kazoo.client import KazooState
+    from kazoo.client import KeeperState
+
+    @zk.add_listener
+    def watch_for_ro(state):
+        if state == KazooState.CONNECTED:
+            if zk.client_state == KeeperState.CONNECTED_RO:
+                print "Read only mode!"
+            else:
+                print "Read/Write mode!"
+
+It's important to note that a `KazooState` is passed in to the listener
+but the read-only information is only available by comparing the
+non-simplified client state to the `KeeperState` object.
+
+.. warning::
+
+    A client using read-only mode should not use any of the recipes.
+
+
 Zookeeper CRUD
 ==============
 
@@ -342,3 +392,34 @@ called directly allowing them to be used as decorators:
     @zk.DataWatch("/my/favorite")
     def watch_node(data, stat):
         print "Version is %s, data is %s" % (stat.version, data)
+
+Transactions
+============
+
+.. versionadded:: 0.6
+
+Zookeeper 3.4 and above supports the sending of multiple commands at
+once that will be committed as a single atomic unit. Either they will
+all succeed or they will all fail. The result of a transaction will be
+a list of the success/failure results for each command in the
+transaction.
+
+.. code-block:: python
+    :linenos:
+
+    transaction = zk.transaction()
+    transaction.check('/node/a', version=3)
+    transaction.create('/node/b', "a value")
+    results = transaction.commit()
+
+The :meth:`~kazoo.client.KazooClient.transaction` method returns a
+:class:`~kazoo.client.TransactionRequest` instance. It's methods may be
+called to queue commands to be completed in the transaction. When the
+transaction is ready to be sent, the
+:meth:`~kazoo.client.TransactionRequest.commit` method on it is called.
+
+In the example above, there's a command not available unless a
+transaction is being used, `check`. This can check nodes for a specific
+version, which could be used to make the transaction fail if a node
+doesn't match a version that it should be at. In this case the node
+`/node/a` must be at version 3 or `/node/b` will not be created.
