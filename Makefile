@@ -20,7 +20,8 @@ ZOOKEEPER_PATH ?= $(ZOOKEEPER)
 all: build
 
 $(PYTHON):
-	virtualenv --distribute .
+	python sw/virtualenv.py --distribute .
+	rm distribute-0.6.*.tar.gz
 
 build: $(PYTHON)
 	$(INSTALL) -U -r requirements.txt
