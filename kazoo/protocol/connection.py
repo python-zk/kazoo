@@ -46,7 +46,7 @@ WATCH_XID = -1
 PING_XID = -2
 AUTH_XID = -4
 
-if sys.version > '3':
+if sys.version_info > (3, ):
     def buffer(obj, offset=0):
         return memoryview(obj)[offset:]
 
