@@ -116,6 +116,7 @@ class TestGeventHandler(unittest.TestCase):
 class TestGeventClient(KazooTestCase):
 
     def setUp(self):
+        KazooTestCase.setUp(self)
         try:
             import gevent
         except ImportError:
