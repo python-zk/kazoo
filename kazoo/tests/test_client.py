@@ -1,3 +1,4 @@
+import sys
 import threading
 import uuid
 import unittest
@@ -13,6 +14,8 @@ from kazoo.exceptions import InvalidACLError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
+
+PYTHON3 = sys.version_info > (3, )
 
 
 class TestClientTransitions(KazooTestCase):
@@ -244,6 +247,8 @@ class TestClient(KazooTestCase):
         self.assertTrue(client.exists("/1"))
 
     def test_create_unicode_path(self):
+        if PYTHON3:
+            raise SkipTest('skip explicit unicode test under Python 3')
         client = self.client
         path = client.create(u"/ascii")
         eq_(path, u"/ascii")
