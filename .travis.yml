@@ -19,7 +19,7 @@ before_install:
 
 install:
     - make
-    - make zookeeper
+    - make ZOOKEEPER_VERSION=3.4.3 zookeeper
 
 script:
     - make test
