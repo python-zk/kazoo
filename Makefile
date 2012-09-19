@@ -5,11 +5,12 @@ PYTHON = $(BIN)/python
 PIP_DOWNLOAD_CACHE ?= $(HERE)/.pip_cache
 INSTALL = $(BIN)/pip install
 INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
-INSTALL += -f https://code.google.com/p/gevent/downloads/list?can=1
 
 BUILD_DIRS = bin build include lib lib64 man share
 
 GEVENT_VERSION ?= 1.0b4
+PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
+TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
 
 ZOOKEEPER = $(BIN)/zookeeper
 ZOOKEEPER_VERSION ?= 3.3.6
@@ -24,8 +25,12 @@ $(PYTHON):
 	rm distribute-0.6.*.tar.gz
 
 build: $(PYTHON)
+ifeq ($(TRAVIS_PYTHON_VERSION),3.2)
+	$(INSTALL) -U -r requirements3.txt
+else
 	$(INSTALL) -U -r requirements.txt
-	$(INSTALL) gevent==$(GEVENT_VERSION)
+	$(INSTALL) -f https://code.google.com/p/gevent/downloads/list?can=1 gevent==$(GEVENT_VERSION)
+endif
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 
