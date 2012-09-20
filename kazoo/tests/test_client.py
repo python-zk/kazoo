@@ -15,7 +15,12 @@ from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
 
-PYTHON3 = sys.version_info > (3, )
+if sys.version_info > (3, ):
+    def u(s):
+        return s
+else:
+    def u(s):
+        return unicode(s, "unicode_escape")
 
 
 class TestClientTransitions(KazooTestCase):
@@ -247,13 +252,11 @@ class TestClient(KazooTestCase):
         self.assertTrue(client.exists("/1"))
 
     def test_create_unicode_path(self):
-        if PYTHON3:
-            raise SkipTest('skip explicit unicode test under Python 3')
         client = self.client
-        path = client.create(u"/ascii")
-        eq_(path, u"/ascii")
-        path = client.create(u"/\xe4hm")
-        eq_(path, u"/\xe4hm")
+        path = client.create(u("/ascii"))
+        eq_(path, u("/ascii"))
+        path = client.create(u("/\xe4hm"))
+        eq_(path, u("/\xe4hm"))
 
     def test_create_invalid_path(self):
         client = self.client
@@ -281,7 +284,7 @@ class TestClient(KazooTestCase):
 
     def test_create_unicode_value(self):
         client = self.client
-        self.assertRaises(TypeError, client.create, "/1", u"\xe4hm")
+        self.assertRaises(TypeError, client.create, "/1", u("\xe4hm"))
 
     def test_create_large_value(self):
         client = self.client
