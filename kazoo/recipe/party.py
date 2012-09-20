@@ -21,7 +21,7 @@ class BaseParty(object):
         """
         self.client = client
         self.path = path
-        self.data = str(identifier or "")
+        self.data = str(identifier or "").encode('utf-8')
         self.ensured_path = False
         self.participating = False
 
@@ -83,7 +83,7 @@ class Party(BaseParty):
             try:
                 d, _ = self.client.retry(self.client.get, self.path +
                                          "/" + child)
-                yield d
+                yield d.decode('utf-8')
             except NoNodeError:  # pragma: nocover
                 pass
 
