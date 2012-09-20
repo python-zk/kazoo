@@ -59,7 +59,7 @@ def read_buffer(bytes, offset):
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return "", offset
+        return b'', offset
     else:
         index = offset
         offset += length
@@ -72,7 +72,7 @@ class Close(object):
 
     @classmethod
     def serialize(cls):
-        return ''
+        return b''
 
 
 class Ping(object):
@@ -81,7 +81,7 @@ class Ping(object):
 
     @classmethod
     def serialize(cls):
-        return ''
+        return b''
 
 
 class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'

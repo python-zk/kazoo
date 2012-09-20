@@ -49,8 +49,15 @@ AUTH_XID = -4
 
 if sys.version_info > (3, ):
 
+    advance_iterator = next
+
     def buffer(obj, offset=0):
         return memoryview(obj)[offset:]
+
+else:
+
+    def advance_iterator(it):
+        return it.next()
 
 
 @contextmanager
@@ -96,10 +103,10 @@ class RWPinger(object):
                 try:
                     with socket_error_handling():
                         sock.connect((host, port))
-                        sock.sendall("isro")
+                        sock.sendall(b"isro")
                         result = sock.recv(8192)
                         sock.close()
-                        if result == 'rw':
+                        if result == b'rw':
                             yield (host, port)
                         else:
                             yield False
@@ -163,7 +170,7 @@ class ConnectionHandler(object):
             while remaining > 0:
                 s = self.handler.select([self._socket], [], [], timeout)[0]
                 chunk = s[0].recv(remaining)
-                if chunk == '':
+                if chunk == b'':
                     raise ConnectionDropped('socket connection broken')
                 msgparts.append(chunk)
                 remaining -= len(chunk)
@@ -560,7 +567,7 @@ class ConnectionHandler(object):
 
             # Determine if we need to check for a r/w server
             if self._ro_mode:
-                result = self._ro_mode.next()
+                result = advance_iterator(self._ro_mode)
                 if result:
                     self._rw_server = result
                     raise RWServerAvailable()
