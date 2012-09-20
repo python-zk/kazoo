@@ -33,6 +33,26 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data[0], 'fred')
         update.clear()
 
+    def test_child_watcher2(self):
+        self.client.ensure_path(self.path)
+        update = threading.Event()
+        data = [True]
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        self.client.set(self.path, 'fred')
+        update.wait()
+        eq_(data[0], None)
+        update.clear()
+
     def test_func_stops(self):
         self.client.ensure_path(self.path)
         update = threading.Event()
@@ -65,6 +85,38 @@ class KazooDataWatcherTests(KazooTestCase):
         d, stat = self.client.get(self.path)
         eq_(d, 'asdfasdf')
 
+    def test_func_stops2(self):
+        self.client.ensure_path(self.path)
+        update = threading.Event()
+        data = [True]
+
+        fail_through = []
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+            if fail_through:
+                return False
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        fail_through.append(True)
+        self.client.set(self.path, 'fred')
+        update.wait()
+        eq_(data[0], None)
+        update.clear()
+
+        self.client.set(self.path, 'asdfasdf')
+        update.wait(0.5)
+        eq_(data[0], None)
+
+        d, stat = self.client.get(self.path)
+        eq_(d, 'asdfasdf')
+
     def test_no_such_node(self):
         args = []
 
@@ -73,7 +125,16 @@ class KazooDataWatcherTests(KazooTestCase):
             args.extend([d, stat])
 
         eq_(args, [None, None])
+        
+    def test_no_such_node2(self):
+        args = []
 
+        @self.client.DataWatch("/some/path", allow_node_does_not_exist=True)
+        def changed(d, stat):
+            args.extend([d, stat])
+
+        eq_(args, [None, None])
+        
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
