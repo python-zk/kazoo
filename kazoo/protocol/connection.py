@@ -480,7 +480,7 @@ class ConnectionHandler(object):
         log.info('Connecting to %s:%s', host, port)
 
         if self.log_debug:
-            log.debug('    Using session_id: %r session_passwd: 0x%s',
+            log.debug('    Using session_id: %r session_passwd: %s',
                       client._session_id,
                       hexlify(client._session_passwd))
 
@@ -509,7 +509,7 @@ class ConnectionHandler(object):
         client._session_passwd = connect_result.passwd
 
         if self.log_debug:
-            log.debug('Session created, session_id: %r session_passwd: 0x%s\n'
+            log.debug('Session created, session_id: %r session_passwd: %s\n'
                       '    negotiated session timeout: %s\n'
                       '    connect timeout: %s\n'
                       '    read timeout: %s', client._session_id,
