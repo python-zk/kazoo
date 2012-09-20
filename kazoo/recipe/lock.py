@@ -46,7 +46,7 @@ class Lock(object):
 
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
-        self.data = str(identifier or "")
+        self.data = str(identifier or "").encode('utf-8')
 
         self.wake_event = client.handler.event_object()
 
@@ -185,7 +185,7 @@ class Lock(object):
         for child in children:
             try:
                 data, stat = self.client.get(self.path + "/" + child)
-                contenders.append(data)
+                contenders.append(data.decode('utf-8'))
             except NoNodeError:  # pragma: nocover
                 pass
         return contenders
