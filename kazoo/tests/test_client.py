@@ -15,10 +15,10 @@ from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
 
-if sys.version_info > (3, ):
+if sys.version_info > (3, ):  # pragma: nocover
     def u(s):
         return s
-else:
+else:  # pragma: nocover
     def u(s):
         return unicode(s, "unicode_escape")
 

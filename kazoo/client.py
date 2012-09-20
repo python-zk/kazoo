@@ -42,7 +42,7 @@ from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
-try:
+try:  # pragma: nocover
     basestring
 except NameError:
     basestring = str
