@@ -35,10 +35,18 @@ class DataWatch(object):
     Error Handling
     --------------
 
-    In the event the node does not exist, the function will be called
-    with ``(None, None)`` and will not be called again. This should be
+    If allow_node_does_not_exist=False in __init__, then in the 
+    event the node does not exist, the function will be called with 
+    ``(None, None)`` and will not be called again. This should be
     considered the last function call. This behavior will also occur
     if the node is deleted.
+    
+    If allow_node_does_not_exist=True in __init__, then in the
+    event the node does not exist, the function will be called with
+    ``(None, None)`` and it will later be called again if the node is
+    recreated. In the event the node exists and is later deleted, the
+    function will be called with ``(None, None)`` and it will later 
+    be called if the node is recreated.
 
     """
     def __init__(self, client, path, func=None,
@@ -111,11 +119,20 @@ class DataWatch(object):
             try:
                 if self._allow_node_does_not_exist:
                     data = None
+                    
+                    # This will set 'retry' to None if the node does not yet 
+                    # exist.                    
                     retry = self._client.retry(self._client.exists,
                                                self._path, self._watcher)
-                    # Convert dictionary to ZnodeStat. This will set
-                    # 'stat' to None if the node doesn't yet exist.
-                    stat = None if retry is None else ZnodeStat(*retry)
+                    if retry is None:  
+                        # Note that we do not set _stopped to True, as
+                        # we do below. This is because we are allowing
+                        # the watched node to not exist, so we will
+                        # call func again later if the node is recreated.
+                        self._func(None, None)
+                        return
+                    # Convert dictionary to ZnodeStat.                     
+                    stat = ZnodeStat(*retry)
                 else:
                     data, stat = self._client.retry(self._client.get,
                                                     self._path, self._watcher)
@@ -130,11 +147,10 @@ class DataWatch(object):
             if not self._watch_established:
                 self._watch_established = True
 
-                # If we already had data, and it hasn't changed, this is a
-                # session re-establishment and nothing changed, don't call the
-                # func
+                # If we had data and it hasn't changed, this is a session
+                # re-establishment and nothing changed, so don't call the func
                 if self._prior_data:
-                    # If the the prior session had no data, then it was
+                    # If the prior session had no data, then it was
                     # watching a node that did not exist.
                     if self._prior_data[1] is None:
                         # If the current session also has no data, then don't
