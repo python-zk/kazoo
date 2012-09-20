@@ -1103,18 +1103,18 @@ class TransactionRequest(object):
             raise TypeError("version must be an int")
         self._add(Delete(_prefix_root(self.client.chroot, path), version))
 
-    def set_data(self, path, data, version=-1):
+    def set_data(self, path, value, version=-1):
         """Add a set ZNode value to the transaction. Takes the same
         arguments as :meth:`KazooClient.set`.
 
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(data, basestring):
-            raise TypeError("data must be a string")
+        if not isinstance(value, bytes):
+            raise TypeError("value must be a byte string")
         if not isinstance(version, int):
             raise TypeError("version must be an int")
-        self._add(SetData(_prefix_root(self.client.chroot, path), data,
+        self._add(SetData(_prefix_root(self.client.chroot, path), value,
                   version))
 
     def check(self, path, version):

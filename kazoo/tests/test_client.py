@@ -656,9 +656,9 @@ class TestClientTransactions(KazooTestCase):
         self.assertTrue(results[2].startswith('/smith0'))
 
     def test_bad_creates(self):
-        args_list = [(True,), ('/smith', 0), ('/smith', '', 'bleh'),
-                     ('/smith', '', None, 'fred'),
-                     ('/smith', '', None, True, 'fred')]
+        args_list = [(True,), ('/smith', 0), ('/smith', b'', 'bleh'),
+                     ('/smith', b'', None, 'fred'),
+                     ('/smith', b'', None, True, 'fred')]
 
         @raises(TypeError)
         def testit(args):
@@ -770,8 +770,8 @@ class TestClientTransactions(KazooTestCase):
 
     def test_context(self):
         with self.client.transaction() as t:
-            t.create('/smith', '32')
-        eq_(self.client.get('/smith')[0], '32')
+            t.create('/smith', b'32')
+        eq_(self.client.get('/smith')[0], b'32')
 
 
 class TestCallbacks(unittest.TestCase):
