@@ -518,7 +518,7 @@ class KazooClient(object):
         """
         return self.sync_async(path).get()
 
-    def create(self, path, value="", acl=None, ephemeral=False,
+    def create(self, path, value=b"", acl=None, ephemeral=False,
                sequence=False, makepath=False):
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
@@ -609,7 +609,7 @@ class KazooClient(object):
 
         return self.unchroot(realpath)
 
-    def create_async(self, path, value="", acl=None, ephemeral=False,
+    def create_async(self, path, value=b"", acl=None, ephemeral=False,
                      sequence=False):
         """Asynchronously create a ZNode. Takes the same arguments as
         :meth:`create`, with the exception of `makepath`.
@@ -625,7 +625,7 @@ class KazooClient(object):
         if acl and (isinstance(acl, ACL) or
                     not isinstance(acl, (tuple, list))):
             raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(value, str):
+        if not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
         if not isinstance(ephemeral, bool):
             raise TypeError("ephemeral must be a bool")
@@ -666,7 +666,7 @@ class KazooClient(object):
         if node:
             self._inner_ensure_path(parent, acl)
         try:
-            self.create_async(path, "", acl=acl).get()
+            self.create_async(path, acl=acl).get()
         except NodeExistsError:
             # someone else created the node. how sweet!
             pass
@@ -892,7 +892,7 @@ class KazooClient(object):
                    async_result)
         return async_result
 
-    def set(self, path, data, version=-1):
+    def set(self, path, value, version=-1):
         """Set the value of a node.
 
         If the version of the node being updated is newer than the
@@ -906,7 +906,7 @@ class KazooClient(object):
         than this will cause a ZookeeperError to be raised.
 
         :param path: Path of node.
-        :param data: New data value.
+        :param value: New data value.
         :param version: Version of node being updated, or -1.
         :returns: Updated :class:`~kazoo.protocol.states.ZnodeStat` of
                   the node.
@@ -925,9 +925,9 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        return self.set_async(path, data, version).get()
+        return self.set_async(path, value, version).get()
 
-    def set_async(self, path, data, version=-1):
+    def set_async(self, path, value, version=-1):
         """Set the value of a node. Takes the same arguments as
         :meth:`set`.
 
@@ -936,13 +936,13 @@ class KazooClient(object):
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(data, str):
-            raise TypeError("data must be a string")
+        if not isinstance(value, bytes):
+            raise TypeError("value must be a byte string")
         if not isinstance(version, int):
             raise TypeError("version must be an int")
 
         async_result = self.handler.async_result()
-        self._call(SetData(_prefix_root(self.chroot, path), data, version),
+        self._call(SetData(_prefix_root(self.chroot, path), value, version),
                    async_result)
         return async_result
 
@@ -1057,7 +1057,7 @@ class TransactionRequest(object):
         self.operations = []
         self.committed = False
 
-    def create(self, path, value="", acl=None, ephemeral=False,
+    def create(self, path, value=b"", acl=None, ephemeral=False,
                sequence=False):
         """Add a create ZNode to the transaction. Takes the same
         arguments as :meth:`KazooClient.create`, with the exception
@@ -1073,7 +1073,7 @@ class TransactionRequest(object):
             raise TypeError("path must be a string")
         if acl and not isinstance(acl, (tuple, list)):
             raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(value, str):
+        if not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
         if not isinstance(ephemeral, bool):
             raise TypeError("ephemeral must be a bool")
