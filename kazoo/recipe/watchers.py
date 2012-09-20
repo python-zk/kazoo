@@ -31,6 +31,9 @@ class DataWatch(object):
             print "Version is %s" % stat.version
 
         # Above function is called immediately and prints
+        
+        # If allow_node_does_not_exist=True then 'data'
+        # will always be None.
 
     Error Handling
     --------------
@@ -132,7 +135,7 @@ class DataWatch(object):
                         self._func(None, None)
                         return
                     # Convert dictionary to ZnodeStat.                     
-                    stat = ZnodeStat(*retry)
+                    stat = ZnodeStat(**retry)
                 else:
                     data, stat = self._client.retry(self._client.get,
                                                     self._path, self._watcher)
