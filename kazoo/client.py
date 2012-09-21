@@ -425,7 +425,7 @@ class KazooClient(object):
         Examples are `ruok`, `envi` or `stat`.
 
         :returns: An unstructured textual response.
-        :rtype: unicode
+        :rtype: str
 
         :raises:
             :exc:`ConnectionLoss` if there is no connection open, or
