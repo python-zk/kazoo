@@ -18,6 +18,11 @@ multiheader_struct = struct.Struct('!iBi')
 reply_header_struct = struct.Struct('!iqi')
 stat_struct = struct.Struct('!qqqqiiiqiiq')
 
+try:  # pragma: nocover
+    basestring
+except NameError:
+    basestring = str
+
 
 def read_string(buffer, offset):
     """Reads an int specified buffer into a string and returns the
@@ -338,7 +343,7 @@ class Transaction(namedtuple('Transaction', 'operations')):
     def unchroot(client, response):
         resp = []
         for result in response:
-            if isinstance(result, unicode):
+            if isinstance(result, basestring):
                 resp.append(client.unchroot(result))
             else:
                 resp.append(result)

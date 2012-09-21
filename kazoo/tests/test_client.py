@@ -645,7 +645,6 @@ class TestClientTransactions(KazooTestCase):
             raise SkipTest("Must use zookeeper 3.4 or above")
 
     def test_basic_create(self):
-        raise SkipTest('XXX deadlock')
         t = self.client.transaction()
         t.create('/freddy')
         t.create('/fred', ephemeral=True)
@@ -669,7 +668,6 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_default_acl(self):
-        raise SkipTest('XXX deadlock')
         from kazoo.security import make_digest_acl
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
@@ -686,7 +684,6 @@ class TestClientTransactions(KazooTestCase):
         eq_(results[0], '/freddy')
 
     def test_basic_delete(self):
-        raise SkipTest('XXX deadlock')
         self.client.create('/fred')
         t = self.client.transaction()
         t.delete('/fred')
@@ -705,7 +702,6 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_set(self):
-        raise SkipTest('XXX deadlock')
         self.client.create('/fred', b'01')
         t = self.client.transaction()
         t.set_data('/fred', b'oops')
@@ -725,7 +721,6 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_check(self):
-        raise SkipTest('XXX deadlock')
         self.client.create('/fred')
         version = self.client.get('/fred')[1].version
         t = self.client.transaction()
@@ -747,7 +742,6 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_bad_transaction(self):
-        raise SkipTest('XXX deadlock')
         from kazoo.exceptions import RolledBackError, NoNodeError
         t = self.client.transaction()
         t.create('/fred')
@@ -774,7 +768,6 @@ class TestClientTransactions(KazooTestCase):
         testit()
 
     def test_context(self):
-        raise SkipTest('XXX deadlock')
         with self.client.transaction() as t:
             t.create('/smith', b'32')
         eq_(self.client.get('/smith')[0], b'32')
