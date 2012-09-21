@@ -13,7 +13,10 @@ class TestBuildEnvironment(KazooTestCase):
             raise SkipTest('Only run build config tests on Travis.')
 
     def test_gevent_version(self):
-        import gevent
+        try:
+            import gevent
+        except ImportError:
+            raise SkipTest('gevent not available.')
         env_version = os.environ.get('GEVENT_VERSION')
         if env_version:
             self.assertEqual(env_version, gevent.__version__)

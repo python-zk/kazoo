@@ -1,3 +1,4 @@
+import sys
 import threading
 import uuid
 import unittest
@@ -13,6 +14,13 @@ from kazoo.exceptions import InvalidACLError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
+
+if sys.version_info > (3, ):  # pragma: nocover
+    def u(s):
+        return s
+else:  # pragma: nocover
+    def u(s):
+        return unicode(s, "unicode_escape")
 
 
 class TestClientTransitions(KazooTestCase):
@@ -81,17 +89,16 @@ class TestConnection(KazooTestCase):
         acl = self._makeAuth(username, password, all=True)
 
         self.client.add_auth("digest", digest_auth)
-
         self.client.default_acl = (acl,)
 
-        self.client.create("/1")
-        self.client.create("/1/2")
-        self.client.ensure_path("/1/2/3")
-
-        eve = self._get_client()
-        eve.start()
-
         try:
+            self.client.create("/1")
+            self.client.create("/1/2")
+            self.client.ensure_path("/1/2/3")
+
+            eve = self._get_client()
+            eve.start()
+
             self.assertRaises(NoAuthError, eve.get, "/1/2")
 
             # try again with the wrong auth token
@@ -112,11 +119,37 @@ class TestConnection(KazooTestCase):
         client = self._get_client(auth_data=[('digest', digest_auth)])
         client.start()
         try:
-            client.create('/1', "", acl=(acl,))
+            client.create('/1', acl=(acl,))
             self.assertRaises(NoAuthError, self.client.get, "/1")
         finally:
             client.delete('/1')
             client.stop()
+
+    def test_unicode_auth(self):
+        username = u("/\xe4hm")
+        password = u("/\xe4hm")
+        digest_auth = "%s:%s" % (username, password)
+        acl = self._makeAuth(username, password, all=True)
+
+        self.client.add_auth("digest", digest_auth)
+        self.client.default_acl = (acl,)
+
+        try:
+            self.client.create("/1")
+            self.client.ensure_path("/1/2/3")
+
+            eve = self._get_client()
+            eve.start()
+
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
+
+            # try again with the wrong auth token
+            eve.add_auth("digest", "badbad:bad")
+
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
+        finally:
+            # Ensure we remove the ACL protected nodes
+            self.client.delete("/1", recursive=True)
 
     def test_invalid_auth(self):
         self.assertRaises(TypeError, self.client.add_auth,
@@ -245,10 +278,10 @@ class TestClient(KazooTestCase):
 
     def test_create_unicode_path(self):
         client = self.client
-        path = client.create(u"/ascii")
-        eq_(path, u"/ascii")
-        path = client.create(u"/\xe4hm")
-        eq_(path, u"/\xe4hm")
+        path = client.create(u("/ascii"))
+        eq_(path, u("/ascii"))
+        path = client.create(u("/\xe4hm"))
+        eq_(path, u("/\xe4hm"))
 
     def test_create_invalid_path(self):
         client = self.client
@@ -270,20 +303,20 @@ class TestClient(KazooTestCase):
 
     def test_create_value(self):
         client = self.client
-        client.create("/1", "bytes")
+        client.create("/1", b"bytes")
         data, stat = client.get("/1")
-        eq_(data, "bytes")
+        eq_(data, b"bytes")
 
     def test_create_unicode_value(self):
         client = self.client
-        self.assertRaises(TypeError, client.create, "/1", u"\xe4hm")
+        self.assertRaises(TypeError, client.create, "/1", u("\xe4hm"))
 
     def test_create_large_value(self):
         client = self.client
-        kb_512 = "a" * (512 * 1024)
+        kb_512 = b"a" * (512 * 1024)
         client.create("/1", kb_512)
         self.assertTrue(client.exists("/1"))
-        mb_2 = "a" * (2 * 1024 * 1024)
+        mb_2 = b"a" * (2 * 1024 * 1024)
         self.assertRaises(ConnectionLoss, client.create, "/2", mb_2)
 
     def test_create_acl_duplicate(self):
@@ -305,71 +338,71 @@ class TestClient(KazooTestCase):
 
     def test_create_ephemeral(self):
         client = self.client
-        client.create("/1", "ephemeral", ephemeral=True)
+        client.create("/1", b"ephemeral", ephemeral=True)
         data, stat = client.get("/1")
-        eq_(data, "ephemeral")
+        eq_(data, b"ephemeral")
         eq_(stat.ephemeralOwner, client.client_id[0])
 
     def test_create_no_ephemeral(self):
         client = self.client
-        client.create("/1", "val1")
+        client.create("/1", b"val1")
         data, stat = client.get("/1")
         self.assertFalse(stat.ephemeralOwner)
 
     def test_create_ephemeral_no_children(self):
         from kazoo.exceptions import NoChildrenForEphemeralsError
         client = self.client
-        client.create("/1", "ephemeral", ephemeral=True)
+        client.create("/1", b"ephemeral", ephemeral=True)
         self.assertRaises(NoChildrenForEphemeralsError,
-            client.create, "/1/2", "val1")
+            client.create, "/1/2", b"val1")
         self.assertRaises(NoChildrenForEphemeralsError,
-            client.create, "/1/2", "val1", ephemeral=True)
+            client.create, "/1/2", b"val1", ephemeral=True)
 
     def test_create_sequence(self):
         client = self.client
-        client.create("/folder", "")
-        path = client.create("/folder/a", "sequence", sequence=True)
+        client.create("/folder")
+        path = client.create("/folder/a", b"sequence", sequence=True)
         eq_(path, "/folder/a0000000000")
-        path2 = client.create("/folder/a", "sequence", sequence=True)
+        path2 = client.create("/folder/a", b"sequence", sequence=True)
         eq_(path2, "/folder/a0000000001")
 
     def test_create_ephemeral_sequence(self):
         basepath = "/" + uuid.uuid4().hex
-        realpath = self.client.create(basepath, "sandwich", sequence=True,
+        realpath = self.client.create(basepath, b"sandwich", sequence=True,
             ephemeral=True)
         self.assertTrue(basepath != realpath and realpath.startswith(basepath))
         data, stat = self.client.get(realpath)
-        eq_(data, "sandwich")
+        eq_(data, b"sandwich")
 
     def test_create_makepath(self):
-        self.client.create("/1/2", "val1", makepath=True)
+        self.client.create("/1/2", b"val1", makepath=True)
         data, stat = self.client.get("/1/2")
-        eq_(data, "val1")
+        eq_(data, b"val1")
 
-        self.client.create("/1/2/3/4/5", "val2", makepath=True)
+        self.client.create("/1/2/3/4/5", b"val2", makepath=True)
         data, stat = self.client.get("/1/2/3/4/5")
-        eq_(data, "val2")
+        eq_(data, b"val2")
 
     def test_create_no_makepath(self):
-        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1")
-        self.assertRaises(NoNodeError, self.client.create, "/1/2", "val1",
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", b"val1")
+        self.assertRaises(NoNodeError, self.client.create, "/1/2", b"val1",
             makepath=False)
 
     def test_create_exists(self):
         from kazoo.exceptions import NodeExistsError
         client = self.client
-        path = client.create("/1", "")
-        self.assertRaises(NodeExistsError, client.create, path, "")
+        path = client.create("/1")
+        self.assertRaises(NodeExistsError, client.create, path)
 
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
 
-        self.client.create(nodepath, "sandwich", ephemeral=True)
+        self.client.create(nodepath, b"sandwich", ephemeral=True)
 
         data, stat = self.client.get(nodepath)
-        eq_(data, "sandwich")
+        eq_(data, b"sandwich")
 
-        newstat = self.client.set(nodepath, "hats", stat.version)
+        newstat = self.client.set(nodepath, b"hats", stat.version)
         self.assertTrue(newstat)
         assert newstat.version > stat.version
 
@@ -412,7 +445,7 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath)
         eq_(exists, None)
 
-        self.client.create(nodepath, "sandwich", ephemeral=True)
+        self.client.create(nodepath, b"sandwich", ephemeral=True)
         exists = self.client.exists(nodepath)
         self.assertTrue(exists)
         assert isinstance(exists.version, int)
@@ -438,7 +471,7 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath, watch=w)
         eq_(exists, None)
 
-        self.client.create(nodepath, "x", ephemeral=True)
+        self.client.create(nodepath, ephemeral=True)
 
         event.wait(1)
         self.assertTrue(event.is_set())
@@ -458,7 +491,7 @@ class TestClient(KazooTestCase):
         exists = self.client.exists(nodepath, watch=w)
         eq_(exists, None)
 
-        self.client.create(nodepath, "x", ephemeral=True)
+        self.client.create(nodepath, ephemeral=True)
 
         event.wait(1)
         self.assertTrue(event.is_set())
@@ -466,7 +499,7 @@ class TestClient(KazooTestCase):
     def test_create_delete(self):
         nodepath = "/" + uuid.uuid4().hex
 
-        self.client.create(nodepath, "zzz")
+        self.client.create(nodepath, b"zzz")
 
         self.client.delete(nodepath)
 
@@ -519,18 +552,18 @@ class TestClient(KazooTestCase):
 
     def test_set(self):
         client = self.client
-        client.create('a', 'first')
-        stat = client.set('a', 'second')
+        client.create('a', b'first')
+        stat = client.set('a', b'second')
         data, stat2 = client.get('a')
-        self.assertEqual(data, 'second')
+        self.assertEqual(data, b'second')
         self.assertEqual(stat, stat2)
 
     def test_set_invalid_arguments(self):
         client = self.client
-        client.create('a', 'first')
-        self.assertRaises(TypeError, client.set, ('a', 'b'), 'value')
+        client.create('a', b'first')
+        self.assertRaises(TypeError, client.set, ('a', 'b'), b'value')
         self.assertRaises(TypeError, client.set, 'a', ['v', 'w'])
-        self.assertRaises(TypeError, client.set, 'a', 'value', 'V1')
+        self.assertRaises(TypeError, client.set, 'a', b'value', 'V1')
 
     def test_delete(self):
         client = self.client
@@ -648,9 +681,9 @@ class TestClientTransactions(KazooTestCase):
         self.assertTrue(results[2].startswith('/smith0'))
 
     def test_bad_creates(self):
-        args_list = [(True,), ('/smith', 0), ('/smith', '', 'bleh'),
-                     ('/smith', '', None, 'fred'),
-                     ('/smith', '', None, True, 'fred')]
+        args_list = [(True,), ('/smith', 0), ('/smith', b'', 'bleh'),
+                     ('/smith', b'', None, 'fred'),
+                     ('/smith', b'', None, True, 'fred')]
 
         @raises(TypeError)
         def testit(args):
@@ -695,15 +728,15 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_set(self):
-        self.client.create('/fred', '01')
+        self.client.create('/fred', b'01')
         t = self.client.transaction()
-        t.set_data('/fred', 'oops')
+        t.set_data('/fred', b'oops')
         t.commit()
         res = self.client.get('/fred')
-        eq_(res[0], 'oops')
+        eq_(res[0], b'oops')
 
     def test_bad_sets(self):
-        args_list = [(42, 52), ('/smith', False), ('/smith', '', 'oops')]
+        args_list = [(42, 52), ('/smith', False), ('/smith', b'', 'oops')]
 
         @raises(TypeError)
         def testit(args):
@@ -762,8 +795,8 @@ class TestClientTransactions(KazooTestCase):
 
     def test_context(self):
         with self.client.transaction() as t:
-            t.create('/smith', '32')
-        eq_(self.client.get('/smith')[0], '32')
+            t.create('/smith', b'32')
+        eq_(self.client.get('/smith')[0], b'32')
 
 
 class TestCallbacks(unittest.TestCase):

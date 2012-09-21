@@ -1,6 +1,7 @@
 __version__ = '0.6'
 
 import os
+import sys
 
 from setuptools import setup, find_packages
 
@@ -17,11 +18,15 @@ install_requires = [
 tests_require = install_requires + [
     'coverage',
     'docutils',
-    'gevent',
     'mock',
     'nose',
-    'repoze.sphinx.autointerface',
-    'Sphinx',
+    ]
+
+if sys.version_info < (3, 0):
+    tests_require += [
+        'gevent',
+        'repoze.sphinx.autointerface',
+        'Sphinx',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -44,6 +49,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.2",
         "Topic :: Communications",
         "Topic :: System :: Distributed Computing",
         "Topic :: System :: Networking",

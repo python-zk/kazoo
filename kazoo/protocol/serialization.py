@@ -18,6 +18,11 @@ multiheader_struct = struct.Struct('!iBi')
 reply_header_struct = struct.Struct('!iqi')
 stat_struct = struct.Struct('!qqqqiiiqiiq')
 
+try:  # pragma: nocover
+    basestring
+except NameError:
+    basestring = str
+
 
 def read_string(buffer, offset):
     """Reads an int specified buffer into a string and returns the
@@ -59,7 +64,7 @@ def read_buffer(bytes, offset):
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return "", offset
+        return b'', offset
     else:
         index = offset
         offset += length
@@ -72,7 +77,7 @@ class Close(object):
 
     @classmethod
     def serialize(cls):
-        return ''
+        return b''
 
 
 class Ping(object):
@@ -81,7 +86,7 @@ class Ping(object):
 
     @classmethod
     def serialize(cls):
-        return ''
+        return b''
 
 
 class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'
@@ -338,7 +343,7 @@ class Transaction(namedtuple('Transaction', 'operations')):
     def unchroot(client, response):
         resp = []
         for result in response:
-            if isinstance(result, unicode):
+            if isinstance(result, basestring):
                 resp.append(client.unchroot(result))
             else:
                 resp.append(result)
@@ -350,7 +355,7 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
 
     def serialize(self):
         return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
-                write_buffer(self.auth))
+                write_string(self.auth))
 
 
 class Watch(namedtuple('Watch', 'type state path')):

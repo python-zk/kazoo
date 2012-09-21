@@ -152,9 +152,9 @@ example:
     def watch_for_ro(state):
         if state == KazooState.CONNECTED:
             if zk.client_state == KeeperState.CONNECTED_RO:
-                print "Read only mode!"
+                print("Read only mode!")
             else:
-                print "Read/Write mode!"
+                print("Read/Write mode!")
 
 It's important to note that a `KazooState` is passed in to the listener
 but the read-only information is only available by comparing the
@@ -194,7 +194,7 @@ first, unless the `makepath` option is set to `True`.
     zk.ensure_path("/my/favorite")
 
     # Create a node with data
-    zk.create("/my/favorite/node", "a value")
+    zk.create("/my/favorite/node", b"a value")
 
 Reading Data
 ------------
@@ -222,11 +222,11 @@ a given node.
 
     # Print the version of a node and its data
     data, stat = zk.get("/my/favorite")
-    print "Version is %s, data is %s" % (stat.version, data)
+    print("Version: %s, data: %s" % (stat.version, data.decode("utf-8")))
 
     # List the children
     children = zk.get_children("/my/favorite")
-    print "There are %s children with names %s" % (len(children), children)
+    print("There are %s children with names %s" % (len(children), children))
 
 Updating Data
 -------------
@@ -242,7 +242,7 @@ raised instead of updating.
 
 .. code-block:: python
 
-    zk.set("/my/favorite", "some data")
+    zk.set("/my/favorite", b"some data")
 
 Deleting Nodes
 --------------
@@ -386,12 +386,12 @@ called directly allowing them to be used as decorators:
 
     @zk.ChildrenWatch("/my/favorite/node")
     def watch_children(children):
-        print "Children are now: %s" % children
+        print("Children are now: %s" % children)
     # Above function called immediately, and from then on
 
     @zk.DataWatch("/my/favorite")
     def watch_node(data, stat):
-        print "Version is %s, data is %s" % (stat.version, data)
+        print("Version: %s, data: %s" % (stat.version, data.decode("utf-8")))
 
 Transactions
 ============
@@ -409,7 +409,7 @@ transaction.
 
     transaction = zk.transaction()
     transaction.check('/node/a', version=3)
-    transaction.create('/node/b', "a value")
+    transaction.create('/node/b', b"a value")
     results = transaction.commit()
 
 The :meth:`~kazoo.client.KazooClient.transaction` method returns a

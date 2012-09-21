@@ -21,7 +21,7 @@ class BaseParty(object):
         """
         self.client = client
         self.path = path
-        self.data = str(identifier or "")
+        self.data = str(identifier or "").encode('utf-8')
         self.ensured_path = False
         self.participating = False
 
@@ -83,13 +83,13 @@ class Party(BaseParty):
             try:
                 d, _ = self.client.retry(self.client.get, self.path +
                                          "/" + child)
-                yield d
+                yield d.decode('utf-8')
             except NoNodeError:  # pragma: nocover
                 pass
 
     def _get_children(self):
         children = BaseParty._get_children(self)
-        return filter(lambda child: self._NODE_NAME in child, children)
+        return [c for c in children if self._NODE_NAME in c]
 
 
 class ShallowParty(BaseParty):
@@ -104,7 +104,7 @@ class ShallowParty(BaseParty):
     """
     def __init__(self, client, path, identifier=None):
         BaseParty.__init__(self, client, path, identifier=identifier)
-        self.node = '-'.join([uuid.uuid4().hex, self.data])
+        self.node = '-'.join([uuid.uuid4().hex, self.data.decode('utf-8')])
         self.create_path = self.path + "/" + self.node
 
     def __iter__(self):

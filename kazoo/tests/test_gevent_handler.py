@@ -1,8 +1,6 @@
-import time
 import unittest
 
-import gevent
-from gevent.event import Event
+from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
 
@@ -12,6 +10,13 @@ from kazoo.testing import KazooTestCase
 
 
 class TestGeventHandler(unittest.TestCase):
+
+    def setUp(self):
+        try:
+            import gevent
+        except ImportError:
+            raise SkipTest('gevent not available.')
+
     def _makeOne(self, *args):
         from kazoo.handlers.gevent import SequentialGeventHandler
         return SequentialGeventHandler(*args)
@@ -20,10 +25,14 @@ class TestGeventHandler(unittest.TestCase):
         from kazoo.handlers.gevent import AsyncResult
         return AsyncResult
 
+    def _getEvent(self):
+        from gevent.event import Event
+        return Event
+
     def test_proper_threading(self):
         h = self._makeOne()
         h.start()
-        assert isinstance(h.event_object(), Event)
+        assert isinstance(h.event_object(), self._getEvent())
 
     def test_matching_async(self):
         h = self._makeOne()
@@ -42,7 +51,7 @@ class TestGeventHandler(unittest.TestCase):
     def test_exception_in_queue(self):
         h = self._makeOne()
         h.start()
-        ev = Event()
+        ev = self._getEvent()()
 
         def func():
             ev.set()
@@ -56,7 +65,7 @@ class TestGeventHandler(unittest.TestCase):
         from gevent.queue import Empty
         h = self._makeOne()
         h.start()
-        ev = Event()
+        ev = self._getEvent()()
 
         def func():
             ev.set()
@@ -80,6 +89,7 @@ class TestGeventHandler(unittest.TestCase):
         testit()
 
     def test_peekable_queue_switching(self):
+        import gevent
         h = self._makeOne()
         queue = h.peekable_queue()
 
@@ -104,9 +114,21 @@ class TestGeventHandler(unittest.TestCase):
 
 
 class TestGeventClient(KazooTestCase):
+
+    def setUp(self):
+        KazooTestCase.setUp(self)
+        try:
+            import gevent
+        except ImportError:
+            raise SkipTest('gevent not available.')
+
     def _makeOne(self, *args):
         from kazoo.handlers.gevent import SequentialGeventHandler
         return SequentialGeventHandler(*args)
+
+    def _getEvent(self):
+        from gevent.event import Event
+        return Event
 
     def test_start(self):
         client = self._get_client(handler=self._makeOne())
@@ -142,7 +164,7 @@ class TestGeventClient(KazooTestCase):
         client = self._get_client(handler=self._makeOne())
         client.start()
         client.ensure_path('/some/node')
-        ev = Event()
+        ev = self._getEvent()()
 
         @client.DataWatch('/some/node')
         def changed(d, stat):
