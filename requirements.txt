@@ -8,5 +8,4 @@ greenlet==0.4.0
 mock==1.0b1
 nose==1.2.1
 repoze.sphinx.autointerface==0.7.0
-wsgiref==0.1.2
 zope.interface==4.0.1
