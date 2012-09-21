@@ -1,5 +1,9 @@
 language: python
+python:
+    - "2.7"
 matrix:
+    exclude:
+        - python: "2.7"
     include:
         - python: "2.6"
           env: GEVENT_VERSION=0.13.8 ZOOKEEPER_VERSION=3.3.6
