@@ -1,6 +1,15 @@
+import sys
 from unittest import TestCase
 
 from kazoo.protocol import paths
+
+
+if sys.version_info > (3, ):  # pragma: nocover
+    def u(s):
+        return s
+else:  # pragma: nocover
+    def u(s):
+        return unicode(s, "unicode_escape")
 
 
 class NormPathTestCase(TestCase):
@@ -12,7 +21,7 @@ class NormPathTestCase(TestCase):
         self.assertEqual(paths.normpath(''), '')
 
     def test_normpath_unicode(self):
-        self.assertEqual(paths.normpath(u'/\xe4/b'), u'/\xe4/b')
+        self.assertEqual(paths.normpath(u('/\xe4/b')), u('/\xe4/b'))
 
     def test_normpath_dots(self):
         self.assertEqual(paths.normpath('/a./b../c'), '/a./b../c')
