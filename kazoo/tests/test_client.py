@@ -736,7 +736,7 @@ class TestClientTransactions(KazooTestCase):
         eq_(res[0], b'oops')
 
     def test_bad_sets(self):
-        args_list = [(42, 52), ('/smith', False), ('/smith', '', 'oops')]
+        args_list = [(42, 52), ('/smith', False), ('/smith', b'', 'oops')]
 
         @raises(TypeError)
         def testit(args):
