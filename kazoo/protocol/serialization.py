@@ -72,7 +72,6 @@ def read_buffer(bytes, offset):
 
 
 class Close(object):
-    __slots__ = ['type']
     type = -11
 
     @classmethod
@@ -81,7 +80,6 @@ class Close(object):
 
 
 class Ping(object):
-    __slots__ = ['type']
     type = 11
 
     @classmethod
