@@ -25,7 +25,7 @@ $(PYTHON):
 	rm distribute-0.6.*.tar.gz
 
 build: $(PYTHON)
-ifeq ($(TRAVIS_PYTHON_VERSION),3.2)
+ifeq ($(findstring 3.,$(TRAVIS_PYTHON_VERSION)), 3.)
 	$(INSTALL) -U -r requirements3.txt
 else
 	$(INSTALL) -U -r requirements.txt
