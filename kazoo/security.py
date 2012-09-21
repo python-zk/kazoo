@@ -63,9 +63,9 @@ READ_ACL_UNSAFE = [ACL(Permissions.READ, ANYONE_ID_UNSAFE)]
 
 def make_digest_acl_credential(username, password):
     """Create a SHA1 digest credential"""
-    credential = ("%s:%s" % (username, password)).encode('utf-8')
+    credential = username.encode('utf-8') + b":" + password.encode('utf-8')
     cred_hash = b64encode(hashlib.sha1(credential).digest()).strip()
-    return "%s:%s" % (username, cred_hash)
+    return username + ":" + cred_hash.decode('utf-8')
 
 
 def make_acl(scheme, credential, read=False, write=False,

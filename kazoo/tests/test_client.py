@@ -89,17 +89,16 @@ class TestConnection(KazooTestCase):
         acl = self._makeAuth(username, password, all=True)
 
         self.client.add_auth("digest", digest_auth)
-
         self.client.default_acl = (acl,)
 
-        self.client.create("/1")
-        self.client.create("/1/2")
-        self.client.ensure_path("/1/2/3")
-
-        eve = self._get_client()
-        eve.start()
-
         try:
+            self.client.create("/1")
+            self.client.create("/1/2")
+            self.client.ensure_path("/1/2/3")
+
+            eve = self._get_client()
+            eve.start()
+
             self.assertRaises(NoAuthError, eve.get, "/1/2")
 
             # try again with the wrong auth token
@@ -111,7 +110,6 @@ class TestConnection(KazooTestCase):
             self.client.delete("/1", recursive=True)
 
     def test_connect_auth(self):
-        raise SkipTest('XXX deadlock')
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
 
@@ -671,6 +669,7 @@ class TestClientTransactions(KazooTestCase):
             testit(args)
 
     def test_default_acl(self):
+        raise SkipTest('XXX deadlock')
         from kazoo.security import make_digest_acl
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex

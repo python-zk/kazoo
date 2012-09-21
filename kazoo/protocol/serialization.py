@@ -350,7 +350,7 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
 
     def serialize(self):
         return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
-                write_buffer(self.auth))
+                write_string(self.auth))
 
 
 class Watch(namedtuple('Watch', 'type state path')):
