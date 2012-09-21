@@ -25,12 +25,12 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait()
-        eq_(data, [""])
+        eq_(data, [b""])
         update.clear()
 
-        self.client.set(self.path, 'fred')
+        self.client.set(self.path, b'fred')
         update.wait()
-        eq_(data[0], 'fred')
+        eq_(data[0], b'fred')
         update.clear()
 
     def test_func_style_data_watch(self):
@@ -44,12 +44,12 @@ class KazooDataWatcherTests(KazooTestCase):
         self.client.DataWatch(self.path, changed)
 
         update.wait()
-        eq_(data, [""])
+        eq_(data, [b""])
         update.clear()
 
-        self.client.set(self.path, 'fred')
+        self.client.set(self.path, b'fred')
         update.wait()
-        eq_(data[0], 'fred')
+        eq_(data[0], b'fred')
         update.clear()
 
     def test_datawatch_across_session_expire(self):
@@ -63,14 +63,14 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait()
-        eq_(data, [""])
+        eq_(data, [b""])
         update.clear()
 
         self.expire_session()
         eq_(update.is_set(), False)
-        self.client.retry(self.client.set, self.path, 'fred')
+        self.client.retry(self.client.set, self.path, b'fred')
         update.wait()
-        eq_(data[0], 'fred')
+        eq_(data[0], b'fred')
 
     def test_func_stops(self):
         update = threading.Event()
@@ -87,21 +87,21 @@ class KazooDataWatcherTests(KazooTestCase):
                 return False
 
         update.wait()
-        eq_(data, [""])
+        eq_(data, [b""])
         update.clear()
 
         fail_through.append(True)
-        self.client.set(self.path, 'fred')
+        self.client.set(self.path, b'fred')
         update.wait()
-        eq_(data[0], 'fred')
+        eq_(data[0], b'fred')
         update.clear()
 
-        self.client.set(self.path, 'asdfasdf')
+        self.client.set(self.path, b'asdfasdf')
         update.wait(0.2)
-        eq_(data[0], 'fred')
+        eq_(data[0], b'fred')
 
         d, stat = self.client.get(self.path)
-        eq_(d, 'asdfasdf')
+        eq_(d, b'asdfasdf')
 
     def test_no_such_node(self):
         args = []
@@ -123,7 +123,7 @@ class KazooDataWatcherTests(KazooTestCase):
         raises(Exception)(changed)
 
         counter += 1
-        self.client.set(self.path, 'asdfasdf')
+        self.client.set(self.path, b'asdfasdf')
 
 
 class KazooChildrenWatcherTests(KazooTestCase):
