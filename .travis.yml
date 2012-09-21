@@ -1,12 +1,18 @@
 language: python
-python:
-    - "2.6"
-    - "2.7"
-    - "3.2"
-
-env:
-    - ZOOKEEPER_VERSION=3.3.6
-    - ZOOKEEPER_VERSION=3.4.3
+matrix:
+    include:
+        - python: "2.6"
+          env: ZOOKEEPER_VERSION=3.3.6
+        - python: "2.6"
+          env: ZOOKEEPER_VERSION=3.4.3
+        - python: "2.7"
+          env: ZOOKEEPER_VERSION=3.3.6
+        - python: "2.7"
+          env: ZOOKEEPER_VERSION=3.4.3
+        - python: "3.2"
+          env: ZOOKEEPER_VERSION=3.3.6
+        - python: "3.2"
+          env: ZOOKEEPER_VERSION=3.4.3
 
 notifications:
   email:
