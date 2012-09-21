@@ -125,6 +125,32 @@ class TestConnection(KazooTestCase):
             client.delete('/1')
             client.stop()
 
+    def test_unicode_auth(self):
+        username = u("/\xe4hm")
+        password = u("/\xe4hm")
+        digest_auth = "%s:%s" % (username, password)
+        acl = self._makeAuth(username, password, all=True)
+
+        self.client.add_auth("digest", digest_auth)
+        self.client.default_acl = (acl,)
+
+        try:
+            self.client.create("/1")
+            self.client.ensure_path("/1/2/3")
+
+            eve = self._get_client()
+            eve.start()
+
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
+
+            # try again with the wrong auth token
+            eve.add_auth("digest", "badbad:bad")
+
+            self.assertRaises(NoAuthError, eve.get, "/1/2")
+        finally:
+            # Ensure we remove the ACL protected nodes
+            self.client.delete("/1", recursive=True)
+
     def test_invalid_auth(self):
         self.assertRaises(TypeError, self.client.add_auth,
             'digest', ('user', 'pass'))
