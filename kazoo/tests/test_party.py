@@ -22,14 +22,14 @@ class KazooPartyTests(KazooTestCase):
         participants = set()
         for party in parties:
             party.join()
-            participants.add(party.data)
+            participants.add(party.data.decode('utf-8'))
 
             eq_(set(party), participants)
             eq_(len(party), len(participants))
 
         for party in parties:
             party.leave()
-            participants.remove(party.data)
+            participants.remove(party.data.decode('utf-8'))
 
             eq_(set(party), participants)
             eq_(len(party), len(participants))
@@ -71,14 +71,14 @@ class KazooShallowPartyTests(KazooTestCase):
         participants = set()
         for party in parties:
             party.join()
-            participants.add(party.data)
+            participants.add(party.data.decode('utf-8'))
 
             eq_(set(party), participants)
             eq_(len(party), len(participants))
 
         for party in parties:
             party.leave()
-            participants.remove(party.data)
+            participants.remove(party.data.decode('utf-8'))
 
             eq_(set(party), participants)
             eq_(len(party), len(participants))
