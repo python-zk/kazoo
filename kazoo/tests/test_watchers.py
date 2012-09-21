@@ -147,12 +147,12 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(all_children, [])
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
         update.wait()
         eq_(all_children, ['smith'])
         update.clear()
 
-        self.client.create(self.path + '/' + 'george', '0')
+        self.client.create(self.path + '/' + 'george')
         update.wait()
         eq_(sorted(all_children), ['george', 'smith'])
 
@@ -172,12 +172,12 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(all_children, [])
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
         update.wait()
         eq_(all_children, ['smith'])
         update.clear()
 
-        self.client.create(self.path + '/' + 'george', '0')
+        self.client.create(self.path + '/' + 'george')
         update.wait()
         eq_(sorted(all_children), ['george', 'smith'])
 
@@ -201,12 +201,12 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
 
         fail_through.append(True)
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
         update.wait()
         eq_(all_children, ['smith'])
         update.clear()
 
-        self.client.create(self.path + '/' + 'george', '0')
+        self.client.create(self.path + '/' + 'george')
         update.wait(0.5)
         eq_(all_children, ['smith'])
 
@@ -225,7 +225,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(all_children, [])
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
         update.wait()
         eq_(all_children, ['smith'])
         update.clear()
@@ -234,7 +234,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(update.is_set(), False)
 
         self.client.retry(self.client.create,
-                          self.path + '/' + 'george', '0')
+                          self.path + '/' + 'george')
         update.wait()
         eq_(sorted(all_children), ['george', 'smith'])
 
@@ -253,7 +253,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(all_children, [])
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
         update.wait()
         eq_(all_children, ['smith'])
         update.clear()
@@ -262,7 +262,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         eq_(update.is_set(), False)
 
         self.client.retry(self.client.create,
-                          self.path + '/' + 'george', '0')
+                          self.path + '/' + 'george')
         update.wait(3)
         eq_(update.is_set(), False)
         eq_(all_children, ['smith'])
@@ -280,7 +280,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
         raises(Exception)(changed)
         counter += 1
-        self.client.create(self.path + '/' + 'smith', '0')
+        self.client.create(self.path + '/' + 'smith')
 
 
 class KazooPatientChildrenWatcherTests(KazooTestCase):
@@ -300,7 +300,7 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         eq_(len(children), 0)
         eq_(asy.ready(), False)
 
-        self.client.create(self.path + '/' + 'fred', '0')
+        self.client.create(self.path + '/' + 'fred')
         asy.get(timeout=1)
         eq_(asy.ready(), True)
 
@@ -321,11 +321,11 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         eq_(result.ready(), False)
 
         time.sleep(0.08)
-        self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
+        self.client.create(self.path + '/' + uuid.uuid4().hex)
         eq_(result.ready(), False)
         time.sleep(0.08)
         eq_(result.ready(), False)
-        self.client.create(self.path + '/' + uuid.uuid4().hex, '0')
+        self.client.create(self.path + '/' + uuid.uuid4().hex)
         time.sleep(0.08)
         eq_(result.ready(), False)
 
