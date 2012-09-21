@@ -4,11 +4,9 @@ python:
     - "2.7"
     - "3.2"
 
-# env:
-#     - GEVENT_VERSION=0.13.8 ZOOKEEPER_VERSION=3.3.6
-#     - GEVENT_VERSION=0.13.8 ZOOKEEPER_VERSION=3.4.3
-#     - GEVENT_VERSION=1.0b4 ZOOKEEPER_VERSION=3.3.6
-#     - GEVENT_VERSION=1.0b4 ZOOKEEPER_VERSION=3.4.3
+env:
+    - ZOOKEEPER_VERSION=3.3.6
+    - ZOOKEEPER_VERSION=3.4.3
 
 notifications:
   email:
@@ -19,7 +17,7 @@ before_install:
 
 install:
     - make
-    - make ZOOKEEPER_VERSION=3.4.3 zookeeper
+    - make zookeeper
 
 script:
     - make test
