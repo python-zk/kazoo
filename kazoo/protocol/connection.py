@@ -4,7 +4,9 @@ import logging
 import random
 import select
 import socket
+import sys
 import time
+from binascii import hexlify
 from contextlib import contextmanager
 
 from kazoo.exceptions import (
@@ -45,18 +47,23 @@ WATCH_XID = -1
 PING_XID = -2
 AUTH_XID = -4
 
+if sys.version_info > (3, ):  # pragma: nocover
+    def buffer(obj, offset=0):
+        return memoryview(obj)[offset:]
+
+    advance_iterator = next
+else:  # pragma: nocover
+    def advance_iterator(it):
+        return it.next()
+
 
 @contextmanager
 def socket_error_handling():
     try:
         yield
     except (socket.error, select.error) as e:
-        if isinstance(e.args, tuple):
-            raise ConnectionDropped("socket connection error: %s",
-                                    errno.errorcode[e[0]])
-        else:  # pragma: nocover
-            # This is only possible on Python 2.5 or earlier
-            raise ConnectionDropped("socket connection error: %s", e)
+        raise ConnectionDropped("socket connection error: %s",
+                                errno.errorcode[e.args[0]])
 
 
 class RWPinger(object):
@@ -93,10 +100,10 @@ class RWPinger(object):
                 try:
                     with socket_error_handling():
                         sock.connect((host, port))
-                        sock.sendall("isro")
+                        sock.sendall(b"isro")
                         result = sock.recv(8192)
                         sock.close()
-                        if result == 'rw':
+                        if result == b'rw':
                             yield (host, port)
                         else:
                             yield False
@@ -160,7 +167,7 @@ class ConnectionHandler(object):
             while remaining > 0:
                 s = self.handler.select([self._socket], [], [], timeout)[0]
                 chunk = s[0].recv(remaining)
-                if chunk == '':
+                if chunk == b'':
                     raise ConnectionDropped('socket connection broken')
                 msgparts.append(chunk)
                 remaining -= len(chunk)
@@ -470,9 +477,9 @@ class ConnectionHandler(object):
         log.info('Connecting to %s:%s', host, port)
 
         if self.log_debug:
-            log.debug('    Using session_id: %r session_passwd: 0x%s',
+            log.debug('    Using session_id: %r session_passwd: %s',
                       client._session_id,
-                      client._session_passwd.encode('hex'))
+                      hexlify(client._session_passwd))
 
         with socket_error_handling():
             self._socket.connect((host, port))
@@ -499,11 +506,11 @@ class ConnectionHandler(object):
         client._session_passwd = connect_result.passwd
 
         if self.log_debug:
-            log.debug('Session created, session_id: %r session_passwd: 0x%s\n'
+            log.debug('Session created, session_id: %r session_passwd: %s\n'
                       '    negotiated session timeout: %s\n'
                       '    connect timeout: %s\n'
                       '    read timeout: %s', client._session_id,
-                      client._session_passwd.encode('hex'),
+                      hexlify(client._session_passwd),
                       negotiated_session_timeout, connect_timeout,
                       read_timeout)
 
@@ -557,7 +564,7 @@ class ConnectionHandler(object):
 
             # Determine if we need to check for a r/w server
             if self._ro_mode:
-                result = self._ro_mode.next()
+                result = advance_iterator(self._ro_mode)
                 if result:
                     self._rw_server = result
                     raise RWServerAvailable()

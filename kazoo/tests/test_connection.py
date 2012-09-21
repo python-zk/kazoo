@@ -47,7 +47,7 @@ class TestConnectionHandler(KazooTestCase):
                 ev.set()
 
         password = os.urandom(16)
-        client = self._get_client(client_id=(82838284824L, password))
+        client = self._get_client(client_id=(82838284824, password))
         client.add_listener(expired)
         client.start()
         ev.wait(15)

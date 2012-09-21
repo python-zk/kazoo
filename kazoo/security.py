@@ -1,6 +1,7 @@
 """Kazoo Security
 
 """
+from base64 import b64encode
 from collections import namedtuple
 import hashlib
 
@@ -62,9 +63,9 @@ READ_ACL_UNSAFE = [ACL(Permissions.READ, ANYONE_ID_UNSAFE)]
 
 def make_digest_acl_credential(username, password):
     """Create a SHA1 digest credential"""
-    credential = "%s:%s" % (username, password)
-    cred_hash = hashlib.sha1(credential).digest().encode('base64').strip()
-    return "%s:%s" % (username, cred_hash)
+    credential = username.encode('utf-8') + b":" + password.encode('utf-8')
+    cred_hash = b64encode(hashlib.sha1(credential).digest()).strip()
+    return username + ":" + cred_hash.decode('utf-8')
 
 
 def make_acl(scheme, credential, read=False, write=False,

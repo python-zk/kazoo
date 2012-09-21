@@ -66,10 +66,9 @@ class KazooElectionTests(KazooTestCase):
     def _check_thread_error(self):
         if self.thread_exc_info:
             t, o, tb = self.thread_exc_info
-            raise t, o, tb
+            raise t(o)
 
     def test_election(self):
-
         elections = {}
         threads = {}
         for _ in range(3):
