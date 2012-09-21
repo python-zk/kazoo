@@ -129,8 +129,8 @@ class DoubleBarrier(object):
         ready = self.client.handler.event_object()
 
         try:
-            self.client.create(self.create_path, self._identifier,
-                               ephemeral=True)
+            self.client.create(self.create_path,
+                self._identifier.encode('utf-8'), ephemeral=True)
         except NodeExistsError:
             pass
 
