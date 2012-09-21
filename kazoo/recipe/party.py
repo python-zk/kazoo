@@ -104,7 +104,7 @@ class ShallowParty(BaseParty):
     """
     def __init__(self, client, path, identifier=None):
         BaseParty.__init__(self, client, path, identifier=identifier)
-        self.node = '-'.join([uuid.uuid4().hex, self.data])
+        self.node = '-'.join([uuid.uuid4().hex, self.data.decode('utf-8')])
         self.create_path = self.path + "/" + self.node
 
     def __iter__(self):
