@@ -57,18 +57,19 @@ class TestConnectionHandler(KazooTestCase):
 
 class TestReadOnlyMode(KazooTestCase):
     def setUp(self):
-        KazooTestCase.setUp(self)
+        self.setup_zookeeper(read_only=True)
         ver = self.client.server_version()
         if ver[1] < 4:
             raise SkipTest("Must use zookeeper 3.4 or above")
 
+    def tearDown(self):
+        self.client.stop()
+
     def test_read_only(self):
         from kazoo.exceptions import NotReadOnlyCallError
         from kazoo.protocol.states import KeeperState
-        self.client.stop()
-        client = self._get_client(read_only=True)
-        client.start()
 
+        client = self.client
         states = []
         ev = threading.Event()
 
@@ -97,4 +98,3 @@ class TestReadOnlyMode(KazooTestCase):
         finally:
             self.cluster[1].run()
             self.cluster[2].run()
-            client.stop()

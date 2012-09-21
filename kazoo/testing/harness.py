@@ -97,7 +97,7 @@ class KazooTestHarness(object):
         self.client.get_async('/')
         lost.wait(45)
 
-    def setup_zookeeper(self):
+    def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`
 
         The cluster will only be created on the first invocation and won't be
@@ -108,7 +108,9 @@ class KazooTestHarness(object):
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
 
-        self.client = self._get_client(timeout=0.8)
+        if 'timeout' not in client_options:
+            client_options['timeout'] = 0.8
+        self.client = self._get_client(**client_options)
         self.client.start()
         self.client.ensure_path("/")
 
