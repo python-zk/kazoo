@@ -25,6 +25,8 @@ matrix:
 notifications:
   email:
     - hschlichting@mozilla.com
+    - ben@groovie.org
+  irc: "irc.mozilla.org#services-dev"
 
 before_install:
     - sudo apt-get install libevent-dev
