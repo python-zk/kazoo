@@ -48,14 +48,11 @@ PING_XID = -2
 AUTH_XID = -4
 
 if sys.version_info > (3, ):  # pragma: nocover
-
-    advance_iterator = next
-
     def buffer(obj, offset=0):
         return memoryview(obj)[offset:]
 
+    advance_iterator = next
 else:  # pragma: nocover
-
     def advance_iterator(it):
         return it.next()
 
