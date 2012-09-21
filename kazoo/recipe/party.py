@@ -89,7 +89,7 @@ class Party(BaseParty):
 
     def _get_children(self):
         children = BaseParty._get_children(self)
-        return filter(lambda child: self._NODE_NAME in child, children)
+        return [c for c in children if self._NODE_NAME in c]
 
 
 class ShallowParty(BaseParty):
