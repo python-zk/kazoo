@@ -3,7 +3,6 @@ import sys
 import threading
 
 from nose.tools import eq_
-from nose import SkipTest
 
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
@@ -70,7 +69,6 @@ class KazooElectionTests(KazooTestCase):
             raise t(o)
 
     def test_election(self):
-        raise SkipTest('XXX deadlock')
         elections = {}
         threads = {}
         for _ in range(3):
