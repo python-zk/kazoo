@@ -4,9 +4,11 @@ from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
 
+from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import Callback
 from kazoo.testing import KazooTestCase
+from kazoo.tests import test_client
 
 
 class TestGeventHandler(unittest.TestCase):
@@ -113,7 +115,7 @@ class TestGeventHandler(unittest.TestCase):
         eq_(getter_thread.get(), 'fred')
 
 
-class TestGeventClient(KazooTestCase):
+class TestBasicGeventClient(KazooTestCase):
 
     def setUp(self):
         try:
@@ -175,3 +177,21 @@ class TestGeventClient(KazooTestCase):
         client.set('/some/node', 'newvalue')
         ev.wait()
         client.stop()
+
+
+class TestGeventClient(test_client.TestClient):
+
+    def setUp(self):
+        try:
+            import gevent
+        except ImportError:
+            raise SkipTest('gevent not available.')
+        KazooTestCase.setUp(self)
+
+    def _makeOne(self, *args):
+        from kazoo.handlers.gevent import SequentialGeventHandler
+        return SequentialGeventHandler(*args)
+
+    def _get_client(self, **kwargs):
+        kwargs["handler"] = self._makeOne()
+        return KazooClient(self.hosts, **kwargs)
