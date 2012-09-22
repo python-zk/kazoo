@@ -1,5 +1,6 @@
 import sys
 import threading
+import time
 import uuid
 import unittest
 
@@ -120,6 +121,8 @@ class TestConnection(KazooTestCase):
         client.start()
         try:
             client.create('/1', acl=(acl,))
+            # give ZK a chance to copy data to other node
+            time.sleep(0.1)
             self.assertRaises(NoAuthError, self.client.get, "/1")
         finally:
             client.delete('/1')
