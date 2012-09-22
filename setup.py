@@ -20,7 +20,6 @@ install_requires = [
 
 tests_require = install_requires + [
     'coverage',
-    'docutils',
     'mock',
     'nose',
 ]
@@ -28,8 +27,6 @@ tests_require = install_requires + [
 if not (PYTHON3 or PYPY):
     tests_require += [
         'gevent',
-        'repoze.sphinx.autointerface',
-        'Sphinx',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -76,6 +73,4 @@ setup(
     extras_require={
         'test': tests_require,
     },
-    entry_points="""
-    """
 )

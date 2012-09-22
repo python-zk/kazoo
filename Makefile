@@ -11,6 +11,7 @@ BUILD_DIRS = bin build include lib lib64 man share
 GEVENT_VERSION ?= 1.0b4
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
 PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
+TRAVIS ?= false
 TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
 
 ZOOKEEPER = $(BIN)/zookeeper
@@ -34,12 +35,14 @@ $(PYTHON):
 	rm distribute-0.6.*.tar.gz
 
 build: $(PYTHON)
-ifeq ($(GEVENT_SUPPORTED),no)
-	$(INSTALL) -U -r requirements3.txt
-else
-	$(INSTALL) -U -r requirements.txt
+ifeq ($(GEVENT_SUPPORTED),yes)
+	$(INSTALL) -U -r requirements_gevent.txt
 	$(INSTALL) -f https://code.google.com/p/gevent/downloads/list?can=1 gevent==$(GEVENT_VERSION)
 endif
+ifneq ($(TRAVIS), true)
+	$(INSTALL) -U -r requirements_sphinx.txt
+endif
+	$(INSTALL) -U -r requirements.txt
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 
