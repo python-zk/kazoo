@@ -63,7 +63,7 @@ $(ZOOKEEPER):
 	cd bin && \
 	curl --progress-bar http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
 	mv bin/zookeeper-$(ZOOKEEPER_VERSION) bin/zookeeper
-	cd bin/zookeeper && ant compile
+	cd bin/zookeeper
 	chmod a+x bin/zookeeper/bin/zkServer.sh
 	@echo "Finished installing Zookeeper"
 
