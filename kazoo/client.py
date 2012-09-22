@@ -44,7 +44,7 @@ from kazoo.security import OPEN_ACL_UNSAFE
 
 try:  # pragma: nocover
     basestring
-except NameError:
+except NameError:  # pragma: nocover
     basestring = str
 
 LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
