@@ -116,11 +116,11 @@ class TestGeventHandler(unittest.TestCase):
 class TestGeventClient(KazooTestCase):
 
     def setUp(self):
-        KazooTestCase.setUp(self)
         try:
             import gevent
         except ImportError:
             raise SkipTest('gevent not available.')
+        KazooTestCase.setUp(self)
 
     def _makeOne(self, *args):
         from kazoo.handlers.gevent import SequentialGeventHandler

@@ -120,7 +120,7 @@ class KazooTestHarness(object):
         if not self.cluster[0].running:
             self.cluster.start()
 
-        if self.client.connected:
+        if self.client and self.client.connected:
             self.client.delete('/', recursive=True)
             self.client.stop()
             self.client.stop()
