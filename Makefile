@@ -10,11 +10,20 @@ BUILD_DIRS = bin build include lib lib64 man share
 
 GEVENT_VERSION ?= 1.0b4
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
+PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
 TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
 
 ZOOKEEPER = $(BIN)/zookeeper
 ZOOKEEPER_VERSION ?= 3.3.6
 ZOOKEEPER_PATH ?= $(ZOOKEEPER)
+
+GEVENT_SUPPORTED = yes
+ifeq ($(findstring 3.,$(TRAVIS_PYTHON_VERSION)), 3.)
+	GEVENT_SUPPORTED = no
+endif
+ifeq ($(PYPY),yes)
+	GEVENT_SUPPORTED = no
+endif
 
 .PHONY: all build clean test zookeeper clean-zookeeper
 
@@ -25,7 +34,7 @@ $(PYTHON):
 	rm distribute-0.6.*.tar.gz
 
 build: $(PYTHON)
-ifeq ($(findstring 3.,$(TRAVIS_PYTHON_VERSION)), 3.)
+ifeq ($(GEVENT_SUPPORTED),no)
 	$(INSTALL) -U -r requirements3.txt
 else
 	$(INSTALL) -U -r requirements.txt

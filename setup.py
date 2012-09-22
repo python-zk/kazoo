@@ -11,6 +11,9 @@ with open(os.path.join(here, 'README.rst')) as f:
 with open(os.path.join(here, 'CHANGES.rst')) as f:
     CHANGES = f.read()
 
+PYTHON3 = sys.version_info > (3, )
+PYPY = getattr(sys, 'pypy_version_info', False) and True or False
+
 install_requires = [
     'zope.interface >= 3.8.0',  # has zope.interface.registry
 ]
@@ -20,9 +23,9 @@ tests_require = install_requires + [
     'docutils',
     'mock',
     'nose',
-    ]
+]
 
-if sys.version_info < (3, 0):
+if not (PYTHON3 or PYPY):
     tests_require += [
         'gevent',
         'repoze.sphinx.autointerface',
@@ -47,10 +50,14 @@ setup(
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.2",
         "Programming Language :: Python :: 3.3",
+        "Programming Language :: Python :: Implementation :: CPython",
+        "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Communications",
         "Topic :: System :: Distributed Computing",
         "Topic :: System :: Networking",

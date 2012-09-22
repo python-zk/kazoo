@@ -18,7 +18,7 @@ Features
 - Automatic background scanning for a Read/Write server when connected to a
   server in read-only mode.
 - Handles connecting to Zookeeper 3.4+ read-only servers.
-- Added support for Python 3.2 and 3.3 (only for the threading handler).
+- Added support for Python 3.2, 3.3 and PyPy (only for the threading handler).
 
 Bug Handling
 ************

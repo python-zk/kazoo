@@ -15,11 +15,14 @@ dist/
 docs/_build
 dropin.cache
 eggs/
-include/
+include
 lib/
+lib-python/
+lib_pypy/
 man/
 parts/
 share/
+site-packages/
 .coverage
 .idea
 .pip_cache
