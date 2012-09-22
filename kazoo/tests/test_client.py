@@ -464,8 +464,7 @@ class TestClient(KazooTestCase):
 
     def test_exists_watch(self):
         nodepath = "/" + uuid.uuid4().hex
-
-        event = threading.Event()
+        event = self.client.handler.event_object()
 
         def w(watch_event):
             eq_(watch_event.path, nodepath)
@@ -481,8 +480,7 @@ class TestClient(KazooTestCase):
 
     def test_exists_watcher_exception(self):
         nodepath = "/" + uuid.uuid4().hex
-
-        event = threading.Event()
+        event = self.client.handler.event_object()
 
         # if the watcher throws an exception, all we can really do is log it
         def w(watch_event):
