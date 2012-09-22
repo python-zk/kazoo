@@ -157,7 +157,7 @@ class TestThreadingAsync(unittest.TestCase):
         def wait_for_val():
             bv.set()
             try:
-                val = async.wait()
+                val = async.wait(10)
             except ImportError:
                 lst.append('oops')
             else:
@@ -165,10 +165,10 @@ class TestThreadingAsync(unittest.TestCase):
             cv.set()
         th = threading.Thread(target=wait_for_val)
         th.start()
-        bv.wait()
+        bv.wait(10)
 
         async.set("fred")
-        cv.wait()
+        cv.wait(10)
         eq_(lst, [True])
 
     def test_set_before_wait(self):
