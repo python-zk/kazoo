@@ -129,7 +129,7 @@ class TestConnection(KazooTestCase):
             client.stop()
 
     def test_unicode_auth(self):
-        username = u("/\xe4hm")
+        username = u("xe4/\hm")
         password = u("/\xe4hm")
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
