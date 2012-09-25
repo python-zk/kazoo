@@ -66,8 +66,8 @@ class KazooClient(object):
     def __init__(self, hosts='127.0.0.1:2181', watcher=None,
                  timeout=10.0, client_id=None, max_retries=None,
                  retry_delay=0.1, retry_backoff=2, retry_jitter=0.8,
-                 handler=None, default_acl=None, auth_data=None,
-                 read_only=None):
+                 retry_max_delay=3600, handler=None, default_acl=None,
+                 auth_data=None, read_only=None):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -89,6 +89,9 @@ class KazooClient(object):
             How much jitter delay to introduce per call. An amount of
             time up to this will be added per retry call to avoid
             hammering the server.
+        :param retry_max_delay:
+            Maximum delay in seconds, regardless of other backoff
+            settings. Defaults to one hour.
         :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling.

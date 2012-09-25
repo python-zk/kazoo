@@ -26,6 +26,15 @@ class TestRetrySleeper(unittest.TestCase):
             retry.increment()
         testit()
 
+    def test_maximum_delay(self):
+        def sleep_func(time):
+            pass
+
+        retry = self._makeOne(delay=10, max_tries=100, sleep_func=sleep_func)
+        for i in range(10):
+            retry.increment()
+        self.assertTrue(retry._cur_delay < 4000, retry._cur_delay)
+
 
 class TestKazooRetry(unittest.TestCase):
 
