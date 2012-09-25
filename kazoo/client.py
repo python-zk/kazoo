@@ -67,7 +67,7 @@ class KazooClient(object):
                  timeout=10.0, client_id=None, max_retries=None,
                  retry_delay=0.1, retry_backoff=2, retry_jitter=0.8,
                  retry_max_delay=3600, handler=None, default_acl=None,
-                 auth_data=None, read_only=None):
+                 auth_data=None, read_only=None, randomize_hosts=True):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -100,6 +100,7 @@ class KazooClient(object):
             A list of authentication credentials to use for the
             connection. Should be a list of (scheme, credential)
             tuples as :meth:`add_auth` takes.
+        :param randomize_hosts: By default randomize host selection.
 
         Retry parameters will be used for connection establishment
         attempts and reconnects.
@@ -124,6 +125,9 @@ class KazooClient(object):
         .. versionadded:: 0.6
             The read_only option. Requires Zookeeper 3.4+
 
+        .. versionadded:: 0.6
+            The randomize_hosts option.
+
         """
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
 
@@ -135,7 +139,8 @@ class KazooClient(object):
 
         self.auth_data = auth_data if auth_data else set([])
         self.default_acl = default_acl
-        self.hosts, chroot = collect_hosts(hosts)
+        self.randomize_hosts = randomize_hosts
+        self.hosts, chroot = collect_hosts(hosts, randomize_hosts)
         if chroot:
             self.chroot = normpath(chroot)
         else:

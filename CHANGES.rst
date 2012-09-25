@@ -21,6 +21,8 @@ Features
 - Add support for Python 3.2, 3.3 and PyPy (only for the threading handler).
 - Add a new `retry_max_delay` argument to the client and by default limit the
   retry delay to at most an hour regardless of exponential backoff settings.
+- Add new `randomize_hosts` argument to `KazooClient`, allowing one to disable
+  host randomization.
 
 Bug Handling
 ************

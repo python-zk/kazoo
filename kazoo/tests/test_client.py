@@ -76,6 +76,12 @@ class TestClientConstructor(unittest.TestCase):
         self.assertTrue(client.handler.timeout_exception is TimeoutError)
         self.assertRaises(TimeoutError, client.start, 0.1)
 
+    def test_ordered_host_selection(self):
+        client = self._makeOne(hosts='127.0.0.1:9,127.0.0.2:9/a',
+            randomize_hosts=False)
+        hosts = [h for h in client.hosts]
+        eq_(hosts, [('127.0.0.1', 9), ('127.0.0.2', 9)])
+
 
 class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
