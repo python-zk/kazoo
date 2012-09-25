@@ -19,6 +19,7 @@ organized alphabetically by module name.
    api/recipe/lock
    api/recipe/partitioner
    api/recipe/party
+   api/recipe/queue
    api/recipe/watchers
    api/security
    api/testing
