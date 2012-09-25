@@ -126,6 +126,9 @@ class KazooClient(object):
             The read_only option. Requires Zookeeper 3.4+
 
         .. versionadded:: 0.6
+            The retry_max_delay option.
+
+        .. versionadded:: 0.6
             The randomize_hosts option.
 
         """
