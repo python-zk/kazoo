@@ -33,6 +33,25 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data[0], b'fred')
         update.clear()
 
+    def test_data_watcher2(self):
+        update = threading.Event()
+        data = [True]
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        self.client.set(self.path, b'fred')
+        update.wait()
+        eq_(data[0], None)
+        update.clear()
+
     def test_func_style_data_watch(self):
         update = threading.Event()
         data = [True]
@@ -50,6 +69,25 @@ class KazooDataWatcherTests(KazooTestCase):
         self.client.set(self.path, b'fred')
         update.wait()
         eq_(data[0], b'fred')
+        update.clear()
+
+    def test_func_style_data_watch2(self):
+        update = threading.Event()
+        data = [True]
+
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+        self.client.DataWatch(self.path, changed, allow_node_does_not_exist=True)
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        self.client.set(self.path, b'fred')
+        update.wait()
+        eq_(data[0], None)
         update.clear()
 
     def test_datawatch_across_session_expire(self):
@@ -71,6 +109,26 @@ class KazooDataWatcherTests(KazooTestCase):
         self.client.retry(self.client.set, self.path, b'fred')
         update.wait()
         eq_(data[0], b'fred')
+
+    def test_datawatch_across_session_expire2(self):
+        update = threading.Event()
+        data = [True]
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        self.expire_session()
+        eq_(update.is_set(), False)
+        self.client.retry(self.client.set, self.path, b'fred')
+        update.wait()
+        eq_(data[0], None)
 
     def test_func_stops(self):
         update = threading.Event()
@@ -103,10 +161,50 @@ class KazooDataWatcherTests(KazooTestCase):
         d, stat = self.client.get(self.path)
         eq_(d, b'asdfasdf')
 
+    def test_func_stops2(self):
+        update = threading.Event()
+        data = [True]
+
+        fail_through = []
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+            if fail_through:
+                return False
+
+        update.wait()
+        eq_(data, [None])
+        update.clear()
+
+        fail_through.append(True)
+        self.client.set(self.path, b'fred')
+        update.wait()
+        eq_(data[0], None)
+        update.clear()
+
+        self.client.set(self.path, b'asdfasdf')
+        update.wait(0.2)
+        eq_(data[0], None)
+
+        d, stat = self.client.get(self.path)
+        eq_(d, b'asdfasdf')
+
     def test_no_such_node(self):
         args = []
 
         @self.client.DataWatch("/some/path")
+        def changed(d, stat):
+            args.extend([d, stat])
+
+        eq_(args, [None, None])
+
+    def test_no_such_node2(self):
+        args = []
+
+        @self.client.DataWatch("/some/path", allow_node_does_not_exist=True)
         def changed(d, stat):
             args.extend([d, stat])
 
@@ -124,6 +222,19 @@ class KazooDataWatcherTests(KazooTestCase):
 
         counter += 1
         self.client.set(self.path, b'asdfasdf')
+        
+    def test_bad_watch_func2(self):
+        counter = 0
+
+        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        def changed(d, stat):
+            if counter > 0:
+                raise Exception("oops")
+
+        raises(Exception)(changed)
+
+        counter += 1
+        self.client.set(self.path, b'asdfasdf')        
 
 
 class KazooChildrenWatcherTests(KazooTestCase):
