@@ -29,9 +29,9 @@ class TestRetrySleeper(unittest.TestCase):
 
 class TestKazooRetry(unittest.TestCase):
 
-    def _makeOne(self):
+    def _makeOne(self, **kw):
         from kazoo.retry import KazooRetry
-        return KazooRetry()
+        return KazooRetry(**kw)
 
     def test_connection_closed(self):
         from kazoo.exceptions import ConnectionClosedError
@@ -40,3 +40,11 @@ class TestKazooRetry(unittest.TestCase):
         def testit():
             raise ConnectionClosedError()
         self.assertRaises(ConnectionClosedError, retry, testit)
+
+    def test_session_expired(self):
+        from kazoo.exceptions import SessionExpiredError
+        retry = self._makeOne(max_tries=1)
+
+        def testit():
+            raise SessionExpiredError()
+        self.assertRaises(Exception, retry, testit)
