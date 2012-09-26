@@ -181,7 +181,7 @@ class KazooLockTests(KazooTestCase):
 
 class TestSemaphore(KazooTestCase):
     def setUp(self):
-        super(KazooLockTests, self).setUp()
+        super(TestSemaphore, self).setUp()
         self.lockpath = "/" + uuid.uuid4().hex
 
         self.condition = threading.Condition()
