@@ -190,35 +190,28 @@ class TestSemaphore(KazooTestCase):
         self.cancelled_threads = []
 
     def test_basic(self):
-        sem1 = self.client.Semaphore(self.lockpath, "one")
+        sem1 = self.client.Semaphore(self.lockpath)
         sem1.acquire()
         sem1.release()
 
     def test_lock_one(self):
-        lock_name = uuid.uuid4().hex
-        lock = self.client.Semaphore(self.lockpath, lock_name,
-                                     max_leases=1)
+        sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        started = threading.Event()
         event = threading.Event()
 
-        thread = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=(lock_name, lock, event))
+        sem1.acquire()
+
+        def sema_one():
+            started.set()
+            with self.client.Semaphore(self.lockpath, max_leases=1):
+                event.set()
+
+        thread = threading.Thread(target=sema_one, args=())
         thread.start()
+        started.wait()
 
-        lock2_name = uuid.uuid4().hex
-        anotherlock = self.client.Semaphore(self.lockpath, lock2_name)
+        self.assertFalse(event.is_set())
 
-        # wait for any contender to show up on the lock
-        wait(anotherlock.contenders)
-        eq_(anotherlock.contenders(), [lock_name])
-
-        with self.condition:
-            while self.active_thread != lock_name:
-                self.condition.wait()
-
-        # release the lock
-        event.set()
-
-        with self.condition:
-            while self.active_thread:
-                self.condition.wait()
-        self.released.wait()
+        sem1.release()
+        event.wait()
+        self.assert_(event.is_set())

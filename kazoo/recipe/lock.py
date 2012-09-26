@@ -310,6 +310,12 @@ class Semaphore(object):
         if not self.is_acquired:
             return False
 
-        self.client.delete(self.path + "/" + self.node)
+        self.client.delete(self.create_path)
         self.is_acquired = False
         return True
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
