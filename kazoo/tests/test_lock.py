@@ -177,3 +177,48 @@ class KazooLockTests(KazooTestCase):
         lock1.acquire()
         lock1.release()
         lock1.release()
+
+
+class TestSemaphore(KazooTestCase):
+    def setUp(self):
+        super(KazooLockTests, self).setUp()
+        self.lockpath = "/" + uuid.uuid4().hex
+
+        self.condition = threading.Condition()
+        self.released = threading.Event()
+        self.active_thread = None
+        self.cancelled_threads = []
+
+    def test_basic(self):
+        sem1 = self.client.Semaphore(self.lockpath, "one")
+        sem1.acquire()
+        sem1.release()
+
+    def test_lock_one(self):
+        lock_name = uuid.uuid4().hex
+        lock = self.client.Semaphore(self.lockpath, lock_name,
+                                     max_leases=1)
+        event = threading.Event()
+
+        thread = threading.Thread(target=self._thread_lock_acquire_til_event,
+            args=(lock_name, lock, event))
+        thread.start()
+
+        lock2_name = uuid.uuid4().hex
+        anotherlock = self.client.Semaphore(self.lockpath, lock2_name)
+
+        # wait for any contender to show up on the lock
+        wait(anotherlock.contenders)
+        eq_(anotherlock.contenders(), [lock_name])
+
+        with self.condition:
+            while self.active_thread != lock_name:
+                self.condition.wait()
+
+        # release the lock
+        event.set()
+
+        with self.condition:
+            while self.active_thread:
+                self.condition.wait()
+        self.released.wait()
