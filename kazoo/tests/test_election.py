@@ -59,7 +59,7 @@ class KazooElectionTests(KazooTestCase):
             self.leader_id = name
             self.condition.notify_all()
 
-        exit_event.wait()
+        exit_event.wait(45)
         if self.raise_exception:
             raise UniqueError("expected error in the leader function")
 
@@ -78,9 +78,14 @@ class KazooElectionTests(KazooTestCase):
                 elections[contender])
 
         # wait for a leader to be elected
+        times = 0
         with self.condition:
             while not self.leader_id:
-                self.condition.wait()
+                self.condition.wait(5)
+                times += 1
+                if times > 5:
+                    raise Exception("Still not a leader: lid: %s",
+                                    self.leader_id)
 
         election = self.client.Election(self.path)
 
@@ -101,7 +106,7 @@ class KazooElectionTests(KazooTestCase):
         self.exit_event.set()
         with self.condition:
             while self.leader_id == first_leader:
-                self.condition.wait()
+                self.condition.wait(45)
         eq_(self.leader_id, contenders[2])
         self._check_thread_error()
 
@@ -120,7 +125,7 @@ class KazooElectionTests(KazooTestCase):
         self.exit_event.set()
         with self.condition:
             while self.leader_id != first_leader:
-                self.condition.wait()
+                self.condition.wait(45)
         eq_(self.leader_id, first_leader)
         self._check_thread_error()
 
