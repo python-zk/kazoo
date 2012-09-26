@@ -5,7 +5,8 @@ import time
 from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
-    SessionExpiredError
+    SessionExpiredError,
+    OperationTimeoutError
 )
 
 log = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ class KazooRetry(object):
     exceptions"""
     RETRY_EXCEPTIONS = (
         ConnectionLoss,
+        OperationTimeoutError,
         ForceRetryError
     )
 
