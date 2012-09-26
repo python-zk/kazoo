@@ -314,6 +314,30 @@ class Semaphore(object):
         self.is_acquired = False
         return True
 
+    def lease_holders(self):
+        """Return an unordered list of the current lease holders
+
+        .. note::
+
+            If the lease holder did not set an identifier, it will
+            appear as a blank string.
+
+        """
+        # make sure our lease pool node exists
+        if not self.assured_path:
+            self.client.ensure_path(self.path)
+
+        children = self.client.get_children(self.path)
+
+        lease_holders = []
+        for child in children:
+            try:
+                data, stat = self.client.get(self.path + "/" + child)
+                lease_holders.append(data.decode('utf-8'))
+            except NoNodeError:  # pragma: nocover
+                pass
+        return lease_holders
+
     def __enter__(self):
         self.acquire()
 

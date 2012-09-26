@@ -215,3 +215,20 @@ class TestSemaphore(KazooTestCase):
         sem1.release()
         event.wait()
         self.assert_(event.is_set())
+
+    def test_holders(self):
+        started = threading.Event()
+        event = threading.Event()
+
+        def sema_one():
+            with self.client.Semaphore(self.lockpath, 'fred', max_leases=1):
+                started.set()
+                event.wait()
+
+        thread = threading.Thread(target=sema_one, args=())
+        thread.start()
+        started.wait()
+        sem1 = self.client.Semaphore(self.lockpath)
+        holders = sem1.lease_holders()
+        eq_(holders, ['fred'])
+        event.set()
