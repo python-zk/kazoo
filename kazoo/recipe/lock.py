@@ -16,6 +16,7 @@ import uuid
 from kazoo.retry import ForceRetryError
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import NoNodeError
+from kazoo.protocol.states import KazooState
 
 
 class Lock(object):
@@ -114,15 +115,16 @@ class Lock(object):
                 # node was removed
                 raise ForceRetryError()
 
-            #noinspection PySimplifyBooleanCheck
-            if our_index == 0:
-                # we have the lock
+            if self.acquired_lock(children, our_index):
                 return True
 
             # otherwise we are in the mix. watch predecessor and bide our time
             predecessor = self.path + "/" + children[our_index - 1]
             if self.client.exists(predecessor, self._watch_predecessor):
                 self.wake_event.wait()
+
+    def acquired_lock(self, children, index):
+        return index == 0
 
     def _watch_predecessor(self, event):
         self.wake_event.set()
@@ -195,3 +197,119 @@ class Lock(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
+
+
+class Semaphore(object):
+    """A Zookeeper-based Semaphore
+
+    This synchronization primitive operates in the same manner as the
+    Python threading version only uses the concept of leases to
+    indicate how many available leases are available for the lock.
+
+    """
+    def __init__(self, client, path, identifier=None, max_leases=1):
+        """Create a Kazoo Lock
+
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The semaphore path to use.
+        :param identifier: Name to use for this lock contender. This
+                           can be useful for querying to see who the
+                           current lock contenders are.
+        :param max_leases: The maximum amount of leases available for
+                           the semaphore.
+
+        """
+        # Implementation notes about how excessive thundering herd
+        # and watches are avoided
+        # - A node (lease pool) holds children for each lease in use
+        # - A lock is acquired for a process attempting to acquire a
+        #   lease. If a lease is available, the ephemeral node is
+        #   created in the lease pool and the lock is released.
+        # - Only the lock holder watches for children changes in the
+        #   lease pool
+        self.client = client
+        self.path = path
+
+        # some data is written to the node. this can be queried via
+        # contenders() to see who is contending for the lock
+        self.data = str(identifier or "").encode('utf-8')
+
+        self.max_leases = max_leases
+
+        self.wake_event = client.handler.event_object()
+
+        self.create_path = self.path + "/" + uuid.uuid4().hex
+        self.lock_path = path + '-' + '__lock__'
+        self.is_acquired = False
+        self.assured_path = False
+        self._session_expired = False
+
+    def acquire(self):
+        """Acquire the semaphore, blocking until acquired"""
+        try:
+            self.client.retry(self._inner_acquire)
+            self.is_acquired = True
+        except Exception:
+            # if we did ultimately fail, attempt to clean up
+            self._best_effort_cleanup()
+            raise
+
+    def _inner_acquire(self):
+        """Inner loop that runs from the top anytime a command hits a
+        retryable Zookeeper exception"""
+        self._session_expired = False
+        self.client.add_listener(self._watch_session)
+
+        if not self.assured_path:
+            self.client.ensure_path(self.path)
+
+        # Do we already have a lease?
+        if self.client.exists(self.create_path):
+            return True
+
+        with self.client.Lock(self.lock_path, self.data):
+            while True:
+                self.wake_event.clear()
+
+                if self._session_expired:
+                    raise ForceRetryError("Retry on session loss at top")
+
+                # Is there a lease free?
+                children = self.client.get_children(self.path,
+                                                    self._watch_lease_change)
+                if len(children) < self.max_leases:
+                    self.client.create(self.create_path, self.data,
+                                       ephemeral=True)
+                    return True
+                else:
+                    self.wake_event.wait()
+
+    def _watch_lease_change(self, event):
+        self.wake_event.set()
+
+    def _watch_session(self, state):
+        if state == KazooState.LOST:
+            self._session_expired = True
+            self.wake_event.set()
+
+            # Return true to de-register
+            return True
+
+    def _best_effort_cleanup(self):
+        try:
+            if self.client.exists(self.create_path):
+                self.client.delete(self.create_path)
+        except Exception:  # pragma: nocover
+            pass
+
+    def release(self):
+        """Release the lease immediately"""
+        return self.client.retry(self._inner_release)
+
+    def _inner_release(self):
+        if not self.is_acquired:
+            return False
+
+        self.client.delete(self.path + "/" + self.node)
+        self.is_acquired = False
+        return True

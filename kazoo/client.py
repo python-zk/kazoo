@@ -194,6 +194,7 @@ class KazooClient(object):
         from kazoo.recipe.barrier import DoubleBarrier
         from kazoo.recipe.election import Election
         from kazoo.recipe.lock import Lock
+        from kazoo.recipe.lock import Semaphore
         from kazoo.recipe.partitioner import SetPartitioner
         from kazoo.recipe.party import Party
         from kazoo.recipe.party import ShallowParty
@@ -208,6 +209,7 @@ class KazooClient(object):
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
         self.SetPartitioner = partial(SetPartitioner, self)
+        self.Semaphore = partial(Semaphore, self)
         self.ShallowParty = partial(ShallowParty, self)
 
     def _reset(self):
