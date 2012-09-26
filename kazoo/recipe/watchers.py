@@ -298,7 +298,7 @@ class PatientChildrenWatch(object):
                 self.children = self.client.retry(
                     self.client.get_children, self.path,
                     partial(self._children_watcher, async_result))
-                time.sleep(self.time_boundary)
+                self.client.handler.sleep_func(self.time_boundary)
 
                 if self.children_changed.is_set():
                     self.children_changed.clear()
