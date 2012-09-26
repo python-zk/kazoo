@@ -8,7 +8,7 @@ It's highly recommended to add a state listener with
 :attr:`~KazooState.LOST` and :attr:`~KazooState.SUSPENDED` state
 changes and re-act appropriately. In the event that a
 :attr:`~KazooState.LOST` state occurs, its certain that the lock
-has been lost.
+and/or the lease has been lost.
 
 """
 import uuid
@@ -22,7 +22,9 @@ from kazoo.protocol.states import KazooState
 class Lock(object):
     """Kazoo Basic Lock
 
-    Example usage with a :class:`~kazoo.client.KazooClient` instance::
+    Example usage with a :class:`~kazoo.client.KazooClient` instance:
+
+    .. code-block:: python
 
         zk = KazooClient()
         lock = zk.Lock("/lockpath", "my-identifier")
@@ -204,7 +206,24 @@ class Semaphore(object):
 
     This synchronization primitive operates in the same manner as the
     Python threading version only uses the concept of leases to
-    indicate how many available leases are available for the lock.
+    indicate how many available leases are available for the lock
+    rather than counting.
+
+    Example:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        semaphore = zk.Semaphore("/leasepath", "my-identifier")
+        with semaphore:  # blocks waiting for lock acquisition
+            # do something with the semaphore
+
+    .. warning::
+
+        This class does not make any guarantee's that the amount of
+        leases for a path is agreed-upon by the :class:`Semaphore`
+        objects using it. It is up to the developer to ensure that they
+        all have the same `max_leases` value.
 
     .. versionadded:: 0.6
         The Semaphore class.
