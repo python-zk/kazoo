@@ -253,8 +253,8 @@ class PatientChildrenWatch(object):
 
     Example::
 
-        watcher = ChildrenWatcher(client, '/some/path',
-                                  time_boundary=5)
+        watcher = PatientChildrenWatch(client, '/some/path',
+                                       time_boundary=5)
         async_object = watcher.start()
 
         # Blocks until the children have not changed for time boundary
