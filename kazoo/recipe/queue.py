@@ -5,7 +5,10 @@ A Zookeeper based queue implementation.
 
 
 class Queue(object):
-    """A simple queue."""
+    """A distributed queue."""
+
+    prefix = "entry-"
+
     def __init__(self, client, path):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -28,3 +31,20 @@ class Queue(object):
         return stat.children_count
 
     __len__ = qsize
+
+    def get(self):
+        """Get and remove an item from the queue."""
+        self._ensure_parent()
+        children = sorted(self.client.get_children(self.path))
+        name = children.pop(0)
+        data, stat = self.client.get(self.path + "/" + name)
+        self.client.delete(self.path + "/" + name)
+        return data
+
+    def put(self, item):
+        """Put an item into the queue.
+        :param item: Byte string to put into the queue.
+        """
+        self._ensure_parent()
+        self.client.create(self.path + "/" + self.prefix, item,
+            sequence=True)

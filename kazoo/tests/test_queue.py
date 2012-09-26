@@ -16,3 +16,15 @@ class KazooQueueTests(KazooTestCase):
 
         eq_(len(queue), 0)
         eq_(queue.qsize(), 0)
+
+        queue.put(b"one")
+        queue.put(b"two")
+        queue.put(b"three")
+
+        eq_(len(queue), 3)
+
+        eq_(queue.get(), b"one")
+        eq_(queue.get(), b"two")
+        eq_(queue.get(), b"three")
+
+        eq_(len(queue), 0)
