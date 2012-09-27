@@ -8,7 +8,13 @@ from kazoo.retry import ForceRetryError
 
 
 class Queue(object):
-    """A distributed queue."""
+    """A distributed queue.
+
+    This queue does not offer reliable consumption. An entry is removed
+    from the queue prior to being processed. So if an error occurs, the
+    consumer has to re-queue the item or it will be lost.
+
+    """
 
     prefix = "entry-"
 
