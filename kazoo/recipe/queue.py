@@ -44,8 +44,7 @@ class Queue(object):
     def get(self):
         """Get and remove an item from the queue."""
         self._ensure_parent()
-        children = self.client.retry(self.client.get_children,
-            self.path, self._children_watcher)
+        children = self.client.retry(self.client.get_children, self.path)
         children = list(sorted(children))
         return self.client.retry(self._inner_get, children)
 
@@ -67,9 +66,6 @@ class Queue(object):
             # by the other process
             raise ForceRetryError()
         return data
-
-    def _children_watcher(self, event):
-        pass
 
     def put(self, value):
         """Put an item into the queue.
