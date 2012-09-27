@@ -196,6 +196,7 @@ class TestSemaphore(KazooTestCase):
 
     def test_lock_one(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, max_leases=1)
         started = threading.Event()
         event = threading.Event()
 
@@ -203,7 +204,7 @@ class TestSemaphore(KazooTestCase):
 
         def sema_one():
             started.set()
-            with self.client.Semaphore(self.lockpath, max_leases=1):
+            with sem2:
                 event.set()
 
         thread = threading.Thread(target=sema_one, args=())
@@ -232,3 +233,77 @@ class TestSemaphore(KazooTestCase):
         holders = sem1.lease_holders()
         eq_(holders, ['fred'])
         event.set()
+
+    def test_semaphore_cancel(self):
+        sem1 = self.client.Semaphore(self.lockpath, 'fred', max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, 'george', max_leases=1)
+        sem1.acquire()
+        started = threading.Event()
+        event = threading.Event()
+
+        def sema_one():
+            started.set()
+            try:
+                with sem2:
+                    started.set()
+            except CancelledError:
+                event.set()
+
+        thread = threading.Thread(target=sema_one, args=())
+        thread.start()
+        started.wait()
+        eq_(sem1.lease_holders(), ['fred'])
+        eq_(event.is_set(), False)
+        sem2.cancel()
+        event.wait()
+        eq_(event.is_set(), True)
+
+    def test_multiple_acquire_and_release(self):
+        sem1 = self.client.Semaphore(self.lockpath, 'fred', max_leases=1)
+        sem1.acquire()
+        sem1.acquire()
+
+        eq_(True, sem1.release())
+        eq_(False, sem1.release())
+
+    def test_handle_session_loss(self):
+        expire_semaphore = self.client.Semaphore(self.lockpath, 'fred',
+                                                 max_leases=1)
+
+        client = self._get_client()
+        client.start()
+        lh_semaphore = client.Semaphore(self.lockpath, 'george', max_leases=1)
+        lh_semaphore.acquire()
+
+        started = threading.Event()
+        event = threading.Event()
+        event2 = threading.Event()
+
+        def sema_one():
+            started.set()
+            with expire_semaphore:
+                event.set()
+                event2.wait()
+
+        thread = threading.Thread(target=sema_one, args=())
+        thread.start()
+
+        client.stop()
+        started.wait()
+        eq_(lh_semaphore.lease_holders(), ['george'])
+
+        # Fired in a separate thread to make sure we can see the effect
+        def expire():
+            self.expire_session()
+        thread = threading.Thread(target=expire, args=())
+        thread.start()
+
+        expire_semaphore.wake_event.wait()
+        lh_semaphore.release()
+        lh_semaphore.stop()
+
+        event.wait(5)
+        eq_(expire_semaphore.lease_holders(), ['fred'])
+        event.clear()
+        event2.set()
+        event.wait()

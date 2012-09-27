@@ -262,7 +262,13 @@ class Semaphore(object):
         self.lock_path = path + '-' + '__lock__'
         self.is_acquired = False
         self.assured_path = False
+        self.cancelled = False
         self._session_expired = False
+
+    def cancel(self):
+        """Cancel a pending lock acquire"""
+        self.cancelled = True
+        self.wake_event.set()
 
     def acquire(self):
         """Acquire the semaphore, blocking until acquired."""
@@ -272,6 +278,7 @@ class Semaphore(object):
         except Exception:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
+            self.cancelled = False
             raise
 
     def _inner_acquire(self):
@@ -293,6 +300,9 @@ class Semaphore(object):
 
                 if self._session_expired:
                     raise ForceRetryError("Retry on session loss at top")
+
+                if self.cancelled:
+                    raise CancelledError("Semaphore cancelled")
 
                 # Is there a lease free?
                 children = self.client.get_children(self.path,
@@ -317,8 +327,7 @@ class Semaphore(object):
 
     def _best_effort_cleanup(self):
         try:
-            if self.client.exists(self.create_path):
-                self.client.delete(self.create_path)
+            self.client.delete(self.create_path)
         except Exception:  # pragma: nocover
             pass
 
