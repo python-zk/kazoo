@@ -35,11 +35,18 @@ class Queue(object):
     def get(self):
         """Get and remove an item from the queue."""
         self._ensure_parent()
-        children = sorted(self.client.get_children(self.path))
+        children = self.client.retry(self.client.get_children,
+            self.path, self._children_watcher)
+        children = sorted(children)
+        if not children:
+            return None
         name = children.pop(0)
         data, stat = self.client.get(self.path + "/" + name)
         self.client.delete(self.path + "/" + name)
         return data
+
+    def _children_watcher(self, event):
+        pass
 
     def put(self, value):
         """Put an item into the queue.

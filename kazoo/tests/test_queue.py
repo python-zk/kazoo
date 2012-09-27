@@ -15,20 +15,21 @@ class KazooQueueTests(KazooTestCase):
         queue = self.client.Queue(self.path)
         self.assertRaises(TypeError, queue.put, {})
 
-    def test_queue(self):
+    def test_empty_queue(self):
         queue = self.client.Queue(self.path)
-
         eq_(len(queue), 0)
         eq_(queue.qsize(), 0)
+        self.assertTrue(queue.get() is None)
+        eq_(len(queue), 0)
 
+    def test_queue(self):
+        queue = self.client.Queue(self.path)
         queue.put(b"one")
         queue.put(b"two")
         queue.put(b"three")
-
         eq_(len(queue), 3)
 
         eq_(queue.get(), b"one")
         eq_(queue.get(), b"two")
         eq_(queue.get(), b"three")
-
         eq_(len(queue), 0)
