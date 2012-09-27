@@ -7,6 +7,9 @@ Changelog
 API Changes
 ***********
 
+- Node paths are assumed to be Unicode objects. Under Python 2 pure-ascii
+  strings will also be accepted. Node values are considered bytes. The byte
+  type is an alias for `str` under Python 2.
 - New KeeperState.CONNECTED_RO state for Zookeeper servers connected in
   read-only mode.
 - New NotReadOnlyCallError exception when issuing a write change against a
@@ -15,11 +18,11 @@ API Changes
 Features
 ********
 
-- Add new Semaphore recipe.
+- Add support for Python 3.2, 3.3 and PyPy (only for the threading handler).
+- Handles connecting to Zookeeper 3.4+ read-only servers.
 - Automatic background scanning for a Read/Write server when connected to a
   server in read-only mode.
-- Handles connecting to Zookeeper 3.4+ read-only servers.
-- Add support for Python 3.2, 3.3 and PyPy (only for the threading handler).
+- Add new Semaphore recipe.
 - Add a new `retry_max_delay` argument to the client and by default limit the
   retry delay to at most an hour regardless of exponential backoff settings.
 - Add new `randomize_hosts` argument to `KazooClient`, allowing one to disable
