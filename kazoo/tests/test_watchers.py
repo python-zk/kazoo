@@ -37,7 +37,7 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
-        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -79,7 +79,7 @@ class KazooDataWatcherTests(KazooTestCase):
             data.pop()
             data.append(d)
             update.set()
-        self.client.DataWatch(self.path, changed, allow_node_does_not_exist=True)
+        self.client.DataWatch(self.path, changed, allow_missing_node=True)
 
         update.wait()
         eq_(data, [None])
@@ -114,7 +114,7 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
-        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -167,7 +167,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         fail_through = []
 
-        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -204,7 +204,7 @@ class KazooDataWatcherTests(KazooTestCase):
     def test_no_such_node2(self):
         args = []
 
-        @self.client.DataWatch("/some/path", allow_node_does_not_exist=True)
+        @self.client.DataWatch("/some/path", allow_missing_node=True)
         def changed(d, stat):
             args.extend([d, stat])
 
@@ -222,11 +222,11 @@ class KazooDataWatcherTests(KazooTestCase):
 
         counter += 1
         self.client.set(self.path, b'asdfasdf')
-        
+
     def test_bad_watch_func2(self):
         counter = 0
 
-        @self.client.DataWatch(self.path, allow_node_does_not_exist=True)
+        @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             if counter > 0:
                 raise Exception("oops")
@@ -234,7 +234,7 @@ class KazooDataWatcherTests(KazooTestCase):
         raises(Exception)(changed)
 
         counter += 1
-        self.client.set(self.path, b'asdfasdf')        
+        self.client.set(self.path, b'asdfasdf')
 
 
 class KazooChildrenWatcherTests(KazooTestCase):

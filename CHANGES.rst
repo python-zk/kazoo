@@ -4,6 +4,11 @@ Changelog
 0.7 (unreleased)
 ----------------
 
+Features
+********
+
+- DataWatch now has a `allow_missing_node` setting that allows a watch to be
+  set on a node that doesn't exist when the DataWatch is created.
 
 0.6 (2012-09-27)
 ----------------
