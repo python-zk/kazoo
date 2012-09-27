@@ -41,12 +41,12 @@ class Queue(object):
         self.client.delete(self.path + "/" + name)
         return data
 
-    def put(self, item):
+    def put(self, value):
         """Put an item into the queue.
-        :param item: Byte string to put into the queue.
+        :param value: Byte string to put into the queue.
         """
-        if not isinstance(item, bytes):
-            raise TypeError("item must be a byte string")
+        if not isinstance(value, bytes):
+            raise TypeError("value must be a byte string")
         self._ensure_parent()
-        self.client.create(self.path + "/" + self.prefix, item,
+        self.client.create(self.path + "/" + self.prefix, value,
             sequence=True)
