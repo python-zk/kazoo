@@ -81,6 +81,27 @@ class Queue(object):
 class PriorityQueue(Queue):
     """A distributed priority queue.
 
-    Works the same way as the :class:`Queue` but expands the `put`
+    Works the same way as the :class:`~Queue` but expands the `put`
     signature by an optional priority argument.
+
     """
+
+    def put(self, value, priority=1000):
+        """Put an item into the queue.
+
+        :param value: Byte string to put into the queue.
+        :param priority:
+            An optional priority as an integer with at most 4 digits.
+            Lower values signify higher priority.
+        """
+        if not isinstance(value, bytes):
+            raise TypeError("value must be a byte string")
+        if not isinstance(priority, int):
+            raise TypeError("priority must be an int")
+        elif priority < 0 or priority > 9999:
+            raise ValueError("priority must be between 0 and 9999")
+        self._ensure_parent()
+        path = '{path}/{prefix}{priority:04d}-'.format(
+            path=self.path, prefix=self.prefix, priority=priority)
+        self.client.create(path, value,
+            sequence=True)
