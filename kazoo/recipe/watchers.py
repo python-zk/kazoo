@@ -30,15 +30,26 @@ class DataWatch(object):
             print "Version is %s" % stat.version
 
         # Above function is called immediately and prints
+        
+        # If allow_node_does_not_exist=True then 'data'
+        # will always be None.
 
-    In the event the node does not exist, the function will be called
-    with ``(None, None)`` and will not be called again. This should be
+    If allow_node_does_not_exist=False in __init__, then in the 
+    event the node does not exist, the function will be called with 
+    ``(None, None)`` and will not be called again. This should be
     considered the last function call. This behavior will also occur
     if the node is deleted.
+    
+    If allow_node_does_not_exist=True in __init__, then in the
+    event the node does not exist, the function will be called with
+    ``(None, None)`` and it will later be called again if the node is
+    recreated. In the event the node exists and is later deleted, the
+    function will be called with ``(None, None)`` and it will later 
+    be called if the node is recreated.
 
     """
     def __init__(self, client, path, func=None,
-                 allow_session_lost=True):
+                 allow_session_lost=True, allow_node_does_not_exist=False):
         """Create a data watcher for a path
 
         :param client: A zookeeper client.
@@ -65,6 +76,7 @@ class DataWatch(object):
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
+        self._allow_node_does_not_exist = allow_node_does_not_exist        
         self._run_lock = client.handler.lock_object()
         self._prior_data = ()
 
@@ -98,9 +110,27 @@ class DataWatch(object):
                 return
 
             try:
-                data, stat = self._client.retry(self._client.get,
-                                                self._path, self._watcher)
+                if self._allow_node_does_not_exist:
+                    data = None
+                    
+                    # This will set 'stat' to None if the node does not yet 
+                    # exist.                    
+                    stat = self._client.retry(self._client.exists,
+                                               self._path, self._watcher)
+                    if stat is None:  
+                        # Note that we do not set _stopped to True, as
+                        # we do below. This is because we are allowing
+                        # the watched node to not exist, so we will
+                        # call func again later if the node is recreated.
+                        self._func(None, None)
+                        return
+                else:
+                    data, stat = self._client.retry(self._client.get,
+                                                    self._path, self._watcher)
             except NoNodeError:
+                # This can only happen if _allow_node_does_not_exist
+                # is False, because when it is True we use the
+                # ZK 'retry' method, which can't have this exception.
                 self._stopped = True
                 self._func(None, None)
                 return
@@ -108,12 +138,19 @@ class DataWatch(object):
             if not self._watch_established:
                 self._watch_established = True
 
-                # If we already had data, and it hasn't changed, this is a
-                # session re-establishment and nothing changed, don't call the
-                # func
-                if self._prior_data and \
-                   self._prior_data[1].mzxid == stat.mzxid:
-                    return
+                # If we had data and it hasn't changed, this is a session
+                # re-establishment and nothing changed, so don't call the func
+                if self._prior_data:
+                    # If the prior session had no data, then it was
+                    # watching a node that did not exist.
+                    if self._prior_data[1] is None:
+                        # If the current session also has no data, then don't
+                        # call the func, since nothing has changed.
+                        if stat is None:
+                            return
+                    elif stat is not None and \
+                         self._prior_data[1].mzxid == stat.mzxid:
+                        return
 
             self._prior_data = data, stat
 
