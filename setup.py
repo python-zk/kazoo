@@ -61,7 +61,7 @@ setup(
     ],
     keywords='zookeeper lock leader configuration',
     author="Nimbus team, Zope Corporation, Mozilla Foundation",
-    author_email="",
+    author_email="user@zookeeper.apache.org",
     url="http://kazoo.readthedocs.org/",
     license="Apache 2.0",
     packages=find_packages(),
