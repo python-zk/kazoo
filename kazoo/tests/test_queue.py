@@ -36,3 +36,10 @@ class KazooQueueTests(KazooTestCase, BaseQueueTests):
     def _makeOne(self):
         path = "/" + uuid.uuid4().hex
         return self.client.Queue(path)
+
+
+class KazooPriorityQueueTests(KazooTestCase, BaseQueueTests):
+
+    def _makeOne(self):
+        path = "/" + uuid.uuid4().hex
+        return self.client.PriorityQueue(path)

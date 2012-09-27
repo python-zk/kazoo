@@ -76,3 +76,11 @@ class Queue(object):
         self._ensure_parent()
         self.client.create(self.path + "/" + self.prefix, value,
             sequence=True)
+
+
+class PriorityQueue(Queue):
+    """A distributed priority queue.
+
+    Works the same way as the :class:`Queue` but expands the `put`
+    signature by an optional priority argument.
+    """
