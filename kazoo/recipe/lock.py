@@ -352,9 +352,8 @@ class Semaphore(object):
             appear as a blank string.
 
         """
-        # make sure our lease pool node exists
-        if not self.assured_path:
-            self.client.ensure_path(self.path)
+        if not self.client.exists(self.path):
+            return []
 
         children = self.client.get_children(self.path)
 
