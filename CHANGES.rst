@@ -31,6 +31,7 @@ Bug Handling
 - Fix bug with locks not handling intermediary lock contenders disappearing.
 - Fix bug with set_data type check failing to catch unicode values.
 - Fix bug with gevent 0.13.x backport of peekable queue.
+- Fix PatientChildrenWatch to use handler specific sleep function.
 
 0.5 (9/6/2012)
 --------------
