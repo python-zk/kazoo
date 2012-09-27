@@ -144,13 +144,13 @@ class ConnectionHandler(object):
         self.handler.spawn(self.writer)
 
     def stop(self, timeout=None):
-        """Ensure the writer has stopped, wait to see if it does"""
+        """Ensure the writer has stopped, wait to see if it does."""
         self.writer_stopped.wait(timeout)
         return self.writer_stopped.is_set()
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
-        server in the list, and apply a back-off between attempts"""
+        server in the list, and apply a back-off between attempts."""
         return RWPinger(self.client.hosts, self.handler.socket)
 
     def _read_header(self, timeout):

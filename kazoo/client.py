@@ -100,11 +100,11 @@ class KazooClient(object):
             A list of authentication credentials to use for the
             connection. Should be a list of (scheme, credential)
             tuples as :meth:`add_auth` takes.
+        :param read_only: Allow connections to read only servers.
         :param randomize_hosts: By default randomize host selection.
 
         Retry parameters will be used for connection establishment
         attempts and reconnects.
-
 
         Basic Example:
 
@@ -1146,7 +1146,7 @@ class TransactionRequest(object):
                   version))
 
     def commit_async(self):
-        """Commit the transaction asynchronously
+        """Commit the transaction asynchronously.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
@@ -1158,7 +1158,7 @@ class TransactionRequest(object):
         return async_object
 
     def commit(self):
-        """Commit the transaction
+        """Commit the transaction.
 
         :returns: A list of the results for each operation in the
                   transaction.
@@ -1170,7 +1170,7 @@ class TransactionRequest(object):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        """Commit and cleanup accumulated transaction data"""
+        """Commit and cleanup accumulated transaction data."""
         if not exc_type:
             self.commit()
 

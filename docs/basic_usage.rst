@@ -131,7 +131,6 @@ to scan for other nodes that are read-write.
 
 .. code-block:: python
 
-
     from kazoo.client import KazooClient
 
     zk = KazooClient(read_only=True)
@@ -405,7 +404,6 @@ a list of the success/failure results for each command in the
 transaction.
 
 .. code-block:: python
-    :linenos:
 
     transaction = zk.transaction()
     transaction.check('/node/a', version=3)
