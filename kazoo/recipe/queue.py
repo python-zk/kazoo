@@ -45,6 +45,8 @@ class Queue(object):
         """Put an item into the queue.
         :param item: Byte string to put into the queue.
         """
+        if not isinstance(item, bytes):
+            raise TypeError("item must be a byte string")
         self._ensure_parent()
         self.client.create(self.path + "/" + self.prefix, item,
             sequence=True)

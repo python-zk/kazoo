@@ -11,6 +11,10 @@ class KazooQueueTests(KazooTestCase):
         super(KazooQueueTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
 
+    def test_queue_validation(self):
+        queue = self.client.Queue(self.path)
+        self.assertRaises(TypeError, queue.put, {})
+
     def test_queue(self):
         queue = self.client.Queue(self.path)
 
