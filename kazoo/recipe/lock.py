@@ -233,9 +233,7 @@ class Semaphore(object):
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "").encode('utf-8')
-
         self.max_leases = max_leases
-
         self.wake_event = client.handler.event_object()
 
         self.create_path = self.path + "/" + uuid.uuid4().hex
@@ -245,7 +243,7 @@ class Semaphore(object):
         self._session_expired = False
 
     def acquire(self):
-        """Acquire the semaphore, blocking until acquired"""
+        """Acquire the semaphore, blocking until acquired."""
         try:
             self.client.retry(self._inner_acquire)
             self.is_acquired = True
@@ -256,7 +254,7 @@ class Semaphore(object):
 
     def _inner_acquire(self):
         """Inner loop that runs from the top anytime a command hits a
-        retryable Zookeeper exception"""
+        retryable Zookeeper exception."""
         self._session_expired = False
         self.client.add_listener(self._watch_session)
 
@@ -303,7 +301,7 @@ class Semaphore(object):
             pass
 
     def release(self):
-        """Release the lease immediately"""
+        """Release the lease immediately."""
         return self.client.retry(self._inner_release)
 
     def _inner_release(self):
@@ -315,7 +313,7 @@ class Semaphore(object):
         return True
 
     def lease_holders(self):
-        """Return an unordered list of the current lease holders
+        """Return an unordered list of the current lease holders.
 
         .. note::
 
