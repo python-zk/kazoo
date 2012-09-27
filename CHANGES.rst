@@ -36,8 +36,8 @@ Bug Handling
 - Fix bug with gevent 0.13.x backport of peekable queue.
 - Fix PatientChildrenWatch to use handler specific sleep function.
 
-0.5 (9/6/2012)
---------------
+0.5 (2012-09-06)
+----------------
 
 Skipping a version to reflect the magnitude of the change. Kazoo is now a pure
 Python client with no C bindings. This release should run without a problem
@@ -89,8 +89,8 @@ API Changes
   will raise a TypeError.
 
 
-0.3 (8/23/2012)
----------------
+0.3 (2012-08-23)
+----------------
 
 API Changes
 ***********
@@ -112,8 +112,8 @@ Bug Handling
 - Fixed bug with client reconnection looping indefinitely using an expired
   session id.
 
-0.2 (8/12/2012)
----------------
+0.2 (2012-08-12)
+----------------
 
 Documentation
 *************
@@ -163,8 +163,8 @@ Recipes
 
 - Added Barrier and DoubleBarrier implementation.
 
-0.2b1 (7/27/2012)
------------------
+0.2b1 (2012-07-27)
+------------------
 
 Bug Handling
 ************
