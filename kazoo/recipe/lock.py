@@ -206,6 +206,9 @@ class Semaphore(object):
     Python threading version only uses the concept of leases to
     indicate how many available leases are available for the lock.
 
+    .. versionadded:: 0.6
+        The Semaphore class.
+
     """
     def __init__(self, client, path, identifier=None, max_leases=1):
         """Create a Kazoo Lock
