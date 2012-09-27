@@ -14,7 +14,6 @@ class BaseQueueTests(object):
     def test_empty_queue(self):
         queue = self._makeOne()
         eq_(len(queue), 0)
-        eq_(queue.qsize(), 0)
         self.assertTrue(queue.get() is None)
         eq_(len(queue), 0)
 

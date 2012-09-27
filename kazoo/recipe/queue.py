@@ -33,13 +33,11 @@ class Queue(object):
             self.client.ensure_path(self.path)
             self.ensured_path = True
 
-    def qsize(self):
+    def __len__(self):
         """Return queue size."""
         self._ensure_parent()
         _, stat = self.client.retry(self.client.get, self.path)
         return stat.children_count
-
-    __len__ = qsize
 
     def get(self):
         """Get and remove an item from the queue."""
