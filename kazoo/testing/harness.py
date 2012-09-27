@@ -83,19 +83,28 @@ class KazooTestHarness(object):
         client_id = client_id or self.client.client_id
 
         lost = threading.Event()
+        safe = threading.Event()
 
         def watch_loss(state):
             if state == KazooState.LOST:
                 lost.set()
+            if lost.is_set() and state == KazooState.CONNECTED:
+                safe.set()
                 return True
 
         self.client.add_listener(watch_loss)
 
-        client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
-        client.start()
-        client.stop()
-        self.client.get_async('/')
-        lost.wait(45)
+        # Sometimes we have to do this a few times
+        attempts = 0
+        while attempts < 5 and not lost.is_set():
+            client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
+            client.start()
+            client.stop()
+            lost.wait(5)
+            attempts += 1
+        # Wait for the reconnect now
+        safe.wait(15)
+        self.client.retry(self.client.get_async, '/')
 
     def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`
