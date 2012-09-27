@@ -103,5 +103,4 @@ class PriorityQueue(Queue):
         self._ensure_parent()
         path = '{path}/{prefix}{priority:04d}-'.format(
             path=self.path, prefix=self.prefix, priority=priority)
-        self.client.create(path, value,
-            sequence=True)
+        self.client.create(path, value, sequence=True)
