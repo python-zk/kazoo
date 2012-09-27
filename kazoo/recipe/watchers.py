@@ -168,7 +168,7 @@ class DataWatch(object):
         self._get_data()
 
     def _session_watcher(self, state):
-        if state == KazooState.LOST:
+        if state in (KazooState.LOST, KazooState.SUSPENDED):
             self._watch_established = False
         elif state == KazooState.CONNECTED and \
              not self._watch_established and not self._stopped:
@@ -276,7 +276,7 @@ class ChildrenWatch(object):
         self._get_children()
 
     def _session_watcher(self, state):
-        if state == KazooState.LOST:
+        if state in (KazooState.LOST, KazooState.SUSPENDED):
             self._watch_established = False
         elif state == KazooState.CONNECTED and \
              not self._watch_established and not self._stopped:
