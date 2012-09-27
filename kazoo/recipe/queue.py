@@ -4,6 +4,7 @@ A Zookeeper based queue implementation.
 """
 
 from kazoo.exceptions import NoNodeError
+from kazoo.retry import ForceRetryError
 
 
 class Queue(object):
@@ -39,21 +40,26 @@ class Queue(object):
         self._ensure_parent()
         children = self.client.retry(self.client.get_children,
             self.path, self._children_watcher)
-        children = sorted(children)
+        children = list(sorted(children))
+        return self.client.retry(self._inner_get, children)
+
+    def _inner_get(self, children):
         if not children:
             return None
         name = children.pop(0)
         try:
             data, stat = self.client.get(self.path + "/" + name)
         except NoNodeError:  # pragma: nocover
-            return None
+            # the first node has vanished in the meantime, try to
+            # get another one
+            raise ForceRetryError()
         try:
             self.client.delete(self.path + "/" + name)
         except NoNodeError:  # pragma: nocover
             # we were able to get the data but someone else has removed
             # the node in the meantime. consider the item as processed
             # by the other process
-            return None
+            raise ForceRetryError()
         return data
 
     def _children_watcher(self, event):
