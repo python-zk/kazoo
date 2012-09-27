@@ -15,6 +15,7 @@ API Changes
 Features
 ********
 
+- Add new Semaphore recipe.
 - Automatic background scanning for a Read/Write server when connected to a
   server in read-only mode.
 - Handles connecting to Zookeeper 3.4+ read-only servers.
