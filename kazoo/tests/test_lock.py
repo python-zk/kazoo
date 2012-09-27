@@ -288,22 +288,24 @@ class TestSemaphore(KazooTestCase):
         thread = threading.Thread(target=sema_one, args=())
         thread.start()
 
-        client.stop()
         started.wait()
         eq_(lh_semaphore.lease_holders(), ['george'])
 
         # Fired in a separate thread to make sure we can see the effect
+        expired = threading.Event()
+
         def expire():
             self.expire_session()
+            expired.set()
+
         thread = threading.Thread(target=expire, args=())
         thread.start()
-
         expire_semaphore.wake_event.wait()
+        expired.wait()
+
         lh_semaphore.release()
-        lh_semaphore.stop()
+        client.stop()
 
         event.wait(5)
         eq_(expire_semaphore.lease_holders(), ['fred'])
-        event.clear()
         event2.set()
-        event.wait()
