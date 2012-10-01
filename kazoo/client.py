@@ -198,7 +198,6 @@ class KazooClient(object):
         from kazoo.recipe.partitioner import SetPartitioner
         from kazoo.recipe.party import Party
         from kazoo.recipe.party import ShallowParty
-        from kazoo.recipe.queue import PriorityQueue
         from kazoo.recipe.queue import Queue
         from kazoo.recipe.watchers import ChildrenWatch
         from kazoo.recipe.watchers import DataWatch
@@ -210,7 +209,6 @@ class KazooClient(object):
         self.Election = partial(Election, self)
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
-        self.PriorityQueue = partial(PriorityQueue, self)
         self.Queue = partial(Queue, self)
         self.SetPartitioner = partial(SetPartitioner, self)
         self.Semaphore = partial(Semaphore, self)

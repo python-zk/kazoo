@@ -5,11 +5,19 @@ from nose.tools import eq_
 from kazoo.testing import KazooTestCase
 
 
-class BaseQueueTests(object):
+class KazooQueueTests(KazooTestCase):
+
+    def _makeOne(self):
+        path = "/" + uuid.uuid4().hex
+        return self.client.Queue(path)
 
     def test_queue_validation(self):
         queue = self._makeOne()
         self.assertRaises(TypeError, queue.put, {})
+        self.assertRaises(TypeError, queue.put, b"one", b"100")
+        self.assertRaises(TypeError, queue.put, b"one", 10.0)
+        self.assertRaises(ValueError, queue.put, b"one", -100)
+        self.assertRaises(ValueError, queue.put, b"one", 100000)
 
     def test_empty_queue(self):
         queue = self._makeOne()
@@ -29,30 +37,9 @@ class BaseQueueTests(object):
         eq_(queue.get(), b"three")
         eq_(len(queue), 0)
 
-
-class KazooQueueTests(KazooTestCase, BaseQueueTests):
-
-    def _makeOne(self):
-        path = "/" + uuid.uuid4().hex
-        return self.client.Queue(path)
-
-
-class KazooPriorityQueueTests(KazooTestCase, BaseQueueTests):
-
-    def _makeOne(self):
-        path = "/" + uuid.uuid4().hex
-        return self.client.PriorityQueue(path)
-
-    def test_priority_validation(self):
-        queue = self._makeOne()
-        self.assertRaises(TypeError, queue.put, b"one", b"100")
-        self.assertRaises(TypeError, queue.put, b"one", 10.0)
-        self.assertRaises(ValueError, queue.put, b"one", -100)
-        self.assertRaises(ValueError, queue.put, b"one", 100000)
-
     def test_priority(self):
         queue = self._makeOne()
-        queue.put(b"four", priority=1001)
+        queue.put(b"four", priority=101)
         queue.put(b"one", priority=0)
         queue.put(b"two", priority=0)
         queue.put(b"three", priority=10)
