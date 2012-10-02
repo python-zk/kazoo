@@ -1,7 +1,7 @@
 .. _counter_module:
 
 :mod:`kazoo.recipe.counter`
--------------------------
+---------------------------
 
 .. automodule:: kazoo.recipe.counter
 
