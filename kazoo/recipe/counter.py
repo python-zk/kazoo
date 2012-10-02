@@ -82,10 +82,8 @@ class Counter(object):
 
     def __add__(self, value):
         """Add value to counter."""
-        self._change(value)
-        return self
+        return self._change(value)
 
     def __sub__(self, value):
         """Subtract value from counter."""
-        self._change(-value)
-        return self
+        return self._change(-value)
