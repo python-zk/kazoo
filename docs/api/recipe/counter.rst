@@ -5,7 +5,7 @@
 
 .. automodule:: kazoo.recipe.counter
 
-.. versionadded:: 0.6
+.. versionadded:: 0.7
     The Counter class.
 
 Public API
