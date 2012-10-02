@@ -7,6 +7,18 @@ from kazoo.retry import ForceRetryError
 class Counter(object):
     """Kazoo Counter
 
+    A shared counter of either int or float values. Changes to the
+    counter are done atomically. The general retry policy is used to
+    retry operations if concurrent changes are detected.
+
+    The data is marshaled using `repr(value)` and converted back using
+    `type(counter.default)(value)` both using an ascii encoding. As
+    such other data types might be used for the counter value.
+
+    Counter changes can raise
+    :class:`~kazoo.exceptions.BadVersionError` if the retry policy
+    wasn't able to apply a change.
+
     Example usage:
 
     .. code-block:: python
@@ -15,11 +27,11 @@ class Counter(object):
         counter = zk.Counter("/int")
         counter += 2
         counter -= 1
-        print(counter.value)
+        counter.value == 1
 
         counter = zk.Counter("/float", default=1.0)
         counter += 2.0
-        print(counter.value)
+        counter.value == 3.0
 
     """
     def __init__(self, client, path, default=0):
@@ -38,7 +50,7 @@ class Counter(object):
 
     def _ensure_node(self):
         if not self._ensured_path:
-            # make sure our parent node exists
+            # make sure our node exists
             self.client.ensure_path(self.path)
             self._ensured_path = True
 
@@ -69,9 +81,11 @@ class Counter(object):
             raise ForceRetryError()
 
     def __add__(self, value):
+        """Add value to counter."""
         self._change(value)
         return self
 
     def __sub__(self, value):
+        """Subtract value from counter."""
         self._change(-value)
         return self
