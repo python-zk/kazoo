@@ -34,6 +34,8 @@ class TestRetrySleeper(unittest.TestCase):
         for i in range(10):
             retry.increment()
         self.assertTrue(retry._cur_delay < 4000, retry._cur_delay)
+        # gevent's sleep function is picky about the type
+        eq_(type(retry._cur_delay), float)
 
 
 class TestKazooRetry(unittest.TestCase):

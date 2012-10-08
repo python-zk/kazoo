@@ -38,7 +38,7 @@ class RetrySleeper(object):
         self.delay = delay
         self.backoff = backoff
         self.max_jitter = int(max_jitter * 100)
-        self.max_delay = max_delay
+        self.max_delay = float(max_delay)
         self._attempts = 0
         self._cur_delay = delay
 

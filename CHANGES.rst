@@ -14,6 +14,7 @@ Features
 Bug Handling
 ************
 
+- Issue #15 fixed again: Force sleep delay to be a float to appease gevent.
 - Issue #29 fixed: DataWatch and ChildrenWatch properly re-register their
   watches on server disconnect.
 
