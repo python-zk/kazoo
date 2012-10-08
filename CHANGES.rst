@@ -10,6 +10,7 @@ Features
 - DataWatch now has a `allow_missing_node` setting that allows a watch to be
   set on a node that doesn't exist when the DataWatch is created.
 - Add new Queue recipe, with optional priority support.
+- Add new Counter recipe.
 
 Bug Handling
 ************
