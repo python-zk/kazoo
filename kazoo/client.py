@@ -192,6 +192,7 @@ class KazooClient(object):
         # convenience API
         from kazoo.recipe.barrier import Barrier
         from kazoo.recipe.barrier import DoubleBarrier
+        from kazoo.recipe.counter import Counter
         from kazoo.recipe.election import Election
         from kazoo.recipe.lock import Lock
         from kazoo.recipe.lock import Semaphore
@@ -203,6 +204,7 @@ class KazooClient(object):
         from kazoo.recipe.watchers import DataWatch
 
         self.Barrier = partial(Barrier, self)
+        self.Counter = partial(Counter, self)
         self.DoubleBarrier = partial(DoubleBarrier, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
         self.DataWatch = partial(DataWatch, self)
