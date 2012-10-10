@@ -1,0 +1,5 @@
+kazoo (0.6) unstable; urgency=low
+
+  * Packaged for debian.
+
+ -- Neil Williams <neil@reddit.com>  Tue, 07 Aug 2012 23:22:19 -0700
