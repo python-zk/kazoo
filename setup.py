@@ -60,7 +60,7 @@ setup(
         "Topic :: System :: Networking",
     ],
     keywords='zookeeper lock leader configuration',
-    author="Nimbus team, Zope Corporation, Mozilla Foundation",
+    author="Kazoo team",
     author_email="user@zookeeper.apache.org",
     url="http://kazoo.readthedocs.org/",
     license="Apache 2.0",

@@ -17,7 +17,8 @@ Authors
 
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
-`Zope Corporation`_.
+`Zope Corporation`_. It has seen further contributions from `reddit`_,
+`Quora`_ and `SageCloud`_ amongst others.
 
 Current Development CI Status
 =============================
@@ -33,3 +34,6 @@ Current Development CI Status
 .. _Nimbus Project: http://www.nimbusproject.org/
 .. _Zope Corporation: http://zope.com/
 .. _Mozilla: http://www.mozilla.org/
+.. _reddit: http://www.reddit.com/
+.. _Quora: https://www.quora.com/
+.. _SageCloud: http://sagecloud.com/
