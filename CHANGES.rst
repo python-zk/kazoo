@@ -11,6 +11,7 @@ Features
   set on a node that doesn't exist when the DataWatch is created.
 - Add new Queue recipe, with optional priority support.
 - Add new Counter recipe.
+- Added debian packaging rules.
 
 Bug Handling
 ************
