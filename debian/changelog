@@ -1,3 +1,9 @@
+kazoo (0.7) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Hanno Schlichting <hschlichting@mozilla.com>  Sat, 13 Oct 2012 21:10:00 +0200
+
 kazoo (0.6) unstable; urgency=low
 
   * Packaged for debian.
