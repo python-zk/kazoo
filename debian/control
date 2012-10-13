@@ -6,7 +6,7 @@ Build-Depends: python-setuptools (>= 0.6b3),
                python-all (>= 2.6.6-3),
                debhelper (>= 8.0.0)
 Standards-Version: 3.9.3
-Homepage: https://github.com/python-zk/kazoo
+Homepage: https://kazoo.readthedocs.org
 Vcs-Git: git://github.com/python-zk/kazoo.git
 Vcs-Browser: https://github.com/python-zk/kazoo
 
