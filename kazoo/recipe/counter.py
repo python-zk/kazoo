@@ -57,7 +57,7 @@ class Counter(object):
     def _value(self):
         self._ensure_node()
         old, stat = self.client.get(self.path)
-        old = old.decode('ascii') if old is not b'' else self.default
+        old = old.decode('ascii') if old != b'' else self.default
         version = stat.version
         data = self.default_type(old)
         return data, version
