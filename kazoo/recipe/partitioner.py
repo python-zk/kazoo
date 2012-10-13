@@ -20,6 +20,7 @@ import socket
 from functools import partial
 
 from kazoo.client import KazooState
+from kazoo.exceptions import KazooException
 from kazoo.recipe.watchers import PatientChildrenWatch
 
 log = logging.getLogger(__name__)
@@ -245,7 +246,7 @@ class SetPartitioner(object):
         if self._party.participating:
             try:
                 self._party.leave()
-            except Exception:  # pragma: nocover
+            except KazooException:  # pragma: nocover
                 pass
 
     def _allocate_transition(self, result):
@@ -282,7 +283,7 @@ class SetPartitioner(object):
                                      str(member))
             try:
                 lock.acquire()
-            except Exception:  # pragma: nocover
+            except KazooException:  # pragma: nocover
                 return self.finish()
             self._locks.append(lock)
 
@@ -300,7 +301,7 @@ class SetPartitioner(object):
         for lock in self._locks[:]:
             try:
                 lock.release()
-            except Exception:  # pragma: nocover
+            except KazooException:  # pragma: nocover
                 # We proceed to remove as many as possible, and leave
                 # the ones we couldn't remove
                 pass

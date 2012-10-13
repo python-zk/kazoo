@@ -304,7 +304,7 @@ handle this condition:
         try:
             self.client.retry(self._inner_acquire)
             self.is_acquired = True
-        except Exception:
+        except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False

@@ -4,6 +4,7 @@ import socket
 import uuid
 
 from kazoo.protocol.states import EventType
+from kazoo.exceptions import KazooException
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NodeExistsError
 
@@ -115,7 +116,7 @@ class DoubleBarrier(object):
         try:
             self.client.retry(self._inner_enter)
             self.participating = True
-        except Exception:
+        except KazooException:
             # We failed to enter, best effort cleanup
             self._best_effort_cleanup()
             self.participating = False
@@ -152,7 +153,7 @@ class DoubleBarrier(object):
         """Leave the barrier, blocks until all nodes have left"""
         try:
             self.client.retry(self._inner_leave)
-        except Exception:  # pragma: nocover
+        except KazooException:  # pragma: nocover
             # Failed to cleanly leave
             self._best_effort_cleanup()
         self.participating = False

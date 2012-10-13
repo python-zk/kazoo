@@ -15,6 +15,7 @@ import uuid
 
 from kazoo.retry import ForceRetryError
 from kazoo.exceptions import CancelledError
+from kazoo.exceptions import KazooException
 from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import KazooState
 
@@ -75,7 +76,7 @@ class Lock(object):
         try:
             self.client.retry(self._inner_acquire)
             self.is_acquired = True
-        except Exception:
+        except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
@@ -151,7 +152,7 @@ class Lock(object):
             node = self._find_node()
             if node:
                 self.client.delete(self.path + "/" + node)
-        except Exception:  # pragma: nocover
+        except KazooException:  # pragma: nocover
             pass
 
     def release(self):
@@ -278,7 +279,7 @@ class Semaphore(object):
         try:
             self.client.retry(self._inner_acquire)
             self.is_acquired = True
-        except Exception:
+        except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
@@ -331,7 +332,7 @@ class Semaphore(object):
     def _best_effort_cleanup(self):
         try:
             self.client.delete(self.create_path)
-        except Exception:  # pragma: nocover
+        except KazooException:  # pragma: nocover
             pass
 
     def release(self):
