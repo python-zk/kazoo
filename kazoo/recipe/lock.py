@@ -162,7 +162,10 @@ class Lock(object):
         if not self.is_acquired:
             return False
 
-        self.client.delete(self.path + "/" + self.node)
+        try:
+            self.client.delete(self.path + "/" + self.node)
+        except NoNodeError:  # pragma: nocover
+            pass
 
         self.is_acquired = False
         self.node = None
@@ -339,7 +342,10 @@ class Semaphore(object):
         if not self.is_acquired:
             return False
 
-        self.client.delete(self.create_path)
+        try:
+            self.client.delete(self.create_path)
+        except NoNodeError:  # pragma: nocover
+            pass
         self.is_acquired = False
         return True
 
