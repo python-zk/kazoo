@@ -27,8 +27,8 @@ your new repository and run the build scripts::
     make zookeeper
 
 You need to have some supported version of Python installed and have
-it available as `python` in your shell. To run Zookeeper you also need
-a Java runtime (JRE or JDK) version 6 or 7.
+it available as ``python`` in your shell. To run Zookeeper you also
+need a Java runtime (JRE or JDK) version 6 or 7.
 
 You can run all the tests by calling::
 
@@ -59,7 +59,7 @@ combinations for submitted pull requests, which makes it easy to see
 if new code breaks tests on some weird version combination.
 
 If you introduce new functionality, please also add documentation and
-a short entry in the top-level `CHANGES.rst` file.
+a short entry in the top-level ``CHANGES.rst`` file.
 
 
 Legal
