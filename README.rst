@@ -5,7 +5,7 @@ Kazoo
 ``kazoo`` implements a higher level API to `Apache Zookeeper`_ for Python
 clients.
 
-See `the full docs`_ for more  information.
+See `the full docs`_ for more information.
 
 License
 =======
