@@ -11,6 +11,8 @@ Bug Handling
 - Issue #35: `KazooClient.__init__` didn't pass on `retry_max_delay` to the
   retry helper.
 
+- Issue #34: Be more careful while handling socket connection errors.
+
 0.7 (2012-10-15)
 ----------------
 

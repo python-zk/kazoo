@@ -62,8 +62,7 @@ def socket_error_handling():
     try:
         yield
     except (socket.error, select.error) as e:
-        raise ConnectionDropped("socket connection error: %s",
-                                errno.errorcode[e.args[0]])
+        raise ConnectionDropped("socket connection error: %s", e.strerror)
 
 
 class RWPinger(object):

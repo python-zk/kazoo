@@ -82,6 +82,11 @@ class TestClientConstructor(unittest.TestCase):
         hosts = [h for h in client.hosts]
         eq_(hosts, [('127.0.0.1', 9), ('127.0.0.2', 9)])
 
+    def test_invalid_hostname(self):
+        client = self._makeOne(hosts='nosuchhost/a')
+        timeout = client.handler.timeout_exception
+        self.assertRaises(timeout, client.start, 0.1)
+
 
 class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
