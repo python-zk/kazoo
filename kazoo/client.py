@@ -182,6 +182,7 @@ class KazooClient(object):
             delay=retry_delay,
             backoff=retry_backoff,
             max_jitter=retry_jitter,
+            max_delay=retry_max_delay,
             sleep_func=self.handler.sleep_func
         )
         self.retry_sleeper = self.retry.retry_sleeper.copy()

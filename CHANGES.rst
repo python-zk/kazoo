@@ -5,6 +5,12 @@ Changelog
 ----------------
 
 
+Bug Handling
+************
+
+- Issue 35: `KazooClient.__init__` didn't pass on `retry_max_delay` to the
+  retry helper.
+
 0.7 (2012-10-15)
 ----------------
 
