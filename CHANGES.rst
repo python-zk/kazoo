@@ -4,6 +4,12 @@ Changelog
 0.8 (unreleased)
 ----------------
 
+API Changes
+***********
+
+- The `KazooClient.__init__` took as `watcher` argument as its second keyword
+  argument. The argument had no effect anymore since version 0.5 and was
+  removed.
 
 Bug Handling
 ************

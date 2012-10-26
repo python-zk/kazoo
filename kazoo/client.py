@@ -63,7 +63,7 @@ class KazooClient(object):
     :class:`~kazoo.protocol.states.WatchedEvent` instance.
 
     """
-    def __init__(self, hosts='127.0.0.1:2181', watcher=None,
+    def __init__(self, hosts='127.0.0.1:2181',
                  timeout=10.0, client_id=None, max_retries=None,
                  retry_delay=0.1, retry_backoff=2, retry_jitter=0.8,
                  retry_max_delay=3600, handler=None, default_acl=None,
@@ -73,9 +73,6 @@ class KazooClient(object):
 
         :param hosts: Comma-separated list of hosts to connect to
                       (e.g. 127.0.0.1:2181,127.0.0.1:2182).
-        :param watcher:
-            Set a default watcher. This will be called by the actual
-            default watcher that :class:`KazooClient` establishes.
         :param timeout: The longest to wait for a Zookeeper connection.
         :param client_id: A Zookeeper client id, used when
                           re-establishing a prior session connection.
@@ -130,6 +127,9 @@ class KazooClient(object):
 
         .. versionadded:: 0.6
             The randomize_hosts option.
+
+        .. versionchanged:: 0.8
+            Removed the unused watcher argument (was second argument).
 
         """
         self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
