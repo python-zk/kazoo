@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.8 (unreleased)
+0.8 (2012-10-26)
 ----------------
 
 API Changes
