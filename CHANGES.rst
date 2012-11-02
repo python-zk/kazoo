@@ -9,6 +9,8 @@ Bug Handling
 
 - Issue #38: Set `CLOEXEC` flag on all sockets when available.
 
+- Issue #37: Handle timeout errors during `select` calls on sockets.
+
 0.8 (2012-10-26)
 ----------------
 
