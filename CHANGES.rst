@@ -4,6 +4,10 @@ Changelog
 0.9 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- Issue #38: Set `CLOEXEC` flag on all sockets when available.
 
 0.8 (2012-10-26)
 ----------------
