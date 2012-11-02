@@ -5,6 +5,7 @@ import time
 from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
+    KazooException,
     SessionExpiredError,
     OperationTimeoutError
 )
@@ -14,6 +15,12 @@ log = logging.getLogger(__name__)
 
 class ForceRetryError(Exception):
     """Raised when some recipe logic wants to force a retry"""
+
+
+class RetryFailedError(KazooException):
+    """Raised when retrying an operation ultimately failed, after
+    retrying the maximum number of attempts.
+    """
 
 
 class RetrySleeper(object):
@@ -51,7 +58,7 @@ class RetrySleeper(object):
         """Increment the failed count, and sleep appropriately before
         continuing"""
         if self._attempts == self.max_tries:
-            raise Exception("Too many retry attempts")
+            raise RetryFailedError("Too many retry attempts")
         self._attempts += 1
         jitter = random.randint(0, self.max_jitter) / 100.0
         self.sleep_func(self._cur_delay + jitter)

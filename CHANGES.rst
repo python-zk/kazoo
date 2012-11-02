@@ -4,6 +4,13 @@ Changelog
 0.9 (unreleased)
 ----------------
 
+API Changes
+***********
+
+- When a retry operation ultimately fails, it now raises a
+  `kazoo.retry.RetryFailedError` exception, instead of a general `Exception`
+  instance. `RetryFailedError` also inherits from the base `KazooException`.
+
 Bug Handling
 ************
 
