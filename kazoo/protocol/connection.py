@@ -395,19 +395,20 @@ class ConnectionHandler(object):
         self.writer_stopped.clear()
 
         retry = self.retry_sleeper.copy()
-        while not self.client._stopped.is_set():
-            # If the connect_loop returns False, stop retrying
-            if self._connect_loop(retry) is False:
-                break
+        try:
+            while not self.client._stopped.is_set():
+                # If the connect_loop returns False, stop retrying
+                if self._connect_loop(retry) is False:
+                    break
 
-            # Still going, increment our retry then go through the
-            # list of hosts again
-            if not self.client._stopped.is_set():
-                retry.increment()
-
-        self.writer_stopped.set()
-        if self.log_debug:
-            log.debug('Writer stopped')
+                # Still going, increment our retry then go through the
+                # list of hosts again
+                if not self.client._stopped.is_set():
+                    retry.increment()
+        finally:
+            self.writer_stopped.set()
+            if self.log_debug:
+                log.debug('Writer stopped')
 
     def _connect_loop(self, retry):
         client = self.client

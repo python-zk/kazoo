@@ -18,6 +18,9 @@ Bug Handling
 
 - Issue #37: Handle timeout errors during `select` calls on sockets.
 
+- Issue #36: Correctly set `ConnectionHandler.writer_stopped` even if an
+  exception is raised inside the writer, like a retry operation failing.
+
 0.8 (2012-10-26)
 ----------------
 
