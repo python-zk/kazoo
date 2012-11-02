@@ -16,6 +16,7 @@ from gevent.queue import Queue
 from gevent import socket
 from zope.interface import implementer
 
+from kazoo.handlers.utils import create_tcp_socket
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
@@ -128,9 +129,7 @@ class SequentialGeventHandler(object):
         return gevent.select.select(*args, **kwargs)
 
     def socket(self, *args, **kwargs):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        return sock
+        return create_tcp_socket(socket)
 
     def peekable_queue(self, *args, **kwargs):
         return _PeekableQueue(*args, **kwargs)
