@@ -34,7 +34,6 @@ from kazoo.interfaces import IHandler
 _NONE = object()
 _STOP = object()
 
-
 log = logging.getLogger(__name__)
 
 

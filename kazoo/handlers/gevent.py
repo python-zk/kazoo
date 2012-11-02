@@ -20,19 +20,16 @@ from kazoo.handlers.utils import create_tcp_socket
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
-
 _using_libevent = gevent.__version__.startswith('0.')
 
 log = logging.getLogger(__name__)
 
 _STOP = object()
 
-
 if _using_libevent:  # pragma: nocover
     from .gevent_pqueue import PeekableQueue as _PeekableQueue
 else:
     _PeekableQueue = gevent.queue.Queue
-
 
 AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 
