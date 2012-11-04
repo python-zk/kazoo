@@ -1,5 +1,5 @@
-coverage==3.5.2
-distribute==0.6.28
-mock==1.0b1
+coverage==3.5.3
+distribute==0.6.30
+mock==1.0.0
 nose==1.2.1
 zope.interface==4.0.1
