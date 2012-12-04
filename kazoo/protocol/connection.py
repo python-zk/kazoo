@@ -412,6 +412,7 @@ class ConnectionHandler(object):
 
     def _connect_loop(self, retry):
         client = self.client
+        TimeoutError = self.handler.timeout_exception
         writer_done = False
         for host, port in client.hosts:
             self._socket = self.handler.socket()
@@ -456,6 +457,11 @@ class ConnectionHandler(object):
                     return False
             except ConnectionDropped:
                 log.warning('Connection dropped')
+                if client._state != KeeperState.CONNECTING:
+                    with client._state_lock:
+                        client._session_callback(KeeperState.CONNECTING)
+            except TimeoutError:
+                log.warning('Connection time-out')
                 if client._state != KeeperState.CONNECTING:
                     with client._state_lock:
                         client._session_callback(KeeperState.CONNECTING)
