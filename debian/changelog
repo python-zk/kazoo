@@ -1,17 +1,5 @@
-kazoo (0.8) unstable; urgency=low
+kazoo (0+git20130102) unstable; urgency=low
 
-  * New upstream release.
+  * Initial package.
 
- -- Hanno Schlichting <hschlichting@mozilla.com>  Fir, 26 Oct 2012 12:05:00 +0200
-
-kazoo (0.7) unstable; urgency=low
-
-  * New upstream release.
-
- -- Hanno Schlichting <hschlichting@mozilla.com>  Mon, 15 Oct 2012 12:05:00 +0200
-
-kazoo (0.6) unstable; urgency=low
-
-  * Packaged for debian.
-
- -- Neil Williams <neil@reddit.com>  Tue, 07 Aug 2012 23:22:19 -0700
+ -- Neil Williams <neil@spladug.net>  Fri, 02 Jan 2013 23:20:03 -0800
