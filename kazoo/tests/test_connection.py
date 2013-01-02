@@ -2,6 +2,7 @@ from collections import namedtuple
 import os
 import threading
 import time
+import uuid
 
 from nose import SkipTest
 from nose.tools import eq_
@@ -53,6 +54,20 @@ class TestConnectionHandler(KazooTestCase):
         ev.wait(15)
         eq_(ev.is_set(), True)
         client.stop()
+
+    def test_connection_dropped(self):
+        client = self._get_client(randomize_hosts=False)
+        client.start()
+        # make sure we are connected to cluster node 0
+        eq_(self.cluster[0].server_info.client_port,
+            client._connection._socket.getpeername()[1])
+
+        # create a node with a large value and stop the ZK node
+        path = "/" + uuid.uuid4().hex
+        result = client.create_async(path, b'a' * 1000 * 1024)
+        self.cluster[0].stop()
+        node_path = result.get()
+        self.assertTrue(node_path.endswith(path))
 
 
 class TestReadOnlyMode(KazooTestCase):
