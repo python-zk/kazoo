@@ -1,19 +1,19 @@
 Source: kazoo
 Section: python
 Priority: optional
-Maintainer: Kazoo Team <user@zookeeper.apache.org>
+Maintainer: Neil Williams <neil@spladug.net>
 Build-Depends: python-setuptools (>= 0.6b3),
                python-all (>= 2.6.6-3),
-               debhelper (>= 8.0.0)
+               debhelper (>= 8.0.0),
+               python-repoze.sphinx.autointerface,
+               python-sphinx (>= 1.0.7+dfsg) | python3-sphinx,
 Standards-Version: 3.9.3
 Homepage: https://kazoo.readthedocs.org
-Vcs-Git: git://github.com/python-zk/kazoo.git
-Vcs-Browser: https://github.com/python-zk/kazoo
 
 Package: python-kazoo
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}
-Description: higher level API to Apache Zookeeper for Python clients.
+Description: higher level API to Apache Zookeeper for Python clients
  Kazoo features:
  .
   * Support for gevent 0.13 and gevent 1.0b
@@ -31,8 +31,8 @@ Description: higher level API to Apache Zookeeper for Python clients.
 Package: python-kazoo-doc
 Architecture: all
 Section: doc
-Depends: ${misc:Depends}, ${python:Depends}
-Description: higher level API to Apache Zookeeper for Python clients. - API documentation
+Depends: ${misc:Depends}, ${sphinxdoc:Depends}
+Description: API to Apache Zookeeper for Python clients. - API documentation
  Kazoo features:
  .
   * Support for gevent 0.13 and gevent 1.0b
