@@ -56,8 +56,18 @@ class TestConnectionHandler(KazooTestCase):
         eq_(ev.is_set(), True)
         client.stop()
 
+
+class TestConnectionProblems(KazooTestCase):
+
+    def setUp(self):
+        self.setup_zookeeper(randomize_hosts=False)
+
+    def tearDown(self):
+        self.cluster.start()
+        self.client.stop()
+
     def test_connection_dropped(self):
-        client = self._get_client(randomize_hosts=False)
+        client = self.client
         client.start()
         ev = threading.Event()
 
@@ -79,7 +89,6 @@ class TestConnectionHandler(KazooTestCase):
         ev.wait(30)
         eq_(ev.is_set(), True)
         client.delete(path)
-        client.stop()
 
 
 class TestReadOnlyMode(KazooTestCase):
