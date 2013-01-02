@@ -132,7 +132,6 @@ class KazooTestHarness(object):
         if self.client and self.client.connected:
             self.client.delete('/', recursive=True)
             self.client.stop()
-            self.client.stop()
             del self.client
         else:
             client = self._get_client()
