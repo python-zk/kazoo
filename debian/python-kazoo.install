@@ -1,2 +1,1 @@
-debian/tmp/usr/lib/python*/dist-packages/kazoo
-debian/tmp/usr/lib/python*/dist-packages/kazoo-*.egg-info
+usr/lib/python2*
