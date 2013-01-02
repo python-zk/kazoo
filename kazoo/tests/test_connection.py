@@ -81,6 +81,7 @@ class TestConnectionHandler(KazooTestCase):
         ev.wait(30)
         eq_(ev.is_set(), True)
         client.delete(path)
+        client.stop()
 
 
 class TestReadOnlyMode(KazooTestCase):
