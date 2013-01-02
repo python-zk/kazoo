@@ -57,8 +57,6 @@ class TestConnectionHandler(KazooTestCase):
         client.stop()
 
     def test_connection_dropped(self):
-        # stop default client from interfering
-        self.client.stop()
         client = self._get_client(randomize_hosts=False)
         client.start()
         ev = threading.Event()

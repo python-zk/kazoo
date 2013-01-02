@@ -62,6 +62,8 @@ class ManagedZooKeeper(object):
 
         Writes ZK log messages to zookeeper.log in the current directory.
         """
+        if self.running:
+            return
         config_path = os.path.join(self.working_path, "zoo.cfg")
         log_path = os.path.join(self.working_path, "log")
         log4j_path = os.path.join(self.working_path, "log4j.properties")
@@ -170,7 +172,7 @@ log4j.appender.ROLLINGFILE.File=""" + (
 
     def stop(self):
         """Stop the Zookeeper instance, retaining on disk state."""
-        if not self._running:
+        if not self.running:
             return
         self.process.terminate()
         self.process.wait()
