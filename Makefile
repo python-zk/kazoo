@@ -8,7 +8,7 @@ INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 
 BUILD_DIRS = bin build include lib lib64 man share
 
-GEVENT_VERSION ?= 1.0rc1
+GEVENT_VERSION ?= 1.0rc2
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
 PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
 TRAVIS ?= false
