@@ -427,7 +427,7 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
 
     def test_watch_iterations(self):
         self.client.ensure_path(self.path)
-        watcher = self._makeOne(self.client, self.path, 0.2)
+        watcher = self._makeOne(self.client, self.path, 0.5)
         result = watcher.start()
         eq_(result.ready(), False)
 
