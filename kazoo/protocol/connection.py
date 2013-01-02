@@ -578,6 +578,8 @@ class ConnectionHandler(object):
                 if result:
                     self._rw_server = result
                     raise RWServerAvailable()
+        except ConnectionDropped:
+            raise
         except Exception as e:
             log.exception(e)
             ret = True
