@@ -14,6 +14,9 @@ API Changes
 Bug Handling
 ************
 
+- Issue #39 / #41: Handle connection dropped errors during session writes.
+  Ensure client connection is re-established to a new ZK node if available.
+
 - Issue #38: Set `CLOEXEC` flag on all sockets when available.
 
 - Issue #37: Handle timeout errors during `select` calls on sockets.
