@@ -11,6 +11,11 @@ API Changes
   `kazoo.retry.RetryFailedError` exception, instead of a general `Exception`
   instance. `RetryFailedError` also inherits from the base `KazooException`.
 
+Features
+********
+
+- Improvements to Debian packaging rules.
+
 Bug Handling
 ************
 
