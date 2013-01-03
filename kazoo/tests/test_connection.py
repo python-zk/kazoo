@@ -56,8 +56,38 @@ class TestConnectionHandler(KazooTestCase):
         eq_(ev.is_set(), True)
         client.stop()
 
+    def test_connection_write_timeout(self):
+        client = self.client
+        ev = threading.Event()
+        path = "/" + uuid.uuid4().hex
+        handler = client.handler
+        _select = handler.select
+        _socket = client._connection._socket
 
-class TestConnectionProblems(KazooTestCase):
+        def delayed_select(*args, **kwargs):
+            result = _select(*args, **kwargs)
+            if _socket in args[1]:
+                # for any socket write, simulate a timeout
+                return [], [], []
+            return result
+
+        def back(state):
+            if state == KazooState.CONNECTED:
+                ev.set()
+        client.add_listener(back)
+
+        try:
+            handler.select = delayed_select
+            self.assertRaises(ConnectionLoss, client.create, path)
+        finally:
+            handler.select = _select
+        # the client reconnects automatically
+        ev.wait(5)
+        eq_(ev.is_set(), True)
+        eq_(client.exists(path), None)
+
+
+class TestConnectionDropped(KazooTestCase):
 
     def setUp(self):
         self.setup_zookeeper(randomize_hosts=False)

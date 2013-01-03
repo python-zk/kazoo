@@ -62,7 +62,8 @@ def socket_error_handling():
     try:
         yield
     except (socket.error, select.error) as e:
-        raise ConnectionDropped("socket connection error: %s", e.strerror)
+        err = getattr(e, 'strerror', e)
+        raise ConnectionDropped("socket connection error: %s", err)
 
 
 class RWPinger(object):
@@ -412,6 +413,7 @@ class ConnectionHandler(object):
 
     def _connect_loop(self, retry):
         client = self.client
+        TimeoutError = self.handler.timeout_exception
         writer_done = False
         for host, port in client.hosts:
             self._socket = self.handler.socket()
@@ -454,8 +456,11 @@ class ConnectionHandler(object):
                     with client._state_lock:
                         client._session_callback(KeeperState.CLOSED)
                     return False
-            except ConnectionDropped:
-                log.warning('Connection dropped')
+            except (ConnectionDropped, TimeoutError) as e:
+                if isinstance(e, ConnectionDropped):
+                    log.warning('Connection dropped')
+                else:
+                    log.warning('Connection time-out')
                 if client._state != KeeperState.CONNECTING:
                     with client._state_lock:
                         client._session_callback(KeeperState.CONNECTING)
@@ -540,6 +545,7 @@ class ConnectionHandler(object):
 
     def _send_request(self, read_timeout, connect_timeout):
         client = self.client
+        TimeoutError = self.handler.timeout_exception
         ret = None
         try:
             timeout = read_timeout / 2000.0 - random.randint(0, 40) / 100.0
@@ -578,7 +584,7 @@ class ConnectionHandler(object):
                 if result:
                     self._rw_server = result
                     raise RWServerAvailable()
-        except ConnectionDropped:
+        except (ConnectionDropped, TimeoutError):
             # let exception bubble up to _connect_loop
             raise
         except Exception as e:

@@ -14,6 +14,8 @@ API Changes
 Bug Handling
 ************
 
+- Issue #37 / #40: Handle socket timeout errors during session writes.
+
 - Issue #39 / #41: Handle connection dropped errors during session writes.
   Ensure client connection is re-established to a new ZK node if available.
 
