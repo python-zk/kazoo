@@ -548,6 +548,8 @@ class ConnectionHandler(object):
         try:
             timeout = read_timeout / 2000.0 - random.randint(0, 40) / 100.0
             request, async_object = client._queue.peek(True, timeout)
+            if self.reader_done.is_set():
+                raise ConnectionDropped("Reader already is dead.")
 
             # Special case for auth packets
             if request.type == Auth.type:
@@ -572,6 +574,9 @@ class ConnectionHandler(object):
                 client._queue.get()
                 client._pending.put((request, async_object, self._xid))
         except self.handler.empty:
+            if self.reader_done.is_set():
+                raise ConnectionDropped("Reader already is dead.")
+
             if self.log_debug:
                 log.debug('Queue timeout.  Sending PING')
             self._submit(Ping, connect_timeout, PING_XID)
