@@ -166,12 +166,11 @@ class ConnectionHandler(object):
         with socket_error_handling():
             while remaining > 0:
                 s = self.handler.select([self._socket], [], [], timeout)[0]
-                try:
-                    chunk = s[0].recv(remaining)
-                except IndexError:  # pragma: nocover
+                if not s:  # pragma: nocover
                     # If the read list is empty, we got a timeout. We don't
                     # have to check wlist and xlist as we don't set any
                     raise self.handler.timeout_exception("socket time-out")
+                chunk = s[0].recv(remaining)
                 if chunk == b'':
                     raise ConnectionDropped('socket connection broken')
                 msgparts.append(chunk)
@@ -234,13 +233,12 @@ class ConnectionHandler(object):
         with socket_error_handling():
             while sent < msg_length:
                 s = self.handler.select([], [self._socket], [], timeout)[1]
-                msg_slice = buffer(msg, sent)
-                try:
-                    bytes_sent = s[0].send(msg_slice)
-                except IndexError:  # pragma: nocover
+                if not s:  # pragma: nocover
                     # If the write list is empty, we got a timeout. We don't
                     # have to check rlist and xlist as we don't set any
                     raise self.handler.timeout_exception("socket time-out")
+                msg_slice = buffer(msg, sent)
+                bytes_sent = s[0].send(msg_slice)
                 if not bytes_sent:
                     raise ConnectionDropped('socket connection broken')
                 sent += bytes_sent
