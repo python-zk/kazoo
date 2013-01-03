@@ -74,10 +74,9 @@ class TestConnectionHandler(KazooTestCase):
         def back(state):
             if state == KazooState.CONNECTED:
                 ev.set()
+
         client.add_listener(back)
         client.create(path, b"1")
-
-        raise SkipTest('Patch missing')
         try:
             handler.select = delayed_select
             self.assertRaises(ConnectionLoss, client.get, path)
