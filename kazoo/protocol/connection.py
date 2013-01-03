@@ -464,6 +464,11 @@ class ConnectionHandler(object):
                 if client._state != KeeperState.CONNECTING:
                     with client._state_lock:
                         client._session_callback(KeeperState.CONNECTING)
+            except TimeoutError:
+                log.warning('Connection time-out')
+                if client._state != KeeperState.CONNECTING:
+                    with client._state_lock:
+                        client._session_callback(KeeperState.CONNECTING)
             except AuthFailedError:
                 log.warning('AUTH_FAILED closing')
                 with client._state_lock:
