@@ -458,8 +458,7 @@ class ConnectionHandler(object):
                         response = self._read_socket(read_timeout)
                         close_connection = response == CLOSE_RESPONSE
                     else:
-                        close_connection = self._send_request(
-                            read_timeout, connect_timeout)
+                        self._send_request(read_timeout, connect_timeout)
 
                 if self.log_debug:
                     log.info('Closing connection to %s:%s', host, port)
