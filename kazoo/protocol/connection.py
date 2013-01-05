@@ -420,7 +420,7 @@ class ConnectionHandler(object):
         finally:
             self.connection_stopped.set()
             if self.log_debug:
-                log.debug('Writer stopped')
+                log.debug('Connection stopped')
 
     def _connect_loop(self, retry):
         client = self.client
