@@ -26,46 +26,46 @@ else:  # pragma: nocover
         return unicode(s, "unicode_escape")
 
 
-class TestSessions(unittest.TestCase):
-
-    def setUp(self):
-        from kazoo.client import KazooClient
-        from kazoo.protocol.states import KazooState
-        from kazoo.testing.common import ZookeeperCluster
-        ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
-        self.cluster = ZookeeperCluster(ZK_HOME, size=1, port_offset=21000)
-        self.cluster.start()
-        atexit.register(lambda cluster: self.cluster.terminate(), self.cluster)
-        self.client = KazooClient(self.cluster[0].address, max_retries=3)
-        self.ev = threading.Event()
-
-        def back(state):
-            if state == KazooState.CONNECTED:
-                self.ev.set()
-        self.client.start()
-        self.path = self.client.create(uuid.uuid4().hex)
-        self.client.add_listener(back)
-
-    def test_restarted_server(self):
-        self.cluster.stop()
-        self.cluster.start()
-        self.ev.wait(5)
-        raise SkipTest('Patch missing')
-        eq_(self.ev.is_set(), True)
-        self.assertTrue(self.client.retry(self.client.exists, self.path))
-
-    def test_terminated_server(self):
-        self.cluster.reset()
-        self.cluster.start()
-        self.ev.wait(5)
-        raise SkipTest('Patch missing')
-        eq_(self.ev.is_set(), True)
-        self.assertFalse(self.client.retry(self.client.exists, self.path))
-
-    def tearDown(self):
-        self.ev.clear()
-        self.client.stop()
-        self.cluster.stop()
+# class TestSessions(unittest.TestCase):
+#
+#     def setUp(self):
+#         from kazoo.client import KazooClient
+#         from kazoo.protocol.states import KazooState
+#         from kazoo.testing.common import ZookeeperCluster
+#         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
+#         self.cluster = ZookeeperCluster(ZK_HOME, size=1, port_offset=21000)
+#         self.cluster.start()
+#         atexit.register(lambda cluster: self.cluster.terminate(), self.cluster)
+#         self.client = KazooClient(self.cluster[0].address, max_retries=3)
+#         self.ev = threading.Event()
+#
+#         def back(state):
+#             if state == KazooState.CONNECTED:
+#                 self.ev.set()
+#         self.client.start()
+#         self.path = self.client.create(uuid.uuid4().hex)
+#         self.client.add_listener(back)
+#
+#     def test_restarted_server(self):
+#         raise SkipTest('Patch missing')
+#         self.cluster.stop()
+#         self.cluster.start()
+#         self.ev.wait(5)
+#         eq_(self.ev.is_set(), True)
+#         self.assertTrue(self.client.retry(self.client.exists, self.path))
+#
+#     def test_terminated_server(self):
+#         raise SkipTest('Patch missing')
+#         self.cluster.reset()
+#         self.cluster.start()
+#         self.ev.wait(5)
+#         eq_(self.ev.is_set(), True)
+#         self.assertFalse(self.client.retry(self.client.exists, self.path))
+#
+#     def tearDown(self):
+#         self.ev.clear()
+#         self.client.stop()
+#         self.cluster.stop()
 
 
 class TestClientTransitions(KazooTestCase):
