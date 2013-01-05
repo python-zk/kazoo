@@ -375,6 +375,7 @@ class ConnectionHandler(object):
         if request.type == Auth.type:
             self._submit(request, connect_timeout, AUTH_XID)
             client._queue.popleft()
+            os.read(self._read_pipe, 1)
             return
 
         self._xid += 1
