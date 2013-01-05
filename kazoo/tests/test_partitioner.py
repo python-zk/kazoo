@@ -4,6 +4,7 @@ import time
 from nose.tools import eq_
 
 from kazoo.testing import KazooTestCase
+from kazoo.recipe.partitioner import PartitionState
 
 
 class KazooPartitionerTests(KazooTestCase):
@@ -15,7 +16,7 @@ class KazooPartitionerTests(KazooTestCase):
         partitioner = self.client.SetPartitioner(
             self.path, set=(1, 2, 3), time_boundary=0.2)
         partitioner.wait_for_acquire(1)
-        eq_(partitioner.acquired, True)
+        eq_(partitioner.state, PartitionState.ACQUIRED)
         eq_(list(partitioner), [1, 2, 3])
         partitioner.finish()
 
@@ -40,8 +41,8 @@ class KazooPartitionerTests(KazooTestCase):
 
         partitioners[0].wait_for_acquire(1)
         partitioners[1].wait_for_acquire(1)
-        eq_(partitioners[0].acquired, True)
-        eq_(partitioners[1].acquired, True)
+        eq_(partitioners[0].state, PartitionState.ACQUIRED)
+        eq_(partitioners[1].state, PartitionState.ACQUIRED)
 
         eq_(list(partitioners[0]), [1, 3])
         eq_(list(partitioners[1]), [2])
@@ -71,8 +72,8 @@ class KazooPartitionerTests(KazooTestCase):
 
         partitioners[0].wait_for_acquire(1)
         partitioners[1].wait_for_acquire(1)
-        eq_(partitioners[0].acquired, True)
-        eq_(partitioners[1].acquired, True)
+        eq_(partitioners[0].state, PartitionState.ACQUIRED)
+        eq_(partitioners[1].state, PartitionState.ACQUIRED)
 
         eq_(list(partitioners[0]), [1])
         eq_(list(partitioners[1]), [])
@@ -84,7 +85,7 @@ class KazooPartitionerTests(KazooTestCase):
         partitioner = self.client.SetPartitioner(
             self.path, set=(1, 2, 3), time_boundary=0.2)
         partitioner.wait_for_acquire(1)
-        eq_(partitioner.acquired, True)
+        eq_(partitioner.state, PartitionState.ACQUIRED)
         # simulate session failure
         partitioner._fail_out()
         partitioner.release_set()
