@@ -14,8 +14,6 @@ class KazooPartitionerTests(KazooTestCase):
     def test_party_of_one(self):
         partitioner = self.client.SetPartitioner(
             self.path, set=(1, 2, 3), time_boundary=0.2)
-        eq_(partitioner.allocating, True)
-        eq_(partitioner.acquired, False)
         partitioner.wait_for_acquire(1)
         eq_(partitioner.acquired, True)
         eq_(list(partitioner), [1, 2, 3])
@@ -26,7 +24,6 @@ class KazooPartitionerTests(KazooTestCase):
                         identifier="p%s" % i, time_boundary=0.2)
                         for i in range(2)]
 
-        eq_(partitioners[0].acquired, False)
         partitioners[0].wait_for_acquire(1)
         partitioners[1].wait_for_acquire(1)
         eq_(list(partitioners[0]), [1])
