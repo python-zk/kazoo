@@ -440,12 +440,14 @@ class ConnectionHandler(object):
 
             try:
                 read_timeout, connect_timeout = self._connect(host, port)
+                read_timeout = read_timeout / 1000.0
+                connect_timeout = connect_timeout / 1000.0
                 retry.reset()
                 self._xid = 0
 
                 while not close_connection:
                     # Watch for something to read or send
-                    timeout = read_timeout / 2000.0 - random.randint(0, 40) / 100.0
+                    timeout = read_timeout / 2.0 - random.randint(0, 40) / 100.0
                     s = self.handler.select([self._socket, self._read_pipe],
                             [], [], timeout)[0]
 
