@@ -125,6 +125,10 @@ class TestConnectionDropped(KazooTestCase):
     def setUp(self):
         self.setup_zookeeper(randomize_hosts=False)
 
+    def tearDown(self):
+        self.cluster.start()
+        self.client.stop()
+
     def test_connection_dropped(self):
         client = self.client
         client.start()
@@ -134,23 +138,20 @@ class TestConnectionDropped(KazooTestCase):
             if state == KazooState.CONNECTED:
                 ev.set()
 
-        try:
-            # make sure we are connected to cluster node 0
-            eq_(self.cluster[0].server_info.client_port,
-                client._connection._socket.getpeername()[1])
-            # create a node with a large value and stop the ZK node
-            path = "/" + uuid.uuid4().hex
-            client.create(path)
-            client.add_listener(back)
-            result = client.set_async(path, b'a' * 1000 * 1024)
-            self.cluster[0].destroy()
-            self.assertRaises(ConnectionLoss, result.get)
-            # we have a working connection to a new node
-            ev.wait(30)
-            eq_(ev.is_set(), True)
-            client.delete(path)
-        finally:
-            self.cluster[0].run()
+        # make sure we are connected to cluster node 0
+        eq_(self.cluster[0].server_info.client_port,
+            client._connection._socket.getpeername()[1])
+        # create a node with a large value and stop the ZK node
+        path = "/" + uuid.uuid4().hex
+        client.create(path)
+        client.add_listener(back)
+        result = client.set_async(path, b'a' * 1000 * 1024)
+        self.cluster[0].stop()
+        self.assertRaises(ConnectionLoss, result.get)
+        # we have a working connection to a new node
+        ev.wait(30)
+        eq_(ev.is_set(), True)
+        client.delete(path)
 
 
 class TestReadOnlyMode(KazooTestCase):
