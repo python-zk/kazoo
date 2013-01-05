@@ -374,7 +374,7 @@ class KazooClient(object):
                              KeeperState.CONNECTING):
             raise SessionExpiredError()
         self._queue.append((request, async_object))
-        os.write(self._connection._write_pipe, '\0')
+        os.write(self._connection._write_pipe, b'\0')
 
     def start(self, timeout=15):
         """Initiate connection to ZK.
@@ -437,7 +437,7 @@ class KazooClient(object):
 
         self._stopped.set()
         self._queue.append((Close(), None))
-        os.write(self._connection._write_pipe, '\0')
+        os.write(self._connection._write_pipe, b'\0')
         self._safe_close()
 
     def restart(self):
