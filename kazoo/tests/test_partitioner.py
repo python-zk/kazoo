@@ -69,9 +69,10 @@ class KazooPartitionerTests(KazooTestCase):
                         identifier="p%s" % i, time_boundary=0.2)
                         for i in range(2)]
 
-        eq_(partitioners[0].acquired, False)
         partitioners[0].wait_for_acquire(1)
         partitioners[1].wait_for_acquire(1)
+        eq_(partitioners[0].acquired, True)
+        eq_(partitioners[1].acquired, True)
 
         eq_(list(partitioners[0]), [1])
         eq_(list(partitioners[1]), [])
