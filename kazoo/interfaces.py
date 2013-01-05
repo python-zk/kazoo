@@ -36,10 +36,6 @@ class IHandler(Interface):
         """Appropriate sleep function that can be called with a single
         argument and sleep.""")
 
-    empty = Attribute(
-        """Exception class that should be thrown and captured if the
-        queue is empty within the given time""")
-
     def start():
         """Start the handler, used for setting up the handler."""
 
@@ -54,10 +50,6 @@ class IHandler(Interface):
     def socket():
         """A socket method that implements Python's socket.socket
         API"""
-
-    def peekable_queue():
-        """Return an appropriate object that implements Python's
-        Queue.Queue API with a .peek method"""
 
     def event_object():
         """Return an appropriate object that implements Python's
