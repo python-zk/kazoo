@@ -19,14 +19,12 @@ Features
 Bug Handling
 ************
 
-- Issue #37 / #40: Handle socket timeout errors during session writes.
-
 - Issue #39 / #41: Handle connection dropped errors during session writes.
   Ensure client connection is re-established to a new ZK node if available.
 
 - Issue #38: Set `CLOEXEC` flag on all sockets when available.
 
-- Issue #37: Handle timeout errors during `select` calls on sockets.
+- Issue #37 / #40: Handle timeout errors during `select` calls on sockets.
 
 - Issue #36: Correctly set `ConnectionHandler.writer_stopped` even if an
   exception is raised inside the writer, like a retry operation failing.
