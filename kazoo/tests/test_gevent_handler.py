@@ -77,43 +77,6 @@ class TestGeventHandler(unittest.TestCase):
         h.dispatch_callback(call1)
         ev.wait()
 
-    def test_peeking(self):
-        from kazoo.handlers.gevent import _PeekableQueue
-        from kazoo.handlers.gevent import Empty
-        queue = _PeekableQueue()
-        queue.put('fred')
-        eq_(queue.peek(), 'fred')
-        eq_(queue.get(), 'fred')
-
-        @raises(Empty)
-        def testit():
-            queue.peek(block=False)
-        testit()
-
-    def test_peekable_queue_switching(self):
-        import gevent
-        h = self._makeOne()
-        queue = h.peekable_queue()
-
-        def getter():
-            peeked = queue.peek(True, timeout=5)
-            got = queue.get()
-            eq_(peeked, got)
-            return got
-
-        # try to make sure getter is running before putting
-        getter_thread = gevent.spawn(getter)
-        gevent.spawn_later(0, queue.put, 'fred')
-
-        eq_(getter_thread.get(), 'fred')
-
-        # repeat the process to make sure the queue signalling mechanism
-        # is reset correctly
-        getter_thread = gevent.spawn(getter)
-        gevent.spawn_later(0, queue.put, 'fred')
-
-        eq_(getter_thread.get(), 'fred')
-
 
 class TestBasicGeventClient(KazooTestCase):
 

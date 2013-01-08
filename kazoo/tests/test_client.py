@@ -36,7 +36,7 @@ class TestSessions(unittest.TestCase):
         self.cluster = ZookeeperCluster(ZK_HOME, size=1, port_offset=21000)
         self.cluster.start()
         atexit.register(lambda cluster: self.cluster.terminate(), self.cluster)
-        self.client = KazooClient(self.cluster[0].address, max_retries=3)
+        self.client = KazooClient(self.cluster[0].address, max_retries=5)
         self.ev = threading.Event()
 
         def back(state):
@@ -47,18 +47,18 @@ class TestSessions(unittest.TestCase):
         self.client.add_listener(back)
 
     def test_restarted_server(self):
+        raise SkipTest('Patch missing')
         self.cluster.stop()
         self.cluster.start()
         self.ev.wait(5)
-        raise SkipTest('Patch missing')
         eq_(self.ev.is_set(), True)
         self.assertTrue(self.client.retry(self.client.exists, self.path))
 
     def test_terminated_server(self):
+        raise SkipTest('Patch missing')
         self.cluster.reset()
         self.cluster.start()
         self.ev.wait(5)
-        raise SkipTest('Patch missing')
         eq_(self.ev.is_set(), True)
         self.assertFalse(self.client.retry(self.client.exists, self.path))
 
@@ -91,8 +91,15 @@ class TestClientTransitions(KazooTestCase):
         states.pop()
         self.expire_session()
         rc.wait(2)
-        eq_(states, [KazooState.SUSPENDED, KazooState.LOST,
-                     KazooState.CONNECTED])
+
+        # Depending on timings, its possible during session expiration
+        # that the client gets one connection in before being dropped
+        req_states = [KazooState.SUSPENDED, KazooState.LOST,
+                     KazooState.CONNECTED]
+        if len(states) == 5:
+            req_states = [KazooState.SUSPENDED, KazooState.CONNECTED] \
+                 + req_states
+        eq_(states, req_states)
 
 
 class TestClientConstructor(unittest.TestCase):

@@ -5,6 +5,15 @@ try:
     import fcntl
 except ImportError:  # pragma: nocover
     HAS_FNCTL = False
+import os
+
+
+def create_pipe():
+    r, w = os.pipe()
+    if HAS_FNCTL:
+        fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
+    return r, w
 
 
 def create_tcp_socket(module):

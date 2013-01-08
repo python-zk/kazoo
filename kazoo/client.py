@@ -1,8 +1,9 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
+import os
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
 from functools import partial
 from os.path import split
 
@@ -151,7 +152,6 @@ class KazooClient(object):
 
         # Curator like simplified state tracking, and listeners for
         # state transitions
-        self._state_lock = self.handler.rlock_object()
         self._state = KeeperState.CLOSED
         self.state = KazooState.LOST
         self.state_listeners = set()
@@ -219,11 +219,10 @@ class KazooClient(object):
 
     def _reset(self):
         """Resets a variety of client states for a new connection."""
-        with self._state_lock:
-            self._queue = self.handler.peekable_queue()
-            self._pending = self.handler.peekable_queue()
-            self._child_watchers = defaultdict(list)
-            self._data_watchers = defaultdict(list)
+        self._queue = deque()
+        self._pending = deque()
+        self._child_watchers = defaultdict(list)
+        self._data_watchers = defaultdict(list)
 
         self._session_id = None
         self._session_passwd = b'\x00' * 16
@@ -312,11 +311,11 @@ class KazooClient(object):
         # transitions since they only apply after
         # we've established a connection
         if dead_state and state == KeeperState.CONNECTING:
+            log.info("Skipping state change")
             return
 
         if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
-            log.info("Zookeeper connection established, state: %s",
-                     state)
+            log.info("Zookeeper connection established, state: %s", state)
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
         elif state in LOST_STATES:
@@ -341,14 +340,22 @@ class KazooClient(object):
             exc = SessionExpiredError()
         else:
             exc = ConnectionLoss()
-        while not self._pending.empty():
-            request, async_object, xid = self._pending.get()
-            if async_object:
-                async_object.set_exception(exc)
-        while not self._queue.empty():
-            request, async_object = self._queue.get()
-            if async_object:
-                async_object.set_exception(exc)
+
+        while True:
+            try:
+                request, async_object, xid = self._pending.popleft()
+                if async_object:
+                    async_object.set_exception(exc)
+            except IndexError:
+                break
+
+        while True:
+            try:
+                request, async_object = self._queue.popleft()
+                if async_object:
+                    async_object.set_exception(exc)
+            except IndexError:
+                break
 
     def _safe_close(self):
         self.handler.stop()
@@ -359,15 +366,15 @@ class KazooClient(object):
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in
         the queue if there is."""
-        with self._state_lock:
-            if self._state == KeeperState.AUTH_FAILED:
-                raise AuthFailedError()
-            elif self._state == KeeperState.CLOSED:
-                raise ConnectionClosedError("Connection has been closed")
-            elif self._state in (KeeperState.EXPIRED_SESSION,
-                                 KeeperState.CONNECTING):
-                raise SessionExpiredError()
-            self._queue.put((request, async_object))
+        if self._state == KeeperState.AUTH_FAILED:
+            raise AuthFailedError()
+        elif self._state == KeeperState.CLOSED:
+            raise ConnectionClosedError("Connection has been closed")
+        elif self._state in (KeeperState.EXPIRED_SESSION,
+                             KeeperState.CONNECTING):
+            raise SessionExpiredError()
+        self._queue.append((request, async_object))
+        os.write(self._connection._write_pipe, b'\0')
 
     def start(self, timeout=15):
         """Initiate connection to ZK.
@@ -429,7 +436,8 @@ class KazooClient(object):
             return
 
         self._stopped.set()
-        self._queue.put((Close(), None))
+        self._queue.append((Close(), None))
+        os.write(self._connection._write_pipe, b'\0')
         self._safe_close()
 
     def restart(self):

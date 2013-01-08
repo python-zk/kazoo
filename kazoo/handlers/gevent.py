@@ -26,11 +26,6 @@ log = logging.getLogger(__name__)
 
 _STOP = object()
 
-if _using_libevent:  # pragma: nocover
-    from .gevent_pqueue import PeekableQueue as _PeekableQueue
-else:
-    _PeekableQueue = gevent.queue.Queue
-
 AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
 
 
@@ -57,7 +52,6 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     sleep_func = staticmethod(gevent.sleep)
-    empty = staticmethod(gevent.queue.Empty)
 
     def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
@@ -127,9 +121,6 @@ class SequentialGeventHandler(object):
 
     def socket(self, *args, **kwargs):
         return create_tcp_socket(socket)
-
-    def peekable_queue(self, *args, **kwargs):
-        return _PeekableQueue(*args, **kwargs)
 
     def event_object(self):
         """Create an appropriate Event object"""
