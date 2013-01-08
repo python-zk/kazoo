@@ -58,7 +58,6 @@ class TestConnectionHandler(KazooTestCase):
         client.stop()
 
     def test_connection_read_timeout(self):
-        return
         client = self.client
         ev = threading.Event()
         path = "/" + uuid.uuid4().hex
@@ -68,7 +67,7 @@ class TestConnectionHandler(KazooTestCase):
 
         def delayed_select(*args, **kwargs):
             result = _select(*args, **kwargs)
-            if _socket in args[0]:
+            if len(args[0]) == 1 and _socket in args[0]:
                 # for any socket read, simulate a timeout
                 return [], [], []
             return result
