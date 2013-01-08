@@ -21,7 +21,7 @@ import threading
 
 try:
     import Queue
-except ImportError: # pragma: nocover
+except ImportError:  # pragma: nocover
     import queue as Queue
 
 from zope.interface import implementer
