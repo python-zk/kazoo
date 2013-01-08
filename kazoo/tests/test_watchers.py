@@ -125,6 +125,7 @@ class KazooDataWatcherTests(KazooTestCase):
         update.clear()
 
         self.expire_session()
+        update.wait(4)
         eq_(update.is_set(), False)
         self.client.retry(self.client.set, self.path, b'fred')
         update.wait()
