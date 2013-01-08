@@ -310,7 +310,7 @@ class SetPartitioner(object):
 
     def _abort_lock_acquisition(self):
         """Called during lock acquisition if a party change occurs"""
-        self._partition_set = None
+        self._partition_set = []
         self._release_locks()
         if self._locks:
             # This shouldn't happen, it means we couldn't release our
