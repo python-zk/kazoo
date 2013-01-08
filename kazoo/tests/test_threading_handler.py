@@ -168,7 +168,7 @@ class TestThreadingAsync(unittest.TestCase):
         bv.wait(10)
 
         async.set("fred")
-        cv.wait(10)
+        cv.wait(15)
         eq_(lst, [True])
 
     def test_set_before_wait(self):
