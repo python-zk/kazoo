@@ -332,6 +332,26 @@ handle this condition:
 `create_tried` records whether it has tried to create the node already in the
 event the connection is lost before the node name is returned.
 
+Custom Retries
+--------------
+
+Sometimes you may wish to have specific retry policies for a command or
+set of commands that differes from the
+:meth:`~kazoo.client.KazooClient.retry` method. You can manually create
+a :class:`~kazoo.retry.KazooRetry` instance with the specific retry
+policy you prefer:
+
+.. code-block:: python
+
+    from kazoo.retry import KazooRetry
+
+    kr = KazooRetry(max_tries=3, ignore_expire=False)
+    result = kr(client.get, "/some/path")
+
+This will retry the ``client.get`` command up to 3 times, and raise a
+session expiration if it occurs. You can also make an instance with the
+default behavior that ignores session expiration during a retry.
+
 Watchers
 ========
 

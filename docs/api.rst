@@ -22,5 +22,6 @@ organized alphabetically by module name.
    api/recipe/party
    api/recipe/queue
    api/recipe/watchers
+   api/retry
    api/security
    api/testing
