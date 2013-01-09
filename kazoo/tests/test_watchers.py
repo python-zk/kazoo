@@ -354,9 +354,6 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
         self.expire_session()
 
-        update.wait(2)
-        eq_(update.is_set(), False)
-
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
         update.wait()
@@ -383,11 +380,9 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
         self.expire_session()
 
-        eq_(update.is_set(), False)
-
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
-        update.wait(3)
+        update.wait(15)
         eq_(update.is_set(), False)
         eq_(all_children, ['smith'])
 
