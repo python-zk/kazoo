@@ -107,36 +107,45 @@ class DataWatch(object):
         self._get_data()
         return func
 
-    def _get_data(self):
+    def _get_data(self, using_exists=False):
         with self._run_lock:  # Ensure this runs one at a time
+            if using_exists and self._prior_data:
+                # We were able to get data after the first exists
+                # check, abort _get_data since there's a separate
+                # watcher for it now
+                return
+
             if self._stopped:
                 return
 
             try:
+                data, stat = self._client.retry(self._client.get,
+                                                self._path, self._watcher)
+            except NoNodeError:
                 if self._allow_missing_node:
                     data = None
 
                     # This will set 'stat' to None if the node does not yet
                     # exist.
                     stat = self._client.retry(self._client.exists,
-                                               self._path, self._watcher)
-                    if stat is None:
-                        # Note that we do not set _stopped to True, as
-                        # we do below. This is because we are allowing
-                        # the watched node to not exist, so we will
-                        # call func again later if the node is recreated.
-                        self._func(None, None)
+                                              self._path, self._exists_watcher)
+                    if stat:
+                        # Apparently the node now exists... try again
+                        data, stat = self._client.retry(
+                            self._client.get, self._path, self._watcher)
+                    else:
+                        # We return here, to ensure we don't indicate
+                        # there was prior data
+                        if self._func(data, stat) is False:
+                            self._stopped = True
                         return
                 else:
-                    data, stat = self._client.retry(self._client.get,
-                                                    self._path, self._watcher)
-            except NoNodeError:
-                # This can only happen if _allow_missing_node
-                # is False, because when it is True we use the
-                # ZK 'retry' method, which can't have this exception.
-                self._stopped = True
-                self._func(None, None)
-                return
+                    # This can only happen if _allow_missing_node
+                    # is False, because when it is True we use the
+                    # ZK 'retry' method, which can't have this exception.
+                    self._stopped = True
+                    self._func(None, None)
+                    return
 
             if not self._watch_established:
                 self._watch_established = True
@@ -166,6 +175,9 @@ class DataWatch(object):
 
     def _watcher(self, event):
         self._get_data()
+
+    def _exists_watcher(self, event):
+        self._get_data(using_exists=True)
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):

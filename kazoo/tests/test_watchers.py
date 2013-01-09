@@ -37,6 +37,9 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
+        # Make it a non-existent path
+        self.path += 'f'
+
         @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             data.pop()
@@ -47,9 +50,9 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data, [None])
         update.clear()
 
-        self.client.set(self.path, b'fred')
+        self.client.create(self.path, b'fred')
         update.wait()
-        eq_(data[0], None)
+        eq_(data[0], b'fred')
         update.clear()
 
     def test_func_style_data_watch(self):
@@ -75,6 +78,9 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
+        # Make it a non-existent path
+        self.path += 'f'
+
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -85,9 +91,9 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data, [None])
         update.clear()
 
-        self.client.set(self.path, b'fred')
+        self.client.create(self.path, b'fred')
         update.wait()
-        eq_(data[0], None)
+        eq_(data[0], b'fred')
         update.clear()
 
     def test_datawatch_across_session_expire(self):
@@ -114,6 +120,8 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
+        self.path += "f"
+
         @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             data.pop()
@@ -126,10 +134,11 @@ class KazooDataWatcherTests(KazooTestCase):
 
         self.expire_session()
         eq_(data, [None])
-        eq_(update.is_set(), False)
-        self.client.retry(self.client.set, self.path, b'fred')
         update.wait()
-        eq_(data[0], None)
+        update.clear()
+        self.client.retry(self.client.create, self.path, b'fred')
+        update.wait()
+        eq_(data[0], b'fred')
 
     def test_func_stops(self):
         update = threading.Event()
@@ -166,6 +175,8 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
+        self.path += "f"
+
         fail_through = []
 
         @self.client.DataWatch(self.path, allow_missing_node=True)
@@ -181,14 +192,14 @@ class KazooDataWatcherTests(KazooTestCase):
         update.clear()
 
         fail_through.append(True)
-        self.client.set(self.path, b'fred')
+        self.client.create(self.path, b'fred')
         update.wait()
-        eq_(data[0], None)
+        eq_(data[0], b'fred')
         update.clear()
 
         self.client.set(self.path, b'asdfasdf')
         update.wait(0.2)
-        eq_(data[0], None)
+        eq_(data[0], b'fred')
 
         d, stat = self.client.get(self.path)
         eq_(d, b'asdfasdf')
@@ -343,6 +354,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
         self.expire_session()
 
+        update.wait(2)
         eq_(update.is_set(), False)
 
         self.client.retry(self.client.create,
