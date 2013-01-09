@@ -113,7 +113,7 @@ class KazooDataWatcherTests(KazooTestCase):
         self.expire_session()
         eq_(update.is_set(), False)
         self.client.retry(self.client.set, self.path, b'fred')
-        update.wait()
+        update.wait(25)
         eq_(data[0], b'fred')
 
     def test_datawatch_across_session_expire2(self):
@@ -137,7 +137,7 @@ class KazooDataWatcherTests(KazooTestCase):
         update.wait()
         update.clear()
         self.client.retry(self.client.create, self.path, b'fred')
-        update.wait()
+        update.wait(25)
         eq_(data[0], b'fred')
 
     def test_func_stops(self):
