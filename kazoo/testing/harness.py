@@ -98,8 +98,11 @@ class KazooTestHarness(object):
         attempts = 0
         while attempts < 5 and not lost.is_set():
             client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
-            client.start()
-            client.stop()
+            try:
+                client.start()
+                client.stop()
+            except:
+                pass
             lost.wait(5)
             attempts += 1
         # Wait for the reconnect now
