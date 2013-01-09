@@ -101,7 +101,7 @@ class KazooTestHarness(object):
             try:
                 client.start()
                 client.stop()
-            except:
+            except Exception:
                 pass
             lost.wait(5)
             attempts += 1
