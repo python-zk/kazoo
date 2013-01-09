@@ -56,7 +56,7 @@ class KazooPartitionerTests(KazooTestCase):
             p.release_set()
 
         for p in partitioners:
-            p.wait_for_acquire(1)
+            p.wait_for_acquire(14)
 
         eq_(list(partitioners[0]), [1])
         eq_(list(partitioners[1]), [2])
@@ -70,8 +70,8 @@ class KazooPartitionerTests(KazooTestCase):
                         identifier="p%s" % i, time_boundary=0.2)
                         for i in range(2)]
 
-        partitioners[0].wait_for_acquire(4)
-        partitioners[1].wait_for_acquire(4)
+        partitioners[0].wait_for_acquire(14)
+        partitioners[1].wait_for_acquire(14)
         eq_(partitioners[0].state, PartitionState.ACQUIRED)
         eq_(partitioners[1].state, PartitionState.ACQUIRED)
 
@@ -84,7 +84,7 @@ class KazooPartitionerTests(KazooTestCase):
     def test_party_session_failure(self):
         partitioner = self.client.SetPartitioner(
             self.path, set=(1, 2, 3), time_boundary=0.2)
-        partitioner.wait_for_acquire(4)
+        partitioner.wait_for_acquire(14)
         eq_(partitioner.state, PartitionState.ACQUIRED)
         # simulate session failure
         partitioner._fail_out()
