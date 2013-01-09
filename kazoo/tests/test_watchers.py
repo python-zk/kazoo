@@ -382,7 +382,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
-        update.wait(15)
+        update.wait(14)
         eq_(update.is_set(), False)
         eq_(all_children, ['smith'])
 
