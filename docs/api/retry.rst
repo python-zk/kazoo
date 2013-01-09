@@ -21,3 +21,7 @@ Public API
         .. automethod:: __init__
 
         .. automethod:: __call__
+
+    .. autoexception:: ForceRetryError
+
+    .. autoexception:: RetryFailedError

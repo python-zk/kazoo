@@ -86,7 +86,8 @@ class KazooRetry(object):
 
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
                  max_delay=3600, ignore_expire=True, sleep_func=time.sleep):
-        """Create a :class:`KazooRetry` instance
+        """Create a :class:`KazooRetry` instance for retrying function
+        calls
 
         :param max_tries: How many times to retry the command.
         :param delay: Initial delay between retry attempts.
@@ -109,6 +110,19 @@ class KazooRetry(object):
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
 
     def __call__(self, func, *args, **kwargs):
+        """Call a function with arguments until it completes without
+        throwing a Kazoo exception
+
+        :param func: Function to call
+        :param args: Positional arguments to call the function with
+        :params kwargs: Keyword arguments to call the function with
+
+        The function will be called until it doesn't throw one of the
+        retryable exceptions (ConnectionLoss, OperationTimeout, or
+        ForceRetryError), and optionally retrying on session
+        expiration.
+
+        """
         self.retry_sleeper.reset()
 
         while True:
