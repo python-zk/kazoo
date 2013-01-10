@@ -163,8 +163,7 @@ class KazooClient(object):
             self._session_id = client_id[0]
             self._session_passwd = client_id[1]
         else:
-            self._session_id = None
-            self._session_passwd = b'\x00' * 16
+            self._reset_session()
 
         # ZK uses milliseconds
         self._session_timeout = int(timeout * 1000)
@@ -224,9 +223,12 @@ class KazooClient(object):
         self._child_watchers = defaultdict(list)
         self._data_watchers = defaultdict(list)
 
+        self._reset_session()
+        self.last_zxid = 0
+
+    def _reset_session(self):
         self._session_id = None
         self._session_passwd = b'\x00' * 16
-        self.last_zxid = 0
 
     @property
     def client_state(self):
