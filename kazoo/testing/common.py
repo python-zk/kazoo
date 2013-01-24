@@ -147,6 +147,8 @@ log4j.appender.ROLLINGFILE.File=""" + (
             jars.extend(glob(os.path.join(
                 self.install_path,
                 "build/lib/*.jar")))
+        if 'CLASSPATH' in os.environ:
+            jars.append(os.environ['CLASSPATH'])
         return ":".join(jars)
 
     @property
