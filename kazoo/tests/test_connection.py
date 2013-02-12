@@ -132,7 +132,7 @@ class TestConnectionHandler(KazooTestCase):
 
         try:
             os.fstat(read_pipe)
-        except OSError, e:
+        except OSError as e:
             if not e.errno == errno.EBADF:
                 raise
         else:
@@ -140,7 +140,7 @@ class TestConnectionHandler(KazooTestCase):
 
         try:
             os.fstat(write_pipe)
-        except OSError, e:
+        except OSError as e:
             if not e.errno == errno.EBADF:
                 raise
         else:
