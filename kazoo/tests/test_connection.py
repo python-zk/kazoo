@@ -1,5 +1,6 @@
 from collections import namedtuple
 import os
+import errno
 import threading
 import time
 import uuid
@@ -117,6 +118,46 @@ class TestConnectionHandler(KazooTestCase):
         ev.wait(5)
         eq_(ev.is_set(), True)
         eq_(client.exists(path), None)
+
+    def test_connection_pipe(self):
+        client = self.client
+        read_pipe = client._connection._read_pipe
+        write_pipe = client._connection._write_pipe
+
+        assert read_pipe is not None
+        assert write_pipe is not None
+
+        # stop client and pipe should be closed
+        client.stop()
+
+        try:
+            os.fstat(read_pipe)
+        except OSError, e:
+            if not e.errno == errno.EBADF:
+                raise
+        else:
+            self.fail("Expected read_pipe to be closed")
+
+        try:
+            os.fstat(write_pipe)
+        except OSError, e:
+            if not e.errno == errno.EBADF:
+                raise
+        else:
+            self.fail("Expected write_pipe to be closed")
+
+        assert client._connection._read_pipe is None
+        assert client._connection._write_pipe is None
+
+        # start client back up. should get a new, valid pipe
+        client.start()
+        read_pipe = client._connection._read_pipe
+        write_pipe = client._connection._write_pipe
+
+        assert read_pipe is not None
+        assert write_pipe is not None
+        os.fstat(read_pipe)
+        os.fstat(write_pipe)
 
 
 class TestConnectionDropped(KazooTestCase):

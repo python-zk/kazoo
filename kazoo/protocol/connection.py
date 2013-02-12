@@ -126,7 +126,8 @@ class ConnectionHandler(object):
         self.connection_stopped = client.handler.event_object()
         self.connection_stopped.set()
 
-        self._read_pipe, self._write_pipe = create_pipe()
+        self._read_pipe = None
+        self._write_pipe = None
 
         self.log_debug = log_debug
         self._socket = None
@@ -146,6 +147,7 @@ class ConnectionHandler(object):
 
     def start(self):
         """Start the connection up"""
+        self._read_pipe, self._write_pipe = create_pipe()
         self.handler.spawn(self.zk_loop)
 
     def stop(self, timeout=None):
@@ -418,7 +420,14 @@ class ConnectionHandler(object):
                 if not self.client._stopped.is_set():
                     retry.increment()
         finally:
+            # close out pipe FDs so they aren't leaked
+            os.close(self._write_pipe)
+            self._write_pipe = None
+            os.close(self._read_pipe)
+            self._read_pipe = None
+
             self.connection_stopped.set()
+
             if self.log_debug:
                 log.debug('Connection stopped')
 
