@@ -2,6 +2,7 @@
 import inspect
 import logging
 import os
+import errno
 import re
 from collections import defaultdict, deque
 from functools import partial
@@ -376,7 +377,17 @@ class KazooClient(object):
                              KeeperState.CONNECTING):
             raise SessionExpiredError()
         self._queue.append((request, async_object))
-        os.write(self._connection._write_pipe, b'\0')
+
+        # wake the connection, guarding against a race with close()
+        write_pipe = self._connection._write_pipe
+        if write_pipe is None:
+            raise ConnectionClosedError("Connection has been closed")
+        try:
+            os.write(write_pipe, b'\0')
+        except OSError as e:
+            if e.errno == errno.EBADF:
+                raise ConnectionClosedError("Connection has been closed")
+            raise
 
     def start(self, timeout=15):
         """Initiate connection to ZK.
@@ -446,6 +457,16 @@ class KazooClient(object):
         """Stop and restart the Zookeeper session."""
         self.stop()
         self.start()
+
+    def close(self):
+        """Free any resources held by the client.
+
+        This method should be called on a stopped client before it is
+        discarded. Not doing so may result in filehandles being leaked.
+
+        .. versionadded:: 1.0
+        """
+        self._connection.close()
 
     def command(self, cmd=b'ruok'):
         """Sent a management command to the current ZK server.

@@ -17,6 +17,7 @@ from kazoo.exceptions import InvalidACLError
 from kazoo.exceptions import NoNodeError
 from kazoo.exceptions import NoAuthError
 from kazoo.exceptions import ConnectionLoss
+from kazoo.exceptions import ConnectionClosedError
 
 if sys.version_info > (3, ):  # pragma: nocover
     def u(s):
@@ -318,6 +319,36 @@ class TestConnection(KazooTestCase):
         self.assertTrue(self.client.connected)
         self.client.restart()
         self.assertTrue(self.client.connected)
+
+    def test_closed(self):
+        client = self.client
+        client.stop()
+
+        write_pipe = client._connection._write_pipe
+
+        # close the connection to free the pipe
+        client.close()
+        eq_(client._connection._write_pipe, None)
+
+        from kazoo.protocol.states import KeeperState
+
+        # sneak in and patch client to simulate race between a thread
+        # calling stop(); close() and one running a command
+        oldstate = client._state
+        client._state = KeeperState.CONNECTED
+        client._connection._write_pipe = write_pipe
+        try:
+            # simulate call made after write pipe is closed
+            self.assertRaises(ConnectionClosedError, client.exists, '/')
+
+            # simualte call made after write pipe is set to None
+            client._connection._write_pipe = None
+            self.assertRaises(ConnectionClosedError, client.exists, '/')
+
+        finally:
+            # reset for teardown
+            client._state = oldstate
+            client._connection._write_pipe = None
 
 
 class TestClient(KazooTestCase):
