@@ -119,6 +119,14 @@ class TestConnectionHandler(KazooTestCase):
         eq_(ev.is_set(), True)
         eq_(client.exists(path), None)
 
+    def test_connection_close(self):
+        self.assertRaises(Exception, self.client.close)
+        self.client.stop()
+        self.client.close()
+
+        # should be able to restart
+        self.client.start()
+
     def test_connection_pipe(self):
         client = self.client
         read_pipe = client._connection._read_pipe
@@ -127,8 +135,15 @@ class TestConnectionHandler(KazooTestCase):
         assert read_pipe is not None
         assert write_pipe is not None
 
-        # stop client and pipe should be closed
+        # stop client and pipe should not yet be closed
         client.stop()
+        assert read_pipe is not None
+        assert write_pipe is not None
+        os.fstat(read_pipe)
+        os.fstat(write_pipe)
+
+        # close client, and pipes should be
+        client.close()
 
         try:
             os.fstat(read_pipe)
@@ -145,9 +160,6 @@ class TestConnectionHandler(KazooTestCase):
                 raise
         else:
             self.fail("Expected write_pipe to be closed")
-
-        assert client._connection._read_pipe is None
-        assert client._connection._write_pipe is None
 
         # start client back up. should get a new, valid pipe
         client.start()
