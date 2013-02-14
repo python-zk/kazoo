@@ -123,10 +123,13 @@ class ConnectionHandler(object):
         self.retry_sleeper = retry_sleeper
 
         # Our event objects
+        self.connection_closed = client.handler.event_object()
+        self.connection_closed.set()
         self.connection_stopped = client.handler.event_object()
         self.connection_stopped.set()
 
-        self._read_pipe, self._write_pipe = create_pipe()
+        self._read_pipe = None
+        self._write_pipe = None
 
         self.log_debug = log_debug
         self._socket = None
@@ -146,12 +149,28 @@ class ConnectionHandler(object):
 
     def start(self):
         """Start the connection up"""
+        if self.connection_closed.is_set():
+            self._read_pipe, self._write_pipe = create_pipe()
+            self.connection_closed.clear()
         self.handler.spawn(self.zk_loop)
 
     def stop(self, timeout=None):
         """Ensure the writer has stopped, wait to see if it does."""
         self.connection_stopped.wait(timeout)
         return self.connection_stopped.is_set()
+
+    def close(self):
+        """Release resources held by the connection
+
+        The connection can be restarted afterwards.
+        """
+        if not self.connection_stopped.is_set():
+            raise Exception("Cannot close connection until it is stopped")
+        self.connection_closed.set()
+        os.close(self._write_pipe)
+        self._write_pipe = None
+        os.close(self._read_pipe)
+        self._read_pipe = None
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
