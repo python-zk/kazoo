@@ -66,6 +66,8 @@ Bugs and support issues should be reported on the `kazoo github issue tracker
 The developers of ``kazoo`` can frequently be found on the Freenode IRC
 network in the #zookeeper channel.
 
+For general discussions, please use the
+`python-zk <https://groups.google.com/forum/#!forum/python-zk>` mailing list.
 
 Indices and tables
 ==================
