@@ -1,9 +1,31 @@
 Changelog
 =========
 
-1.0 (unreleased)
-----------------
+1.0b1 (2013-02-24)
+------------------
 
+Features
+********
+
+- Refactored the internal connection handler to use a single thread. It now
+  uses a deque and pipe to signal the ZK thread that there's a new command to
+  send, so that the ZK thread can send it, or retrieve a response.
+  Processing ZK requests and responses serially in a single thread eliminates
+  the need for a bunch of the locking, the peekable queue and two threads
+  working on the same underlying socket.
+
+- Issue #48: Added documentation for the `retry` helper module.
+
+- Issue #55: Fix `os.pipe` file descriptor leak and introduce a
+  `KazooClient.close` method. The method is particular useful in tests, where
+  multiple KazooClients are created and closed in the same process.
+
+Bug Handling
+************
+
+- Issue #46: Avoid TypeError in GeneratorContextManager on process shutdown.
+
+- Issue #43: Let DataWatch return node data if allow_missing_node is used.
 
 0.9 (2013-01-07)
 ----------------
