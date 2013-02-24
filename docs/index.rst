@@ -67,7 +67,8 @@ The developers of ``kazoo`` can frequently be found on the Freenode IRC
 network in the #zookeeper channel.
 
 For general discussions, please use the
-`python-zk <https://groups.google.com/forum/#!forum/python-zk>` mailing list.
+`python-zk <https://groups.google.com/forum/#!forum/python-zk>`_ mailing list
+hosted on Google Groups.
 
 Indices and tables
 ==================
