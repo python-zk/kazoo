@@ -85,7 +85,7 @@ class DataWatch(object):
 
         # Register our session listener if we're going to resume
         # across session losses
-        if func:
+        if func is not None:
             if allow_session_lost:
                 self._client.add_listener(self._session_watcher)
             self._get_data()
@@ -240,7 +240,7 @@ class ChildrenWatch(object):
 
         # Register our session listener if we're going to resume
         # across session losses
-        if func:
+        if func is not None:
             if allow_session_lost:
                 self._client.add_listener(self._session_watcher)
             self._get_children()

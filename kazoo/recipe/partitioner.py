@@ -330,7 +330,7 @@ class SetPartitioner(object):
         watcher = PatientChildrenWatch(self._client, self._party_path,
                                        self._time_boundary)
         asy = watcher.start()
-        if func:
+        if func is not None:
             # We spin up the function in a separate thread/greenlet
             # to ensure that the rawlink's it might use won't be
             # blocked
