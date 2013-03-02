@@ -247,6 +247,15 @@ class KazooDataWatcherTests(KazooTestCase):
         counter += 1
         self.client.set(self.path, b'asdfasdf')
 
+    def test_watcher_evaluating_to_false(self):
+        class WeirdWatcher(list):
+            def __call__(self, *args):
+                self.called = True
+        watcher = WeirdWatcher()
+        self.client.DataWatch(self.path, watcher)
+        self.client.set(self.path, b'mwahaha')
+        self.assertTrue(watcher.called)
+
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
