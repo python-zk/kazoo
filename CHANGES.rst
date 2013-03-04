@@ -4,6 +4,10 @@ Changelog
 1.0b2 (unreleased)
 ------------------
 
+Bug Handling
+************
+
+- Issue #56: Avoid issues with watch callbacks evaluating to false.
 
 1.0b1 (2013-02-24)
 ------------------
