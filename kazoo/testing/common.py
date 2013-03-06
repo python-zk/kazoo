@@ -198,9 +198,9 @@ class ZookeeperCluster(object):
         peers = []
 
         for i in range(size):
-            port += i * 10
             info = ServerInfo(i + 1, port, port + 1, port + 2)
             peers.append(info)
+            port += 10
 
         # Instantiate Managed ZK Servers
         for i in range(size):
