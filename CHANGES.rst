@@ -28,6 +28,10 @@ Features
   `KazooClient.close` method. The method is particular useful in tests, where
   multiple KazooClients are created and closed in the same process.
 
+- Added a LockingQueue recipe. The queue firstly locks an item and removes it
+  from the queue only after consume() method is called. This enables other
+  node to retake the item if an error occours on the first node.
+
 Bug Handling
 ************
 
