@@ -90,19 +90,21 @@ class Queue(object):
 class LockingQueue(object):
     """A distributed queue with priority and locking support.
 
-    Before deleting the item this queue locks it with an ephemeral node, so
-    that others may retake the element when error occours on a locking node.
+    Upon retrieving an entry from the queue, the entry gets locked with an ephemeral
+    node (instead of deleted). If an error occours, this lock gets released so that
+    others could retake the entry. This adds a little penalty as compared to
+    :class:`Queue` implementation.
 
     The user should firstly call :meth:`LockingQueue.get` method to lock and
-    retrieve a next item. When finished processing the item, a user should call
-    :meth:`LockingQueue.consume` method that will remove the item from the queue.
+    retrieve a next entry. When finished processing the entry, a user should call
+    :meth:`LockingQueue.consume` method that will remove the entry from the queue.
     
     This queue will not track connection status with ZooKeeper. If a node locks
-    an element then loses connection with ZooKeeper and later reconnects, the 
-    lock will probably be removed in the meantime, but a node would still think
-    that it holds a lock. The user should check the connection status with 
-    Zookeeper or call :meth:`LockingQueue.holds_lock` method that will check if 
-    a node still holds the lock.
+    an element, then loses connection with ZooKeeper and later reconnects, the 
+    lock will probably be removed by Zookeeper in the meantime, but a node would
+    still think that it holds a lock. The user should check the connection status
+    with Zookeeper or call :meth:`LockingQueue.holds_lock` method that will check
+    if a node still holds the lock.
 
     """
 
@@ -115,7 +117,7 @@ class LockingQueue(object):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
-        self.id = uuid.uuid4().hex
+        self.id = uuid.uuid4().hex.encode('ascii')
         self.client = client
         self.path = path
         self.ensured_path = False
@@ -126,14 +128,14 @@ class LockingQueue(object):
     
     def __len__(self):
         """
-        :returns: queue size (includes locked items count)
+        :returns: queue size (includes locked entries count).
         """
         self._ensure_paths()
         _, stat = self.client.retry(self.client.get, self._entries_path)
         return stat.children_count
     
     def put(self, value, priority=100):
-        """Put an item into the queue.
+        """Put an entry into the queue.
 
         :param value: Byte string to put into the queue.
         :param priority:
@@ -156,7 +158,7 @@ class LockingQueue(object):
             value, sequence=True)
         
     def put_all(self, values, priority=100):
-        """Put several items into the queue.
+        """Put several entries into the queue.
 
         :param values: A list of values to put into the queue.
         :param priority:
@@ -184,13 +186,13 @@ class LockingQueue(object):
         transaction.commit()
     
     def get(self, timeout=None):
-        """Locks and gets an item from the queue. If a previously got item was
-        not consumed, this method will return that item.
+        """Locks and gets an entry from the queue. If a previously got entry was
+        not consumed, this method will return that entry.
 
         :param timeout:
             Maximum waiting time in seconds. If None then it will wait 
-            untill an item appears in the queue.
-        :returns: A locked item value or None if the timeout was reached.
+            untill an entry appears in the queue.
+        :returns: A locked entry value or None if the timeout was reached.
         """
         self._ensure_paths()
         if not self.processing_element is None:
@@ -212,10 +214,10 @@ class LockingQueue(object):
         return value == self.id
             
     def consume(self):
-        """Removes a currently processing item from the queue.
+        """Removes a currently processing entry from the queue.
 
         :returns: True if element was remove successfully, False otherwise
-            (usually when a node loses a lock in the mean time due to an error)
+            (usually when a node loses a lock in the mean time due to an error).
         """
         if not self.processing_element is None and self.holds_lock:
             id_, value = self.processing_element
@@ -265,7 +267,7 @@ class LockingQueue(object):
         with lock:
             canceled = True
             if len(value) > 0:
-                # We successfully locked an item
+                # We successfully locked an entry
                 self.processing_element = value[0]
                 retVal = value[0][1]
         return retVal

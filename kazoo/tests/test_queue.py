@@ -1,6 +1,6 @@
-import uuid, threading
+import uuid
 
-from nose.tools import eq_, ok_
+from nose.tools import eq_, ok_, timed
 
 from kazoo.testing import KazooTestCase
 
@@ -117,29 +117,29 @@ class KazooLockingQueueTests(KazooTestCase):
         eq_(queue.get(1), b"four")
         ok_(queue.consume())
 
+    @timed(2)
     def test_concurrent_execution(self):
         queue = self._makeOne()
         value1 = []
         value2 = []
         value3 = []
-        
-        def get_concurrently(value):
+        event1 = self.client.handler.event_object()
+        event2 = self.client.handler.event_object()
+        event3 = self.client.handler.event_object()
+
+        def get_concurrently(value, event):
             q = self.client.LockingQueue(queue.path)
-            value.append(q.get(.2))
+            value.append(q.get(.1))
+            event.set()
 
-        t1 = threading.Thread(target=get_concurrently, args=(value1,))
-        t2 = threading.Thread(target=get_concurrently, args=(value2,))
-        t3 = threading.Thread(target=get_concurrently, args=(value3,))
-        t1.start()
-        t2.start()
-        t3.start()
+        self.client.handler.spawn(get_concurrently, value1, event1)
+        self.client.handler.spawn(get_concurrently, value2, event2)
+        self.client.handler.spawn(get_concurrently, value3, event3)
         queue.put(b"one")
-        t1.join()
-        t2.join()
-        t3.join()
+        event1.wait(.2)
+        event2.wait(.2)
+        event3.wait(.2)
 
-        eq_(len(value1), 1)
-        eq_(len(value2), 1)
-        eq_(len(value3), 1)
-        result = sorted(value1 + value2 + value3)
-        eq_(result, [None, None, b"one"])
+        result = value1 + value2 + value3
+        eq_(result.count(b"one"), 1)
+        eq_(result.count(None), 2)
