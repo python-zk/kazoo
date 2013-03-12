@@ -1,5 +1,6 @@
 import uuid
 
+from nose import SkipTest
 from nose.tools import eq_, ok_, timed
 
 from kazoo.testing import KazooTestCase
@@ -52,6 +53,12 @@ class KazooQueueTests(KazooTestCase):
 
 class KazooLockingQueueTests(KazooTestCase):
 
+    def setUp(self):
+        KazooTestCase.setUp(self)
+        ver = self.client.server_version()
+        if ver[1] < 4:
+            raise SkipTest("Must use zookeeper 3.4 or above")
+
     def _makeOne(self):
         path = "/" + uuid.uuid4().hex
         return self.client.LockingQueue(path)
@@ -100,6 +107,25 @@ class KazooLockingQueueTests(KazooTestCase):
         ok_(not queue.holds_lock())
         ok_(not queue.consume())
         eq_(len(queue), 0)
+
+    def test_consume(self):
+        queue = self._makeOne()
+
+        queue.put(b"one")
+        ok_(not queue.consume())
+        queue.get(.1)
+        ok_(queue.consume())
+        ok_(not queue.consume())
+
+    def test_holds_lock(self):
+        queue = self._makeOne()
+
+        ok_(not queue.holds_lock())
+        queue.put(b"one")
+        queue.get(.1)
+        ok_(queue.holds_lock())
+        queue.consume()
+        ok_(not queue.holds_lock())
 
     def test_priority(self):
         queue = self._makeOne()

@@ -117,7 +117,7 @@ class LockingQueue(object):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
-        self.id = uuid.uuid4().hex.encode('ascii')
+        self.id = uuid.uuid4().hex.encode()
         self.client = client
         self.path = path
         self.ensured_path = False
