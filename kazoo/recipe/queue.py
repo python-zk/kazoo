@@ -107,15 +107,16 @@ class LockingQueue(object):
     if a node still holds the lock.
 
     """
-
     lock = "/taken"
     entries = "/entries"
     entry = "entry"
         
     def __init__(self, client, path):
         """
+
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
+
         """
         self.id = uuid.uuid4().hex.encode()
         self.client = client
@@ -128,7 +129,9 @@ class LockingQueue(object):
     
     def __len__(self):
         """
+
         :returns: queue size (includes locked entries count).
+
         """
         self._ensure_paths()
         _, stat = self.client.retry(self.client.get, self._entries_path)
@@ -141,6 +144,7 @@ class LockingQueue(object):
         :param priority:
             An optional priority as an integer with at most 3 digits.
             Lower values signify higher priority.
+
         """
         if not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
@@ -164,6 +168,7 @@ class LockingQueue(object):
         :param priority:
             An optional priority as an integer with at most 3 digits.
             Lower values signify higher priority.
+
         """
         if not isinstance(values, list):
             raise TypeError("values must be a list of byte strings")
@@ -193,6 +198,7 @@ class LockingQueue(object):
             Maximum waiting time in seconds. If None then it will wait 
             untill an entry appears in the queue.
         :returns: A locked entry value or None if the timeout was reached.
+
         """
         self._ensure_paths()
         if not self.processing_element is None:
@@ -204,6 +210,7 @@ class LockingQueue(object):
         """Checks if a node still holds the lock.
 
         :returns: True if a node still holds the lock, False otherwise.
+
         """
         if self.processing_element is None:
             return False
@@ -218,6 +225,7 @@ class LockingQueue(object):
 
         :returns: True if element was remove successfully, False otherwise
             (usually when a node loses a lock in the mean time due to an error).
+
         """
         if not self.processing_element is None and self.holds_lock:
             id_, value = self.processing_element
@@ -240,26 +248,25 @@ class LockingQueue(object):
         canceled = False
         value = []
         
-        def check_for_updates(event):
-            if event is None or event.type == EventType.CHILD:
-                with lock:
-                    if canceled:
-                        return
-                    if flag.isSet():
-                        return
-                    values = self.client.retry(self.client.get_children,
-                        self._entries_path,
-                        check_for_updates)
-                    taken = self.client.retry(self.client.get_children,
-                        self._lock_path,
-                        check_for_updates)
-                    available = self._filter_locked(values, taken)
-                    if len(available) > 0:
-                        ret = self._take(available[0])
-                        if not ret is None:
-                            # By this time, no one took the task
-                            value.append(ret)
-                            flag.set()
+        def check_for_updates(event): 
+            if not event is None and event.type != EventType.CHILD:
+                return
+            with lock:
+                if canceled or flag.isSet():
+                    return
+                values = self.client.retry(self.client.get_children,
+                    self._entries_path,
+                    check_for_updates)
+                taken = self.client.retry(self.client.get_children,
+                    self._lock_path,
+                    check_for_updates)
+                available = self._filter_locked(values, taken)
+                if len(available) > 0:
+                    ret = self._take(available[0])
+                    if not ret is None:
+                        # By this time, no one took the task
+                        value.append(ret)
+                        flag.set()
         
         check_for_updates(None)
         retVal = None
