@@ -4,6 +4,13 @@ Changelog
 1.0b2 (unreleased)
 ------------------
 
+Features
+********
+
+- Added a LockingQueue recipe. The queue first locks an item and removes it
+  from the queue only after the consume() method is called. This enables other
+  nodes to retake the item if an error occurs on the first node.
+
 Bug Handling
 ************
 
@@ -27,10 +34,6 @@ Features
 - Issue #55: Fix `os.pipe` file descriptor leak and introduce a
   `KazooClient.close` method. The method is particular useful in tests, where
   multiple KazooClients are created and closed in the same process.
-
-- Added a LockingQueue recipe. The queue firstly locks an item and removes it
-  from the queue only after consume() method is called. This enables other
-  node to retake the item if an error occours on the first node.
 
 Bug Handling
 ************
