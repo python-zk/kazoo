@@ -59,7 +59,12 @@ class Queue(BaseQueue):
         return super(Queue, self).__len__()
 
     def get(self):
-        """Get and remove an item from the queue."""
+        """
+        Get item data and remove an item from the queue.
+
+        :returns: Item data or None.
+        :rtype: bytes
+        """
         self._ensure_paths()
         children = self.client.retry(self.client.get_children, self.path)
         children = list(sorted(children))
@@ -163,7 +168,8 @@ class LockingQueue(BaseQueue):
             value, sequence=True)
 
     def put_all(self, values, priority=100):
-        """Put several entries into the queue.
+        """Put several entries into the queue. The action only succeeds
+        if all entries where put into the queue.
 
         :param values: A list of values to put into the queue.
         :param priority:
@@ -198,7 +204,7 @@ class LockingQueue(BaseQueue):
             Maximum waiting time in seconds. If None then it will wait
             untill an entry appears in the queue.
         :returns: A locked entry value or None if the timeout was reached.
-
+        :rtype: bytes
         """
         self._ensure_paths()
         if not self.processing_element is None:
@@ -210,7 +216,7 @@ class LockingQueue(BaseQueue):
         """Checks if a node still holds the lock.
 
         :returns: True if a node still holds the lock, False otherwise.
-
+        :rtype: bool
         """
         if self.processing_element is None:
             return False
@@ -224,7 +230,7 @@ class LockingQueue(BaseQueue):
         """Removes a currently processing entry from the queue.
 
         :returns: True if element was removed successfully, False otherwise.
-
+        :rtype: bool
         """
         if not self.processing_element is None and self.holds_lock:
             id_, value = self.processing_element
