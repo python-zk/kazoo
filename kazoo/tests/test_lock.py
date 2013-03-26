@@ -128,8 +128,13 @@ class KazooLockTests(KazooTestCase):
 
         lock1 = self.client.Lock(self.lockpath, lock_name)
 
+        # wait for the thread to acquire the lock
+        with self.condition:
+            if not self.active_thread:
+                self.condition.wait(5)
+
         ok_(not lock1.acquire(blocking=False))
-        eq_(lock.contenders(), [lock_name]) # just one - itself
+        eq_(lock.contenders(), [lock_name])  # just one - itself
 
         event.set()
         thread.join()
