@@ -290,18 +290,25 @@ class Semaphore(object):
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self):
-        """Acquire the semaphore, blocking until acquired."""
+    def acquire(self, blocking=True):
+        """Acquire the semaphore, if blocking=True (default) block until
+        it is acquired.
+
+        Return acquisition result.
+
+        """
         try:
-            self.client.retry(self._inner_acquire)
-            self.is_acquired = True
+            self.is_acquired = self.client.retry(self._inner_acquire,
+                                                 blocking=blocking)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
             raise
 
-    def _inner_acquire(self):
+        return self.is_acquired
+
+    def _inner_acquire(self, blocking):
         """Inner loop that runs from the top anytime a command hits a
         retryable Zookeeper exception."""
         self._session_expired = False
@@ -318,24 +325,50 @@ class Semaphore(object):
             while True:
                 self.wake_event.clear()
 
-                if self._session_expired:
-                    raise ForceRetryError("Retry on session loss at top")
-
-                if self.cancelled:
-                    raise CancelledError("Semaphore cancelled")
-
-                # Is there a lease free?
-                children = self.client.get_children(self.path,
-                                                    self._watch_lease_change)
-                if len(children) < self.max_leases:
-                    self.client.create(self.create_path, self.data,
-                                       ephemeral=True)
+                # Attempt to grab our lease...
+                if self._get_lease():
                     return True
-                else:
+
+                if blocking:
+                    # If blocking, wait until self._watch_lease_change() is
+                    # called before returning
                     self.wake_event.wait()
+                else:
+                    # If not blocking, register another watch that will trigger
+                    # self._get_lease() as soon as the children change again.
+                    self.client.get_children(self.path, self._get_lease)
+                    return False
 
     def _watch_lease_change(self, event):
         self.wake_event.set()
+
+    def _get_lease(self, data=None):
+        # Make sure the session is still valid
+        if self._session_expired:
+            raise ForceRetryError("Retry on session loss at top")
+
+        # Make sure that the request hasn't been canceled
+        if self.cancelled:
+            raise CancelledError("Semaphore cancelled")
+
+        # Get a list of the current potential lock holders. If they change,
+        # notify our wake_event object. This is used to unblock a blocking
+        # self._inner_acquire call.
+        children = self.client.get_children(self.path,
+                                            self._watch_lease_change)
+
+        # If there are leases available, acquire one
+        if len(children) < self.max_leases:
+            self.client.create(self.create_path, self.data, ephemeral=True)
+
+        # Check if our acquisition was sucessfull or not. Update our state.
+        if self.client.exists(self.create_path):
+            self.is_acquired = True
+        else:
+            self.is_acquired = False
+
+        # Return current state
+        return self.is_acquired
 
     def _watch_session(self, state):
         if state == KazooState.LOST:
