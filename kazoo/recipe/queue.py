@@ -304,14 +304,6 @@ class LockingQueue(BaseQueue):
 
     def _ensure_paths(self):
         if not self.ensured_path:
-            self._create_if_not_exists(self._lock_path)
-            self._create_if_not_exists(self._entries_path)
+            self.client.ensure_path(self._lock_path)
+            self.client.ensure_path(self._entries_path)
             self.ensured_path = True
-
-    def _create_if_not_exists(self, path):
-        if not self.client.exists(path):
-            try:
-                self.client.create(path, makepath=True)
-            except NodeExistsError:
-                # Someone created one for us
-                pass
