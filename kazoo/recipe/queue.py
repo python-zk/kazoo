@@ -19,6 +19,7 @@ class BaseQueue(object):
         self.client = client
         self.path = path
         self._entries_path = path
+        self.structure_paths = (self.path, )
         self.ensured_path = False
 
     def _check_put_arguments(self, value, priority=100):
@@ -28,6 +29,13 @@ class BaseQueue(object):
             raise TypeError("priority must be an int")
         elif priority < 0 or priority > 999:
             raise ValueError("priority must be between 0 and 999")
+
+    def _ensure_paths(self):
+        if not self.ensured_path:
+            # make sure our parent / internal structure nodes exists
+            for path in self.structure_paths:
+                self.client.ensure_path(path)
+            self.ensured_path = True
 
     def __len__(self):
         self._ensure_paths()
@@ -45,12 +53,6 @@ class Queue(BaseQueue):
     """
 
     prefix = "entry-"
-
-    def _ensure_paths(self):
-        if not self.ensured_path:
-            # make sure our parent node exists
-            self.client.ensure_path(self.path)
-            self.ensured_path = True
 
     def __len__(self):
         """Return queue size."""
@@ -132,6 +134,7 @@ class LockingQueue(BaseQueue):
         self.processing_element = None
         self._lock_path = self.path + self.lock
         self._entries_path = self.path + self.entries
+        self.structure_paths = (self._lock_path, self._entries_path)
 
     def __len__(self):
         """Returns the current length of the queue.
@@ -296,9 +299,3 @@ class LockingQueue(BaseQueue):
             # Item is already consumed or locked
             return None
         return (id_, value)
-
-    def _ensure_paths(self):
-        if not self.ensured_path:
-            self.client.ensure_path(self._lock_path)
-            self.client.ensure_path(self._entries_path)
-            self.ensured_path = True
