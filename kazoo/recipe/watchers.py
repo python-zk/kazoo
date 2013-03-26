@@ -26,13 +26,10 @@ class DataWatch(object):
 
         @client.DataWatch('/path/to/watch')
         def my_func(data, stat):
-            print "Data is %s" % data
-            print "Version is %s" % stat.version
+            print("Data is %s" % data)
+            print("Version is %s" % stat.version)
 
         # Above function is called immediately and prints
-
-        # If allow_missing_node=True then 'data'
-        # will always be None.
 
     If allow_missing_node=False in __init__, then in the
     event the node does not exist, the function will be called with
@@ -66,11 +63,8 @@ class DataWatch(object):
                                    session is lost.
         :type allow_session_lost: bool
         :param allow_missing_node:
-            Allow the mode to be missing when the watch is initially
+            Allow the node to be missing when the watch is initially
             set.
-
-        The path must already exist for the data watcher to
-        run.
 
         """
         self._client = client
