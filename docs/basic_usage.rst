@@ -14,7 +14,7 @@ created and a connection established:
 
     from kazoo.client import KazooClient
 
-    zk = KazooClient()
+    zk = KazooClient(hosts='127.0.0.1:2181')
     zk.start()
 
 By default, the client will connect to a local Zookeeper server on the default
@@ -133,7 +133,7 @@ to scan for other nodes that are read-write.
 
     from kazoo.client import KazooClient
 
-    zk = KazooClient(read_only=True)
+    zk = KazooClient(hosts='127.0.0.1:2181', read_only=True)
     zk.start()
 
 A new attribute on :class:`~kazoo.protocol.states.KeeperState` has been
@@ -251,7 +251,7 @@ Methods:
 * :meth:`~kazoo.client.KazooClient.delete`
 
 :meth:`~kazoo.client.KazooClient.delete` deletes a node, and can optionally
-recursively delete the entire path up to the node as well. A version can be
+recursively delete all children of the node as well. A version can be
 supplied when deleting a node which will be required to match the version of
 the node before deleting it or a :exc:`~kazoo.exceptions.BadVersionError`
 will be raised instead of deleting.
@@ -281,15 +281,15 @@ Some commands may have unique behavior that doesn't warrant automatic retries
 on a per command basis. For example, if one creates a node a connection might
 be lost before the command returns successfully but the node actually got
 created. This results in a :exc:`kazoo.exceptions.NodeExistsError` being
-raised when it runs again.
+raised when it runs again. A similar unique situation arises when a node is
+created with ephemeral and sequence options set,
+`documented here on the Zookeeper site
+<http://zookeeper.apache.org/doc/trunk/recipes.html#sc_recipes_errorHandlingNote>`_.
 
-A similar unique situation arises when a node is created with ephemeral and
-sequence options set, `documented here on the Zookeeper site <http://zookeeper.
-apache.org/doc/trunk/recipes.html#sc_recipes_errorHandlingNote>`_. Since the
-:meth:`~kazoo.client.KazooClient.retry` method takes a function to call and
-its arguments, a function that runs multiple Zookeeper commands could be
-passed to it so that the entire function will be retried if the connection is
-lost.
+Since the :meth:`~kazoo.client.KazooClient.retry` method takes a function to
+call and its arguments, a function that runs multiple Zookeeper commands could
+be passed to it so that the entire function will be retried if the connection
+is lost.
 
 This snippet from the lock implementation shows how it uses retry to re-run the
 function acquiring a lock, and checks to see if it was already created to
