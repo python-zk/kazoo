@@ -30,10 +30,7 @@ class BaseQueue(object):
             raise ValueError("priority must be between 0 and 999")
 
     def __len__(self):
-        """Returns the current length of the queue.
-
-        :returns: queue size (includes locked entries count).
-        """
+        self._ensure_paths()
         _, stat = self.client.retry(self.client.get, self._entries_path)
         return stat.children_count
 
@@ -57,7 +54,6 @@ class Queue(BaseQueue):
 
     def __len__(self):
         """Return queue size."""
-        self._ensure_paths()
         return super(Queue, self).__len__()
 
     def get(self):
@@ -142,7 +138,6 @@ class LockingQueue(BaseQueue):
 
         :returns: queue size (includes locked entries count).
         """
-        self._ensure_paths()
         return super(LockingQueue, self).__len__()
 
     def put(self, value, priority=100):
