@@ -179,17 +179,16 @@ class LockingQueue(BaseQueue):
             raise ValueError("priority must be between 0 and 999")
         self._ensure_paths()
 
-        transaction = self.client.transaction()
-        for value in values:
-            if not isinstance(value, bytes):
-                raise TypeError("value must be a byte string")
-            transaction.create(
-                "{path}/{prefix}-{priority:03d}-".format(
-                    path=self._entries_path,
-                    prefix=self.entry,
-                    priority=priority),
-                value, sequence=True)
-        transaction.commit()
+        with self.client.transaction() as transaction:
+            for value in values:
+                if not isinstance(value, bytes):
+                    raise TypeError("value must be a byte string")
+                transaction.create(
+                    "{path}/{prefix}-{priority:03d}-".format(
+                        path=self._entries_path,
+                        prefix=self.entry,
+                        priority=priority),
+                    value, sequence=True)
 
     def get(self, timeout=None):
         """Locks and gets an entry from the queue. If a previously got entry
@@ -229,14 +228,13 @@ class LockingQueue(BaseQueue):
         """
         if not self.processing_element is None and self.holds_lock:
             id_, value = self.processing_element
-            transaction = self.client.transaction()
-            transaction.delete("{path}/{id}".format(
-                path=self._entries_path,
-                id=id_))
-            transaction.delete("{path}/{id}".format(
-                path=self._lock_path,
-                id=id_))
-            transaction.commit()
+            with self.client.transaction() as transaction:
+                transaction.delete("{path}/{id}".format(
+                    path=self._entries_path,
+                    id=id_))
+                transaction.delete("{path}/{id}".format(
+                    path=self._lock_path,
+                    id=id_))
             self.processing_element = None
             return True
         else:
