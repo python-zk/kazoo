@@ -8,7 +8,37 @@ from kazoo.retry import ForceRetryError
 from kazoo.protocol.states import EventType
 
 
-class Queue(object):
+class BaseQueue(object):
+    """A common base class for queue implementations."""
+
+    def __init__(self, client, path):
+        """
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The queue path to use in ZooKeeper.
+        """
+        self.client = client
+        self.path = path
+        self._entries_path = path
+        self.ensured_path = False
+
+    def _check_put_arguments(self, value, priority=100):
+        if not isinstance(value, bytes):
+            raise TypeError("value must be a byte string")
+        if not isinstance(priority, int):
+            raise TypeError("priority must be an int")
+        elif priority < 0 or priority > 999:
+            raise ValueError("priority must be between 0 and 999")
+
+    def __len__(self):
+        """Returns the current length of the queue.
+
+        :returns: queue size (includes locked entries count).
+        """
+        _, stat = self.client.retry(self.client.get, self._entries_path)
+        return stat.children_count
+
+
+class Queue(BaseQueue):
     """A distributed queue with optional priority support.
 
     This queue does not offer reliable consumption. An entry is removed
@@ -19,15 +49,6 @@ class Queue(object):
 
     prefix = "entry-"
 
-    def __init__(self, client, path):
-        """
-        :param client: A :class:`~kazoo.client.KazooClient` instance.
-        :param path: The queue path to use.
-        """
-        self.client = client
-        self.path = path
-        self.ensured_path = False
-
     def _ensure_parent(self):
         if not self.ensured_path:
             # make sure our parent node exists
@@ -37,8 +58,7 @@ class Queue(object):
     def __len__(self):
         """Return queue size."""
         self._ensure_parent()
-        _, stat = self.client.retry(self.client.get, self.path)
-        return stat.children_count
+        return super(Queue, self).__len__()
 
     def get(self):
         """Get and remove an item from the queue."""
@@ -74,19 +94,14 @@ class Queue(object):
             An optional priority as an integer with at most 3 digits.
             Lower values signify higher priority.
         """
-        if not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
-        if not isinstance(priority, int):
-            raise TypeError("priority must be an int")
-        elif priority < 0 or priority > 999:
-            raise ValueError("priority must be between 0 and 999")
+        self._check_put_arguments(value, priority)
         self._ensure_parent()
         path = '{path}/{prefix}{priority:03d}-'.format(
             path=self.path, prefix=self.prefix, priority=priority)
         self.client.create(path, value, sequence=True)
 
 
-class LockingQueue(object):
+class LockingQueue(BaseQueue):
     """A distributed queue with priority and locking support.
 
     Upon retrieving an entry from the queue, the entry gets locked with an
@@ -116,24 +131,19 @@ class LockingQueue(object):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
+        super(LockingQueue, self).__init__(client, path)
         self.id = uuid.uuid4().hex.encode()
-        self.client = client
-        self.path = path
-        self.ensured_path = False
         self.processing_element = None
-
-        self._lock_path = self.path + LockingQueue.lock
-        self._entries_path = self.path + LockingQueue.entries
+        self._lock_path = self.path + self.lock
+        self._entries_path = self.path + self.entries
 
     def __len__(self):
         """Returns the current length of the queue.
 
         :returns: queue size (includes locked entries count).
-
         """
         self._ensure_paths()
-        _, stat = self.client.retry(self.client.get, self._entries_path)
-        return stat.children_count
+        return super(LockingQueue, self).__len__()
 
     def put(self, value, priority=100):
         """Put an entry into the queue.
@@ -144,18 +154,13 @@ class LockingQueue(object):
             Lower values signify higher priority.
 
         """
-        if not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
-        if not isinstance(priority, int):
-            raise TypeError("priority must be an int")
-        elif priority < 0 or priority > 999:
-            raise ValueError("priority must be between 0 and 999")
+        self._check_put_arguments(value, priority)
         self._ensure_paths()
 
         self.client.create(
             "{path}/{prefix}-{priority:03d}-".format(
                 path=self._entries_path,
-                prefix=LockingQueue.entry,
+                prefix=self.entry,
                 priority=priority),
             value, sequence=True)
 
@@ -183,7 +188,7 @@ class LockingQueue(object):
             transaction.create(
                 "{path}/{prefix}-{priority:03d}-".format(
                     path=self._entries_path,
-                    prefix=LockingQueue.entry,
+                    prefix=self.entry,
                     priority=priority),
                 value, sequence=True)
         transaction.commit()
