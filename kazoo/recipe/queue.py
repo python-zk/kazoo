@@ -1,6 +1,5 @@
-"""Queue
-
-A Zookeeper based queue implementation.
+"""
+Zookeeper based queue implementations.
 """
 
 import uuid
@@ -91,14 +90,14 @@ class LockingQueue(object):
     """A distributed queue with priority and locking support.
 
     Upon retrieving an entry from the queue, the entry gets locked with an
-    ephemeral node (instead of deleted). If an error occours, this lock gets
+    ephemeral node (instead of deleted). If an error occurs, this lock gets
     released so that others could retake the entry. This adds a little penalty
     as compared to :class:`Queue` implementation.
 
-    The user should firstly call :meth:`LockingQueue.get` method to lock and
-    retrieve a next entry. When finished processing the entry, a user should
-    call :meth:`LockingQueue.consume` method that will remove the entry from
-    the queue.
+    The user should call the :meth:`LockingQueue.get` method first to lock and
+    retrieve the next entry. When finished processing the entry, a user should
+    call the :meth:`LockingQueue.consume` method that will remove the entry
+    from the queue.
 
     This queue will not track connection status with ZooKeeper. If a node locks
     an element, then loses connection with ZooKeeper and later reconnects, the
