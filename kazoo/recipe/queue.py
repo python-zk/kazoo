@@ -49,7 +49,7 @@ class Queue(BaseQueue):
 
     prefix = "entry-"
 
-    def _ensure_parent(self):
+    def _ensure_paths(self):
         if not self.ensured_path:
             # make sure our parent node exists
             self.client.ensure_path(self.path)
@@ -57,12 +57,12 @@ class Queue(BaseQueue):
 
     def __len__(self):
         """Return queue size."""
-        self._ensure_parent()
+        self._ensure_paths()
         return super(Queue, self).__len__()
 
     def get(self):
         """Get and remove an item from the queue."""
-        self._ensure_parent()
+        self._ensure_paths()
         children = self.client.retry(self.client.get_children, self.path)
         children = list(sorted(children))
         return self.client.retry(self._inner_get, children)
@@ -95,7 +95,7 @@ class Queue(BaseQueue):
             Lower values signify higher priority.
         """
         self._check_put_arguments(value, priority)
-        self._ensure_parent()
+        self._ensure_paths()
         path = '{path}/{prefix}{priority:03d}-'.format(
             path=self.path, prefix=self.prefix, priority=priority)
         self.client.create(path, value, sequence=True)
