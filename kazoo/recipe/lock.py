@@ -72,13 +72,15 @@ class Lock(object):
         self.wake_event.set()
 
     def acquire(self, blocking=True):
-        """Acquire the mutex, if blocking=True (default) block until it is obtained.
+        """
+        Acquire the mutex, if blocking=True (default) block until it is
+        obtained.
 
         Return acquisition result.
-
         """
         try:
-            self.is_acquired = self.client.retry(self._inner_acquire, blocking=blocking)
+            self.is_acquired = self.client.retry(
+                self._inner_acquire, blocking=blocking)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
