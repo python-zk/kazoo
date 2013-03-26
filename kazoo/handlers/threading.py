@@ -179,7 +179,7 @@ class SequentialThreadingHandler(object):
     """
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
-    sleep_func = time.sleep
+    sleep_func = staticmethod(time.sleep)
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""

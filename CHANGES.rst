@@ -14,6 +14,9 @@ Features
 Bug Handling
 ************
 
+- Issue #50: Avoid problems with sleep function in mixed gevent/threading
+  setup.
+
 - Issue #56: Avoid issues with watch callbacks evaluating to false.
 
 1.0b1 (2013-02-24)
