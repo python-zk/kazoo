@@ -71,18 +71,26 @@ class Lock(object):
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self):
-        """Acquire the mutex, blocking until it is obtained"""
+    def acquire(self, blocking=True):
+        """Acquire the mutex, if blocking=True (default) block until it is obtained.
+
+        Return acquisition result.
+
+        """
         try:
-            self.client.retry(self._inner_acquire)
-            self.is_acquired = True
+            self.is_acquired = self.client.retry(self._inner_acquire, blocking=blocking)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
             raise
 
-    def _inner_acquire(self):
+        if not self.is_acquired:
+            self._delete_node(self.node)
+
+        return self.is_acquired
+
+    def _inner_acquire(self, blocking):
         # make sure our election parent node exists
         if not self.assured_path:
             self.client.ensure_path(self.path)
@@ -121,6 +129,9 @@ class Lock(object):
             if self.acquired_lock(children, our_index):
                 return True
 
+            if not blocking:
+                return False
+
             # otherwise we are in the mix. watch predecessor and bide our time
             predecessor = self.path + "/" + children[our_index - 1]
             if self.client.exists(predecessor, self._watch_predecessor):
@@ -147,11 +158,14 @@ class Lock(object):
                 return child
         return None
 
+    def _delete_node(self, node):
+        self.client.delete(self.path + "/" + node)
+
     def _best_effort_cleanup(self):
         try:
             node = self._find_node()
             if node:
-                self.client.delete(self.path + "/" + node)
+                self._delete_node(node)
         except KazooException:  # pragma: nocover
             pass
 
@@ -164,7 +178,7 @@ class Lock(object):
             return False
 
         try:
-            self.client.delete(self.path + "/" + self.node)
+            self._delete_node(self.node)
         except NoNodeError:  # pragma: nocover
             pass
 

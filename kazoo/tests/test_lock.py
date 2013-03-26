@@ -1,7 +1,7 @@
 import uuid
 import threading
 
-from nose.tools import eq_
+from nose.tools import eq_, ok_
 
 from kazoo.exceptions import CancelledError
 from kazoo.testing import KazooTestCase
@@ -116,6 +116,23 @@ class KazooLockTests(KazooTestCase):
                 while self.active_thread:
                     self.condition.wait()
             thread.join()
+
+    def test_lock_non_blocking(self):
+        lock_name = uuid.uuid4().hex
+        lock = self.client.Lock(self.lockpath, lock_name)
+        event = threading.Event()
+
+        thread = threading.Thread(target=self._thread_lock_acquire_til_event,
+            args=(lock_name, lock, event))
+        thread.start()
+
+        lock1 = self.client.Lock(self.lockpath, lock_name)
+
+        ok_(not lock1.acquire(blocking=False))
+        eq_(lock.contenders(), [lock_name]) # just one - itself
+
+        event.set()
+        thread.join()
 
     def test_lock_fail_first_call(self):
         event1 = threading.Event()
