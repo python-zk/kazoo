@@ -4,6 +4,12 @@ Changelog
 1.1 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- Issue #66: Require ping reply before sending another ping, otherwise the
+  connection will be considered dead and a ConnectionDropped will be raised
+  to trigger a reconnect.
 
 1.0 (2013-03-26)
 ----------------
