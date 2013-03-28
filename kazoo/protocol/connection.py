@@ -127,6 +127,7 @@ class ConnectionHandler(object):
         self.connection_closed.set()
         self.connection_stopped = client.handler.event_object()
         self.connection_stopped.set()
+        self.ping_outstanding = client.handler.event_object()
 
         self._read_pipe = None
         self._write_pipe = None
@@ -360,6 +361,7 @@ class ConnectionHandler(object):
         if header.xid == PING_XID:
             if self.log_debug:
                 log.debug('Received PING')
+            self.ping_outstanding.clear()
         elif header.xid == AUTH_XID:
             if self.log_debug:
                 log.debug('Received AUTH')
@@ -409,6 +411,7 @@ class ConnectionHandler(object):
     def _send_ping(self, connect_timeout):
         if self.log_debug:
             log.debug('Queue timeout.  Sending PING')
+        self.ping_outstanding.set()
         self._submit(Ping, connect_timeout, PING_XID)
 
         # Determine if we need to check for a r/w server
@@ -472,6 +475,10 @@ class ConnectionHandler(object):
                             [], [], timeout)[0]
 
                     if not s:
+                        if self.ping_outstanding.is_set():
+                            self.ping_outstanding.clear()
+                            raise ConnectionDropped(
+                                "outstanding heartbeat ping not received")
                         self._send_ping(connect_timeout)
                     elif s[0] == self._socket:
                         response = self._read_socket(read_timeout)
