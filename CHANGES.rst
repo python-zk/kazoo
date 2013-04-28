@@ -11,6 +11,11 @@ Bug Handling
   connection will be considered dead and a ConnectionDropped will be raised
   to trigger a reconnect.
 
+API Changes
+***********
+
+- KazooClient.ensure_path now has an async version, ensure_path_async.
+
 1.0 (2013-03-26)
 ----------------
 
