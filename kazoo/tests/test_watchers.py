@@ -5,6 +5,7 @@ import uuid
 from nose.tools import eq_
 from nose.tools import raises
 
+from kazoo.protocol.states import KazooState
 from kazoo.testing import KazooTestCase
 
 
@@ -458,3 +459,49 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
 
         children, asy = result.get()
         eq_(len(children), 2)
+
+
+class KazooDataWatcherRestartTests(KazooTestCase):
+    def setUp(self):
+        self.setup_zookeeper(randomize_hosts=False)
+        self.path = "/" + uuid.uuid4().hex
+        self.client.ensure_path(self.path)
+
+    def test_data_watcher(self):
+        update = threading.Event()
+        ev = threading.Event()
+        events = []
+
+        # Make it a non-existent path
+        self.path += 'f'
+
+        @self.client.DataWatch(self.path, allow_missing_node=True)
+        def changed(data, stat):
+            if data is not None:
+                events.append(stat)
+                update.set()
+
+        @self.client.add_listener
+        def listen(state):
+            if state != KazooState.LOST:
+                ev.set()
+
+        self.client.create(self.path, b'fred')
+        update.wait()
+        update.clear()
+        eq_(len(events), 1)
+
+        self.cluster[0].stop()
+        ev.wait(30)
+
+        time.sleep(3)
+
+        self.cluster[0].run()
+        ev.wait(30)
+
+        self.client.set(self.path, b'said')
+        update.wait()
+        update.clear()
+
+        time.sleep(1)
+        eq_(len(events), 2)
