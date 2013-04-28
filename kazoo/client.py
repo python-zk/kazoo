@@ -715,6 +715,12 @@ class KazooClient(object):
         self.ensure_path_async(path, acl).get()
 
     def ensure_path_async(self, path, acl=None):
+        """Recursively create a path asynchronously if it doesn't
+        exist. Takes the same arguments as :meth:`ensure_path`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        """
         acl = acl or self.default_acl
         async_result = self.handler.async_result()
 
