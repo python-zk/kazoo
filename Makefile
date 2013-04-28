@@ -51,7 +51,7 @@ clean:
 
 test:
 	ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) \
-	$(BIN)/nosetests -d --with-coverage kazoo.tests -v
+	$(BIN)/nosetests -d -v --with-coverage kazoo.tests
 
 html:
 	cd docs && \
