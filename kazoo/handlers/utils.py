@@ -5,6 +5,7 @@ try:
     import fcntl
 except ImportError:  # pragma: nocover
     HAS_FNCTL = False
+import functools
 import os
 
 
@@ -27,3 +28,40 @@ def create_tcp_socket(module):
         flags = fcntl.fcntl(sock, fcntl.F_GETFD)
         fcntl.fcntl(sock, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
     return sock
+
+
+def capture_exceptions(async_result):
+    """Return a new decorated function that propagates the exceptions of the
+    wrapped function to an async_result.
+
+    :param async_result: An async result implementing :class:`IAsyncResult`
+
+    """
+    def capture(function):
+        @functools.wraps(function)
+        def captured_function(*args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except Exception as exc:
+                async_result.set_exception(exc)
+        return captured_function
+    return capture
+
+
+def wrap(async_result):
+    """Return a new decorated function that propagates the return value or
+    exception of wrapped function to an async_result.  NOTE: Only propagates a
+    non-None return value.
+
+    :param async_result: An async result implementing :class:`IAsyncResult`
+
+    """
+    def capture(function):
+        @capture_exceptions(async_result)
+        def captured_function(*args, **kwargs):
+            value = function(*args, **kwargs)
+            if value is not None:
+                async_result.set(value)
+            return value
+        return captured_function
+    return capture
