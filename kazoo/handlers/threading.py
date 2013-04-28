@@ -13,6 +13,7 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
+import functools
 import logging
 import select
 import socket

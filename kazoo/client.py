@@ -18,6 +18,7 @@ from kazoo.exceptions import (
     SessionExpiredError
 )
 from kazoo.handlers.threading import SequentialThreadingHandler
+from kazoo.handlers.utils import wrap
 from kazoo.hosts import collect_hosts
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import normpath
@@ -639,32 +640,13 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        try:
-            realpath = self.create_async(path, value, acl=acl,
-                ephemeral=ephemeral, sequence=sequence).get()
-
-        except NoNodeError:
-            # some or all of the parent path doesn't exist. if makepath is set
-            # we will create it and retry. If it fails again, someone must be
-            # actively deleting ZNodes and we'd best bail out.
-            if not makepath:
-                raise
-
-            parent, _ = split(path)
-
-            # using the inner call directly because path is already namespaced
-            self._inner_ensure_path(parent, acl)
-
-            # now retry
-            realpath = self.create_async(path, value, acl=acl,
-                ephemeral=ephemeral, sequence=sequence).get()
-
-        return self.unchroot(realpath)
+        return self.unchroot(self.create_async(path, value, acl=acl,
+            ephemeral=ephemeral, sequence=sequence, makepath=makepath).get())
 
     def create_async(self, path, value=b"", acl=None, ephemeral=False,
-                     sequence=False):
+                     sequence=False, makepath=False):
         """Asynchronously create a ZNode. Takes the same arguments as
-        :meth:`create`, with the exception of `makepath`.
+        :meth:`create`.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
@@ -683,6 +665,8 @@ class KazooClient(object):
             raise TypeError("ephemeral must be a bool")
         if not isinstance(sequence, bool):
             raise TypeError("sequence must be a bool")
+        if not isinstance(makepath, bool):
+            raise TypeError("makepath must be a bool")
 
         flags = 0
         if ephemeral:
@@ -692,6 +676,30 @@ class KazooClient(object):
         if acl is None:
             acl = OPEN_ACL_UNSAFE
 
+        async_result = self.handler.async_result()
+
+        @wrap(async_result)
+        def retry_completion(result):
+            if result.get():
+                self._create_async_inner(path, value, acl, flags).rawlink(
+                    create_completion)
+
+        @wrap(async_result)
+        def create_completion(result):
+            try:
+                return result.get()
+            except NoNodeError:
+                if not makepath:
+                    raise
+                parent, _ = split(path)
+                self.ensure_path_async(parent, acl).rawlink(retry_completion)
+
+        self._create_async_inner(path, value, acl, flags).rawlink(
+            create_completion)
+
+        return async_result
+
+    def _create_async_inner(self, path, value, acl, flags):
         async_result = self.handler.async_result()
         self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
                    async_result)
@@ -704,24 +712,39 @@ class KazooClient(object):
         :param acl: Permissions for node.
 
         """
-        self._inner_ensure_path(path, acl)
+        self.ensure_path_async(path, acl).get()
 
-    def _inner_ensure_path(self, path, acl):
-        if self.exists(path):
-            return
+    def ensure_path_async(self, path, acl=None):
+        acl = acl or self.default_acl
+        async_result = self.handler.async_result()
 
-        if acl is None and self.default_acl:
-            acl = self.default_acl
+        @wrap(async_result)
+        def create_completion(result):
+            try:
+                return result.get()
+            except NodeExistsError:
+                return True
 
-        parent, node = split(path)
+        @wrap(async_result)
+        def prepare_completion(next_path, result):
+            if not result.get():
+                return False
+            self.create_async(next_path, acl=acl).rawlink(create_completion)
 
-        if node:
-            self._inner_ensure_path(parent, acl)
-        try:
-            self.create_async(path, acl=acl).get()
-        except NodeExistsError:
-            # someone else created the node. how sweet!
-            pass
+        @wrap(async_result)
+        def exists_completion(path, result):
+            if result.get():
+                return True
+            parent, node = split(path)
+            if node:
+                self.ensure_path_async(parent, acl=acl).rawlink(
+                    partial(prepare_completion, path))
+            else:
+                self.create_async(path, acl=acl).rawlink(create_completion)
+
+        self.exists_async(path).rawlink(partial(exists_completion, path))
+
+        return async_result
 
     def exists(self, path, watch=None):
         """Check if a node exists.

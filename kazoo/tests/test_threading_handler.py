@@ -2,6 +2,7 @@ import threading
 import unittest
 
 import mock
+from nose.tools import assert_raises
 from nose.tools import eq_
 from nose.tools import raises
 
@@ -261,3 +262,59 @@ class TestThreadingAsync(unittest.TestCase):
         async.unlink(add_on)
         async.set('fred')
         assert not mock_handler.completion_queue.put.called
+
+    def test_captured_exception(self):
+        from kazoo.handlers.utils import capture_exceptions
+
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        @capture_exceptions(async)
+        def exceptional_function():
+            return 1/0
+
+        exceptional_function()
+
+        assert_raises(ZeroDivisionError, async.get)
+
+    def test_no_capture_exceptions(self):
+        from kazoo.handlers.utils import capture_exceptions
+
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+
+        def add_on():
+            lst.append(True)
+
+        async.rawlink(add_on)
+
+        @capture_exceptions(async)
+        def regular_function():
+            return True
+
+        regular_function()
+
+        assert not mock_handler.completion_queue.put.called
+
+    def test_wraps(self):
+        from kazoo.handlers.utils import wrap
+
+        mock_handler = mock.Mock()
+        async = self._makeOne(mock_handler)
+
+        lst = []
+
+        def add_on(result):
+            lst.append(result.get())
+
+        async.rawlink(add_on)
+
+        @wrap(async)
+        def regular_function():
+            return 'hello'
+
+        assert regular_function() == 'hello'
+        assert mock_handler.completion_queue.put.called
+        assert async.get() == 'hello'

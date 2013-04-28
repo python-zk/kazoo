@@ -37,7 +37,7 @@ $(PYTHON):
 build: $(PYTHON)
 ifeq ($(GEVENT_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_gevent.txt
-	$(INSTALL) -f https://github.com/SiteSupport/gevent/downloads gevent==$(GEVENT_VERSION)
+	$(INSTALL) -f https://github.com/surfly/gevent/downloads gevent==$(GEVENT_VERSION)
 endif
 ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
@@ -51,7 +51,7 @@ clean:
 
 test:
 	ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) \
-	$(BIN)/nosetests -d --with-coverage kazoo.tests -v
+	$(BIN)/nosetests -d -v --with-coverage kazoo.tests
 
 html:
 	cd docs && \
