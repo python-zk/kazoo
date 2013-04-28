@@ -12,6 +12,7 @@ organized alphabetically by module name.
    api/exceptions
    api/handlers/gevent
    api/handlers/threading
+   api/handlers/util
    api/interfaces
    api/protocol/states
    api/recipe/barrier
