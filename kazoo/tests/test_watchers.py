@@ -25,12 +25,12 @@ class KazooDataWatcherTests(KazooTestCase):
             data.append(d)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(data, [b""])
         update.clear()
 
         self.client.set(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -47,12 +47,12 @@ class KazooDataWatcherTests(KazooTestCase):
             data.append(d)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(data, [None])
         update.clear()
 
         self.client.create(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -66,12 +66,12 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
         self.client.DataWatch(self.path, changed)
 
-        update.wait()
+        update.wait(10)
         eq_(data, [b""])
         update.clear()
 
         self.client.set(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -88,12 +88,12 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
         self.client.DataWatch(self.path, changed, allow_missing_node=True)
 
-        update.wait()
+        update.wait(10)
         eq_(data, [None])
         update.clear()
 
         self.client.create(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -107,7 +107,7 @@ class KazooDataWatcherTests(KazooTestCase):
             data.append(d)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(data, [b""])
         update.clear()
 
@@ -128,13 +128,13 @@ class KazooDataWatcherTests(KazooTestCase):
             data.append(d)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(data, [None])
         update.clear()
 
         self.expire_session()
         eq_(data, [None])
-        update.wait()
+        update.wait(10)
         update.clear()
         self.client.retry(self.client.create, self.path, b'fred')
         update.wait(25)
@@ -154,13 +154,13 @@ class KazooDataWatcherTests(KazooTestCase):
             if fail_through:
                 return False
 
-        update.wait()
+        update.wait(10)
         eq_(data, [b""])
         update.clear()
 
         fail_through.append(True)
         self.client.set(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -187,13 +187,13 @@ class KazooDataWatcherTests(KazooTestCase):
             if fail_through:
                 return False
 
-        update.wait()
+        update.wait(10)
         eq_(data, [None])
         update.clear()
 
         fail_through.append(True)
         self.client.create(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
 
@@ -257,6 +257,32 @@ class KazooDataWatcherTests(KazooTestCase):
         self.client.set(self.path, b'mwahaha')
         self.assertTrue(watcher.called)
 
+    def test_watcher_repeat_delete(self):
+        a = []
+        ev = threading.Event()
+
+        self.client.delete(self.path)
+
+        @self.client.DataWatch(self.path, allow_missing_node=True)
+        def changed(val, stat):
+            a.append(val)
+            ev.set()
+        eq_(a, [None])
+        ev.wait(10)
+        ev.clear()
+        self.client.create(self.path, b'blah')
+        ev.wait(10)
+        ev.clear()
+        eq_(a, [None, b'blah'])
+        self.client.delete(self.path)
+        ev.wait(10)
+        ev.clear()
+        eq_(a, [None, b'blah', None])
+        self.client.create(self.path, b'blah')
+        ev.wait(10)
+        ev.clear()
+        eq_(a, [None, b'blah', None, b'blah'])
+
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
@@ -275,17 +301,17 @@ class KazooChildrenWatcherTests(KazooTestCase):
             all_children.extend(children)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(all_children, [])
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
-        update.wait()
+        update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
-        update.wait()
+        update.wait(10)
         eq_(sorted(all_children), ['george', 'smith'])
 
     def test_func_style_child_watcher(self):
@@ -300,17 +326,17 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
         self.client.ChildrenWatch(self.path, changed)
 
-        update.wait()
+        update.wait(10)
         eq_(all_children, [])
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
-        update.wait()
+        update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
-        update.wait()
+        update.wait(10)
         eq_(sorted(all_children), ['george', 'smith'])
 
     def test_func_stops(self):
@@ -328,13 +354,13 @@ class KazooChildrenWatcherTests(KazooTestCase):
             if fail_through:
                 return False
 
-        update.wait()
+        update.wait(10)
         eq_(all_children, [])
         update.clear()
 
         fail_through.append(True)
         self.client.create(self.path + '/' + 'smith')
-        update.wait()
+        update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
 
@@ -353,19 +379,19 @@ class KazooChildrenWatcherTests(KazooTestCase):
             all_children.extend(children)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(all_children, [])
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
-        update.wait()
+        update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
         self.expire_session()
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
-        update.wait()
+        update.wait(10)
         eq_(sorted(all_children), ['george', 'smith'])
 
     def test_child_stop_on_session_loss(self):
@@ -379,12 +405,12 @@ class KazooChildrenWatcherTests(KazooTestCase):
             all_children.extend(children)
             update.set()
 
-        update.wait()
+        update.wait(10)
         eq_(all_children, [])
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
-        update.wait()
+        update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
         self.expire_session()
@@ -487,7 +513,7 @@ class KazooDataWatcherRestartTests(KazooTestCase):
                 ev.set()
 
         self.client.create(self.path, b'fred')
-        update.wait()
+        update.wait(10)
         update.clear()
         eq_(len(events), 1)
 
@@ -500,7 +526,7 @@ class KazooDataWatcherRestartTests(KazooTestCase):
         ev.wait(30)
 
         self.client.set(self.path, b'said')
-        update.wait()
+        update.wait(10)
         update.clear()
 
         time.sleep(1)

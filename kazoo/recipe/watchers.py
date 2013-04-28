@@ -102,7 +102,9 @@ class DataWatch(object):
         return func
 
     def _get_data(self, using_exists=False):
-        with self._run_lock:  # Ensure this runs one at a time
+        # Ensure this runs one at a time, possible because the session
+        # watcher may trigger a run
+        with self._run_lock:
             if using_exists and self._prior_data:
                 # We were able to get data after the first exists
                 # check, abort _get_data since there's a separate
@@ -118,6 +120,9 @@ class DataWatch(object):
             except NoNodeError:
                 if self._allow_missing_node:
                     data = None
+
+                    # No data
+                    self._prior_data = ()
 
                     # This will set 'stat' to None if the node does not yet
                     # exist.
@@ -175,7 +180,8 @@ class DataWatch(object):
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
-            self._watch_established = False
+            with self._run_lock:
+                self._watch_established = False
         elif state == KazooState.CONNECTED and \
              not self._watch_established and not self._stopped:
             self._client.handler.spawn(self._get_data)

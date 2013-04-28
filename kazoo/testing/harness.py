@@ -71,6 +71,8 @@ class KazooTestHarness(object):
         return KazooClient(self.servers)
 
     def _get_client(self, **kwargs):
+        kwargs['retry_max_delay'] = 30
+        kwargs['max_retries'] = 15
         return KazooClient(self.hosts, **kwargs)
 
     def expire_session(self, client_id=None):

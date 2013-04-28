@@ -10,6 +10,8 @@ Bug Handling
 - Issue #66: Require ping reply before sending another ping, otherwise the
   connection will be considered dead and a ConnectionDropped will be raised
   to trigger a reconnect.
+- Issue #58: DataWatcher failed to re-register for changes after non-existent
+  node was created then deleted.
 
 API Changes
 ***********
