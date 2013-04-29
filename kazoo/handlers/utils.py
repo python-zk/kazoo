@@ -10,6 +10,8 @@ import os
 
 
 def create_pipe():
+    """Create a non-blocking read/write pipe.
+    """
     r, w = os.pipe()
     if HAS_FNCTL:
         fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -18,6 +20,8 @@ def create_pipe():
 
 
 def create_tcp_socket(module):
+    """Create a TCP socket with the CLOEXEX flag set.
+    """
     type_ = module.SOCK_STREAM
     if hasattr(module, 'SOCK_CLOEXEC'):  # pragma: nocover
         # if available, set cloexec flag during socket creation
