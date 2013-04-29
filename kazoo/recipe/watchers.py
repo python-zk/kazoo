@@ -2,12 +2,22 @@
 """
 import logging
 import time
-from functools import partial
+from functools import partial, wraps
 
 from kazoo.client import KazooState
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import ConnectionClosedError, NoNodeError
 
 log = logging.getLogger(__name__)
+
+
+def _ignore_closed(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ConnectionClosedError:
+            pass
+    return wrapper
 
 
 class DataWatch(object):
@@ -17,8 +27,9 @@ class DataWatch(object):
     The function will also be called the very first time its
     registered to get the data.
 
-    Returning `False` from the registered function will disable
-    future data change calls.
+    Returning `False` from the registered function will disable future
+    data change calls. If the client connection is closed (using the
+    close command), the DataWatch will no longer get updates.
 
     Example with client:
 
@@ -101,6 +112,7 @@ class DataWatch(object):
         self._get_data()
         return func
 
+    @_ignore_closed
     def _get_data(self, using_exists=False):
         # Ensure this runs one at a time, possible because the session
         # watcher may trigger a run
@@ -194,8 +206,9 @@ class ChildrenWatch(object):
     The function will also be called the very first time its
     registered to get children.
 
-    Returning `False` from the registered function will disable
-    future children change calls.
+    Returning `False` from the registered function will disable future
+    children change calls. If the client connection is closed (using
+    the close command), the ChildrenWatch will no longer get updates.
 
     Example with client:
 
@@ -261,6 +274,7 @@ class ChildrenWatch(object):
         self._get_children()
         return func
 
+    @_ignore_closed
     def _get_children(self):
         with self._run_lock:  # Ensure this runs one at a time
             if self._stopped:

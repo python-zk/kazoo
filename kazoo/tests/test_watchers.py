@@ -283,6 +283,25 @@ class KazooDataWatcherTests(KazooTestCase):
         ev.clear()
         eq_(a, [None, b'blah', None, b'blah'])
 
+    def test_watcher_with_closing(self):
+        a = []
+        ev = threading.Event()
+
+        self.client.delete(self.path)
+
+        @self.client.DataWatch(self.path, allow_missing_node=True)
+        def changed(val, stat):
+            a.append(val)
+            ev.set()
+        eq_(a, [None])
+
+        b = False
+        try:
+            self.client.close()
+        except:
+            b = True
+        eq_(b, False)
+
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
@@ -391,7 +410,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
-        update.wait(10)
+        update.wait(20)
         eq_(sorted(all_children), ['george', 'smith'])
 
     def test_child_stop_on_session_loss(self):

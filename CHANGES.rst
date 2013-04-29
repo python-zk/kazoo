@@ -12,6 +12,8 @@ Bug Handling
   to trigger a reconnect.
 - Issue #58: DataWatcher failed to re-register for changes after non-existent
   node was created then deleted.
+- Issue #68: Closing the connection causes exceptions to be raised by watchers
+  which assume the connection won't be closed when running commands.
 
 API Changes
 ***********
