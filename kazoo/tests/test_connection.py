@@ -15,6 +15,7 @@ from kazoo.protocol.serialization import (
     int_struct
 )
 from kazoo.protocol.states import KazooState
+from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
 
 
@@ -172,38 +173,25 @@ class TestConnectionHandler(KazooTestCase):
         os.fstat(write_pipe)
 
 
-class TestConnectionDropped(KazooTestCase):
-
-    def setUp(self):
-        self.setup_zookeeper(randomize_hosts=False)
-
-    def tearDown(self):
-        self.cluster.start()
-        self.client.stop()
-
+class TestConnectionDrop(KazooTestCase):
     def test_connection_dropped(self):
-        client = self.client
-        client.start()
         ev = threading.Event()
 
         def back(state):
             if state == KazooState.CONNECTED:
                 ev.set()
 
-        # make sure we are connected to cluster node 0
-        eq_(self.cluster[0].server_info.client_port,
-            client._connection._socket.getpeername()[1])
         # create a node with a large value and stop the ZK node
         path = "/" + uuid.uuid4().hex
-        client.create(path)
-        client.add_listener(back)
-        result = client.set_async(path, b'a' * 1000 * 1024)
-        self.cluster[0].stop()
+        self.client.create(path)
+        self.client.add_listener(back)
+        result = self.client.set_async(path, b'a' * 1000 * 1024)
+        self.client._call(_CONNECTION_DROP, None)
+
         self.assertRaises(ConnectionLoss, result.get)
         # we have a working connection to a new node
         ev.wait(30)
         eq_(ev.is_set(), True)
-        client.delete(path)
 
 
 class TestReadOnlyMode(KazooTestCase):
@@ -233,6 +221,7 @@ class TestReadOnlyMode(KazooTestCase):
             self.cluster[1].stop()
             self.cluster[2].stop()
             ev.wait(6)
+            eq_(ev.is_set(), True)
             eq_(client.client_state, KeeperState.CONNECTED_RO)
 
             # Test read only command
