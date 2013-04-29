@@ -11,6 +11,7 @@ from kazoo.protocol.states import (
     KazooState
 )
 from kazoo.testing.common import ZookeeperCluster
+from kazoo.protocol.connection import _SESSION_EXPIRED
 
 log = logging.getLogger(__name__)
 
@@ -96,17 +97,10 @@ class KazooTestHarness(object):
 
         self.client.add_listener(watch_loss)
 
-        # Sometimes we have to do this a few times
-        attempts = 0
-        while attempts < 5 and not lost.is_set():
-            client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
-            try:
-                client.start()
-                client.stop()
-            except Exception:
-                pass
-            lost.wait(5)
-            attempts += 1
+        self.client._call(_SESSION_EXPIRED, None)
+
+        lost.wait(5)
+
         # Wait for the reconnect now
         safe.wait(15)
         self.client.retry(self.client.get_async, '/')
