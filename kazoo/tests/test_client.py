@@ -93,13 +93,7 @@ class TestClientTransitions(KazooTestCase):
         self.expire_session()
         rc.wait(2)
 
-        # Depending on timings, its possible during session expiration
-        # that the client gets one connection in before being dropped
-        req_states = [KazooState.SUSPENDED, KazooState.LOST,
-                     KazooState.CONNECTED]
-        if len(states) == 5:
-            req_states = [KazooState.SUSPENDED, KazooState.CONNECTED] \
-                 + req_states
+        req_states = [KazooState.LOST, KazooState.CONNECTED]
         eq_(states, req_states)
 
 
