@@ -82,7 +82,6 @@ class DataWatch(object):
         self._path = path
         self._func = func
         self._stopped = False
-        self._watch_established = False
         self._allow_session_lost = allow_session_lost
         self._allow_missing_node = allow_missing_node
         self._run_lock = client.handler.lock_object()
@@ -93,7 +92,8 @@ class DataWatch(object):
         if func is not None:
             if allow_session_lost:
                 self._client.add_listener(self._session_watcher)
-            self._get_data()
+            if self._get_data():
+                self._log_func_exception(None, None)
 
     def __call__(self, func):
         """Callable version for use as a decorator
@@ -109,8 +109,17 @@ class DataWatch(object):
 
         if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
-        self._get_data()
+        if self._get_data():
+            self._log_func_exception(None, None)
         return func
+
+    def _log_func_exception(self, data, stat):
+        try:
+            if self._func(data, stat) is False:
+                self._stopped = True
+        except Exception as exc:
+            log.exception(exc)
+            raise
 
     @_ignore_closed
     def _get_data(self, using_exists=False):
@@ -133,23 +142,12 @@ class DataWatch(object):
                 if self._allow_missing_node:
                     data = None
 
-                    # No data
-                    self._prior_data = ()
-
                     # This will set 'stat' to None if the node does not yet
                     # exist.
                     stat = self._client.retry(self._client.exists,
                                               self._path, self._exists_watcher)
                     if stat:
-                        # Apparently the node now exists... try again
-                        data, stat = self._client.retry(
-                            self._client.get, self._path, self._watcher)
-                    else:
-                        # We return here, to ensure we don't indicate
-                        # there was prior data
-                        if self._func(data, stat) is False:
-                            self._stopped = True
-                        return
+                        return self._get_data()
                 else:
                     # This can only happen if _allow_missing_node
                     # is False, because when it is True we use the
@@ -158,31 +156,22 @@ class DataWatch(object):
                     self._func(None, None)
                     return
 
-            if not self._watch_established:
-                self._watch_established = True
-
-                # If we had data and it hasn't changed, this is a session
-                # re-establishment and nothing changed, so don't call the func
-                if self._prior_data:
-                    # If the prior session had no data, then it was
-                    # watching a node that did not exist.
-                    if self._prior_data[1] is None:
-                        # If the current session also has no data, then don't
-                        # call the func, since nothing has changed.
-                        if stat is None:
-                            return
-                    elif stat is not None and \
-                         self._prior_data[1].mzxid == stat.mzxid:
-                        return
-
-            self._prior_data = data, stat
-
-            try:
-                if self._func(data, stat) is False:
-                    self._stopped = True
-            except Exception as exc:
-                log.exception(exc)
-                raise
+            # No prior data, no current data, nothing to do
+            if stat is None and not self._prior_data:
+                # This returns True so that the first-run can trigger
+                # the function itself as needed on first-run
+                return True
+            elif stat is None:
+                # Prior data, node has now been deleted, watch was set if
+                # needed
+                self._prior_data = ()
+            elif self._prior_data and self._prior_data[1].mzxid == stat.mzxid:
+                # We have data that hasn't changed
+                return
+            else:
+                # We have new data!
+                self._prior_data = data, stat
+            self._log_func_exception(data, stat)
 
     def _watcher(self, event):
         self._get_data()
@@ -194,8 +183,7 @@ class DataWatch(object):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
             with self._run_lock:
                 self._watch_established = False
-        elif state == KazooState.CONNECTED and \
-             not self._watch_established and not self._stopped:
+        elif state == KazooState.CONNECTED and not self._stopped:
             self._client.handler.spawn(self._get_data)
 
 

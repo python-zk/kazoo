@@ -5,15 +5,7 @@ import uuid
 from nose.tools import eq_
 from nose.tools import raises
 
-from kazoo.protocol.states import KazooState
 from kazoo.testing import KazooTestCase
-
-
-def send_in_thread(func, *args, **kwargs):
-    def runit():
-        func(*args, **kwargs)
-    t = threading.Thread(target=runit)
-    t.start()
 
 
 class KazooDataWatcherTests(KazooTestCase):
@@ -87,19 +79,19 @@ class KazooDataWatcherTests(KazooTestCase):
         data = [True]
 
         # Make it a non-existent path
-        self.path += 'f'
+        path = self.path + 'f'
 
         def changed(d, stat):
             data.pop()
             data.append(d)
             update.set()
-        self.client.DataWatch(self.path, changed, allow_missing_node=True)
+        self.client.DataWatch(path, changed, allow_missing_node=True)
 
         update.wait(10)
         eq_(data, [None])
         update.clear()
 
-        self.client.create(self.path, b'fred')
+        self.client.create(path, b'fred')
         update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
@@ -278,16 +270,19 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(a, [None])
         ev.wait(10)
         ev.clear()
-        send_in_thread(self.client.create, self.path, b'blah')
+        self.client.create(self.path, b'blah')
         ev.wait(10)
+        eq_(ev.is_set(), True)
         ev.clear()
         eq_(a, [None, b'blah'])
-        send_in_thread(self.client.delete, self.path)
+        self.client.delete(self.path)
         ev.wait(10)
+        eq_(ev.is_set(), True)
         ev.clear()
         eq_(a, [None, b'blah', None])
-        send_in_thread(self.client.create, self.path, b'blah')
+        self.client.create(self.path, b'blah')
         ev.wait(10)
+        eq_(ev.is_set(), True)
         ev.clear()
         eq_(a, [None, b'blah', None, b'blah'])
 
