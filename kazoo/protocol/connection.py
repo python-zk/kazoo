@@ -399,9 +399,9 @@ class ConnectionHandler(object):
 
         # Special case for testing, if this is a _SessionExpire object
         # then throw a SessionExpiration error as if we were dropped
-        if request == _SESSION_EXPIRED:
+        if request is _SESSION_EXPIRED:
             raise SessionExpiredError("Session expired: Testing")
-        if request == _CONNECTION_DROP:
+        if request is _CONNECTION_DROP:
             raise ConnectionDropped("Connection dropped: Testing")
 
         # Special case for auth packets
