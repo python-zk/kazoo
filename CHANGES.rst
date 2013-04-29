@@ -22,6 +22,8 @@ Bug Handling
 API Changes
 ***********
 
+- KazooClient.create_async now supports the makepath argument.
+
 - KazooClient.ensure_path now has an async version, ensure_path_async.
 
 1.0 (2013-03-26)

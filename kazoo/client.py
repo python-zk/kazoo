@@ -654,6 +654,9 @@ class KazooClient(object):
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
+        .. versionadded:: 1.1
+            The makepath option.
+
         """
         if acl is None and self.default_acl:
             acl = self.default_acl
@@ -723,6 +726,8 @@ class KazooClient(object):
         exist. Takes the same arguments as :meth:`ensure_path`.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        .. versionadded:: 1.1
 
         """
         acl = acl or self.default_acl
