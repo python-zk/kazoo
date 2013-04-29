@@ -53,7 +53,7 @@ class Permissions(object):
 
 # Shortcuts for common Ids
 ANYONE_ID_UNSAFE = Id('world', 'anyone')
-AUTH_IDS = Id('world', 'anyone')
+AUTH_IDS = Id('auth', '')
 
 # Shortcuts for common ACLs
 OPEN_ACL_UNSAFE = [ACL(Permissions.ALL, ANYONE_ID_UNSAFE)]

@@ -10,15 +10,15 @@ from os.path import split
 
 from kazoo.exceptions import (
     AuthFailedError,
-    ConnectionLoss,
+    ConfigurationError,
     ConnectionClosedError,
+    ConnectionLoss,
     NoNodeError,
     NodeExistsError,
-    ConfigurationError,
-    SessionExpiredError
+    SessionExpiredError,
 )
 from kazoo.handlers.threading import SequentialThreadingHandler
-from kazoo.handlers.utils import wrap
+from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import normpath
@@ -685,11 +685,14 @@ class KazooClient(object):
 
         async_result = self.handler.async_result()
 
-        @wrap(async_result)
+        def do_create():
+            self._create_async_inner(path, value, acl, flags).rawlink(
+                create_completion)
+
+        @capture_exceptions(async_result)
         def retry_completion(result):
-            if result.get():
-                self._create_async_inner(path, value, acl, flags).rawlink(
-                    create_completion)
+            result.get()
+            do_create()
 
         @wrap(async_result)
         def create_completion(result):
@@ -701,9 +704,7 @@ class KazooClient(object):
                 parent, _ = split(path)
                 self.ensure_path_async(parent, acl).rawlink(retry_completion)
 
-        self._create_async_inner(path, value, acl, flags).rawlink(
-            create_completion)
-
+        do_create()
         return async_result
 
     def _create_async_inner(self, path, value, acl, flags):
@@ -719,7 +720,7 @@ class KazooClient(object):
         :param acl: Permissions for node.
 
         """
-        self.ensure_path_async(path, acl).get()
+        return self.ensure_path_async(path, acl).get()
 
     def ensure_path_async(self, path, acl=None):
         """Recursively create a path asynchronously if it doesn't
@@ -740,10 +741,9 @@ class KazooClient(object):
             except NodeExistsError:
                 return True
 
-        @wrap(async_result)
+        @capture_exceptions(async_result)
         def prepare_completion(next_path, result):
-            if not result.get():
-                return False
+            result.get()
             self.create_async(next_path, acl=acl).rawlink(create_completion)
 
         @wrap(async_result)

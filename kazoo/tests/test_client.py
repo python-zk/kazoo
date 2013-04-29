@@ -11,13 +11,17 @@ from nose.tools import eq_
 from nose.tools import raises
 
 from kazoo.testing import KazooTestCase
-from kazoo.exceptions import BadArgumentsError
-from kazoo.exceptions import ConfigurationError
-from kazoo.exceptions import InvalidACLError
-from kazoo.exceptions import NoNodeError
-from kazoo.exceptions import NoAuthError
-from kazoo.exceptions import ConnectionLoss
-from kazoo.exceptions import ConnectionClosedError
+from kazoo.exceptions import (
+    BadArgumentsError,
+    ConfigurationError,
+    ConnectionClosedError,
+    ConnectionLoss,
+    InvalidACLError,
+    NoAuthError,
+    NoNodeError,
+    NodeExistsError,
+)
+
 
 if sys.version_info > (3, ):  # pragma: nocover
     def u(s):
@@ -390,6 +394,7 @@ class TestClient(KazooTestCase):
         self.assertRaises(TypeError, client.create, 'a', value=['a'])
         self.assertRaises(TypeError, client.create, 'a', ephemeral='yes')
         self.assertRaises(TypeError, client.create, 'a', sequence='yes')
+        self.assertRaises(TypeError, client.create, 'a', makepath='yes')
 
     def test_create_value(self):
         client = self.client
@@ -473,9 +478,32 @@ class TestClient(KazooTestCase):
         data, stat = self.client.get("/1/2/3/4/5")
         eq_(data, b"val2")
 
+        self.assertRaises(NodeExistsError, self.client.create, "/1/2/3/4/5",
+            b"val2", makepath=True)
+
+    def test_create_makepath_incompatible_acls(self):
+        from kazoo.client import KazooClient
+        from kazoo.security import make_digest_acl_credential, CREATOR_ALL_ACL
+        credential = make_digest_acl_credential("username", "password")
+        alt_client = KazooClient(self.cluster[0].address + self.client.chroot,
+            max_retries=5, auth_data=[("digest", credential)])
+        alt_client.start()
+        alt_client.create("/1/2", b"val2", makepath=True, acl=CREATOR_ALL_ACL)
+
+        try:
+            self.assertRaises(NoAuthError, self.client.create, "/1/2/3/4/5",
+                b"val2", makepath=True)
+        finally:
+            alt_client.delete('/', recursive=True)
+            alt_client.stop()
+
     def test_create_no_makepath(self):
         self.assertRaises(NoNodeError, self.client.create, "/1/2", b"val1")
         self.assertRaises(NoNodeError, self.client.create, "/1/2", b"val1",
+            makepath=False)
+
+        self.client.create("/1/2", b"val1", makepath=True)
+        self.assertRaises(NoNodeError, self.client.create, "/1/2/3/4", b"val1",
             makepath=False)
 
     def test_create_exists(self):
