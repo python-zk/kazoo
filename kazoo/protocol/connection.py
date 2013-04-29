@@ -39,6 +39,11 @@ from kazoo.handlers.utils import create_pipe
 log = logging.getLogger(__name__)
 
 
+# Special testing hook objects used to force a session expired error as
+# if it came from the server
+_SESSION_EXPIRED = object()
+_CONNECTION_DROP = object()
+
 CREATED_EVENT = 1
 DELETED_EVENT = 2
 CHANGED_EVENT = 3
@@ -391,6 +396,13 @@ class ConnectionHandler(object):
             # something happens to cancel the request such that we
             # don't clear the pipe below after sending
             return
+
+        # Special case for testing, if this is a _SessionExpire object
+        # then throw a SessionExpiration error as if we were dropped
+        if request is _SESSION_EXPIRED:
+            raise SessionExpiredError("Session expired: Testing")
+        if request is _CONNECTION_DROP:
+            raise ConnectionDropped("Connection dropped: Testing")
 
         # Special case for auth packets
         if request.type == Auth.type:

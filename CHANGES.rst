@@ -7,9 +7,24 @@ Changelog
 Bug Handling
 ************
 
+- Issue #68: Closing the connection causes exceptions to be raised by watchers
+  which assume the connection won't be closed when running commands.
+
 - Issue #66: Require ping reply before sending another ping, otherwise the
   connection will be considered dead and a ConnectionDropped will be raised
   to trigger a reconnect.
+
+- Issue #63: Watchers weren't reset on lost connection.
+
+- Issue #58: DataWatcher failed to re-register for changes after non-existent
+  node was created then deleted.
+
+API Changes
+***********
+
+- KazooClient.create_async now supports the makepath argument.
+
+- KazooClient.ensure_path now has an async version, ensure_path_async.
 
 1.0 (2013-03-26)
 ----------------

@@ -224,11 +224,14 @@ class KazooClient(object):
         """Resets a variety of client states for a new connection."""
         self._queue = deque()
         self._pending = deque()
-        self._child_watchers = defaultdict(list)
-        self._data_watchers = defaultdict(list)
 
+        self._reset_watchers()
         self._reset_session()
         self.last_zxid = 0
+
+    def _reset_watchers(self):
+        self._child_watchers = defaultdict(list)
+        self._data_watchers = defaultdict(list)
 
     def _reset_session(self):
         self._session_id = None
@@ -336,6 +339,7 @@ class KazooClient(object):
             self._live.clear()
             self._notify_pending(state)
             self._make_state_change(KazooState.SUSPENDED)
+            self._reset_watchers()
 
     def _notify_pending(self, state):
         """Used to clear a pending response queue and request queue
@@ -650,6 +654,9 @@ class KazooClient(object):
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
+        .. versionadded:: 1.1
+            The makepath option.
+
         """
         if acl is None and self.default_acl:
             acl = self.default_acl
@@ -716,6 +723,14 @@ class KazooClient(object):
         return self.ensure_path_async(path, acl).get()
 
     def ensure_path_async(self, path, acl=None):
+        """Recursively create a path asynchronously if it doesn't
+        exist. Takes the same arguments as :meth:`ensure_path`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        .. versionadded:: 1.1
+
+        """
         acl = acl or self.default_acl
         async_result = self.handler.async_result()
 
