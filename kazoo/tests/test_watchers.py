@@ -297,7 +297,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         b = False
         try:
-            self.client.close()
+            self.client.stop()
         except:
             b = True
         eq_(b, False)
