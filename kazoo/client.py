@@ -376,13 +376,18 @@ class KazooClient(object):
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in
         the queue if there is."""
+
         if self._state == KeeperState.AUTH_FAILED:
-            raise AuthFailedError()
+            async_object.set_exception(AuthFailedError())
+            return
         elif self._state == KeeperState.CLOSED:
-            raise ConnectionClosedError("Connection has been closed")
+            async_object.set_exception(ConnectionClosedError("Connection has been closed"))
+            return
         elif self._state in (KeeperState.EXPIRED_SESSION,
                              KeeperState.CONNECTING):
-            raise SessionExpiredError()
+            async_object.set_exception(SessionExpiredError())
+            return
+
         self._queue.append((request, async_object))
 
         # wake the connection, guarding against a race with close()
