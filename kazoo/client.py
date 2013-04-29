@@ -381,7 +381,8 @@ class KazooClient(object):
             async_object.set_exception(AuthFailedError())
             return
         elif self._state == KeeperState.CLOSED:
-            async_object.set_exception(ConnectionClosedError("Connection has been closed"))
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
             return
         elif self._state in (KeeperState.EXPIRED_SESSION,
                              KeeperState.CONNECTING):
@@ -393,13 +394,13 @@ class KazooClient(object):
         # wake the connection, guarding against a race with close()
         write_pipe = self._connection._write_pipe
         if write_pipe is None:
-            raise ConnectionClosedError("Connection has been closed")
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
         try:
             os.write(write_pipe, b'\0')
-        except OSError as e:
-            if e.errno == errno.EBADF:
-                raise ConnectionClosedError("Connection has been closed")
-            raise
+        except:
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
 
     def start(self, timeout=15):
         """Initiate connection to ZK.
