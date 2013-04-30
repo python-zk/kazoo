@@ -168,6 +168,7 @@ class KazooClient(object):
             self._reset_session()
 
         # ZK uses milliseconds
+        self._timeout = timeout
         self._session_timeout = int(timeout * 1000)
 
         # We use events like twitter's client to track current and
@@ -369,9 +370,10 @@ class KazooClient(object):
 
     def _safe_close(self):
         self.handler.stop()
-        if not self._connection.stop(10):
+        if not self._connection.stop(self._timeout):
             raise Exception("Writer still open from prior connection"
-                            " and wouldn't close after 10 seconds")
+                            " and wouldn't close after %s seconds" %
+                            self._timeout)
 
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in
