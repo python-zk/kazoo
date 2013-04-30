@@ -38,7 +38,8 @@ class TestSessions(unittest.TestCase):
         from kazoo.protocol.states import KazooState
         from kazoo.testing.common import ZookeeperCluster
         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
-        self.cluster = ZookeeperCluster(ZK_HOME, size=1, port_offset=21000)
+        ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
+        self.cluster = ZookeeperCluster(ZK_HOME, size=1, port_offset=21000, classpath=ZK_CLASSPATH)
         self.cluster.start()
         atexit.register(lambda cluster: self.cluster.terminate(), self.cluster)
         self.client = KazooClient(self.cluster[0].address, max_retries=5)

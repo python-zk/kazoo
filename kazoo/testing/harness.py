@@ -22,11 +22,13 @@ def get_global_cluster():
     global CLUSTER
     if CLUSTER is None:
         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
-        assert ZK_HOME, (
-            "ZOOKEEPER_PATH environment variable must be defined.\n "
+        ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
+        assert ZK_HOME or ZK_CLASSPATH, (
+            "either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment variable "
+            "must be defined.\n"
             "For deb package installations this is /usr/share/java")
 
-        CLUSTER = ZookeeperCluster(ZK_HOME)
+        CLUSTER = ZookeeperCluster(ZK_HOME, classpath=ZK_CLASSPATH)
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
 
