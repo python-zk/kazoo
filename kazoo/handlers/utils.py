@@ -20,7 +20,7 @@ def create_pipe():
 
 
 def create_tcp_socket(module):
-    """Create a TCP socket with the CLOEXEX flag set.
+    """Create a TCP socket with the CLOEXEC flag set.
     """
     type_ = module.SOCK_STREAM
     if hasattr(module, 'SOCK_CLOEXEC'):  # pragma: nocover
