@@ -226,7 +226,7 @@ class ConnectionHandler(object):
             if header.err:
                 callback_exception = EXCEPTIONS[header.err]()
                 if self.log_debug:
-                    self.logger.debug('Received error %r', callback_exception)
+                    self.logger.debug('Received error(xid=%s) %r', xid, callback_exception)
                 raise callback_exception
             return zxid
 
@@ -258,7 +258,7 @@ class ConnectionHandler(object):
             b.extend(int_struct.pack(request.type))
         b += request.serialize()
         if self.log_debug:
-            self.logger.debug("Sending request: %s", request)
+            self.logger.debug("Sending request(xid=%s): %s", xid, request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
     def _write(self, msg, timeout):
@@ -328,7 +328,7 @@ class ConnectionHandler(object):
         if header.err and not exists_error:
             callback_exception = EXCEPTIONS[header.err]()
             if self.log_debug:
-                self.logger.debug('Received error %r', callback_exception)
+                self.logger.debug('Received error(xid=%s) %r', xid, callback_exception)
             if async_object:
                 async_object.set_exception(callback_exception)
         elif request and async_object:
@@ -346,7 +346,7 @@ class ConnectionHandler(object):
                     self.logger.exception(exc)
                     async_object.set_exception(exc)
                     return
-                self.logger.debug('Received response: %r', response)
+                self.logger.debug('Received response(xid=%s): %r', xid, response)
 
                 # We special case a Transaction as we have to unchroot things
                 if request.type == Transaction.type:
@@ -374,7 +374,7 @@ class ConnectionHandler(object):
         header, buffer, offset = self._read_header(read_timeout)
         if header.xid == PING_XID:
             if self.log_debug:
-                self.logger.debug('Received PING')
+                self.logger.debug('Received Ping')
             self.ping_outstanding.clear()
         elif header.xid == AUTH_XID:
             if self.log_debug:
@@ -427,8 +427,6 @@ class ConnectionHandler(object):
             return
 
         self._xid += 1
-        if self.log_debug:
-            log.debug('xid: %r', self._xid)
 
         self._submit(request, connect_timeout, self._xid)
         client._queue.popleft()
@@ -436,8 +434,6 @@ class ConnectionHandler(object):
         client._pending.append((request, async_object, self._xid))
 
     def _send_ping(self, connect_timeout):
-        if self.log_debug:
-            self.logger.debug('Queue timeout.  Sending PING')
         self.ping_outstanding.set()
         self._submit(PingInstance, connect_timeout, PING_XID)
 
