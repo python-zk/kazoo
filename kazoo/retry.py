@@ -6,15 +6,15 @@ from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
     KazooException,
-    SessionExpiredError,
     OperationTimeoutError
+    SessionExpiredError,
 )
 
 log = logging.getLogger(__name__)
 
 
 class ForceRetryError(Exception):
-    """Raised when some recipe logic wants to force a retry"""
+    """Raised when some recipe logic wants to force a retry."""
 
 
 class RetryFailedError(KazooException):
