@@ -13,7 +13,7 @@ class ZookeeperError(KazooException):
 
 
 class CancelledError(KazooException):
-    """Raised when a process is canceled by another thread"""
+    """Raised when a process is cancelled by another thread"""
 
 
 class ConfigurationError(KazooException):
@@ -26,7 +26,7 @@ class ZookeeperStoppedError(KazooException):
 
 
 class ConnectionDropped(KazooException):
-    """ Internal error for jumping out of loops """
+    """Internal error for jumping out of loops"""
 
 
 def _invalid_error_code():

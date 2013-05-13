@@ -1,8 +1,8 @@
 """Kazoo Zookeeper Client"""
+import errno
 import inspect
 import logging
 import os
-import errno
 import re
 from collections import defaultdict, deque
 from functools import partial
