@@ -491,6 +491,10 @@ class ConnectionHandler(object):
                             self.ping_outstanding.clear()
                             raise ConnectionDropped(
                                 "outstanding heartbeat ping not received")
+                        if self.client._stopped.is_set():
+                            log.debug("client has stopped, breaking out of "
+                                      "_connect_loop")
+                            break
                         self._send_ping(connect_timeout)
                     elif s[0] == self._socket:
                         response = self._read_socket(read_timeout)
@@ -534,6 +538,8 @@ class ConnectionHandler(object):
             log.debug('    Using session_id: %r session_passwd: %s',
                       client._session_id,
                       hexlify(client._session_passwd))
+
+        self._socket.settimeout(client._session_timeout / 1000.0 * 0.67)
 
         with self._socket_error_handling():
             self._socket.connect((host, port))
