@@ -136,7 +136,6 @@ class KazooClient(object):
             Removed the unused watcher argument (was second argument).
 
         """
-        self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
         self.logger = logger or log
 
         # Record the handler strategy used
@@ -192,7 +191,6 @@ class KazooClient(object):
 
         self._connection = ConnectionHandler(
             self, self.retry.retry_sleeper.copy(),
-            log_debug=self.log_debug,
             logger=self.logger)
 
         # convenience API
@@ -324,7 +322,7 @@ class KazooClient(object):
         # transitions since they only apply after
         # we've established a connection
         if dead_state and state == KeeperState.CONNECTING:
-            self.logger.info("Skipping state change")
+            self.logger.debug("Skipping state change")
             return
 
         if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
@@ -1269,6 +1267,5 @@ class TransactionRequest(object):
 
     def _add(self, request, post_processor=None):
         self._check_tx_state()
-        if self.client.log_debug:
-            self.client.logger.debug('Added %r to %r', request, self)
+        self.client.logger.debug('Added %r to %r', request, self)
         self.operations.append(request)
