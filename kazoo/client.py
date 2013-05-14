@@ -369,9 +369,12 @@ class KazooClient(object):
 
     def _safe_close(self):
         self.handler.stop()
-        if not self._connection.stop(10):
-            raise Exception("Writer still open from prior connection"
-                            " and wouldn't close after 10 seconds")
+        timeout = self._session_timeout // 1000
+        if timeout < 10:
+            timeout = 10
+        if not self._connection.stop(timeout):
+            raise Exception("Writer still open from prior connection "
+                            "and wouldn't close after %s seconds" % timeout)
 
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in

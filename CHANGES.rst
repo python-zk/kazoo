@@ -7,6 +7,8 @@ Changelog
 Features
 ********
 
+- Respect large client timeout values when closing the connection.
+
 - Add a `max_leases` consistency check to the semaphore recipe.
 
 - Issue #76: Extend testing helpers to allow customization of the Java
