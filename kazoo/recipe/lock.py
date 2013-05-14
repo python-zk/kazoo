@@ -296,6 +296,8 @@ class Semaphore(object):
 
         Return acquisition result.
 
+        .. versionadded:: 1.1
+            The blocking argument.
         """
         try:
             self.is_acquired = self.client.retry(self._inner_acquire,
@@ -361,7 +363,7 @@ class Semaphore(object):
         if len(children) < self.max_leases:
             self.client.create(self.create_path, self.data, ephemeral=True)
 
-        # Check if our acquisition was sucessfull or not. Update our state.
+        # Check if our acquisition was successful or not. Update our state.
         if self.client.exists(self.create_path):
             self.is_acquired = True
         else:

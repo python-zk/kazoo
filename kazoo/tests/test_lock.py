@@ -239,6 +239,25 @@ class TestSemaphore(KazooTestCase):
         event.wait()
         self.assert_(event.is_set())
 
+    def test_non_blocking(self):
+        sem1 = self.client.Semaphore(
+            self.lockpath, identifier='sem1', max_leases=2)
+        sem2 = self.client.Semaphore(
+            self.lockpath, identifier='sem2', max_leases=2)
+        sem3 = self.client.Semaphore(
+            self.lockpath, identifier='sem3', max_leases=2)
+
+        sem1.acquire()
+        sem2.acquire()
+        ok_(not sem3.acquire(blocking=False))
+        eq_(set(sem1.lease_holders()), set(['sem1', 'sem2']))
+        sem2.release()
+        # the next line isn't required, but avoids timing issues in tests
+        sem3.acquire()
+        eq_(set(sem1.lease_holders()), set(['sem1', 'sem3']))
+        sem1.release()
+        sem3.release()
+
     def test_holders(self):
         started = threading.Event()
         event = threading.Event()
