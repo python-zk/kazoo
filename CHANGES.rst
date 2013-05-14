@@ -21,6 +21,8 @@ Bug Handling
 
 - Issue #77: Use timeout in initial socket connection.
 
+- Issue #69: Only ensure path once in lock and semaphore recipes.
+
 - Issue #68: Closing the connection causes exceptions to be raised by watchers
   which assume the connection won't be closed when running commands.
 

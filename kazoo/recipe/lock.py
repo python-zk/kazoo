@@ -66,6 +66,10 @@ class Lock(object):
         self.assured_path = False
         self.cancelled = False
 
+    def _ensure_path(self):
+        self.client.ensure_path(self.path)
+        self.assured_path = True
+
     def cancel(self):
         """Cancel a pending lock acquire"""
         self.cancelled = True
@@ -95,7 +99,7 @@ class Lock(object):
     def _inner_acquire(self, blocking):
         # make sure our election parent node exists
         if not self.assured_path:
-            self.client.ensure_path(self.path)
+            self._ensure_path()
 
         node = None
         if self.create_tried:
@@ -201,7 +205,7 @@ class Lock(object):
         """
         # make sure our election parent node exists
         if not self.assured_path:
-            self.client.ensure_path(self.path)
+            self._ensure_path()
 
         children = self._get_sorted_children()
 
@@ -291,6 +295,7 @@ class Semaphore(object):
 
     def _ensure_path(self):
         result = self.client.ensure_path(self.path)
+        self.assured_path = True
         if result is True:
             # node did already exist
             data, _ = self.client.get(self.path)
