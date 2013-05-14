@@ -5,11 +5,11 @@ import atexit
 import logging
 
 import gevent
-import gevent.queue
 import gevent.coros
 import gevent.event
-import gevent.thread
+import gevent.queue
 import gevent.select
+import gevent.thread
 
 from gevent.queue import Empty
 from gevent.queue import Queue
