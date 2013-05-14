@@ -15,9 +15,9 @@ need to specify an environment variable called `ZOOKEEPER_PATH` and point it
 to their location, for example `/usr/share/java`. The directory should contain
 a `zookeeper-*.jar` and a `lib` directory containing at least a `log4j-*.jar`.
 
-If your java setup is complex, you may also override our classpath mechanism
+If your Java setup is complex, you may also override our classpath mechanism
 completely by specifying an environment variable called `ZOOKEEPER_CLASSPATH`.
-If provided, it will be used unmodified as the java classpath for zookeeper.
+If provided, it will be used unmodified as the Java classpath for Zookeeper.
 
 
 Kazoo Test Harness
