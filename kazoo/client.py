@@ -26,7 +26,7 @@ from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.serialization import (
     Auth,
     CheckVersion,
-    Close,
+    CloseInstance,
     Create,
     Delete,
     Exists,
@@ -465,7 +465,7 @@ class KazooClient(object):
             return
 
         self._stopped.set()
-        self._queue.append((Close(), None))
+        self._queue.append((CloseInstance, None))
         os.write(self._connection._write_pipe, b'\0')
         self._safe_close()
 
