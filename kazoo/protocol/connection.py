@@ -535,6 +535,7 @@ class ConnectionHandler(object):
                       client._session_id,
                       hexlify(client._session_passwd))
 
+        self._socket.settimeout(client._session_timeout)
         with self._socket_error_handling():
             self._socket.connect((host, port))
 

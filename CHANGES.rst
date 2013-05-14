@@ -19,6 +19,8 @@ Features
 Bug Handling
 ************
 
+- Issue #77: Use timeout in initial socket connection.
+
 - Issue #68: Closing the connection causes exceptions to be raised by watchers
   which assume the connection won't be closed when running commands.
 
