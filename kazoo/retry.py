@@ -6,7 +6,7 @@ from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
     KazooException,
-    OperationTimeoutError
+    OperationTimeoutError,
     SessionExpiredError,
 )
 
