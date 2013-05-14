@@ -240,13 +240,17 @@ class Semaphore(object):
 
     .. warning::
 
-        This class does not make any guarantee's that the amount of
-        leases for a path is agreed-upon by the :class:`Semaphore`
-        objects using it. It is up to the developer to ensure that they
-        all have the same `max_leases` value.
+        This class stores the allowed max_leases as the data on the
+        top-level semaphore node. The stored value is checked once
+        against the max_leases of each instance. This check is
+        performed when acquire is called the first time. The semaphore
+        node needs to be deleted to change the allowed leases.
 
     .. versionadded:: 0.6
         The Semaphore class.
+
+    .. versionadded:: 1.1
+        The max_leases check.
 
     """
     def __init__(self, client, path, identifier=None, max_leases=1):
@@ -285,6 +289,26 @@ class Semaphore(object):
         self.cancelled = False
         self._session_expired = False
 
+    def _ensure_path(self):
+        result = self.client.ensure_path(self.path)
+        if result is True:
+            # node did already exist
+            data, _ = self.client.get(self.path)
+            try:
+                leases = int(data.decode('utf-8'))
+            except (ValueError, TypeError):
+                # ignore non-numeric data, maybe the node data is used
+                # for other purposes
+                pass
+            else:
+                if leases != self.max_leases:
+                    raise ValueError(
+                        "Inconsistent max leases: %s, expected: %s" %
+                        (leases, self.max_leases)
+                    )
+        else:
+            self.client.set(self.path, str(self.max_leases).encode('utf-8'))
+
     def cancel(self):
         """Cancel a pending lock acquire"""
         self.cancelled = True
@@ -296,8 +320,12 @@ class Semaphore(object):
 
         Return acquisition result.
 
+        :raises:
+            ValueError if the max_leases value doesn't match the
+            stored value.
+
         .. versionadded:: 1.1
-            The blocking argument.
+            The blocking argument and the max_leases check.
         """
         try:
             self.is_acquired = self.client.retry(self._inner_acquire,
@@ -317,7 +345,7 @@ class Semaphore(object):
         self.client.add_listener(self._watch_session)
 
         if not self.assured_path:
-            self.client.ensure_path(self.path)
+            self._ensure_path()
 
         # Do we already have a lease?
         if self.client.exists(self.create_path):

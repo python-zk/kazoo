@@ -350,3 +350,21 @@ class TestSemaphore(KazooTestCase):
         event.wait(5)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
+
+    def test_inconsistent_max_leases(self):
+        sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, max_leases=2)
+
+        sem1.acquire()
+        self.assertRaises(ValueError, sem2.acquire)
+
+    def test_inconsistent_max_leases_other_data(self):
+        sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, max_leases=2)
+
+        self.client.ensure_path(self.lockpath)
+        self.client.set(self.lockpath, b'a$')
+
+        sem1.acquire()
+        # sem2 thinks it's ok to have two lease holders
+        ok_(sem2.acquire(blocking=False))

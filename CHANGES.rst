@@ -7,6 +7,8 @@ Changelog
 Features
 ********
 
+- Add a `max_leases` consistency check to the semaphore recipe.
+
 - Issue #76: Extend testing helpers to allow customization of the Java
   classpath by specifying the new `ZOOKEEPER_CLASSPATH` environment variable.
 
