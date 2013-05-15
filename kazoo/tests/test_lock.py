@@ -200,6 +200,13 @@ class KazooLockTests(KazooTestCase):
         lock1.release()
         lock1.release()
 
+    def test_lock_reacquire(self):
+        lock = self.client.Lock(self.lockpath, "one")
+        lock.acquire()
+        lock.release()
+        lock.acquire()
+        lock.release()
+
 
 class TestSemaphore(KazooTestCase):
     def setUp(self):
@@ -368,3 +375,10 @@ class TestSemaphore(KazooTestCase):
         sem1.acquire()
         # sem2 thinks it's ok to have two lease holders
         ok_(sem2.acquire(blocking=False))
+
+    def test_reacquire(self):
+        lock = self.client.Semaphore(self.lockpath)
+        lock.acquire()
+        lock.release()
+        lock.acquire()
+        lock.release()
