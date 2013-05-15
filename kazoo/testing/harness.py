@@ -59,7 +59,8 @@ class KazooTestHarness(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kw):
+        super(KazooTestHarness, self).__init__(*args, **kw)
         self.client = None
 
     @property
