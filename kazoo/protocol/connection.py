@@ -152,7 +152,7 @@ class ConnectionHandler(object):
             yield
         except (socket.error, select.error) as e:
             err = getattr(e, 'strerror', e)
-            raise ConnectionDropped("socket connection error: %s", err)
+            raise ConnectionDropped("socket connection error: %s" % (err,))
 
     def start(self):
         """Start the connection up"""
