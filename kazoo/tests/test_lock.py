@@ -382,3 +382,11 @@ class TestSemaphore(KazooTestCase):
         lock.release()
         lock.acquire()
         lock.release()
+
+    def test_acquire_after_cancelled(self):
+        lock = self.client.Semaphore(self.lockpath)
+        self.assertTrue(lock.acquire())
+        self.assertTrue(lock.release())
+        lock.cancel()
+        self.assertTrue(lock.cancelled)
+        self.assertTrue(lock.acquire())

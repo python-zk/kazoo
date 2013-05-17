@@ -332,6 +332,10 @@ class Semaphore(object):
         .. versionadded:: 1.1
             The blocking argument and the max_leases check.
         """
+        # If the semaphore had previously been cancelled, make sure to
+        # reset that state.
+        self.cancelled = False
+
         try:
             self.is_acquired = self.client.retry(self._inner_acquire,
                                                  blocking=blocking)
