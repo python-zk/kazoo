@@ -3,6 +3,7 @@ import inspect
 import logging
 import os
 import re
+import warnings
 from collections import defaultdict, deque
 from functools import partial
 from os.path import split
@@ -205,6 +206,11 @@ class KazooClient(object):
             for key in retry_keys:
                 try:
                     retry_keys[key] = kwargs.pop(key)
+                    warnings.warn('Passing retry configuration param %s to the'
+                            ' client directly is deprecated, please pass a'
+                            ' configured retry object (using param %s)' % (
+                                key, _RETRY_COMPAT_MAPPING[key]),
+                            DeprecationWarning, stacklevel=2)
                 except KeyError:
                     pass
 
