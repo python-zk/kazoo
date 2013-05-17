@@ -71,6 +71,22 @@ ENVI_VERSION = re.compile('[\w\s:.]*=([\d\.]*).*', re.DOTALL)
 log = logging.getLogger(__name__)
 
 
+_RETRY_COMPAT_DEFAULTS = dict(
+    max_retries=None,
+    retry_delay=0.1,
+    retry_backoff=2,
+    retry_jitter=0.8,
+    retry_max_delay=3600,
+)
+
+_RETRY_COMPAT_MAPPING = dict(
+    max_retries='max_tries',
+    retry_delay='delay',
+    retry_backoff='backoff',
+    retry_jitter='max_jitter',
+    retry_max_delay='max_delay',
+)
+
 class KazooClient(object):
     """An Apache Zookeeper Python client supporting alternate callback
     handlers and high-level functionality.
@@ -82,11 +98,9 @@ class KazooClient(object):
 
     """
     def __init__(self, hosts='127.0.0.1:2181',
-                 timeout=10.0, client_id=None, max_retries=None,
-                 retry_delay=0.1, retry_backoff=2, retry_jitter=0.8,
-                 retry_max_delay=3600, handler=None, default_acl=None,
+                 timeout=10.0, client_id=None, handler=None, default_acl=None,
                  auth_data=None, read_only=None, randomize_hosts=True,
-                 logger=None):
+                 retry=None, logger=None, **kwargs):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -95,19 +109,6 @@ class KazooClient(object):
         :param timeout: The longest to wait for a Zookeeper connection.
         :param client_id: A Zookeeper client id, used when
                           re-establishing a prior session connection.
-        :param max_retries: Maximum retries when using the
-                            :meth:`KazooClient.retry` method.
-        :param retry_delay: Initial delay when retrying a call.
-        :param retry_backoff:
-            Backoff multiplier between retry attempts. Defaults to 2
-            for exponential back-off.
-        :param retry_jitter:
-            How much jitter delay to introduce per call. An amount of
-            time up to this will be added per retry call to avoid
-            hammering the server.
-        :param retry_max_delay:
-            Maximum delay in seconds, regardless of other backoff
-            settings. Defaults to one hour.
         :param handler: An instance of a class implementing the
                         :class:`~kazoo.interfaces.IHandler` interface
                         for callback handling.
@@ -118,6 +119,7 @@ class KazooClient(object):
             tuples as :meth:`add_auth` takes.
         :param read_only: Allow connections to read only servers.
         :param randomize_hosts: By default randomize host selection.
+        :param retry: The configured retry object to use.
 
         Retry parameters will be used for connection establishment
         attempts and reconnects.
@@ -194,14 +196,24 @@ class KazooClient(object):
         self._stopped.set()
         self._writer_stopped.set()
 
-        self.retry = KazooRetry(
-            max_tries=max_retries,
-            delay=retry_delay,
-            backoff=retry_backoff,
-            max_jitter=retry_jitter,
-            max_delay=retry_max_delay,
-            sleep_func=self.handler.sleep_func
-        )
+        if retry is not None:
+            self.retry = retry
+            assert self.handler.sleep_func == self.retry.sleep_func, \
+                    'retry handler and event handler must use the same sleep func'
+        else:
+            retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
+            for key in retry_keys:
+                try:
+                    retry_keys[key] = kwargs.pop(key)
+                except KeyError:
+                    pass
+
+            retry_keys = {_RETRY_COMPAT_MAPPING[oldname]: value for oldname, value in retry_keys.items()}
+
+            self.retry = KazooRetry(
+                sleep_func=self.handler.sleep_func,
+                **retry_keys)
+
         self.retry_sleeper = self.retry.retry_sleeper.copy()
 
         self._connection = ConnectionHandler(
@@ -221,6 +233,11 @@ class KazooClient(object):
         self.SetPartitioner = partial(SetPartitioner, self)
         self.Semaphore = partial(Semaphore, self)
         self.ShallowParty = partial(ShallowParty, self)
+
+        # If we got any unhandled keywords, complain like python would
+        if kwargs:
+            raise TypeError('__init__() got unexpected keyword arguments: %s' % (kwargs.keys(),))
+
 
     def _reset(self):
         """Resets a variety of client states for a new connection."""
