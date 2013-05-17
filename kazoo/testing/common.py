@@ -32,6 +32,26 @@ from collections import namedtuple
 from glob import glob
 
 
+import code, traceback, signal
+
+
+def debug(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d = {'_frame': frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+
+    i = code.InteractiveConsole(d)
+    message = "Signal recieved : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    i.interact(message)
+
+
+def listen():
+    signal.signal(signal.SIGUSR1, debug)  # Register handler
+listen()
+
 ServerInfo = namedtuple(
     "ServerInfo", "server_id client_port election_port leader_port")
 
@@ -44,13 +64,14 @@ class ManagedZooKeeper(object):
     future, we may want to do that, especially when run in a
     Hudson/Buildbot context, to ensure more test robustness."""
 
-    def __init__(self, software_path, server_info, peers=()):
+    def __init__(self, software_path, server_info, peers=(), classpath=None):
         """Define the ZooKeeper test instance.
 
         @param install_path: The path to the install for ZK
         @param port: The port to run the managed ZK instance
         """
         self.install_path = software_path
+        self._classpath = classpath
         self.server_info = server_info
         self.host = "127.0.0.1"
         self.peers = peers
@@ -131,6 +152,9 @@ log4j.appender.ROLLINGFILE.File=""" + (
     def classpath(self):
         """Get the classpath necessary to run ZooKeeper."""
 
+        if self._classpath:
+            return self._classpath
+
         # Two possibilities, as seen in zkEnv.sh:
         # Check for a release - top-level zookeeper-*.jar?
         jars = glob((os.path.join(
@@ -189,8 +213,9 @@ log4j.appender.ROLLINGFILE.File=""" + (
 
 class ZookeeperCluster(object):
 
-    def __init__(self, install_path, size=3, port_offset=20000):
+    def __init__(self, install_path=None, classpath=None, size=3, port_offset=20000):
         self._install_path = install_path
+        self._classpath = classpath
         self._servers = []
 
         # Calculate ports and peer group
@@ -208,7 +233,7 @@ class ZookeeperCluster(object):
             server_info = server_peers.pop(i)
             self._servers.append(
                 ManagedZooKeeper(
-                    self._install_path, server_info, server_peers))
+                    self._install_path, server_info, server_peers, classpath=self._classpath))
 
     def __getitem__(self, k):
         return self._servers[k]

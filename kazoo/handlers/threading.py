@@ -13,11 +13,12 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
+import functools
 import logging
 import select
 import socket
-import time
 import threading
+import time
 
 try:
     import Queue
@@ -30,7 +31,7 @@ from kazoo.handlers.utils import create_tcp_socket
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
-# sentinal objects
+# sentinel objects
 _NONE = object()
 _STOP = object()
 
@@ -179,7 +180,7 @@ class SequentialThreadingHandler(object):
     """
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
-    sleep_func = time.sleep
+    sleep_func = staticmethod(time.sleep)
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""
@@ -208,7 +209,7 @@ class SequentialThreadingHandler(object):
                     continue
         t = threading.Thread(target=thread_worker)
 
-        # Even though these should be joined, its possible stop might
+        # Even though these should be joined, it's possible stop might
         # not issue in time so we set them to daemon to let the program
         # exit anyways
         t.daemon = True

@@ -8,6 +8,7 @@
 *.swp
 *.*.swp
 .*.*.swo
+*~
 bin/
 build/
 develop-eggs/

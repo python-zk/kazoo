@@ -11,6 +11,7 @@ from kazoo.protocol.states import (
     KazooState
 )
 from kazoo.testing.common import ZookeeperCluster
+from kazoo.protocol.connection import _SESSION_EXPIRED
 
 log = logging.getLogger(__name__)
 
@@ -21,11 +22,13 @@ def get_global_cluster():
     global CLUSTER
     if CLUSTER is None:
         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
-        assert ZK_HOME, (
-            "ZOOKEEPER_PATH environment variable must be defined.\n "
+        ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
+        assert ZK_HOME or ZK_CLASSPATH, (
+            "either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment variable "
+            "must be defined.\n"
             "For deb package installations this is /usr/share/java")
 
-        CLUSTER = ZookeeperCluster(ZK_HOME)
+        CLUSTER = ZookeeperCluster(ZK_HOME, classpath=ZK_CLASSPATH)
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
 
@@ -56,7 +59,8 @@ class KazooTestHarness(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kw):
+        super(KazooTestHarness, self).__init__(*args, **kw)
         self.client = None
 
     @property
@@ -71,6 +75,8 @@ class KazooTestHarness(object):
         return KazooClient(self.servers)
 
     def _get_client(self, **kwargs):
+        kwargs['retry_max_delay'] = 2
+        kwargs['max_retries'] = 35
         return KazooClient(self.hosts, **kwargs)
 
     def expire_session(self, client_id=None):
@@ -94,17 +100,10 @@ class KazooTestHarness(object):
 
         self.client.add_listener(watch_loss)
 
-        # Sometimes we have to do this a few times
-        attempts = 0
-        while attempts < 5 and not lost.is_set():
-            client = KazooClient(self.hosts, client_id=client_id, timeout=0.8)
-            try:
-                client.start()
-                client.stop()
-            except Exception:
-                pass
-            lost.wait(5)
-            attempts += 1
+        self.client._call(_SESSION_EXPIRED, None)
+
+        lost.wait(5)
+
         # Wait for the reconnect now
         safe.wait(15)
         self.client.retry(self.client.get_async, '/')

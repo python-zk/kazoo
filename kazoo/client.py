@@ -1,8 +1,8 @@
 """Kazoo Zookeeper Client"""
+import errno
 import inspect
 import logging
 import os
-import errno
 import re
 from collections import defaultdict, deque
 from functools import partial
@@ -10,14 +10,15 @@ from os.path import split
 
 from kazoo.exceptions import (
     AuthFailedError,
-    ConnectionLoss,
+    ConfigurationError,
     ConnectionClosedError,
+    ConnectionLoss,
     NoNodeError,
     NodeExistsError,
-    ConfigurationError,
-    SessionExpiredError
+    SessionExpiredError,
 )
 from kazoo.handlers.threading import SequentialThreadingHandler
+from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import normpath
@@ -223,11 +224,14 @@ class KazooClient(object):
         """Resets a variety of client states for a new connection."""
         self._queue = deque()
         self._pending = deque()
-        self._child_watchers = defaultdict(list)
-        self._data_watchers = defaultdict(list)
 
+        self._reset_watchers()
         self._reset_session()
         self.last_zxid = 0
+
+    def _reset_watchers(self):
+        self._child_watchers = defaultdict(list)
+        self._data_watchers = defaultdict(list)
 
     def _reset_session(self):
         self._session_id = None
@@ -335,6 +339,7 @@ class KazooClient(object):
             self._live.clear()
             self._notify_pending(state)
             self._make_state_change(KazooState.SUSPENDED)
+            self._reset_watchers()
 
     def _notify_pending(self, state):
         """Used to clear a pending response queue and request queue
@@ -364,32 +369,41 @@ class KazooClient(object):
 
     def _safe_close(self):
         self.handler.stop()
-        if not self._connection.stop(10):
-            raise Exception("Writer still open from prior connection"
-                            " and wouldn't close after 10 seconds")
+        timeout = self._session_timeout // 1000
+        if timeout < 10:
+            timeout = 10
+        if not self._connection.stop(timeout):
+            raise Exception("Writer still open from prior connection "
+                            "and wouldn't close after %s seconds" % timeout)
 
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in
         the queue if there is."""
+
         if self._state == KeeperState.AUTH_FAILED:
-            raise AuthFailedError()
+            async_object.set_exception(AuthFailedError())
+            return
         elif self._state == KeeperState.CLOSED:
-            raise ConnectionClosedError("Connection has been closed")
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
+            return
         elif self._state in (KeeperState.EXPIRED_SESSION,
                              KeeperState.CONNECTING):
-            raise SessionExpiredError()
+            async_object.set_exception(SessionExpiredError())
+            return
+
         self._queue.append((request, async_object))
 
         # wake the connection, guarding against a race with close()
         write_pipe = self._connection._write_pipe
         if write_pipe is None:
-            raise ConnectionClosedError("Connection has been closed")
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
         try:
             os.write(write_pipe, b'\0')
-        except OSError as e:
-            if e.errno == errno.EBADF:
-                raise ConnectionClosedError("Connection has been closed")
-            raise
+        except:
+            async_object.set_exception(ConnectionClosedError(
+                "Connection has been closed"))
 
     def start(self, timeout=15):
         """Initiate connection to ZK.
@@ -639,34 +653,18 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        try:
-            realpath = self.create_async(path, value, acl=acl,
-                ephemeral=ephemeral, sequence=sequence).get()
-
-        except NoNodeError:
-            # some or all of the parent path doesn't exist. if makepath is set
-            # we will create it and retry. If it fails again, someone must be
-            # actively deleting ZNodes and we'd best bail out.
-            if not makepath:
-                raise
-
-            parent, _ = split(path)
-
-            # using the inner call directly because path is already namespaced
-            self._inner_ensure_path(parent, acl)
-
-            # now retry
-            realpath = self.create_async(path, value, acl=acl,
-                ephemeral=ephemeral, sequence=sequence).get()
-
-        return self.unchroot(realpath)
+        return self.unchroot(self.create_async(path, value, acl=acl,
+            ephemeral=ephemeral, sequence=sequence, makepath=makepath).get())
 
     def create_async(self, path, value=b"", acl=None, ephemeral=False,
-                     sequence=False):
+                     sequence=False, makepath=False):
         """Asynchronously create a ZNode. Takes the same arguments as
-        :meth:`create`, with the exception of `makepath`.
+        :meth:`create`.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        .. versionadded:: 1.1
+            The makepath option.
 
         """
         if acl is None and self.default_acl:
@@ -683,6 +681,8 @@ class KazooClient(object):
             raise TypeError("ephemeral must be a bool")
         if not isinstance(sequence, bool):
             raise TypeError("sequence must be a bool")
+        if not isinstance(makepath, bool):
+            raise TypeError("makepath must be a bool")
 
         flags = 0
         if ephemeral:
@@ -692,6 +692,31 @@ class KazooClient(object):
         if acl is None:
             acl = OPEN_ACL_UNSAFE
 
+        async_result = self.handler.async_result()
+
+        def do_create():
+            self._create_async_inner(path, value, acl, flags).rawlink(
+                create_completion)
+
+        @capture_exceptions(async_result)
+        def retry_completion(result):
+            result.get()
+            do_create()
+
+        @wrap(async_result)
+        def create_completion(result):
+            try:
+                return result.get()
+            except NoNodeError:
+                if not makepath:
+                    raise
+                parent, _ = split(path)
+                self.ensure_path_async(parent, acl).rawlink(retry_completion)
+
+        do_create()
+        return async_result
+
+    def _create_async_inner(self, path, value, acl, flags):
         async_result = self.handler.async_result()
         self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
                    async_result)
@@ -704,24 +729,46 @@ class KazooClient(object):
         :param acl: Permissions for node.
 
         """
-        self._inner_ensure_path(path, acl)
+        return self.ensure_path_async(path, acl).get()
 
-    def _inner_ensure_path(self, path, acl):
-        if self.exists(path):
-            return
+    def ensure_path_async(self, path, acl=None):
+        """Recursively create a path asynchronously if it doesn't
+        exist. Takes the same arguments as :meth:`ensure_path`.
 
-        if acl is None and self.default_acl:
-            acl = self.default_acl
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
-        parent, node = split(path)
+        .. versionadded:: 1.1
 
-        if node:
-            self._inner_ensure_path(parent, acl)
-        try:
-            self.create_async(path, acl=acl).get()
-        except NodeExistsError:
-            # someone else created the node. how sweet!
-            pass
+        """
+        acl = acl or self.default_acl
+        async_result = self.handler.async_result()
+
+        @wrap(async_result)
+        def create_completion(result):
+            try:
+                return result.get()
+            except NodeExistsError:
+                return True
+
+        @capture_exceptions(async_result)
+        def prepare_completion(next_path, result):
+            result.get()
+            self.create_async(next_path, acl=acl).rawlink(create_completion)
+
+        @wrap(async_result)
+        def exists_completion(path, result):
+            if result.get():
+                return True
+            parent, node = split(path)
+            if node:
+                self.ensure_path_async(parent, acl=acl).rawlink(
+                    partial(prepare_completion, path))
+            else:
+                self.create_async(path, acl=acl).rawlink(create_completion)
+
+        self.exists_async(path).rawlink(partial(exists_completion, path))
+
+        return async_result
 
     def exists(self, path, watch=None):
         """Check if a node exists.

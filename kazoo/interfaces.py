@@ -17,7 +17,7 @@ class IHandler(Interface):
     These functions are used to abstract differences between a Python
     threading environment and asynchronous single-threaded environments
     like gevent. The minimum functionality needed for Kazoo to handle
-    these differences are encompassed in this interface.
+    these differences is encompassed in this interface.
 
     The Handler should document how callbacks are called for:
 
@@ -90,7 +90,7 @@ class IHandler(Interface):
 
 class IAsyncResult(Interface):
     """An Async Result object that can be queried for a value that has
-    been set asyncronously
+    been set asynchronously
 
     This object is modeled on the ``gevent`` AsyncResult object.
 

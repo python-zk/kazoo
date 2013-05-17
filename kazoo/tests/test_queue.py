@@ -1,7 +1,7 @@
 import uuid
 
 from nose import SkipTest
-from nose.tools import eq_, ok_, timed
+from nose.tools import eq_, ok_
 
 from kazoo.testing import KazooTestCase
 
@@ -143,7 +143,6 @@ class KazooLockingQueueTests(KazooTestCase):
         eq_(queue.get(1), b"four")
         ok_(queue.consume())
 
-    @timed(2)
     def test_concurrent_execution(self):
         queue = self._makeOne()
         value1 = []

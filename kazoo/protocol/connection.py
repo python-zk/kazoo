@@ -39,6 +39,11 @@ from kazoo.handlers.utils import create_pipe
 log = logging.getLogger(__name__)
 
 
+# Special testing hook objects used to force a session expired error as
+# if it came from the server
+_SESSION_EXPIRED = object()
+_CONNECTION_DROP = object()
+
 CREATED_EVENT = 1
 DELETED_EVENT = 2
 CHANGED_EVENT = 3
@@ -127,6 +132,7 @@ class ConnectionHandler(object):
         self.connection_closed.set()
         self.connection_stopped = client.handler.event_object()
         self.connection_stopped.set()
+        self.ping_outstanding = client.handler.event_object()
 
         self._read_pipe = None
         self._write_pipe = None
@@ -360,6 +366,7 @@ class ConnectionHandler(object):
         if header.xid == PING_XID:
             if self.log_debug:
                 log.debug('Received PING')
+            self.ping_outstanding.clear()
         elif header.xid == AUTH_XID:
             if self.log_debug:
                 log.debug('Received AUTH')
@@ -390,6 +397,13 @@ class ConnectionHandler(object):
             # don't clear the pipe below after sending
             return
 
+        # Special case for testing, if this is a _SessionExpire object
+        # then throw a SessionExpiration error as if we were dropped
+        if request is _SESSION_EXPIRED:
+            raise SessionExpiredError("Session expired: Testing")
+        if request is _CONNECTION_DROP:
+            raise ConnectionDropped("Connection dropped: Testing")
+
         # Special case for auth packets
         if request.type == Auth.type:
             self._submit(request, connect_timeout, AUTH_XID)
@@ -409,6 +423,7 @@ class ConnectionHandler(object):
     def _send_ping(self, connect_timeout):
         if self.log_debug:
             log.debug('Queue timeout.  Sending PING')
+        self.ping_outstanding.set()
         self._submit(Ping, connect_timeout, PING_XID)
 
         # Determine if we need to check for a r/w server
@@ -472,6 +487,10 @@ class ConnectionHandler(object):
                             [], [], timeout)[0]
 
                     if not s:
+                        if self.ping_outstanding.is_set():
+                            self.ping_outstanding.clear()
+                            raise ConnectionDropped(
+                                "outstanding heartbeat ping not received")
                         self._send_ping(connect_timeout)
                     elif s[0] == self._socket:
                         response = self._read_socket(read_timeout)
@@ -516,6 +535,7 @@ class ConnectionHandler(object):
                       client._session_id,
                       hexlify(client._session_passwd))
 
+        self._socket.settimeout(client._session_timeout)
         with self._socket_error_handling():
             self._socket.connect((host, port))
 
@@ -558,7 +578,7 @@ class ConnectionHandler(object):
 
         for scheme, auth in client.auth_data:
             ap = Auth(0, scheme, auth)
-            zxid = self._invoke(connect_timeout, ap, xid=-4)
+            zxid = self._invoke(connect_timeout, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
         return read_timeout, connect_timeout

@@ -7,13 +7,13 @@ more hassle-free experience that is less prone to errors.
 
 Kazoo features:
 
-* Support for gevent 0.13 and gevent 1.0b
-* Unified asynchronous API for use with greenlets or threads
-* Lock, Party, Election, and Partitioner recipe implementations (more
-  implementations are in development)
+* A wide range of recipe implementations, like Lock, Election or Queue
 * Data and Children Watchers
-* Integrated testing helpers for Zookeeper clusters
 * Simplified Zookeeper connection state tracking
+* Unified asynchronous API for use with greenlets or threads
+* Support for gevent 0.13 and gevent 1.0
+* Support for Zookeeper 3.3 and 3.4 servers
+* Integrated testing helpers for Zookeeper clusters
 * Pure-Python based implementation of the wire protocol, avoiding all the
   memory leaks, lacking features, and debugging madness of the C library
 
@@ -93,7 +93,7 @@ Authors
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
 `Zope Corporation`_. It has seen further contributions from `reddit`_,
-`Quora`_ and `SageCloud`_ amongst others.
+`Quora`_ and `SageCloud`_.
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
 .. _Zookeeper Programmers Guide: http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html

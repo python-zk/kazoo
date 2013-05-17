@@ -1,8 +1,49 @@
 Changelog
 =========
 
-1.0b2 (unreleased)
-------------------
+1.1 (unreleased)
+----------------
+
+Features
+********
+
+- Respect large client timeout values when closing the connection.
+
+- Add a `max_leases` consistency check to the semaphore recipe.
+
+- Issue #76: Extend testing helpers to allow customization of the Java
+  classpath by specifying the new `ZOOKEEPER_CLASSPATH` environment variable.
+
+- Issue #65: Allow non-blocking semaphore acquisition.
+
+Bug Handling
+************
+
+- Issue #77: Use timeout in initial socket connection.
+
+- Issue #69: Only ensure path once in lock and semaphore recipes.
+
+- Issue #68: Closing the connection causes exceptions to be raised by watchers
+  which assume the connection won't be closed when running commands.
+
+- Issue #66: Require ping reply before sending another ping, otherwise the
+  connection will be considered dead and a ConnectionDropped will be raised
+  to trigger a reconnect.
+
+- Issue #63: Watchers weren't reset on lost connection.
+
+- Issue #58: DataWatcher failed to re-register for changes after non-existent
+  node was created then deleted.
+
+API Changes
+***********
+
+- KazooClient.create_async now supports the makepath argument.
+
+- KazooClient.ensure_path now has an async version, ensure_path_async.
+
+1.0 (2013-03-26)
+----------------
 
 Features
 ********
@@ -13,6 +54,9 @@ Features
 
 Bug Handling
 ************
+
+- Issue #50: Avoid problems with sleep function in mixed gevent/threading
+  setup.
 
 - Issue #56: Avoid issues with watch callbacks evaluating to false.
 

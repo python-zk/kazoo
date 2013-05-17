@@ -37,7 +37,7 @@ $(PYTHON):
 build: $(PYTHON)
 ifeq ($(GEVENT_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_gevent.txt
-	$(INSTALL) -f https://github.com/SiteSupport/gevent/downloads gevent==$(GEVENT_VERSION)
+	$(INSTALL) -f http://code.google.com/p/gevent/downloads/list gevent==$(GEVENT_VERSION)
 endif
 ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
@@ -51,7 +51,7 @@ clean:
 
 test:
 	ZOOKEEPER_PATH=$(ZOOKEEPER_PATH) \
-	$(BIN)/nosetests -d --with-coverage kazoo.tests -v
+	$(BIN)/nosetests -d -v --with-coverage kazoo.tests
 
 html:
 	cd docs && \
@@ -61,7 +61,7 @@ $(ZOOKEEPER):
 	@echo "Installing Zookeeper"
 	mkdir -p bin
 	cd bin && \
-	curl --progress-bar http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
+	curl -C - http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
 	mv bin/zookeeper-$(ZOOKEEPER_VERSION) bin/zookeeper
 	cd bin/zookeeper
 	chmod a+x bin/zookeeper/bin/zkServer.sh

@@ -128,8 +128,13 @@ class KazooLockTests(KazooTestCase):
 
         lock1 = self.client.Lock(self.lockpath, lock_name)
 
+        # wait for the thread to acquire the lock
+        with self.condition:
+            if not self.active_thread:
+                self.condition.wait(5)
+
         ok_(not lock1.acquire(blocking=False))
-        eq_(lock.contenders(), [lock_name]) # just one - itself
+        eq_(lock.contenders(), [lock_name])  # just one - itself
 
         event.set()
         thread.join()
@@ -195,6 +200,13 @@ class KazooLockTests(KazooTestCase):
         lock1.release()
         lock1.release()
 
+    def test_lock_reacquire(self):
+        lock = self.client.Lock(self.lockpath, "one")
+        lock.acquire()
+        lock.release()
+        lock.acquire()
+        lock.release()
+
 
 class TestSemaphore(KazooTestCase):
     def setUp(self):
@@ -233,6 +245,25 @@ class TestSemaphore(KazooTestCase):
         sem1.release()
         event.wait()
         self.assert_(event.is_set())
+
+    def test_non_blocking(self):
+        sem1 = self.client.Semaphore(
+            self.lockpath, identifier='sem1', max_leases=2)
+        sem2 = self.client.Semaphore(
+            self.lockpath, identifier='sem2', max_leases=2)
+        sem3 = self.client.Semaphore(
+            self.lockpath, identifier='sem3', max_leases=2)
+
+        sem1.acquire()
+        sem2.acquire()
+        ok_(not sem3.acquire(blocking=False))
+        eq_(set(sem1.lease_holders()), set(['sem1', 'sem2']))
+        sem2.release()
+        # the next line isn't required, but avoids timing issues in tests
+        sem3.acquire()
+        eq_(set(sem1.lease_holders()), set(['sem1', 'sem3']))
+        sem1.release()
+        sem3.release()
 
     def test_holders(self):
         started = threading.Event()
@@ -326,3 +357,28 @@ class TestSemaphore(KazooTestCase):
         event.wait(5)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
+
+    def test_inconsistent_max_leases(self):
+        sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, max_leases=2)
+
+        sem1.acquire()
+        self.assertRaises(ValueError, sem2.acquire)
+
+    def test_inconsistent_max_leases_other_data(self):
+        sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
+        sem2 = self.client.Semaphore(self.lockpath, max_leases=2)
+
+        self.client.ensure_path(self.lockpath)
+        self.client.set(self.lockpath, b'a$')
+
+        sem1.acquire()
+        # sem2 thinks it's ok to have two lease holders
+        ok_(sem2.acquire(blocking=False))
+
+    def test_reacquire(self):
+        lock = self.client.Semaphore(self.lockpath)
+        lock.acquire()
+        lock.release()
+        lock.acquire()
+        lock.release()
