@@ -153,7 +153,7 @@ class DataWatch(object):
                     # is False, because when it is True we use the
                     # ZK 'retry' method, which can't have this exception.
                     self._stopped = True
-                    self._func(None, None)
+                    self._log_func_exception(None, None)
                     return
 
             # No prior data, no current data, nothing to do
