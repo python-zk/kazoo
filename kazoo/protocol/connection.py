@@ -517,11 +517,11 @@ class ConnectionHandler(object):
                 else:
                     log.warning('Connection time-out')
                 if client._state != KeeperState.CONNECTING:
-                    # Transition to closed, note that if we get back in this
+                    # Transition to LOST, note that if we get back in this
                     # method then it will be set back to connecting but that
                     # might not be the case, depending on retry logic.
-                    log.warning("Transition to CLOSED")
-                    client._session_callback(KeeperState.CLOSED)
+                    log.warning("Transition to LOST")
+                    client._session_callback(KeeperState.LOST)
             except AuthFailedError:
                 log.warning('AUTH_FAILED closing')
                 client._session_callback(KeeperState.AUTH_FAILED)
