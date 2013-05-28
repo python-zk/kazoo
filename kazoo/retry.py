@@ -63,6 +63,7 @@ class RetrySleeper(object):
         jitter = random.randint(0, self.max_jitter) / 100.0
         self.sleep_func(self._cur_delay + jitter)
         self._cur_delay = min(self._cur_delay * self.backoff, self.max_delay)
+        return self._attempts
 
     def copy(self):
         """Return a clone of this retry sleeper"""
