@@ -404,6 +404,12 @@ class ConnectionHandler(object):
             # Not actually something on the queue, this can occur if
             # something happens to cancel the request such that we
             # don't clear the pipe below after sending
+            try:
+                # Clear possible inconsistence (no request in the queue
+                # but have data in the read pipe), which causes cpu to spin.
+                os.read(self._read_pipe, 1)
+            except OSError:
+                pass
             return
 
         # Special case for testing, if this is a _SessionExpire object
