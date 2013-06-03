@@ -4,6 +4,7 @@ import threading
 from nose.tools import eq_, ok_
 
 from kazoo.exceptions import CancelledError
+from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
 
@@ -206,6 +207,41 @@ class KazooLockTests(KazooTestCase):
         lock.release()
         lock.acquire()
         lock.release()
+
+    def test_lock_timeout(self):
+        timeout = 2
+        e = threading.Event()
+
+        # In the background thread, acquire the lock and wait twice the time
+        # that the main thread is going to wait to acquire the lock.
+        lock1 = self.client.Lock(self.lockpath, "one")
+        def _thread(lock, event, timeout):
+            with lock:
+                event.wait(timeout)
+                if not event.isSet():
+                    # Eventually fail to avoid hanging the tests
+                    self.fail("lock2 never timed out")
+        t = threading.Thread(target=_thread, args=(lock1, e, timeout*2))
+        t.start()
+
+        # Start the main thread's kazoo client and try to acquire the lock
+        # but give up after `timeout` seconds
+        client2 = self._get_client()
+        client2.start()
+        lock2 = client2.Lock(self.lockpath, "two")
+        try:
+            lock2.acquire(timeout=timeout)
+        except LockTimeout:
+            # A timeout is the behavior we're expecting, since the background
+            # thread should still be holding onto the lock
+            pass
+        else:
+            self.fail("Main thread unexpectedly acquired the lock")
+        finally:
+            # Cleanup
+            e.set()
+            t.join()
+            client2.stop()
 
 
 class TestSemaphore(KazooTestCase):

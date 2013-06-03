@@ -29,6 +29,10 @@ class ConnectionDropped(KazooException):
     """Internal error for jumping out of loops"""
 
 
+class LockTimeout(KazooException):
+    """ Raised if failed to acquire a lock """
+
+
 def _invalid_error_code():
     raise RuntimeError('Invalid error code')
 
