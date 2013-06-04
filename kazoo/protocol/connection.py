@@ -233,7 +233,16 @@ class ConnectionHandler(object):
         msg = self._read(length, timeout)
 
         if hasattr(request, 'deserialize'):
-            obj, _ = request.deserialize(msg, 0)
+            try:
+                obj, _ = request.deserialize(msg, 0)
+            except Exception as exc:
+                if self.log_debug:
+                    log.debug("Exception raised during deserialization"
+                              " of request: %s", request)
+                log.exception(exc)
+
+                # raise ConnectionDropped so connect loop will retry
+                raise ConnectionDropped('invalid server response')
             log.debug('Read response %s', obj)
             return obj, zxid
 
