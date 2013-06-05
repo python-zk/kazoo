@@ -1,4 +1,5 @@
 """Zookeeper Protocol Connection Handler"""
+import itertools
 import logging
 import os
 import random
@@ -36,6 +37,8 @@ from kazoo.protocol.states import (
     EVENT_TYPE_MAP,
 )
 from kazoo.handlers.utils import create_pipe
+from kazoo.retry import (RetryFailedError, ForceRetryError)
+
 
 log = logging.getLogger(__name__)
 
@@ -123,10 +126,10 @@ class RWServerAvailable(Exception):
 
 class ConnectionHandler(object):
     """Zookeeper connection handler"""
-    def __init__(self, client, retry_sleeper, logger=None):
+    def __init__(self, client, retry, logger=None):
         self.client = client
         self.handler = client.handler
-        self.retry_sleeper = retry_sleeper
+        self.retry = retry
         self.logger = logger or log
 
         # Our event objects
@@ -440,88 +443,98 @@ class ConnectionHandler(object):
 
         self.connection_stopped.clear()
 
-        retry = self.retry_sleeper.copy()
+        retry = self.retry.copy()
         try:
+            hosts = itertools.cycle(self.client.hosts)
             while not self.client._stopped.is_set():
                 # If the connect_loop returns False, stop retrying
-                if self._connect_loop(retry) is False:
+                if retry(self._connect_loop, hosts, retry) is False:
                     break
-
-                # Still going, increment our retry then go through the
-                # list of hosts again
-                if not self.client._stopped.is_set():
-                    retry.increment()
+        except RetryFailedError:
+            self.logger.warn('Failed to reconnect before retry deadline')
+            self.client._session_callback(KeeperState.CLOSED)
         finally:
             self.connection_stopped.set()
             self.logger.debug('Connection stopped')
 
-    def _connect_loop(self, retry):
+    def _connect_loop(self, hosts, retry):
+        if self.client._stopped.is_set():
+            return False
+        elif self._connect_attempt(hosts, retry) is False:
+            return False
+        else:
+            raise ForceRetryError('Reconnecting')
+
+
+    def _connect_attempt(self, hosts, retry):
         client = self.client
         TimeoutError = self.handler.timeout_exception
         close_connection = False
-        for host, port in client.hosts:
-            self._socket = self.handler.socket()
 
-            # Were we given a r/w server? If so, use that instead
-            if self._rw_server:
-                self.logger.debug("Found r/w server to use, %s:%s", host, port)
-                host, port = self._rw_server
-                self._rw_server = None
+        host, port = hosts.next()
 
-            if client._state != KeeperState.CONNECTING:
-                client._session_callback(KeeperState.CONNECTING)
+        self._socket = self.handler.socket()
 
-            try:
-                read_timeout, connect_timeout = self._connect(host, port)
-                read_timeout = read_timeout / 1000.0
-                connect_timeout = connect_timeout / 1000.0
-                retry.reset()
-                self._xid = 0
+        # Were we given a r/w server? If so, use that instead
+        if self._rw_server:
+            self.logger.debug("Found r/w server to use, %s:%s", host, port)
+            host, port = self._rw_server
+            self._rw_server = None
 
-                while not close_connection:
-                    # Watch for something to read or send
-                    timeout = read_timeout / 2.0 - random.randint(0, 40) / 100.0
-                    s = self.handler.select([self._socket, self._read_pipe],
-                            [], [], timeout)[0]
+        if client._state != KeeperState.CONNECTING:
+            client._session_callback(KeeperState.CONNECTING)
 
-                    if not s:
-                        if self.ping_outstanding.is_set():
-                            self.ping_outstanding.clear()
-                            raise ConnectionDropped(
-                                "outstanding heartbeat ping not received")
-                        self._send_ping(connect_timeout)
-                    elif s[0] == self._socket:
-                        response = self._read_socket(read_timeout)
-                        close_connection = response == CLOSE_RESPONSE
-                    else:
-                        self._send_request(read_timeout, connect_timeout)
+        try:
+            read_timeout, connect_timeout = self._connect(host, port)
+            read_timeout = read_timeout / 1000.0
+            connect_timeout = connect_timeout / 1000.0
+            retry.reset()
+            self._xid = 0
 
-                self.logger.info('Closing connection to %s:%s', host, port)
-                client._session_callback(KeeperState.CLOSED)
-                return False
-            except (ConnectionDropped, TimeoutError) as e:
-                if isinstance(e, ConnectionDropped):
-                    self.logger.warning('Connection dropped: %s', e)
+            while not close_connection:
+                # Watch for something to read or send
+                timeout = read_timeout / 2.0 - random.randint(0, 40) / 100.0
+                s = self.handler.select([self._socket, self._read_pipe],
+                        [], [], timeout)[0]
+
+                if not s:
+                    if self.ping_outstanding.is_set():
+                        self.ping_outstanding.clear()
+                        raise ConnectionDropped(
+                            "outstanding heartbeat ping not received")
+                    self._send_ping(connect_timeout)
+                elif s[0] == self._socket:
+                    response = self._read_socket(read_timeout)
+                    close_connection = response == CLOSE_RESPONSE
                 else:
-                    self.logger.warning('Connection time-out')
-                if client._state != KeeperState.CONNECTING:
-                    self.logger.warning("Transition to CONNECTING")
-                    client._session_callback(KeeperState.CONNECTING)
-            except AuthFailedError:
-                self.logger.warning('AUTH_FAILED closing')
-                client._session_callback(KeeperState.AUTH_FAILED)
-                return False
-            except SessionExpiredError:
-                self.logger.warning('Session has expired')
-                client._session_callback(KeeperState.EXPIRED_SESSION)
-            except RWServerAvailable:
-                self.logger.warning('Found a RW server, dropping connection')
+                    self._send_request(read_timeout, connect_timeout)
+
+            self.logger.info('Closing connection to %s:%s', host, port)
+            client._session_callback(KeeperState.CLOSED)
+            return False
+        except (ConnectionDropped, TimeoutError) as e:
+            if isinstance(e, ConnectionDropped):
+                self.logger.warning('Connection dropped: %s', e)
+            else:
+                self.logger.warning('Connection time-out')
+            if client._state != KeeperState.CONNECTING:
+                self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)
-            except Exception as e:
-                self.logger.exception(e)
-                raise
-            finally:
-                self._socket.close()
+        except AuthFailedError:
+            self.logger.warning('AUTH_FAILED closing')
+            client._session_callback(KeeperState.AUTH_FAILED)
+            return False
+        except SessionExpiredError:
+            self.logger.warning('Session has expired')
+            client._session_callback(KeeperState.EXPIRED_SESSION)
+        except RWServerAvailable:
+            self.logger.warning('Found a RW server, dropping connection')
+            client._session_callback(KeeperState.CONNECTING)
+        except Exception:
+            self.logger.exception('Unhandled exception in connection loop')
+            raise
+        finally:
+            self._socket.close()
 
     def _connect(self, host, port):
         client = self.client

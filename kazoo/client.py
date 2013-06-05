@@ -220,11 +220,8 @@ class KazooClient(object):
                 sleep_func=self.handler.sleep_func,
                 **retry_keys)
 
-        self.retry_sleeper = self.retry.retry_sleeper.copy()
-
         self._connection = ConnectionHandler(
-            self, self.retry.retry_sleeper.copy(),
-            logger=self.logger)
+            self, self.retry.copy(), logger=self.logger)
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
