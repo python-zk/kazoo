@@ -19,6 +19,10 @@ Features
 Bug Handling
 ************
 
+- Issue #95: Handle errors deserializing connection response.
+
+- Issue #94: Clean up stray bytes in connection pipe.
+
 - Issue #77: Use timeout in initial socket connection.
 
 - Issue #69: Only ensure path once in lock and semaphore recipes.
