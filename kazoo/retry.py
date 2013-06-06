@@ -37,7 +37,8 @@ class KazooRetry(object):
     )
 
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
-                 max_delay=3600, ignore_expire=True, sleep_func=time.sleep):
+                 max_delay=3600, ignore_expire=True, sleep_func=time.sleep,
+                 deadline=None):
         """Create a :class:`KazooRetry` instance for retrying function
         calls
 
@@ -62,6 +63,8 @@ class KazooRetry(object):
         self.max_delay = float(max_delay)
         self._attempts = 0
         self._cur_delay = delay
+        self.deadline = deadline
+        self._cur_stoptime = None
 
         self.retry_exceptions = self.RETRY_EXCEPTIONS
         if ignore_expire:
@@ -71,12 +74,13 @@ class KazooRetry(object):
         """Reset the attempt counter"""
         self._attempts = 0
         self._cur_delay = self.delay
+        self._cur_stoptime = None
 
     def copy(self):
         """Return a clone of this retry manager"""
         obj = KazooRetry(self.max_tries, self.delay, self.backoff,
                          self.max_jitter / 100.0, self.max_delay,
-                         self.sleep_func)
+                         self.sleep_func, deadline=self.deadline)
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
@@ -99,6 +103,8 @@ class KazooRetry(object):
 
         while True:
             try:
+                if self.deadline is not None and self._cur_stoptime is None:
+                    self._cur_stoptime = time.time() + self.deadline
                 return func(*args, **kwargs)
             except ConnectionClosedError:
                 raise
@@ -106,6 +112,10 @@ class KazooRetry(object):
                 if self._attempts == self.max_tries:
                     raise RetryFailedError("Too many retry attempts")
                 self._attempts += 1
-                jitter = random.randint(0, self.max_jitter) / 100.0
-                self.sleep_func(self._cur_delay + jitter)
+                sleeptime = self._cur_delay + (random.randint(0, self.max_jitter) / 100.0)
+
+                if self._cur_stoptime is not None and time.time() + sleeptime >= self._cur_stoptime:
+                    raise RetryFailedError("Exceeded retry deadline")
+
+                self.sleep_func(sleeptime)
                 self._cur_delay = min(self._cur_delay * self.backoff, self.max_delay)
