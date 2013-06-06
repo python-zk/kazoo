@@ -16,6 +16,7 @@ import uuid
 from kazoo.retry import ForceRetryError
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import KazooException
+from kazoo.exceptions import LockTimeout
 from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import KazooState
 
@@ -75,16 +76,17 @@ class Lock(object):
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True):
+    def acquire(self, blocking=True, timeout=None):
         """
         Acquire the mutex, if blocking=True (default) block until it is
-        obtained.
+        obtained. If timeout is specified, raises a
+        :class:`~kazoo.exceptions.LockTimeout`.
 
         Return acquisition result.
         """
         try:
             self.is_acquired = self.client.retry(
-                self._inner_acquire, blocking=blocking)
+                self._inner_acquire, blocking=blocking, timeout=timeout)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
@@ -96,7 +98,7 @@ class Lock(object):
 
         return self.is_acquired
 
-    def _inner_acquire(self, blocking):
+    def _inner_acquire(self, blocking, timeout):
         # make sure our election parent node exists
         if not self.assured_path:
             self._ensure_path()
@@ -141,7 +143,9 @@ class Lock(object):
             # otherwise we are in the mix. watch predecessor and bide our time
             predecessor = self.path + "/" + children[our_index - 1]
             if self.client.exists(predecessor, self._watch_predecessor):
-                self.wake_event.wait()
+                self.wake_event.wait(timeout)
+                if not self.wake_event.isSet():
+                    raise LockTimeout("Failed to acquire lock on %s after %s seconds" % (self.path, timeout))
 
     def acquired_lock(self, children, index):
         return index == 0
