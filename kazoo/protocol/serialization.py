@@ -71,20 +71,24 @@ def read_buffer(bytes, offset):
         return bytes[index:index + length], offset
 
 
-class Close(object):
+class Close(namedtuple('Close', '')):
     type = -11
 
     @classmethod
     def serialize(cls):
         return b''
 
+CloseInstance = Close()
 
-class Ping(object):
+
+class Ping(namedtuple('Ping', '')):
     type = 11
 
     @classmethod
     def serialize(cls):
         return b''
+
+PingInstance = Ping()
 
 
 class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'
