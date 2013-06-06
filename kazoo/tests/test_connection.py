@@ -20,6 +20,7 @@ from kazoo.protocol.serialization import (
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
+from kazoo.tests.util import wait
 
 
 class Delete(namedtuple('Delete', 'path version')):
@@ -222,6 +223,20 @@ class TestConnectionHandler(KazooTestCase):
         assert write_pipe is not None
         os.fstat(read_pipe)
         os.fstat(write_pipe)
+
+    def test_dirty_pipe(self):
+        client = self.client
+        read_pipe = client._connection._read_pipe
+        write_pipe = client._connection._write_pipe
+
+        # add a stray byte to the pipe and ensure that doesn't
+        # blow up client. simulates case where some error leaves
+        # a byte in the pipe which doesn't correspond to the
+        # request queue.
+        os.write(write_pipe, b'\0')
+
+        # eventually this byte should disappear from pipe
+        wait(lambda: client.handler.select([read_pipe], [], [], 0)[0] == [])
 
 
 class TestConnectionDrop(KazooTestCase):
