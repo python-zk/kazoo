@@ -23,6 +23,8 @@ Bug Handling
 
 - Issue #94: Clean up stray bytes in connection pipe.
 
+- Issue #87 / #88: Allow re-acquiring lock after cancel.
+
 - Issue #77: Use timeout in initial socket connection.
 
 - Issue #69: Only ensure path once in lock and semaphore recipes.
