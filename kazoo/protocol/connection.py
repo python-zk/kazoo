@@ -23,6 +23,7 @@ from kazoo.protocol.serialization import (
     Exists,
     GetChildren,
     Ping,
+    PingInstance,
     ReplyHeader,
     Transaction,
     Watch,
@@ -151,7 +152,7 @@ class ConnectionHandler(object):
             yield
         except (socket.error, select.error) as e:
             err = getattr(e, 'strerror', e)
-            raise ConnectionDropped("socket connection error: %s", err)
+            raise ConnectionDropped("socket connection error: %s" % (err,))
 
     def start(self):
         """Start the connection up"""
@@ -439,7 +440,7 @@ class ConnectionHandler(object):
         if self.log_debug:
             log.debug('Queue timeout.  Sending PING')
         self.ping_outstanding.set()
-        self._submit(Ping, connect_timeout, PING_XID)
+        self._submit(PingInstance, connect_timeout, PING_XID)
 
         # Determine if we need to check for a r/w server
         if self._ro_mode:
