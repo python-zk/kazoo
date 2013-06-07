@@ -52,6 +52,17 @@ def listen():
     signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
 
+if os.name == 'nt':
+    class_path_separator = ';'
+else:
+    class_path_separator = ':'
+
+
+def to_java_compatible_path(path):
+    if os.name == 'nt':
+        path = path.replace('\\', '/')
+    return path
+
 ServerInfo = namedtuple(
     "ServerInfo", "server_id client_port election_port leader_port")
 
@@ -98,13 +109,13 @@ class ManagedZooKeeper(object):
         if not os.path.exists(data_path):
             os.mkdir(data_path)
 
-        with open(config_path, "w") as config:
+        with open(config_path, "wb") as config:
             config.write("""
 tickTime=2000
 dataDir=%s
 clientPort=%s
 maxClientCnxns=0
-""" % (data_path, self.server_info.client_port))
+""" % (to_java_compatible_path(data_path), self.server_info.client_port))
 
         # setup a replicated setup if peers are specified
         if self.peers:
@@ -124,7 +135,7 @@ syncLimit=2
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
             myid_file.write(str(self.server_info.server_id))
 
-        with open(log4j_path, "w") as log4j:
+        with open(log4j_path, "wb") as log4j:
             log4j.write("""
 # DEFAULT: console appender only
 log4j.rootLogger=INFO, ROLLINGFILE
@@ -132,7 +143,7 @@ log4j.appender.ROLLINGFILE.layout=org.apache.log4j.PatternLayout
 log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
-log4j.appender.ROLLINGFILE.File=""" + (
+log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(
                 self.working_path + os.sep + "zookeeper.log\n"))
 
         self.process = subprocess.Popen(
@@ -144,8 +155,7 @@ log4j.appender.ROLLINGFILE.File=""" + (
                   "-Dlog4j.configuration=file:%s" % log4j_path,
                   # "-Dlog4j.debug",
                   "org.apache.zookeeper.server.quorum.QuorumPeerMain",
-                  config_path],
-            )
+                  config_path])
         self._running = True
 
     @property
@@ -171,7 +181,8 @@ log4j.appender.ROLLINGFILE.File=""" + (
             jars.extend(glob(os.path.join(
                 self.install_path,
                 "build/lib/*.jar")))
-        return ":".join(jars)
+
+        return class_path_separator.join(jars)
 
     @property
     def address(self):
