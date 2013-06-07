@@ -49,7 +49,8 @@ def debug(sig, frame):
 
 
 def listen():
-    signal.signal(signal.SIGUSR1, debug)  # Register handler
+    if os.name != 'nt':  # SIGUSR1 is not supported on Windows
+        signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
 
 if os.name == 'nt':
