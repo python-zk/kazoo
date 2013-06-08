@@ -30,7 +30,10 @@ class ConnectionDropped(KazooException):
 
 
 class LockTimeout(KazooException):
-    """ Raised if failed to acquire a lock """
+    """Raised if failed to acquire a lock.
+
+    .. versionadded:: 1.1
+    """
 
 
 def _invalid_error_code():

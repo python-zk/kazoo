@@ -22,7 +22,7 @@ from kazoo.protocol.states import KazooState
 
 
 class Lock(object):
-    """Kazoo Basic Lock
+    """Kazoo Lock
 
     Example usage with a :class:`~kazoo.client.KazooClient` instance:
 
@@ -37,7 +37,7 @@ class Lock(object):
     _NODE_NAME = '__lock__'
 
     def __init__(self, client, path, identifier=None):
-        """Create a Kazoo Lock
+        """Create a Kazoo lock.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The lock path to use.
@@ -72,17 +72,27 @@ class Lock(object):
         self.assured_path = True
 
     def cancel(self):
-        """Cancel a pending lock acquire"""
+        """Cancel a pending lock acquire."""
         self.cancelled = True
         self.wake_event.set()
 
     def acquire(self, blocking=True, timeout=None):
         """
-        Acquire the mutex, if blocking=True (default) block until it is
-        obtained. If timeout is specified, raises a
-        :class:`~kazoo.exceptions.LockTimeout`.
+        Acquire the lock. By defaults blocks and waits forever.
 
-        Return acquisition result.
+        :param blocking: Block until lock is obtained or return immediately.
+        :type blocking: bool
+        :param timeout: Don't wait forever to acquire the lock.
+        :type timeout: float or None
+
+        :returns: Was the lock acquired?
+        :rtype: bool
+
+        :raises: :exc:`~kazoo.exceptions.LockTimeout` if the lock
+                 wasn't acquired within `timeout` seconds.
+
+        .. versionadded:: 1.1
+            The timeout option.
         """
         try:
             self.is_acquired = self.client.retry(
@@ -111,7 +121,7 @@ class Lock(object):
 
         if not node:
             node = self.client.create(self.create_path, self.data,
-                ephemeral=True, sequence=True)
+                                      ephemeral=True, sequence=True)
             # strip off path to node
             node = node[len(self.path) + 1:]
 
@@ -145,7 +155,8 @@ class Lock(object):
             if self.client.exists(predecessor, self._watch_predecessor):
                 self.wake_event.wait(timeout)
                 if not self.wake_event.isSet():
-                    raise LockTimeout("Failed to acquire lock on %s after %s seconds" % (self.path, timeout))
+                    raise LockTimeout("Failed to acquire lock on %s after %s "
+                                      "seconds" % (self.path, timeout))
 
     def acquired_lock(self, children, index):
         return index == 0
@@ -180,7 +191,7 @@ class Lock(object):
             pass
 
     def release(self):
-        """Release the mutex immediately"""
+        """Release the lock immediately."""
         return self.client.retry(self._inner_release)
 
     def _inner_release(self):
@@ -199,7 +210,7 @@ class Lock(object):
 
     def contenders(self):
         """Return an ordered list of the current contenders for the
-        lock
+        lock.
 
         .. note::
 

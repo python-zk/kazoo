@@ -20,6 +20,8 @@ Public API
 
 .. autoexception:: InvalidACLError
 
+.. autoexception:: LockTimeout
+
 .. autoexception:: NoChildrenForEphemeralsError
 
 .. autoexception:: NodeExistsError
