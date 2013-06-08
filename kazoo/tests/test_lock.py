@@ -440,3 +440,40 @@ class TestSemaphore(KazooTestCase):
         lock.cancel()
         self.assertTrue(lock.cancelled)
         self.assertTrue(lock.acquire())
+
+    def test_timeout(self):
+        timeout = 3
+        e = threading.Event()
+
+        # In the background thread, acquire the lock and wait thrice the time
+        # that the main thread is going to wait to acquire the lock.
+        sem1 = self.client.Semaphore(self.lockpath, "one")
+
+        def _thread(sem, event, timeout):
+            with sem:
+                event.wait(timeout)
+                if not event.isSet():
+                    # Eventually fail to avoid hanging the tests
+                    self.fail("sem2 never timed out")
+
+        t = threading.Thread(target=_thread, args=(sem1, e, timeout * 3))
+        t.start()
+
+        # Start the main thread's kazoo client and try to acquire the lock
+        # but give up after `timeout` seconds
+        client2 = self._get_client()
+        client2.start()
+        sem2 = client2.Semaphore(self.lockpath, "two")
+        try:
+            sem2.acquire(timeout=timeout)
+        except LockTimeout:
+            # A timeout is the behavior we're expecting, since the background
+            # thread should still be holding onto the lock
+            pass
+        else:
+            self.fail("Main thread unexpectedly acquired the lock")
+        finally:
+            # Cleanup
+            e.set()
+            t.join()
+            client2.stop()

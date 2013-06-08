@@ -330,30 +330,39 @@ class Semaphore(object):
             self.client.set(self.path, str(self.max_leases).encode('utf-8'))
 
     def cancel(self):
-        """Cancel a pending lock acquire"""
+        """Cancel a pending semaphore acquire."""
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True):
-        """Acquire the semaphore, if blocking=True (default) block until
-        it is acquired.
+    def acquire(self, blocking=True, timeout=None):
+        """Acquire the semaphore. By defaults blocks and waits forever.
 
-        Return acquisition result.
+        :param blocking: Block until semaphore is obtained or
+                         return immediately.
+        :type blocking: bool
+        :param timeout: Don't wait forever to acquire the semaphore.
+        :type timeout: float or None
+
+        :returns: Was the semaphore acquired?
+        :rtype: bool
 
         :raises:
             ValueError if the max_leases value doesn't match the
             stored value.
 
+            :exc:`~kazoo.exceptions.LockTimeout` if the semaphore
+            wasn't acquired within `timeout` seconds.
+
         .. versionadded:: 1.1
-            The blocking argument and the max_leases check.
+            The blocking, timeout arguments and the max_leases check.
         """
-        # If the semaphore had previously been cancelled, make sure to
+        # If the semaphore had previously been canceled, make sure to
         # reset that state.
         self.cancelled = False
 
         try:
-            self.is_acquired = self.client.retry(self._inner_acquire,
-                                                 blocking=blocking)
+            self.is_acquired = self.client.retry(
+                self._inner_acquire, blocking=blocking, timeout=timeout)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
@@ -362,7 +371,7 @@ class Semaphore(object):
 
         return self.is_acquired
 
-    def _inner_acquire(self, blocking):
+    def _inner_acquire(self, blocking, timeout=None):
         """Inner loop that runs from the top anytime a command hits a
         retryable Zookeeper exception."""
         self._session_expired = False
@@ -386,7 +395,11 @@ class Semaphore(object):
                 if blocking:
                     # If blocking, wait until self._watch_lease_change() is
                     # called before returning
-                    self.wake_event.wait()
+                    self.wake_event.wait(timeout)
+                    if not self.wake_event.isSet():
+                        raise LockTimeout(
+                            "Failed to acquire semaphore on %s "
+                            "after %s seconds" % (self.path, timeout))
                 else:
                     # If not blocking, register another watch that will trigger
                     # self._get_lease() as soon as the children change again.

@@ -7,6 +7,8 @@ Changelog
 Features
 ********
 
+- Issue #93: Add timeout option to lock/semaphore acquire methods.
+
 - Respect large client timeout values when closing the connection.
 
 - Add a `max_leases` consistency check to the semaphore recipe.
