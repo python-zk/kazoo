@@ -36,6 +36,7 @@ from kazoo.protocol.states import (
     EVENT_TYPE_MAP,
 )
 from kazoo.handlers.utils import create_pipe
+from kazoo.retry import (RetryFailedError)
 
 log = logging.getLogger(__name__)
 
@@ -456,6 +457,7 @@ class ConnectionHandler(object):
 
         self.connection_stopped.clear()
 
+        client = self.client
         retry = self.retry_sleeper.copy()
         try:
             while not self.client._stopped.is_set():
@@ -466,7 +468,14 @@ class ConnectionHandler(object):
                 # Still going, increment our retry then go through the
                 # list of hosts again
                 if not self.client._stopped.is_set():
-                    retry.increment()
+                    try:
+                        n = retry.increment()
+                        log.debug('Attempting retry %s of %s', n,
+                                  retry.max_tries)
+                    except RetryFailedError:
+                        # Retried to many times, stop trying and close.
+                        client._session_callback(KeeperState.CLOSED)
+                        break
         finally:
             self.connection_stopped.set()
             if self.log_debug:
@@ -524,8 +533,11 @@ class ConnectionHandler(object):
                 else:
                     log.warning('Connection time-out')
                 if client._state != KeeperState.CONNECTING:
-                    log.warning("Transition to CONNECTING")
-                    client._session_callback(KeeperState.CONNECTING)
+                    # Transition to LOST, note that if we get back in this
+                    # method then it will be set back to connecting but that
+                    # might not be the case, depending on retry logic.
+                    log.warning("Transition to LOST")
+                    client._session_callback(KeeperState.LOST)
             except AuthFailedError:
                 log.warning('AUTH_FAILED closing')
                 client._session_callback(KeeperState.AUTH_FAILED)

@@ -66,6 +66,7 @@ class KeeperState(object):
     CONNECTING = 'CONNECTING'
     CLOSED = 'CLOSED'
     EXPIRED_SESSION = 'EXPIRED_SESSION'
+    LOST = 'LOST'
 
 
 class EventType(object):
