@@ -19,6 +19,8 @@ Features
 Bug Handling
 ************
 
+- Issue #96: Provide Windows compatibility in testing harness.
+
 - Issue #95: Handle errors deserializing connection response.
 
 - Issue #94: Clean up stray bytes in connection pipe.

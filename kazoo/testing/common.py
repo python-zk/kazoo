@@ -1,10 +1,10 @@
 #
 #  Copyright (C) 2010-2011, 2011 Canonical Ltd. All Rights Reserved
 #
-#  This file is part of txzookeeper.
+#  This file was originally taken from txzookeeper and modified later.
 #
 #  Authors:
-#   Kapil Thangavelu
+#   Kapil Thangavelu and the Kazoo team
 #
 #  txzookeeper is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Lesser General Public License as published by
@@ -18,21 +18,20 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with txzookeeper.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 
+import code
 import os
 import os.path
 import shutil
+import signal
 import subprocess
 import tempfile
+import traceback
 
 from itertools import chain
 from collections import namedtuple
 from glob import glob
-
-
-import code, traceback, signal
 
 
 def debug(sig, frame):
@@ -52,11 +51,6 @@ def listen():
     if os.name != 'nt':  # SIGUSR1 is not supported on Windows
         signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
-
-if os.name == 'nt':
-    class_path_separator = ';'
-else:
-    class_path_separator = ':'
 
 
 def to_java_compatible_path(path):
@@ -110,7 +104,7 @@ class ManagedZooKeeper(object):
         if not os.path.exists(data_path):
             os.mkdir(data_path)
 
-        with open(config_path, "wb") as config:
+        with open(config_path, "w") as config:
             config.write("""
 tickTime=2000
 dataDir=%s
@@ -136,7 +130,7 @@ syncLimit=2
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
             myid_file.write(str(self.server_info.server_id))
 
-        with open(log4j_path, "wb") as log4j:
+        with open(log4j_path, "w") as log4j:
             log4j.write("""
 # DEFAULT: console appender only
 log4j.rootLogger=INFO, ROLLINGFILE
@@ -183,7 +177,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(
                 self.install_path,
                 "build/lib/*.jar")))
 
-        return class_path_separator.join(jars)
+        return os.pathsep.join(jars)
 
     @property
     def address(self):
