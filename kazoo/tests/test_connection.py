@@ -13,9 +13,9 @@ import mock
 
 from kazoo.exceptions import ConnectionLoss
 from kazoo.protocol.serialization import (
-    write_string,
+    Connect,
     int_struct,
-    Connect
+    write_string,
 )
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.connection import _CONNECTION_DROP
