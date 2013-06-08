@@ -55,9 +55,16 @@ class DataWatch(object):
     function will be called with ``(None, None)`` and it will later
     be called if the node is recreated.
 
+    if send_event=True in __init__, then the function will always be
+    called with third parameter, ``event``. Upon initial call or when
+    recovering a lost session the ``event`` is always ``None``.
+    Otherwise it's a :class:`~kazoo.prototype.state.WatchedEvent`
+    instance.
+
     """
     def __init__(self, client, path, func=None,
-                 allow_session_lost=True, allow_missing_node=False):
+                 allow_session_lost=True, allow_missing_node=False,
+                 send_event=False):
         """Create a data watcher for a path
 
         :param client: A zookeeper client.
@@ -76,11 +83,17 @@ class DataWatch(object):
         :param allow_missing_node:
             Allow the node to be missing when the watch is initially
             set.
+        :type send_event: bool
+        :param send_event:
+            If set to true, the function called with the
+            :class:`~kazoo.prototype.state.WatchedEvent` event sent
+            by ZooKeeper or ``None`` (see class documentation).
 
         """
         self._client = client
         self._path = path
         self._func = func
+        self._send_event = send_event
         self._stopped = False
         self._allow_session_lost = allow_session_lost
         self._allow_missing_node = allow_missing_node
@@ -110,19 +123,25 @@ class DataWatch(object):
         if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
         if self._get_data():
-            self._log_func_exception(None, None)
+            self._log_func_exception(None, None, None)
         return func
 
-    def _log_func_exception(self, data, stat):
+    def _log_func_exception(self, data, stat, event=None):
         try:
-            if self._func(data, stat) is False:
+            # For backwards compatibility, don't send event to the
+            # callback unless the send_event is set in constructor
+            if self._send_event:
+                result = self._func(data, stat, event)
+            else:
+                result = self._func(data, stat)
+            if result is False:
                 self._stopped = True
         except Exception as exc:
             log.exception(exc)
             raise
 
     @_ignore_closed
-    def _get_data(self, using_exists=False):
+    def _get_data(self, event=None, using_exists=False):
         # Ensure this runs one at a time, possible because the session
         # watcher may trigger a run
         with self._run_lock:
@@ -153,7 +172,7 @@ class DataWatch(object):
                     # is False, because when it is True we use the
                     # ZK 'retry' method, which can't have this exception.
                     self._stopped = True
-                    self._func(None, None)
+                    self._log_func_exception(None, None, event)
                     return
 
             # No prior data, no current data, nothing to do
@@ -171,13 +190,13 @@ class DataWatch(object):
             else:
                 # We have new data!
                 self._prior_data = data, stat
-            self._log_func_exception(data, stat)
+            self._log_func_exception(data, stat, event)
 
     def _watcher(self, event):
-        self._get_data()
+        self._get_data(event=event)
 
     def _exists_watcher(self, event):
-        self._get_data(using_exists=True)
+        self._get_data(event=event, using_exists=True)
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
@@ -198,6 +217,12 @@ class ChildrenWatch(object):
     children change calls. If the client connection is closed (using
     the close command), the ChildrenWatch will no longer get updates.
 
+    if send_event=True in __init__, then the function will always be
+    called with second parameter, ``event``. Upon initial call or when
+    recovering a lost session the ``event`` is always ``None``.
+    Otherwise it's a :class:`~kazoo.prototype.state.WatchedEvent`
+    instance.
+
     Example with client:
 
     .. code-block:: python
@@ -210,7 +235,7 @@ class ChildrenWatch(object):
 
     """
     def __init__(self, client, path, func=None,
-                 allow_session_lost=True):
+                 allow_session_lost=True, send_event=False):
         """Create a children watcher for a path
 
         :param client: A zookeeper client.
@@ -225,6 +250,10 @@ class ChildrenWatch(object):
                                    re-registered if the zookeeper
                                    session is lost.
         :type allow_session_lost: bool
+        :type send_event: bool
+        :param send_event: Whether the function should be passed the
+                           event sent by ZooKeeper or None upon
+                           initialization (see class documentation)
 
         The path must already exist for the children watcher to
         run.
@@ -233,6 +262,7 @@ class ChildrenWatch(object):
         self._client = client
         self._path = path
         self._func = func
+        self._send_event = send_event
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
@@ -263,7 +293,7 @@ class ChildrenWatch(object):
         return func
 
     @_ignore_closed
-    def _get_children(self):
+    def _get_children(self, event=None):
         with self._run_lock:  # Ensure this runs one at a time
             if self._stopped:
                 return
@@ -280,14 +310,18 @@ class ChildrenWatch(object):
             self._prior_children = children
 
             try:
-                if self._func(children) is False:
+                if self._send_event:
+                    result = self._func(children, event)
+                else:
+                    result = self._func(children)
+                if result is False:
                     self._stopped = True
             except Exception as exc:
                 log.exception(exc)
                 raise
 
     def _watcher(self, event):
-        self._get_children()
+        self._get_children(event)
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
