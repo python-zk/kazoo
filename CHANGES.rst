@@ -9,6 +9,9 @@ Features
 
 - Issue #93: Add timeout option to lock/semaphore acquire methods.
 
+- Issue #79 / #90: Add ability to pass the WatchedEvent to DataWatch and
+  ChildWatch functions.
+
 - Respect large client timeout values when closing the connection.
 
 - Add a `max_leases` consistency check to the semaphore recipe.
