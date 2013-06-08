@@ -303,6 +303,18 @@ class TestSemaphore(KazooTestCase):
         sem1.release()
         sem3.release()
 
+    def test_non_blocking_release(self):
+        sem1 = self.client.Semaphore(
+            self.lockpath, identifier='sem1', max_leases=1)
+        sem2 = self.client.Semaphore(
+            self.lockpath, identifier='sem2', max_leases=1)
+        sem1.acquire()
+        sem2.acquire(blocking=False)
+
+        # make sure there's no shutdown / cleanup error
+        sem1.release()
+        sem2.release()
+
     def test_holders(self):
         started = threading.Event()
         event = threading.Event()
