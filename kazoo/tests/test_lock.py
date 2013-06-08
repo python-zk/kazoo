@@ -209,19 +209,21 @@ class KazooLockTests(KazooTestCase):
         lock.release()
 
     def test_lock_timeout(self):
-        timeout = 2
+        timeout = 10
         e = threading.Event()
 
         # In the background thread, acquire the lock and wait twice the time
         # that the main thread is going to wait to acquire the lock.
         lock1 = self.client.Lock(self.lockpath, "one")
+
         def _thread(lock, event, timeout):
             with lock:
                 event.wait(timeout)
                 if not event.isSet():
                     # Eventually fail to avoid hanging the tests
                     self.fail("lock2 never timed out")
-        t = threading.Thread(target=_thread, args=(lock1, e, timeout*2))
+
+        t = threading.Thread(target=_thread, args=(lock1, e, timeout * 2))
         t.start()
 
         # Start the main thread's kazoo client and try to acquire the lock
