@@ -310,8 +310,8 @@ class KazooClient(object):
         if state == self._state:
             return
 
-        # Note that we don't check self.state == LOST since thats also
-        # the clients initial state
+        # Note that we don't check self.state == LOST since that's also
+        # the client's initial state
         dead_state = self._state in LOST_STATES
         self._state = state
 
