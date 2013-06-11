@@ -224,7 +224,6 @@ class SequentialThreadingHandler(object):
 
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
-            # - A session worker for session events to be called
             # - A completion worker for completion events to be called
             for queue in (self.completion_queue, self.callback_queue):
                 w = self._create_thread_worker(queue)

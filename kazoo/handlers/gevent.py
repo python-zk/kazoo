@@ -90,10 +90,7 @@ class SequentialGeventHandler(object):
             self._running = True
 
             # Spawn our worker greenlets, we have
-            # - A completion worker for when values come back to be set on
-            #   the AsyncResult object
             # - A callback worker for watch events to be called
-            # - A session worker for session events to be called
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
