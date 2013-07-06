@@ -695,8 +695,10 @@ class KazooClient(object):
         async_result = self.handler.async_result()
 
         def do_create():
-            self._create_async_inner(path, value, acl, flags).rawlink(
-                create_completion)
+            if sequence:
+                self._create_async_inner(path, value, acl, flags, trailing=True).rawlink(create_completion)
+            else:
+                self._create_async_inner(path, value, acl, flags, trailing=False).rawlink(create_completion)
 
         @capture_exceptions(async_result)
         def retry_completion(result):
@@ -710,15 +712,18 @@ class KazooClient(object):
             except NoNodeError:
                 if not makepath:
                     raise
-                parent, _ = split(path)
+                if sequence and path.endswith('/'):
+                    parent = path.rstrip('/')
+                else:
+                    parent, _ = split(path)
                 self.ensure_path_async(parent, acl).rawlink(retry_completion)
 
         do_create()
         return async_result
 
-    def _create_async_inner(self, path, value, acl, flags):
+    def _create_async_inner(self, path, value, acl, flags, trailing=False):
         async_result = self.handler.async_result()
-        self._call(Create(_prefix_root(self.chroot, path), value, acl, flags),
+        self._call(Create(_prefix_root(self.chroot, path, trailing=trailing), value, acl, flags),
                    async_result)
         return async_result
 
