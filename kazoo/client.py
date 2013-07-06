@@ -695,10 +695,7 @@ class KazooClient(object):
         async_result = self.handler.async_result()
 
         def do_create():
-            if sequence:
-                self._create_async_inner(path, value, acl, flags, trailing=True).rawlink(create_completion)
-            else:
-                self._create_async_inner(path, value, acl, flags, trailing=False).rawlink(create_completion)
+            self._create_async_inner(path, value, acl, flags, trailing=sequence).rawlink(create_completion)
 
         @capture_exceptions(async_result)
         def retry_completion(result):
