@@ -45,6 +45,21 @@ from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
 
+# convenience API
+from kazoo.recipe.barrier import Barrier
+from kazoo.recipe.barrier import DoubleBarrier
+from kazoo.recipe.counter import Counter
+from kazoo.recipe.election import Election
+from kazoo.recipe.lock import Lock
+from kazoo.recipe.lock import Semaphore
+from kazoo.recipe.partitioner import SetPartitioner
+from kazoo.recipe.party import Party
+from kazoo.recipe.party import ShallowParty
+from kazoo.recipe.queue import Queue
+from kazoo.recipe.queue import LockingQueue
+from kazoo.recipe.watchers import ChildrenWatch
+from kazoo.recipe.watchers import DataWatch
+
 try:  # pragma: nocover
     basestring
 except NameError:  # pragma: nocover
@@ -190,21 +205,6 @@ class KazooClient(object):
 
         self._connection = ConnectionHandler(
             self, self.retry.retry_sleeper.copy(), log_debug=self.log_debug)
-
-        # convenience API
-        from kazoo.recipe.barrier import Barrier
-        from kazoo.recipe.barrier import DoubleBarrier
-        from kazoo.recipe.counter import Counter
-        from kazoo.recipe.election import Election
-        from kazoo.recipe.lock import Lock
-        from kazoo.recipe.lock import Semaphore
-        from kazoo.recipe.partitioner import SetPartitioner
-        from kazoo.recipe.party import Party
-        from kazoo.recipe.party import ShallowParty
-        from kazoo.recipe.queue import Queue
-        from kazoo.recipe.queue import LockingQueue
-        from kazoo.recipe.watchers import ChildrenWatch
-        from kazoo.recipe.watchers import DataWatch
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
