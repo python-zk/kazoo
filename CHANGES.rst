@@ -16,6 +16,8 @@ Bug Handling
 
 - Issue #97: Update some docstrings to reflect current state of handlers.
 
+- Issue #103: Allow prefixless sequential znodes.
+
 API Changes
 ***********
 
