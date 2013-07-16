@@ -35,9 +35,7 @@ matrix:
           env: ZOOKEEPER_VERSION=3.4.5
 
 notifications:
-  email:
-    - hanno@hannosch.eu
-    - ben@groovie.org
+  email: false
 
 before_install:
     - sudo apt-get install libevent-dev
