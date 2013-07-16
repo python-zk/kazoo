@@ -461,6 +461,8 @@ class TestClient(KazooTestCase):
         eq_(path, "/folder/a0000000000")
         path2 = client.create("/folder/a", b"sequence", sequence=True)
         eq_(path2, "/folder/a0000000001")
+        path3 = client.create("/folder/", b"sequence", sequence=True)
+        eq_(path3, "/folder/0000000002")
 
     def test_create_ephemeral_sequence(self):
         basepath = "/" + uuid.uuid4().hex
