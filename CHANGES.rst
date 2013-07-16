@@ -11,6 +11,10 @@ Features
 Bug Handling
 ************
 
+- Issue #105: Avoid rare import lock problems by moving module imports in
+  client.py to the module scope.
+
+- Issue #97: Update some docstrings to reflect current state of handlers.
 
 1.1 (2013-06-08)
 ----------------
