@@ -200,9 +200,8 @@ class SequentialThreadingHandler(object):
                         if func is _STOP:
                             break
                         func()
-                    except Exception as exc:
-                        log.warning("Exception in worker queue thread")
-                        log.exception(exc)
+                    except Exception:
+                        log.exception("Exception in worker queue thread")
                     finally:
                         queue.task_done()
                 except Queue.Empty:
