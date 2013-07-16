@@ -16,6 +16,13 @@ Bug Handling
 
 - Issue #97: Update some docstrings to reflect current state of handlers.
 
+API Changes
+***********
+
+- Issue #99: Better exception raised when the writer fails to close. A
+  WriterNotClosedException that inherits from KazooException is now raised
+  when the writer fails to close in time.
+
 1.1 (2013-06-08)
 ----------------
 

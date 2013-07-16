@@ -1,5 +1,4 @@
 """Kazoo Zookeeper Client"""
-import errno
 import inspect
 import logging
 import os
@@ -16,6 +15,7 @@ from kazoo.exceptions import (
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
+    WriterNotClosedException,
 )
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.handlers.utils import capture_exceptions, wrap
@@ -375,8 +375,9 @@ class KazooClient(object):
         if timeout < 10:
             timeout = 10
         if not self._connection.stop(timeout):
-            raise Exception("Writer still open from prior connection "
-                            "and wouldn't close after %s seconds" % timeout)
+            raise WriterNotClosedException(
+                "Writer still open from prior connection "
+                "and wouldn't close after %s seconds" % timeout)
 
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in

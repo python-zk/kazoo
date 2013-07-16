@@ -36,6 +36,13 @@ class LockTimeout(KazooException):
     """
 
 
+class WriterNotClosedException(KazooException):
+    """Raised if the writer is unable to stop closing when requested
+
+    .. versionadded:: 1.2
+    """
+
+
 def _invalid_error_code():
     raise RuntimeError('Invalid error code')
 
