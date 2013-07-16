@@ -1,4 +1,4 @@
-def normpath(path):
+def normpath(path, trailing=False):
     """Normalize path, eliminating double slashes, etc."""
     comps = path.split('/')
     new_comps = []
@@ -9,6 +9,8 @@ def normpath(path):
             raise ValueError('relative paths not allowed')
         new_comps.append(comp)
     new_path = '/'.join(new_comps)
+    if trailing is True and path.endswith('/'):
+        new_path += '/'
     if path.startswith('/'):
         return '/' + new_path
     return new_path
@@ -43,9 +45,9 @@ def basename(p):
     return p[i:]
 
 
-def _prefix_root(root, path):
+def _prefix_root(root, path, trailing=False):
     """Prepend a root to a path. """
-    return normpath(join(_norm_root(root), path.lstrip('/')))
+    return normpath(join(_norm_root(root), path.lstrip('/')), trailing=trailing)
 
 
 def _norm_root(root):
