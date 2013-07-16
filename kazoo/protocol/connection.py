@@ -517,8 +517,8 @@ class ConnectionHandler(object):
             except RWServerAvailable:
                 self.logger.warning('Found a RW server, dropping connection')
                 client._session_callback(KeeperState.CONNECTING)
-            except Exception as e:
-                self.logger.exception(e)
+            except Exception:
+                self.logger.exception('Unhandled exception in connection loop')
                 raise
             finally:
                 self._socket.close()
