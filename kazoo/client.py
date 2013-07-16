@@ -85,7 +85,8 @@ class KazooClient(object):
                  timeout=10.0, client_id=None, max_retries=None,
                  retry_delay=0.1, retry_backoff=2, retry_jitter=0.8,
                  retry_max_delay=3600, handler=None, default_acl=None,
-                 auth_data=None, read_only=None, randomize_hosts=True):
+                 auth_data=None, read_only=None, randomize_hosts=True,
+                 logger=None):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -150,7 +151,7 @@ class KazooClient(object):
             Removed the unused watcher argument (was second argument).
 
         """
-        self.log_debug = logging.DEBUG >= log.getEffectiveLevel()
+        self.logger = logger or log
 
         # Record the handler strategy used
         self.handler = handler if handler else SequentialThreadingHandler()
@@ -204,7 +205,8 @@ class KazooClient(object):
         self.retry_sleeper = self.retry.retry_sleeper.copy()
 
         self._connection = ConnectionHandler(
-            self, self.retry.retry_sleeper.copy(), log_debug=self.log_debug)
+            self, self.retry.retry_sleeper.copy(),
+            logger=self.logger)
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
@@ -304,7 +306,7 @@ class KazooClient(object):
                 if remove is True:
                     self.remove_listener(listener)
             except Exception:
-                log.exception("Error in connection state listener")
+                self.logger.exception("Error in connection state listener")
 
     def _session_callback(self, state):
         if state == self._state:
@@ -320,21 +322,21 @@ class KazooClient(object):
         # transitions since they only apply after
         # we've established a connection
         if dead_state and state == KeeperState.CONNECTING:
-            log.info("Skipping state change")
+            self.logger.debug("Skipping state change")
             return
 
         if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
-            log.info("Zookeeper connection established, state: %s", state)
+            self.logger.info("Zookeeper connection established, state: %s", state)
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
         elif state in LOST_STATES:
-            log.info("Zookeeper session lost, state: %s", state)
+            self.logger.info("Zookeeper session lost, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
             self._notify_pending(state)
             self._reset()
         else:
-            log.info("Zookeeper connection lost")
+            self.logger.info("Zookeeper connection lost")
             # Connection lost
             self._live.clear()
             self._notify_pending(state)
@@ -1265,6 +1267,5 @@ class TransactionRequest(object):
 
     def _add(self, request, post_processor=None):
         self._check_tx_state()
-        if self.client.log_debug:
-            log.debug('Added %r to %r', request, self)
+        self.client.logger.debug('Added %r to %r', request, self)
         self.operations.append(request)
