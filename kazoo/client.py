@@ -130,9 +130,8 @@ class KazooClient(object):
             A :class:`kazoo.retry.KazooRetry` object to use for
             the :meth:`KazooClient.retry` method. Also can be a dict of
             options which will be used for creating one.
-
-        Retry parameters will be used for connection establishment
-        attempts and reconnects.
+        :param logger: A custom logger to use instead of the module
+            global `log` instance.
 
         Basic Example:
 
@@ -161,6 +160,9 @@ class KazooClient(object):
 
         .. versionchanged:: 0.8
             Removed the unused watcher argument (was second argument).
+
+        .. versionadded:: 1.2
+            The connection_retry, command_retry and logger options.
 
         """
         self.logger = logger or log

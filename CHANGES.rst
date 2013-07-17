@@ -12,15 +12,21 @@ Features
   setup separate connection retry behavior from client command retry
   behavior. Patches by Mike Lundy.
 
+- Issue #100: Make it easier to see exception context in threading and
+  connection modules.
+
+- Issue #85: Increase information density of logs and don't prevent
+  dynamic reconfiguration of log levels at runtime.
+
 Bug Handling
 ************
 
 - Issue #105: Avoid rare import lock problems by moving module imports in
   client.py to the module scope.
 
-- Issue #97: Update some docstrings to reflect current state of handlers.
+- Issue #103: Allow prefix-less sequential znodes.
 
-- Issue #103: Allow prefixless sequential znodes.
+- Issue #97: Update some docstrings to reflect current state of handlers.
 
 - Issue #62, #92, #89, #101, #102: Allow KazooRetry to have a
   max deadline, transition properly when connection fails to LOST, and
