@@ -26,6 +26,9 @@ Bug Handling
 
 - Issue #103: Allow prefix-less sequential znodes.
 
+- Issue #98: Extend testing ZK harness to work with different file locations
+  on some versions of Debian/Ubuntu.
+
 - Issue #97: Update some docstrings to reflect current state of handlers.
 
 - Issue #62, #92, #89, #101, #102: Allow KazooRetry to have a
