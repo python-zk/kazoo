@@ -7,6 +7,10 @@ Changelog
 Features
 ********
 
+- Issue #62, #92, #89, #101, #102: Allow KazooRetry to have a
+  max deadline, transition properly when connection fails to LOST, and
+  setup separate connection retry behavior from client command retry
+  behavior. Patches by Mike Lundy.
 
 Bug Handling
 ************
@@ -17,6 +21,11 @@ Bug Handling
 - Issue #97: Update some docstrings to reflect current state of handlers.
 
 - Issue #103: Allow prefixless sequential znodes.
+
+- Issue #62, #92, #89, #101, #102: Allow KazooRetry to have a
+  max deadline, transition properly when connection fails to LOST, and
+  setup separate connection retry behavior from client command retry
+  behavior. Patches by Mike Lundy.
 
 API Changes
 ***********

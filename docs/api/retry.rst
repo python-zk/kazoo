@@ -8,12 +8,6 @@
 Public API
 ++++++++++
 
-    .. autoclass:: RetrySleeper
-        :members:
-        :member-order: bysource
-
-        .. automethod:: __init__
-
     .. autoclass:: KazooRetry
         :members:
         :member-order: bysource

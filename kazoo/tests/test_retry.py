@@ -1,38 +1,48 @@
 import unittest
 
 from nose.tools import eq_
-from nose.tools import raises
 
 
 class TestRetrySleeper(unittest.TestCase):
 
+    def _pass(self):
+        pass
+
+    def _fail(self, times=1):
+        from kazoo.retry import ForceRetryError
+        scope = dict(times=0)
+
+        def inner():
+            if scope['times'] >= times:
+                pass
+            else:
+                scope['times'] += 1
+                raise ForceRetryError('Failed!')
+        return inner
+
     def _makeOne(self, *args, **kwargs):
-        from kazoo.retry import RetrySleeper
-        return RetrySleeper(*args, **kwargs)
+        from kazoo.retry import KazooRetry
+        return KazooRetry(*args, **kwargs)
 
     def test_reset(self):
-        retry = self._makeOne(delay=0)
-        retry.increment()
+        retry = self._makeOne(delay=0, max_tries=2)
+        retry(self._fail())
         eq_(retry._attempts, 1)
         retry.reset()
         eq_(retry._attempts, 0)
 
     def test_too_many_tries(self):
+        from kazoo.retry import RetryFailedError
         retry = self._makeOne(delay=0)
-        retry.increment()
-
-        @raises(Exception)
-        def testit():
-            retry.increment()
-        testit()
+        self.assertRaises(RetryFailedError, retry, self._fail(times=999))
+        eq_(retry._attempts, 1)
 
     def test_maximum_delay(self):
-        def sleep_func(time):
+        def sleep_func(_time):
             pass
 
         retry = self._makeOne(delay=10, max_tries=100, sleep_func=sleep_func)
-        for i in range(10):
-            retry.increment()
+        retry(self._fail(times=10))
         self.assertTrue(retry._cur_delay < 4000, retry._cur_delay)
         # gevent's sleep function is picky about the type
         eq_(type(retry._cur_delay), float)
