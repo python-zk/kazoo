@@ -240,7 +240,7 @@ class ConnectionHandler(object):
         if hasattr(request, 'deserialize'):
             try:
                 obj, _ = request.deserialize(msg, 0)
-            except Exception as exc:
+            except Exception:
                 self.logger.exception("Exception raised during deserialization"
                                       " of request: %s", request)
 
@@ -261,7 +261,7 @@ class ConnectionHandler(object):
             b.extend(int_struct.pack(request.type))
         b += request.serialize()
         self.logger.log((logging.DEBUG if isinstance(request, Ping) else logging.INFO),
-                "Sending request(xid=%s): %s", xid, request)
+                        "Sending request(xid=%s): %s", xid, request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
     def _write(self, msg, timeout):
@@ -323,8 +323,8 @@ class ConnectionHandler(object):
                                'received %r', xid, header.xid)
 
         # Determine if its an exists request and a no node error
-        exists_error = header.err == NoNodeError.code and \
-                       request.type == Exists.type
+        exists_error = (header.err == NoNodeError.code and
+                        request.type == Exists.type)
 
         # Set the exception if its not an exists error
         if header.err and not exists_error:
@@ -497,7 +497,7 @@ class ConnectionHandler(object):
                 # Watch for something to read or send
                 timeout = read_timeout / 2.0 - random.randint(0, 40) / 100.0
                 s = self.handler.select([self._socket, self._read_pipe],
-                        [], [], timeout)[0]
+                                        [], [], timeout)[0]
 
                 if not s:
                     if self.ping_outstanding.is_set():
