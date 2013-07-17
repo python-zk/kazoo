@@ -233,7 +233,9 @@ class KazooClient(object):
                 except KeyError:
                     pass
 
-            retry_keys = {_RETRY_COMPAT_MAPPING[oldname]: value for oldname, value in retry_keys.items()}
+            retry_keys = {}
+            for oldname, value in retry_keys.items():
+                retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
 
             if self._conn_retry is None:
                 self._conn_retry = KazooRetry(
