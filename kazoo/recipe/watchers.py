@@ -97,7 +97,7 @@ class DataWatch(object):
         self._stopped = False
         self._allow_session_lost = allow_session_lost
         self._allow_missing_node = allow_missing_node
-        self._run_lock = client.handler.lock_object()
+        self._run_lock = client.handler.rlock_object()
         self._prior_data = ()
 
         # Register our session listener if we're going to resume
