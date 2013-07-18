@@ -215,6 +215,7 @@ class KazooLockTests(KazooTestCase):
     def test_lock_timeout(self):
         timeout = 3
         e = threading.Event()
+        started = threading.Event()
 
         # In the background thread, acquire the lock and wait thrice the time
         # that the main thread is going to wait to acquire the lock.
@@ -222,6 +223,7 @@ class KazooLockTests(KazooTestCase):
 
         def _thread(lock, event, timeout):
             with lock:
+                started.set()
                 event.wait(timeout)
                 if not event.isSet():
                     # Eventually fail to avoid hanging the tests
@@ -234,6 +236,8 @@ class KazooLockTests(KazooTestCase):
         # but give up after `timeout` seconds
         client2 = self._get_client()
         client2.start()
+        started.wait(5)
+        self.assertTrue(started.isSet())
         lock2 = client2.Lock(self.lockpath, "two")
         try:
             lock2.acquire(timeout=timeout)
@@ -280,12 +284,12 @@ class TestSemaphore(KazooTestCase):
 
         thread = threading.Thread(target=sema_one, args=())
         thread.start()
-        started.wait()
+        started.wait(10)
 
         self.assertFalse(event.is_set())
 
         sem1.release()
-        event.wait()
+        event.wait(10)
         self.assert_(event.is_set())
         thread.join()
 
