@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import time
 import threading
 import uuid
@@ -21,29 +19,10 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
-        @self.client.DataWatch(self.path)
-        def changed(d, stat):
-            data.pop()
-            data.append(d)
-            update.set()
-
-        update.wait(10)
-        eq_(data, [b""])
-        update.clear()
-
-        self.client.set(self.path, b'fred')
-        update.wait(10)
-        eq_(data[0], b'fred')
-        update.clear()
-
-    def test_data_watcher2(self):
-        update = threading.Event()
-        data = [True]
-
         # Make it a non-existent path
         self.path += 'f'
 
-        @self.client.DataWatch(self.path, allow_missing_node=True)
+        @self.client.DataWatch(self.path)
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -67,8 +46,7 @@ class KazooDataWatcherTests(KazooTestCase):
         # Make it a non-existent path
         self.path += 'f'
 
-        @self.client.DataWatch(self.path, allow_missing_node=True,
-                               send_event=True)
+        @self.client.DataWatch(self.path)
         def changed(d, stat, event):
             data.pop()
             data.append(event)
@@ -87,25 +65,6 @@ class KazooDataWatcherTests(KazooTestCase):
         update = threading.Event()
         data = [True]
 
-        def changed(d, stat):
-            data.pop()
-            data.append(d)
-            update.set()
-        self.client.DataWatch(self.path, changed)
-
-        update.wait(10)
-        eq_(data, [b""])
-        update.clear()
-
-        self.client.set(self.path, b'fred')
-        update.wait(10)
-        eq_(data[0], b'fred')
-        update.clear()
-
-    def test_func_style_data_watch2(self):
-        update = threading.Event()
-        data = [True]
-
         # Make it a non-existent path
         path = self.path + 'f'
 
@@ -113,7 +72,7 @@ class KazooDataWatcherTests(KazooTestCase):
             data.pop()
             data.append(d)
             update.set()
-        self.client.DataWatch(path, changed, allow_missing_node=True)
+        self.client.DataWatch(path, changed)
 
         update.wait(10)
         eq_(data, [None])
@@ -143,70 +102,15 @@ class KazooDataWatcherTests(KazooTestCase):
         update.wait(25)
         eq_(data[0], b'fred')
 
-    def test_datawatch_across_session_expire2(self):
-        update = threading.Event()
-        data = [True]
-
-        self.path += "f"
-
-        @self.client.DataWatch(self.path, allow_missing_node=True)
-        def changed(d, stat):
-            data.pop()
-            data.append(d)
-            update.set()
-
-        update.wait(10)
-        eq_(data, [None])
-        update.clear()
-
-        self.expire_session()
-        eq_(data, [None])
-        update.wait(10)
-        update.clear()
-        self.client.retry(self.client.create, self.path, b'fred')
-        update.wait(25)
-        eq_(data[0], b'fred')
-
     def test_func_stops(self):
         update = threading.Event()
         data = [True]
 
-        fail_through = []
-
-        @self.client.DataWatch(self.path)
-        def changed(d, stat):
-            data.pop()
-            data.append(d)
-            update.set()
-            if fail_through:
-                return False
-
-        update.wait(10)
-        eq_(data, [b""])
-        update.clear()
-
-        fail_through.append(True)
-        self.client.set(self.path, b'fred')
-        update.wait(10)
-        eq_(data[0], b'fred')
-        update.clear()
-
-        self.client.set(self.path, b'asdfasdf')
-        update.wait(0.2)
-        eq_(data[0], b'fred')
-
-        d, stat = self.client.get(self.path)
-        eq_(d, b'asdfasdf')
-
-    def test_func_stops2(self):
-        update = threading.Event()
-        data = [True]
-
         self.path += "f"
 
         fail_through = []
 
-        @self.client.DataWatch(self.path, allow_missing_node=True)
+        @self.client.DataWatch(self.path)
         def changed(d, stat):
             data.pop()
             data.append(d)
@@ -240,16 +144,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         eq_(args, [None, None])
 
-    def test_no_such_node2(self):
-        args = []
-
-        @self.client.DataWatch("/some/path", allow_missing_node=True)
-        def changed(d, stat):
-            args.extend([d, stat])
-
-        eq_(args, [None, None])
-
-    def test_bad_watch_func(self):
+    def test_bad_watch_func2(self):
         counter = 0
 
         @self.client.DataWatch(self.path)
@@ -261,25 +156,6 @@ class KazooDataWatcherTests(KazooTestCase):
 
         counter += 1
         self.client.set(self.path, b'asdfasdf')
-
-    def test_bad_watch_func2(self):
-        counter = 0
-
-        print("Setting up watch")
-
-        @self.client.DataWatch(self.path, allow_missing_node=True)
-        def changed(d, stat):
-            if counter > 0:
-                raise Exception("oops")
-
-        print("Asserting the exception raises")
-        raises(Exception)(changed)
-
-        print("Increasing counter")
-        counter += 1
-        print("Setting the path")
-        self.client.set(self.path, b'asdfasdf')
-        print("Done")
 
     def test_watcher_evaluating_to_false(self):
         class WeirdWatcher(list):
@@ -296,7 +172,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         self.client.delete(self.path)
 
-        @self.client.DataWatch(self.path, allow_missing_node=True)
+        @self.client.DataWatch(self.path)
         def changed(val, stat):
             a.append(val)
             ev.set()
@@ -326,7 +202,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         self.client.delete(self.path)
 
-        @self.client.DataWatch(self.path, allow_missing_node=True)
+        @self.client.DataWatch(self.path)
         def changed(val, stat):
             a.append(val)
             ev.set()
