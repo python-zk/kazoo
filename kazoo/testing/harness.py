@@ -136,14 +136,14 @@ class KazooTestHarness(object):
             self.cluster.start()
 
         if self.client and self.client.connected:
-            self.client.delete('/', recursive=True)
+            self.client.retry(self.client.delete, '/', recursive=True)
             self.client.stop()
             self.client.close()
             del self.client
         else:
             client = self._get_client()
             client.start()
-            client.delete('/', recursive=True)
+            client.retry(client.delete, '/', recursive=True)
             client.stop()
             client.close()
             del client
