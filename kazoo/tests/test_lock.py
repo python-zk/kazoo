@@ -480,6 +480,10 @@ class TestSemaphore(KazooTestCase):
             self.fail("Main thread unexpectedly acquired the lock")
         finally:
             # Cleanup
+            print "Setting"
             e.set()
+            print "Joining"
             t.join()
+            print "Stopping"
             client2.stop()
+            print "Stopped"
