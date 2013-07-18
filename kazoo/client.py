@@ -223,10 +223,10 @@ class KazooClient(object):
                                          " must use the same sleep func")
 
         if self.retry is None or self._conn_retry is None:
-            retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
-            for key in retry_keys:
+            old_retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
+            for key in old_retry_keys:
                 try:
-                    retry_keys[key] = kwargs.pop(key)
+                    old_retry_keys[key] = kwargs.pop(key)
                     warnings.warn('Passing retry configuration param %s to the'
                             ' client directly is deprecated, please pass a'
                             ' configured retry object (using param %s)' % (
@@ -236,7 +236,7 @@ class KazooClient(object):
                     pass
 
             retry_keys = {}
-            for oldname, value in retry_keys.items():
+            for oldname, value in old_retry_keys.items():
                 retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
 
             if self._conn_retry is None:
@@ -248,7 +248,7 @@ class KazooClient(object):
                     sleep_func=self.handler.sleep_func,
                     **retry_keys)
 
-        self._connection = ConnectionHandler(self, self._conn_retry,
+        self._connection = ConnectionHandler(self, self._conn_retry.copy(),
             logger=self.logger)
 
         self.Barrier = partial(Barrier, self)
