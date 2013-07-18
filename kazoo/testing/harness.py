@@ -103,9 +103,13 @@ class KazooTestHarness(object):
         self.client._call(_SESSION_EXPIRED, None)
 
         lost.wait(5)
+        if not lost.isSet():
+            raise Exception("Failed to get notified of session loss")
 
         # Wait for the reconnect now
         safe.wait(15)
+        if not safe.isSet():
+            raise Exception("Failed to see client reconnect")
         self.client.retry(self.client.get_async, '/')
 
     def setup_zookeeper(self, **client_options):
