@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import uuid
 import threading
 
@@ -480,10 +482,10 @@ class TestSemaphore(KazooTestCase):
             self.fail("Main thread unexpectedly acquired the lock")
         finally:
             # Cleanup
-            print "Setting"
+            print("Setting")
             e.set()
-            print "Joining"
+            print("Joining")
             t.join()
-            print "Stopping"
+            print("Stopping")
             client2.stop()
-            print "Stopped"
+            print("Stopped")
