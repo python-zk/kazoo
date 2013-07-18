@@ -18,6 +18,10 @@ Features
 - Issue #85: Increase information density of logs and don't prevent
   dynamic reconfiguration of log levels at runtime.
 
+- Data-watchers for the same node are no longer 'stacked'. That is, if
+  a get and an exists call occur for the same node with the same watch
+  function, then it will be registered only once.
+
 Bug Handling
 ************
 

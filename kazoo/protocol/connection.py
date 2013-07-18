@@ -359,9 +359,11 @@ class ConnectionHandler(object):
             watcher = getattr(request, 'watcher', None)
             if not client._stopped.is_set() and watcher:
                 if isinstance(request, GetChildren):
-                    client._child_watchers[request.path].append(watcher)
+                    if watcher not in client._child_watchers[request.path]:
+                        client._child_watchers[request.path].append(watcher)
                 else:
-                    client._data_watchers[request.path].append(watcher)
+                    if watcher not in client._data_watchers[request.path]:
+                        client._data_watchers[request.path].append(watcher)
 
         if isinstance(request, Close):
             self.logger.debug('Read close response')
