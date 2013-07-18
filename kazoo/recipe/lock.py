@@ -13,7 +13,11 @@ and/or the lease has been lost.
 """
 import uuid
 
-from kazoo.retry import ForceRetryError
+from kazoo.retry import (
+    KazooRetry,
+    RetryFailedError,
+    ForceRetryError
+)
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import KazooException
 from kazoo.exceptions import LockTimeout
@@ -66,6 +70,7 @@ class Lock(object):
         self.is_acquired = False
         self.assured_path = False
         self.cancelled = False
+        self._retry = KazooRetry(max_tries=None)
 
     def _ensure_path(self):
         self.client.ensure_path(self.path)
@@ -95,13 +100,17 @@ class Lock(object):
             The timeout option.
         """
         try:
-            self.is_acquired = self.client.retry(
-                self._inner_acquire, blocking=blocking, timeout=timeout)
+            retry = self._retry.copy()
+            retry.deadline = timeout
+            self.is_acquired = retry(self._inner_acquire,
+                blocking=blocking, timeout=timeout)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
             raise
+        except RetryFailedError:
+            self._best_effort_cleanup()
 
         if not self.is_acquired:
             self._delete_node(self.node)
