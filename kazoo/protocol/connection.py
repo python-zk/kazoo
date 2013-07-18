@@ -50,6 +50,8 @@ log = logging.getLogger(__name__)
 _SESSION_EXPIRED = object()
 _CONNECTION_DROP = object()
 
+STOP_CONNECTING = object()
+
 CREATED_EVENT = 1
 DELETED_EVENT = 2
 CHANGED_EVENT = 3
@@ -449,8 +451,8 @@ class ConnectionHandler(object):
         try:
             hosts = itertools.cycle(self.client.hosts)
             while not self.client._stopped.is_set():
-                # If the connect_loop returns False, stop retrying
-                if retry(self._connect_loop, hosts, retry) is False:
+                # If the connect_loop returns STOP_CONNECTING, stop retrying
+                if retry(self._connect_loop, hosts, retry) is STOP_CONNECTING:
                     break
         except RetryFailedError:
             self.logger.warning("Failed connecting to Zookeeper "
@@ -461,10 +463,18 @@ class ConnectionHandler(object):
             self.logger.debug('Connection stopped')
 
     def _connect_loop(self, hosts, retry):
-        if self.client._stopped.is_set():
-            return False
-        elif self._connect_attempt(hosts, retry) is False:
-            return False
+        # Iterate through the hosts a full cycle before starting over
+        total_hosts = len(self.client.hosts)
+        cur = 0
+        status = None
+        while cur < total_hosts and status != STOP_CONNECTING:
+            if self.client._stopped.is_set():
+                status = STOP_CONNECTING
+                break
+            status = self._connect_attempt(hosts, retry)
+            cur += 1
+        if status == STOP_CONNECTING:
+            return STOP_CONNECTING
         else:
             raise ForceRetryError('Reconnecting')
 
@@ -513,7 +523,7 @@ class ConnectionHandler(object):
 
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
-            return False
+            return STOP_CONNECTING
         except (ConnectionDropped, TimeoutError) as e:
             if isinstance(e, ConnectionDropped):
                 self.logger.warning('Connection dropped: %s', e)
@@ -525,7 +535,7 @@ class ConnectionHandler(object):
         except AuthFailedError:
             self.logger.warning('AUTH_FAILED closing')
             client._session_callback(KeeperState.AUTH_FAILED)
-            return False
+            return STOP_CONNECTING
         except SessionExpiredError:
             self.logger.warning('Session has expired')
             client._session_callback(KeeperState.EXPIRED_SESSION)
