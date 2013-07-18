@@ -7,6 +7,7 @@ import threading
 import unittest
 
 from kazoo.client import KazooClient
+from kazoo.exceptions import NotEmptyError
 from kazoo.protocol.states import (
     KazooState
 )
@@ -135,8 +136,14 @@ class KazooTestHarness(object):
         if not self.cluster[0].running:
             self.cluster.start()
 
+        tries = 0
         if self.client and self.client.connected:
-            self.client.retry(self.client.delete, '/', recursive=True)
+            while tries < 3:
+                try:
+                    self.client.retry(self.client.delete, '/', recursive=True)
+                    break
+                except NotEmptyError:
+                    pass
             self.client.stop()
             self.client.close()
             del self.client
