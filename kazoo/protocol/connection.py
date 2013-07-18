@@ -483,7 +483,7 @@ class ConnectionHandler(object):
         TimeoutError = self.handler.timeout_exception
         close_connection = False
 
-        host, port = hosts.next()
+        host, port = next(hosts)
 
         self._socket = self.handler.socket()
 
