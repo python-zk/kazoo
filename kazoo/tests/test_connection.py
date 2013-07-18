@@ -302,5 +302,6 @@ class TestReadOnlyMode(KazooTestCase):
             # Wait for a ping
             time.sleep(15)
         finally:
+            client.remove_listener(listen)
             self.cluster[1].run()
             self.cluster[2].run()

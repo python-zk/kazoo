@@ -78,6 +78,8 @@ class KazooDoubleBarrierTests(KazooTestCase):
         ev.wait()
         eq_(b1.participating, False)
         eq_(b2.participating, False)
+        t1.join()
+        t2.join()
 
     def test_three_barrier(self):
         av = threading.Event()
@@ -133,6 +135,8 @@ class KazooDoubleBarrierTests(KazooTestCase):
         eq_(b1.participating, False)
         eq_(b2.participating, False)
         eq_(b3.participating, False)
+        t1.join()
+        t2.join()
 
     def test_barrier_existing_parent_node(self):
         b = self.client.DoubleBarrier('/some/path', 1)

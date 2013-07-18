@@ -66,6 +66,7 @@ class KazooLockTests(KazooTestCase):
             while self.active_thread:
                 self.condition.wait()
         self.released.wait()
+        thread.join()
 
     def test_lock(self):
         threads = []
@@ -116,6 +117,7 @@ class KazooLockTests(KazooTestCase):
             with self.condition:
                 while self.active_thread:
                     self.condition.wait()
+        for thread in threads:
             thread.join()
 
     def test_lock_non_blocking(self):
@@ -283,6 +285,7 @@ class TestSemaphore(KazooTestCase):
         sem1.release()
         event.wait()
         self.assert_(event.is_set())
+        thread.join()
 
     def test_non_blocking(self):
         sem1 = self.client.Semaphore(
@@ -331,6 +334,7 @@ class TestSemaphore(KazooTestCase):
         holders = sem1.lease_holders()
         eq_(holders, ['fred'])
         event.set()
+        thread.join()
 
     def test_semaphore_cancel(self):
         sem1 = self.client.Semaphore(self.lockpath, 'fred', max_leases=1)
@@ -355,6 +359,7 @@ class TestSemaphore(KazooTestCase):
         sem2.cancel()
         event.wait()
         eq_(event.is_set(), True)
+        thread.join()
 
     def test_multiple_acquire_and_release(self):
         sem1 = self.client.Semaphore(self.lockpath, 'fred', max_leases=1)
@@ -407,6 +412,7 @@ class TestSemaphore(KazooTestCase):
         event.wait(5)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
+        thread.join()
 
     def test_inconsistent_max_leases(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)

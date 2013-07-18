@@ -106,6 +106,7 @@ class TestThreadingAsync(unittest.TestCase):
         async.set('fred')
         cv.wait()
         eq_(lst, ['fred'])
+        th.join()
 
     def test_get_with_nowait(self):
         mock_handler = mock.Mock()
@@ -146,6 +147,7 @@ class TestThreadingAsync(unittest.TestCase):
         async.set_exception(ImportError)
         cv.wait()
         eq_(lst, ['oops'])
+        th.join()
 
     def test_wait(self):
         mock_handler = mock.Mock()
@@ -171,6 +173,7 @@ class TestThreadingAsync(unittest.TestCase):
         async.set("fred")
         cv.wait(15)
         eq_(lst, [True])
+        th.join()
 
     def test_set_before_wait(self):
         mock_handler = mock.Mock()
@@ -188,6 +191,7 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         cv.wait()
         eq_(lst, ['fred'])
+        th.join()
 
     def test_set_exc_before_wait(self):
         mock_handler = mock.Mock()
@@ -209,6 +213,7 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         cv.wait()
         eq_(lst, ['ooops'])
+        th.join()
 
     def test_linkage(self):
         mock_handler = mock.Mock()
@@ -233,6 +238,7 @@ class TestThreadingAsync(unittest.TestCase):
         async.unlink(add_on)
         cv.wait()
         eq_(async.value, 'fred')
+        th.join()
 
     def test_linkage_not_ready(self):
         mock_handler = mock.Mock()
