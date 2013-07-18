@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import time
 import threading
 import uuid
@@ -263,15 +265,21 @@ class KazooDataWatcherTests(KazooTestCase):
     def test_bad_watch_func2(self):
         counter = 0
 
+        print("Setting up watch")
+
         @self.client.DataWatch(self.path, allow_missing_node=True)
         def changed(d, stat):
             if counter > 0:
                 raise Exception("oops")
 
+        print("Asserting the exception raises")
         raises(Exception)(changed)
 
+        print("Increasing counter")
         counter += 1
+        print("Setting the path")
         self.client.set(self.path, b'asdfasdf')
+        print("Done")
 
     def test_watcher_evaluating_to_false(self):
         class WeirdWatcher(list):
