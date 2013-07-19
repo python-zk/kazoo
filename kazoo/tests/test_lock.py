@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import uuid
 import threading
 
@@ -485,12 +483,8 @@ class TestSemaphore(KazooTestCase):
         except LockTimeout:
             # A timeout is the behavior we're expecting, since the background
             # thread will still be holding onto the lock
-            print("Setting")
             e.set()
         finally:
             # Cleanup
-            print("Joining")
             t.join()
-            print("Stopping")
             client2.stop()
-            print("Stopped")
