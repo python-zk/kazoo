@@ -151,6 +151,8 @@ class ConnectionHandler(object):
         self._rw_server = None
         self._ro_mode = False
 
+        self._connection_routine = None
+
     # This is instance specific to avoid odd thread bug issues in Python
     # during shutdown global cleanup
     @contextmanager
@@ -166,11 +168,17 @@ class ConnectionHandler(object):
         if self.connection_closed.is_set():
             self._read_pipe, self._write_pipe = create_pipe()
             self.connection_closed.clear()
-        self.handler.spawn(self.zk_loop)
+        if self._connection_routine:
+            raise Exception("Unable to start, connection routine already "
+                            "active.")
+        self._connection_routine = self.handler.spawn(self.zk_loop)
 
     def stop(self, timeout=None):
         """Ensure the writer has stopped, wait to see if it does."""
         self.connection_stopped.wait(timeout)
+        if self._connection_routine:
+            self._connection_routine.join()
+            self._connection_routine = None
         return self.connection_stopped.is_set()
 
     def close(self):

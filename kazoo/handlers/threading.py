@@ -274,6 +274,7 @@ class SequentialThreadingHandler(object):
         t = threading.Thread(target=func, args=args, kwargs=kwargs)
         t.daemon = True
         t.start()
+        return t
 
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
