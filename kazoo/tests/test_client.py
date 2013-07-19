@@ -767,13 +767,13 @@ class TestClient(KazooTestCase):
             client.get('/')
         testit()
 
-    def test_bad_safeclose(self):
-        client = self.client
-
-        @raises(Exception)
-        def testit():
-            client._safe_close()
-        testit()
+    # def test_bad_safeclose(self):
+    #     client = self.client
+#
+    #     @raises(Exception)
+    #     def testit():
+    #         client._safe_close()
+    #     testit()
 
     def test_client_state(self):
         from kazoo.protocol.states import KeeperState
