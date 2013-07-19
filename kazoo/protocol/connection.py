@@ -543,13 +543,16 @@ class ConnectionHandler(object):
                 self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)
         except AuthFailedError:
+            retry.reset()
             self.logger.warning('AUTH_FAILED closing')
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
+            retry.reset()
             self.logger.warning('Session has expired')
             client._session_callback(KeeperState.EXPIRED_SESSION)
         except RWServerAvailable:
+            retry.reset()
             self.logger.warning('Found a RW server, dropping connection')
             client._session_callback(KeeperState.CONNECTING)
         except Exception:
