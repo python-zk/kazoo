@@ -3,6 +3,7 @@
 import logging
 import inspect
 import time
+import warnings
 from functools import partial, wraps
 
 from kazoo.client import KazooState
@@ -39,7 +40,8 @@ class DataWatch(object):
     If the function supplied takes three arguments, then the third one
     will be a :class:`~kazoo.protocol.states.WatchedEvent`. It will
     only be set if the change to the data occurs as a result of the
-    server notifying the watch that there has been a change.
+    server notifying the watch that there has been a change. Events
+    like reconnection or the first call will not include an event.
 
     If the node does not exist, then the function will be called with
     ``None`` for all values.
@@ -62,6 +64,10 @@ class DataWatch(object):
             print("Version is %s" % stat.version)
             print("Event is %s" % event)
 
+    .. versionchanged:: 1.2
+
+        DataWatch now ignores additional arguments that were previously
+        passed to it and warns that they are no longer respected.
 
     """
     @staticmethod
@@ -77,7 +83,7 @@ class DataWatch(object):
         else:
             return False
 
-    def __init__(self, client, path, func=None):
+    def __init__(self, client, path, func=None, *args, **kwargs):
         """Create a data watcher for a path
 
         :param client: A zookeeper client.
@@ -101,6 +107,13 @@ class DataWatch(object):
             sleep_func=client.handler.sleep_func)
         self._include_event = None
         self._ever_called = False
+
+        if args or kwargs:
+            warnings.warn('Passing additional arguments to DataWatch is'
+                          ' deprecated. ignore_missing_node is now assumed '
+                          ' to be True by default, and the event will be '
+                          ' sent if the function can handle receiving it',
+                          DeprecationWarning, stacklevel=2)
 
         # Register our session listener if we're going to resume
         # across session losses

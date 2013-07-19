@@ -50,6 +50,10 @@ Bug Handling
 API Changes
 ***********
 
+- DataWatch no longer takes any parameters besides for the optional function
+  during instantiation. The additional options are now implicitly True, with
+  the user being left to ignore events as they choose. See the DataWatch
+  API docs for more information.
 - Issue #99: Better exception raised when the writer fails to close. A
   WriterNotClosedException that inherits from KazooException is now raised
   when the writer fails to close in time.
