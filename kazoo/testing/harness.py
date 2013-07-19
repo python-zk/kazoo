@@ -34,7 +34,7 @@ def get_global_cluster():
     return CLUSTER
 
 
-class KazooTestHarness(object):
+class KazooTestHarness(unittest.TestCase):
     """Harness for testing code that uses Kazoo
 
     This object can be used directly or as a mixin. It supports starting
@@ -63,6 +63,7 @@ class KazooTestHarness(object):
     def __init__(self, *args, **kw):
         super(KazooTestHarness, self).__init__(*args, **kw)
         self.client = None
+        self._clients = []
 
     @property
     def cluster(self):
@@ -78,7 +79,12 @@ class KazooTestHarness(object):
     def _get_client(self, **kwargs):
         kwargs['retry_max_delay'] = 2
         kwargs['max_retries'] = 35
-        return KazooClient(self.hosts, **kwargs)
+        c = KazooClient(self.hosts, **kwargs)
+        try:
+            self._clients.append(c)
+        except AttributeError:
+            self._client = [c]
+        return c
 
     def expire_session(self, client_id=None):
         """Force ZK to expire a client session
@@ -156,8 +162,13 @@ class KazooTestHarness(object):
             client.close()
             del client
 
+        for client in self._clients:
+            client.stop()
+            del client
+        self._clients = None
 
-class KazooTestCase(unittest.TestCase, KazooTestHarness):
+
+class KazooTestCase(KazooTestHarness):
     def setUp(self):
         self.setup_zookeeper()
 

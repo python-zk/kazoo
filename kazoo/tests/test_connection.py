@@ -59,9 +59,11 @@ class TestConnectionHandler(KazooTestCase):
         client = self._get_client(client_id=(82838284824, password))
         client.add_listener(expired)
         client.start()
-        ev.wait(15)
-        eq_(ev.is_set(), True)
-        client.stop()
+        try:
+            ev.wait(15)
+            eq_(ev.is_set(), True)
+        finally:
+            client.stop()
 
     def test_connection_read_timeout(self):
         client = self.client

@@ -171,6 +171,8 @@ class TestConnection(KazooTestCase):
         finally:
             # Ensure we remove the ACL protected nodes
             self.client.delete("/1", recursive=True)
+            eve.stop()
+            eve.close()
 
     def test_connect_auth(self):
         username = uuid.uuid4().hex
@@ -189,6 +191,7 @@ class TestConnection(KazooTestCase):
         finally:
             client.delete('/1')
             client.stop()
+            client.close()
 
     def test_unicode_auth(self):
         username = u("xe4/\hm")
@@ -215,6 +218,8 @@ class TestConnection(KazooTestCase):
         finally:
             # Ensure we remove the ACL protected nodes
             self.client.delete("/1", recursive=True)
+            eve.stop()
+            eve.close()
 
     def test_invalid_auth(self):
         self.assertRaises(TypeError, self.client.add_auth,
