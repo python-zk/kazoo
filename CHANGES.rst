@@ -7,6 +7,11 @@ Changelog
 Features
 ********
 
+- KazooClient can now be stopped more reliably even if its in the middle
+  of a long retry sleep. This utilizes the new interrupt feature of
+  KazooRetry which lets the sleep be broken down into chunks and an
+  interrupt function called to determine if the retry should fail early.
+
 - Issue #62, #92, #89, #101, #102: Allow KazooRetry to have a
   max deadline, transition properly when connection fails to LOST, and
   setup separate connection retry behavior from client command retry

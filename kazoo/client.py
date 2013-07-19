@@ -248,6 +248,7 @@ class KazooClient(object):
                     sleep_func=self.handler.sleep_func,
                     **retry_keys)
 
+        self._conn_retry.interrupt = lambda: self._stopped.is_set()
         self._connection = ConnectionHandler(self, self._conn_retry.copy(),
             logger=self.logger)
 

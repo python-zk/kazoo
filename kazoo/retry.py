@@ -23,6 +23,11 @@ class RetryFailedError(KazooException):
     """
 
 
+class InterruptedError(RetryFailedError):
+    """Raised when the retry is forcibly interrupted by the interrupt
+    function"""
+
+
 class KazooRetry(object):
     """Helper for retrying a method in the face of retry-able
     exceptions"""
@@ -38,7 +43,7 @@ class KazooRetry(object):
 
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
                  max_delay=3600, ignore_expire=True, sleep_func=time.sleep,
-                 deadline=None):
+                 deadline=None, interrupt=None):
         """Create a :class:`KazooRetry` instance for retrying function
         calls
 
@@ -53,6 +58,11 @@ class KazooRetry(object):
         :param ignore_expire:
             Whether a session expiration should be ignored and treated
             as a retry-able command.
+        :param interrupt:
+            Function that will be called with no args that may return
+            True if the retry should be ceased immediately. This will
+            be called no more than every 0.1 seconds during a wait
+            between retries.
 
         """
         self.max_tries = max_tries
@@ -66,6 +76,7 @@ class KazooRetry(object):
         self._cur_stoptime = None
         self.sleep_func = sleep_func
         self.retry_exceptions = self.RETRY_EXCEPTIONS
+        self.interrupt = interrupt
         if ignore_expire:
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
 
@@ -79,7 +90,8 @@ class KazooRetry(object):
         """Return a clone of this retry manager"""
         obj = KazooRetry(self.max_tries, self.delay, self.backoff,
                          self.max_jitter / 100.0, self.max_delay,
-                         self.sleep_func, deadline=self.deadline)
+                         self.sleep_func, deadline=self.deadline,
+                         interrupt=self.interrupt)
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
@@ -115,5 +127,18 @@ class KazooRetry(object):
                 if self._cur_stoptime is not None and time.time() + sleeptime >= self._cur_stoptime:
                     raise RetryFailedError("Exceeded retry deadline")
 
-                self.sleep_func(sleeptime)
+                if self.interrupt:
+                    while sleeptime > 0:
+                        # Break the time period down and sleep for no longer than
+                        # 0.1 before calling the interrupt
+                        if sleeptime < 0.1:
+                            self.sleep_func(sleeptime)
+                            sleeptime -= sleeptime
+                        else:
+                            self.sleep_func(0.1)
+                            sleeptime -= 0.1
+                        if self.interrupt():
+                            raise InterruptedError()
+                else:
+                    self.sleep_func(sleeptime)
                 self._cur_delay = min(self._cur_delay * self.backoff, self.max_delay)
