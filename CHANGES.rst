@@ -26,6 +26,12 @@ Features
 Bug Handling
 ************
 
+- Kazoo previously would let the same function be registered as a data-watch
+  or child-watch multiple times, and then call it multiple times upon being
+  triggered. This was non-compliant Zookeeper client behavior, the same
+  watch can now only be registered once for the same znode path per Zookeeper
+  client documentation.
+
 - Issue #105: Avoid rare import lock problems by moving module imports in
   client.py to the module scope.
 
