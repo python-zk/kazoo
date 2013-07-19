@@ -144,6 +144,7 @@ class KazooTestHarness(object):
                     break
                 except NotEmptyError:
                     pass
+                tries += 1
             self.client.stop()
             self.client.close()
             del self.client
