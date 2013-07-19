@@ -20,7 +20,8 @@ Features
 
 - Data-watchers for the same node are no longer 'stacked'. That is, if
   a get and an exists call occur for the same node with the same watch
-  function, then it will be registered only once.
+  function, then it will be registered only once. This change results in
+  Kazoo behaving per Zookeeper client spec regarding repeat watch use.
 
 Bug Handling
 ************
