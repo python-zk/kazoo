@@ -34,6 +34,7 @@ Bug Handling
 - Issue #53: Throw a warning upon starting if the chroot path doesn't exist
   so that it's more obvious when the chroot should be created before
   performing more operations.
+
 - Kazoo previously would let the same function be registered as a data-watch
   or child-watch multiple times, and then call it multiple times upon being
   triggered. This was non-compliant Zookeeper client behavior, the same
@@ -62,6 +63,7 @@ API Changes
   during instantiation. The additional options are now implicitly True, with
   the user being left to ignore events as they choose. See the DataWatch
   API docs for more information.
+
 - Issue #99: Better exception raised when the writer fails to close. A
   WriterNotClosedException that inherits from KazooException is now raised
   when the writer fails to close in time.
