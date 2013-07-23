@@ -6,6 +6,7 @@ import time
 import uuid
 import unittest
 
+from mock import patch
 from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
@@ -143,6 +144,16 @@ class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
         from kazoo.security import make_digest_acl
         return make_digest_acl(*args, **kwargs)
+
+    def test_chroot_warning(self):
+        k = self._get_nonchroot_client()
+        k.chroot = 'abba'
+        try:
+            with patch('warnings.warn') as mock_func:
+                k.start()
+                assert mock_func.called
+        finally:
+            k.stop()
 
     def test_auth(self):
         username = uuid.uuid4().hex

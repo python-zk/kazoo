@@ -31,6 +31,9 @@ Features
 Bug Handling
 ************
 
+- Issue #53: Throw a warning upon starting if the chroot path doesn't exist
+  so that it's more obvious when the chroot should be created before
+  performing more operations.
 - Kazoo previously would let the same function be registered as a data-watch
   or child-watch multiple times, and then call it multiple times upon being
   triggered. This was non-compliant Zookeeper client behavior, the same

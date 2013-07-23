@@ -474,6 +474,10 @@ class KazooClient(object):
             self.stop()
             raise self.handler.timeout_exception("Connection time-out")
 
+        if self.chroot and not self.exists("/"):
+            warnings.warn("No chroot path exists, the chroot path "
+                          "should be created before normal use.")
+
     def start_async(self):
         """Asynchronously initiate connection to ZK.
 
