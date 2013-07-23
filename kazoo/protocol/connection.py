@@ -477,13 +477,13 @@ class ConnectionHandler(object):
         total_hosts = len(self.client.hosts)
         cur = 0
         status = None
-        while cur < total_hosts and status != STOP_CONNECTING:
+        while cur < total_hosts and status is not STOP_CONNECTING:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break
             status = self._connect_attempt(hosts, retry)
             cur += 1
-        if status == STOP_CONNECTING:
+        if status is STOP_CONNECTING:
             return STOP_CONNECTING
         else:
             raise ForceRetryError('Reconnecting')
