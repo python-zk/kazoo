@@ -336,7 +336,7 @@ Custom Retries
 --------------
 
 Sometimes you may wish to have specific retry policies for a command or
-set of commands that differes from the
+set of commands that differs from the
 :meth:`~kazoo.client.KazooClient.retry` method. You can manually create
 a :class:`~kazoo.retry.KazooRetry` instance with the specific retry
 policy you prefer:

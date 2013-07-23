@@ -37,7 +37,7 @@ class LockTimeout(KazooException):
 
 
 class WriterNotClosedException(KazooException):
-    """Raised if the writer is unable to stop closing when requested
+    """Raised if the writer is unable to stop closing when requested.
 
     .. versionadded:: 1.2
     """

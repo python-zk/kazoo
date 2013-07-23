@@ -19,3 +19,5 @@ Public API
     .. autoexception:: ForceRetryError
 
     .. autoexception:: RetryFailedError
+
+    .. autoexception:: InterruptedError
