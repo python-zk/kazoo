@@ -43,7 +43,7 @@ class KazooTestHarness(unittest.TestCase):
 
     Example::
 
-        class MyTestCase(unittest.TestCase, KazooTestHarness):
+        class MyTestCase(KazooTestHarness):
             def setUp(self):
                 self.setup_zookeeper()
 

@@ -59,6 +59,9 @@ Bug Handling
 API Changes
 ***********
 
+- The `kazoo.testing.harness.KazooTestHarness` class directly inherits from
+  `unittest.TestCase` and you need to ensure to call its `__init__` method.
+
 - DataWatch no longer takes any parameters besides for the optional function
   during instantiation. The additional options are now implicitly True, with
   the user being left to ignore events as they choose. See the DataWatch

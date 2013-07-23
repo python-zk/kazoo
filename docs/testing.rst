@@ -30,11 +30,9 @@ Example:
 
 .. code-block:: python
 
-    import unittest
-
     from kazoo.testing import KazooTestHarness
 
-    class MyTest(unittest.TestCase, KazooTestHarness):
+    class MyTest(KazooTestHarness):
         def setUp(self):
             self.setup_zookeeper()
 
