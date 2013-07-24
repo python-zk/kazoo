@@ -349,6 +349,11 @@ class TestClient(KazooTestCase):
         path = client.create(u("/\xe4hm"))
         eq_(path, u("/\xe4hm"))
 
+    def test_create_async_returns_unchrooted_path(self):
+        client = self.client
+        path = client.create_async('/1').get()
+        eq_(path, "/1")
+
     def test_create_invalid_path(self):
         client = self.client
         self.assertRaises(TypeError, client.create, ('a', ))
