@@ -650,8 +650,8 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        return self.unchroot(self.create_async(path, value, acl=acl,
-            ephemeral=ephemeral, sequence=sequence, makepath=makepath).get())
+        return self.create_async(path, value, acl=acl, ephemeral=ephemeral,
+            sequence=sequence, makepath=makepath).get()
 
     def create_async(self, path, value=b"", acl=None, ephemeral=False,
                      sequence=False, makepath=False):
@@ -703,7 +703,7 @@ class KazooClient(object):
         @wrap(async_result)
         def create_completion(result):
             try:
-                return result.get()
+                return self.unchroot(result.get())
             except NoNodeError:
                 if not makepath:
                     raise
