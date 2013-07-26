@@ -4,6 +4,11 @@ Changelog
 1.3 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- Issue #106, #107: `client.create_async` didn't strip change root from the
+  returned path.
 
 1.2 (2013-07-24)
 ----------------
