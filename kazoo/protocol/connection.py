@@ -97,31 +97,34 @@ class RWPinger(object):
             self.last_attempt = time.time()
         delay = 0.5
         while True:
-            jitter = random.randint(0, 100) / 100.0
-            while time.time() < self.last_attempt + delay + jitter:
-                # Skip rw ping checks if its too soon
-                yield False
-            for host, port in self.hosts:
-                sock = self.socket()
-                log.debug("Pinging server for r/w: %s:%s", host, port)
-                self.last_attempt = time.time()
-                try:
-                    with self.socket_handling():
-                        sock.connect((host, port))
-                        sock.sendall(b"isro")
-                        result = sock.recv(8192)
-                        sock.close()
-                        if result == b'rw':
-                            yield (host, port)
-                        else:
-                            yield False
-                except ConnectionDropped:
-                    yield False
+            yield self._next_server(delay)
 
-                # Add some jitter between host pings
-                while time.time() < self.last_attempt + jitter:
-                    yield False
-            delay *= 2
+    def _next_server(self, delay):
+        jitter = random.randint(0, 100) / 100.0
+        while time.time() < self.last_attempt + delay + jitter:
+            # Skip rw ping checks if its too soon
+            return False
+        for host, port in self.hosts:
+            sock = self.socket()
+            log.debug("Pinging server for r/w: %s:%s", host, port)
+            self.last_attempt = time.time()
+            try:
+                with self.socket_handling():
+                    sock.connect((host, port))
+                    sock.sendall(b"isro")
+                    result = sock.recv(8192)
+                    sock.close()
+                    if result == b'rw':
+                        return (host, port)
+                    else:
+                        return False
+            except ConnectionDropped:
+                return False
+
+            # Add some jitter between host pings
+            while time.time() < self.last_attempt + jitter:
+                return False
+        delay *= 2
 
 
 class RWServerAvailable(Exception):
