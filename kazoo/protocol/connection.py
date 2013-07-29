@@ -192,10 +192,10 @@ class ConnectionHandler(object):
         if not self.connection_stopped.is_set():
             raise Exception("Cannot close connection until it is stopped")
         self.connection_closed.set()
-        os.close(self._write_pipe)
-        self._write_pipe = None
-        os.close(self._read_pipe)
-        self._read_pipe = None
+        wp, rp = self._write_pipe, self._read_pipe
+        self._write_pipe = self._read_pipe = None
+        os.close(wp)
+        os.close(rp)
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
