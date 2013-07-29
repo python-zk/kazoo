@@ -281,8 +281,8 @@ class KazooClient(object):
         self.last_zxid = 0
 
     def _reset_watchers(self):
-        self._child_watchers = defaultdict(list)
-        self._data_watchers = defaultdict(list)
+        self._child_watchers = defaultdict(set)
+        self._data_watchers = defaultdict(set)
 
     def _reset_session(self):
         self._session_id = None
