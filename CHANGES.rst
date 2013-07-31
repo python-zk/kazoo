@@ -7,6 +7,9 @@ Changelog
 Bug Handling
 ************
 
+- Issue #109: Partials not usable properly as a datawatch call can now be
+  used. All funcs will be called with 3 args and fall back to 2 args if
+  there's an argument error.
 - Issue #106, #107: `client.create_async` didn't strip change root from the
   returned path.
 

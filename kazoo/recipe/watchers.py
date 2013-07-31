@@ -1,7 +1,6 @@
 """Higher level child and data watching API's.
 """
 import logging
-import inspect
 import time
 import warnings
 from functools import partial, wraps
@@ -70,19 +69,6 @@ class DataWatch(object):
         passed to it and warns that they are no longer respected.
 
     """
-    @staticmethod
-    def _can_take_event(func):
-        if inspect.isfunction(func):
-            spec = inspect.getargspec(func)
-        elif hasattr(func, '__call__'):
-            spec = inspect.getargspec(func.__call__)
-        else:
-            raise Exception("Unable to determine if function or callable")
-        if spec.varargs or len(spec.args) == 3:
-            return True
-        else:
-            return False
-
     def __init__(self, client, path, func=None, *args, **kwargs):
         """Create a data watcher for a path
 
@@ -118,7 +104,6 @@ class DataWatch(object):
         # Register our session listener if we're going to resume
         # across session losses
         if func is not None:
-            self._include_event = self._can_take_event(func)
             self._client.add_listener(self._session_watcher)
             self._get_data()
 
@@ -133,7 +118,6 @@ class DataWatch(object):
 
         """
         self._func = func
-        self._include_event = self._can_take_event(func)
 
         self._client.add_listener(self._session_watcher)
         self._get_data()
@@ -145,9 +129,9 @@ class DataWatch(object):
             # callback unless the send_event is set in constructor
             if not self._ever_called:
                 self._ever_called = True
-            if self._include_event:
+            try:
                 result = self._func(data, stat, event)
-            else:
+            except TypeError:
                 result = self._func(data, stat)
             if result is False:
                 self._stopped = True
