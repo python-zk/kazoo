@@ -5,9 +5,9 @@ import time
 import warnings
 from functools import partial, wraps
 
-from kazoo.client import KazooState
 from kazoo.retry import KazooRetry
 from kazoo.exceptions import ConnectionClosedError, NoNodeError
+from kazoo.protocol.states import KazooState
 
 log = logging.getLogger(__name__)
 

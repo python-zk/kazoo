@@ -19,8 +19,8 @@ import os
 import socket
 from functools import partial
 
-from kazoo.client import KazooState
 from kazoo.exceptions import KazooException
+from kazoo.protocol.states import KazooState
 from kazoo.recipe.watchers import PatientChildrenWatch
 
 log = logging.getLogger(__name__)

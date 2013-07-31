@@ -7,6 +7,9 @@ Changelog
 Bug Handling
 ************
 
+- Issue #108: Circular import fail when importing kazoo.recipe.watchers
+  directly has now been resolved. Watchers and partitioner properly import
+  the KazooState from kazoo.protocol.states rather than kazoo.client.
 - Issue #109: Partials not usable properly as a datawatch call can now be
   used. All funcs will be called with 3 args and fall back to 2 args if
   there's an argument error.
