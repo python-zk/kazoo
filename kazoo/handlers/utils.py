@@ -9,6 +9,14 @@ import functools
 import os
 
 
+def _set_default_tcpsock_options(module, sock):
+    sock.setsockopt(module.IPPROTO_TCP, module.TCP_NODELAY, 1)
+    if HAS_FNCTL:
+        flags = fcntl.fcntl(sock, fcntl.F_GETFD)
+        fcntl.fcntl(sock, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+    return sock
+
+
 def create_pipe():
     """Create a non-blocking read/write pipe.
     """
@@ -25,12 +33,20 @@ def create_tcp_socket(module):
     type_ = module.SOCK_STREAM
     if hasattr(module, 'SOCK_CLOEXEC'):  # pragma: nocover
         # if available, set cloexec flag during socket creation
-        type_ != module.SOCK_CLOEXEC
+        type_ |= module.SOCK_CLOEXEC
     sock = module.socket(module.AF_INET, type_)
-    sock.setsockopt(module.IPPROTO_TCP, module.TCP_NODELAY, 1)
-    if HAS_FNCTL:
-        flags = fcntl.fcntl(sock, fcntl.F_GETFD)
-        fcntl.fcntl(sock, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+    _set_default_tcpsock_options(module, sock)
+    return sock
+
+
+def create_tcp_connection(module, address, timeout=None):
+    if timeout is None:
+        # thanks to create_connection() developers for
+        # this ugliness...
+        timeout = module._GLOBAL_DEFAULT_TIMEOUT
+
+    sock = module.create_connection(address, timeout)
+    _set_default_tcpsock_options(module, sock)
     return sock
 
 
