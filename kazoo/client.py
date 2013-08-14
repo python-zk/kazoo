@@ -559,10 +559,8 @@ class KazooClient(object):
         if not self._live.is_set():
             raise ConnectionLoss("No connection to server")
 
-        sock = self.handler.socket()
-        sock.settimeout(self._session_timeout)
         peer = self._connection._socket.getpeername()
-        sock.connect(peer)
+        sock = self.handler.create_connection(peer, timeout=self._session_timeout)
         sock.sendall(cmd)
         result = sock.recv(8192)
         sock.close()

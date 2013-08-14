@@ -51,6 +51,10 @@ class IHandler(Interface):
         """A socket method that implements Python's socket.socket
         API"""
 
+    def create_connection():
+        """A socket method that implements Python's
+        socket.create_connection API"""
+
     def event_object():
         """Return an appropriate object that implements Python's
         threading.Event API"""
