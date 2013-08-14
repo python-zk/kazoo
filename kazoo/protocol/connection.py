@@ -86,9 +86,9 @@ class RWPinger(object):
     the iterator will yield False if called too soon.
 
     """
-    def __init__(self, hosts, socket_func, socket_handling):
+    def __init__(self, hosts, connection_func, socket_handling):
         self.hosts = hosts
-        self.socket = socket_func
+        self.connection = connection_func
         self.last_attempt = None
         self.socket_handling = socket_handling
 
@@ -105,12 +105,11 @@ class RWPinger(object):
             # Skip rw ping checks if its too soon
             return False
         for host, port in self.hosts:
-            sock = self.socket()
             log.debug("Pinging server for r/w: %s:%s", host, port)
             self.last_attempt = time.time()
             try:
                 with self.socket_handling():
-                    sock.connect((host, port))
+                    sock = self.connection((host, port))
                     sock.sendall(b"isro")
                     result = sock.recv(8192)
                     sock.close()
@@ -200,7 +199,7 @@ class ConnectionHandler(object):
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
         server in the list, and apply a back-off between attempts."""
-        return RWPinger(self.client.hosts, self.handler.socket,
+        return RWPinger(self.client.hosts, self.handler.create_connection,
                         self._socket_error_handling)
 
     def _read_header(self, timeout):
@@ -494,9 +493,8 @@ class ConnectionHandler(object):
         TimeoutError = self.handler.timeout_exception
         close_connection = False
 
+        self._socket = None
         host, port = advance_iterator(hosts)
-
-        self._socket = self.handler.socket()
 
         # Were we given a r/w server? If so, use that instead
         if self._rw_server:
@@ -560,7 +558,8 @@ class ConnectionHandler(object):
             self.logger.exception('Unhandled exception in connection loop')
             raise
         finally:
-            self._socket.close()
+            if self._socket is not None:
+                self._socket.close()
 
     def _connect(self, host, port):
         client = self.client
@@ -570,9 +569,9 @@ class ConnectionHandler(object):
                           client._session_id,
                           hexlify(client._session_passwd))
 
-        self._socket.settimeout(client._session_timeout)
         with self._socket_error_handling():
-            self._socket.connect((host, port))
+            self._socket = self.handler.create_connection((host, port),
+                                client._session_timeout)
 
         self._socket.setblocking(0)
 
