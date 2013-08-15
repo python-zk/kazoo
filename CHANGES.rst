@@ -4,6 +4,10 @@ Changelog
 1.3 (unreleased)
 ----------------
 
+Features
+********
+
+- PR #112: Add IPv6 support. Patch by Dan Kruchinin.
 
 1.2.1 (2013-08-01)
 ------------------
