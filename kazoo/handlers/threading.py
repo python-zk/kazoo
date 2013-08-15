@@ -26,7 +26,7 @@ except ImportError:  # pragma: nocover
 
 from zope.interface import implementer
 
-from kazoo.handlers.utils import create_tcp_socket
+from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
 from kazoo.interfaces import IAsyncResult
 from kazoo.interfaces import IHandler
 
@@ -253,6 +253,9 @@ class SequentialThreadingHandler(object):
 
     def socket(self):
         return create_tcp_socket(socket)
+
+    def create_connection(self, *args, **kwargs):
+        return create_tcp_connection(socket, *args, **kwargs)
 
     def event_object(self):
         """Create an appropriate Event object"""
