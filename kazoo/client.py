@@ -108,7 +108,7 @@ class KazooClient(object):
         are in seconds.
 
         :param hosts: Comma-separated list of hosts to connect to
-                      (e.g. 127.0.0.1:2181,127.0.0.1:2182).
+                      (e.g. 127.0.0.1:2181,127.0.0.1:2182,[::1]:2183).
         :param timeout: The longest to wait for a Zookeeper connection.
         :param client_id: A Zookeeper client id, used when
                           re-establishing a prior session connection.
