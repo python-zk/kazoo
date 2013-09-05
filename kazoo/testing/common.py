@@ -175,7 +175,10 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(
                 "log4j-*.jar")))
             jars.extend(glob(os.path.join(
                 self.install_path,
-                "slf4j-*.jar")))
+                "slf4j-api-*.jar")))
+            jars.extend(glob(os.path.join(
+                self.install_path,
+                "slf4j-log4j-*.jar")))
         else:
             # Development build (plain `ant`)
             jars = glob((os.path.join(
