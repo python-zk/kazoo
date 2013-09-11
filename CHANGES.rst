@@ -4,6 +4,12 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Documentation
+*************
+
+- #121: Add a note about `kazoo.recipe.queue.LockingQueue` requiring a
+  Zookeeper 3.4+ server.
+
 
 1.3 (2013-09-05)
 ----------------

@@ -125,8 +125,8 @@ class LockingQueue(BaseQueue):
     method that will check if a node still holds the lock.
 
     .. note::
-        :class:`LockingQueue` is compatible only with ZooKeeper 3.4 or above, because
-        of using transactions in :meth:`LockingQueue.consume` method.
+        :class:`LockingQueue` requires ZooKeeper 3.4 or above, since it is
+        using transactions.
     """
     lock = "/taken"
     entries = "/entries"
