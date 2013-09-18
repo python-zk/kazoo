@@ -1,6 +1,5 @@
 """Zookeeper Protocol Connection Handler"""
 import logging
-import itertools
 import os
 import random
 import select
@@ -459,8 +458,9 @@ class ConnectionHandler(object):
 
         retry = self.retry_sleeper.copy()
         try:
-            hosts = itertools.cycle(self.client.hosts)
             while not self.client._stopped.is_set():
+                hosts = self._resolve_hosts(self.client.hosts)
+
                 # If the connect_loop returns STOP_CONNECTING, stop retrying
                 if retry(self._connect_loop, hosts, retry) is STOP_CONNECTING:
                     break
@@ -472,29 +472,37 @@ class ConnectionHandler(object):
             self.connection_stopped.set()
             self.logger.debug('Connection stopped')
 
+    def _resolve_hosts(self, hosts):
+        expanded = []
+        for host, port in hosts:
+            expanded += [(r[4][0], r[4][1]) for r in
+                         socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)]
+
+        return expanded
+
     def _connect_loop(self, hosts, retry):
         # Iterate through the hosts a full cycle before starting over
-        total_hosts = len(self.client.hosts)
-        cur = 0
         status = None
-        while cur < total_hosts and status is not STOP_CONNECTING:
+        total_hosts = len(hosts)
+
+        for host, port in hosts:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break
-            status = self._connect_attempt(hosts, retry)
-            cur += 1
+            status = self._connect_attempt(host, port, total_hosts, retry)
+            if status is STOP_CONNECTING:
+                break
         if status is STOP_CONNECTING:
             return STOP_CONNECTING
         else:
             raise ForceRetryError('Reconnecting')
 
-    def _connect_attempt(self, hosts, retry):
+    def _connect_attempt(self, host, port, total_hosts, retry):
         client = self.client
         TimeoutError = self.handler.timeout_exception
         close_connection = False
 
         self._socket = None
-        host, port = advance_iterator(hosts)
 
         # Were we given a r/w server? If so, use that instead
         if self._rw_server:
@@ -506,7 +514,7 @@ class ConnectionHandler(object):
             client._session_callback(KeeperState.CONNECTING)
 
         try:
-            read_timeout, connect_timeout = self._connect(host, port)
+            read_timeout, connect_timeout = self._connect(host, port, total_hosts)
             read_timeout = read_timeout / 1000.0
             connect_timeout = connect_timeout / 1000.0
             retry.reset()
@@ -561,7 +569,7 @@ class ConnectionHandler(object):
             if self._socket is not None:
                 self._socket.close()
 
-    def _connect(self, host, port):
+    def _connect(self, host, port, total_hosts):
         client = self.client
         self.logger.info('Connecting to %s:%s', host, port)
 
@@ -590,7 +598,7 @@ class ConnectionHandler(object):
         # Load return values
         client._session_id = connect_result.session_id
         negotiated_session_timeout = connect_result.time_out
-        connect_timeout = negotiated_session_timeout / len(client.hosts)
+        connect_timeout = negotiated_session_timeout / total_hosts
         read_timeout = negotiated_session_timeout * 2.0 / 3.0
         client._session_passwd = connect_result.passwd
 
