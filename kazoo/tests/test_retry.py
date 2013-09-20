@@ -47,6 +47,12 @@ class TestRetrySleeper(unittest.TestCase):
         # gevent's sleep function is picky about the type
         eq_(type(retry._cur_delay), float)
 
+    def test_copy(self):
+        _sleep = lambda t: None
+        retry = self._makeOne(sleep_func=_sleep)
+        rcopy = retry.copy()
+        self.assertTrue(rcopy.sleep_func is _sleep)
+
 
 class TestKazooRetry(unittest.TestCase):
 

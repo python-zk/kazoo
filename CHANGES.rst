@@ -4,6 +4,11 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- #126: Fix `KazooRetry.copy` to correctly copy sleep function.
+
 Documentation
 *************
 
