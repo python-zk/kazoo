@@ -37,7 +37,7 @@ $(PYTHON):
 build: $(PYTHON)
 ifeq ($(GEVENT_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_gevent.txt
-	$(INSTALL) https://github.com/surfly/gevent/releases/download/$(GEVENT_VERSION)/gevent-$(GEVENT_VERSION).tar.gz
+	$(INSTALL) -f https://github.com/surfly/gevent/releases gevent==$(GEVENT_VERSION)
 endif
 ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
