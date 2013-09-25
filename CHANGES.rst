@@ -7,6 +7,9 @@ Changelog
 Bug Handling
 ************
 
+- #125, #128: Fix unknown variable in KazooClient `command_retry` argument
+  handling.
+
 - #126: Fix `KazooRetry.copy` to correctly copy sleep function.
 
 Documentation
