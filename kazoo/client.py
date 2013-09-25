@@ -218,7 +218,7 @@ class KazooClient(object):
 
         if command_retry is not None:
             self.retry = command_retry
-            if self.handler.sleep_func != self.comand_retry.sleep_func:
+            if self.handler.sleep_func != self.retry.sleep_func:
                 raise ConfigurationError("Command retry handler and event handler "
                                          " must use the same sleep func")
 
