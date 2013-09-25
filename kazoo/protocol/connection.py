@@ -570,8 +570,8 @@ class ConnectionHandler(object):
                           hexlify(client._session_passwd))
 
         with self._socket_error_handling():
-            self._socket = self.handler.create_connection((host, port),
-                                client._session_timeout / 1000.)
+            self._socket = self.handler.create_connection(
+                (host, port), client._session_timeout / 1000.0)
 
         self._socket.setblocking(0)
 
