@@ -514,7 +514,9 @@ class ConnectionHandler(object):
 
             while not close_connection:
                 # Watch for something to read or send
-                timeout = read_timeout / 2.0 - random.randint(0, 40) / 100.0
+                jitter_time = random.randint(0, 40) / 100.0
+                # Ensure our timeout is positive
+                timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
                 s = self.handler.select([self._socket, self._read_pipe],
                                         [], [], timeout)[0]
 

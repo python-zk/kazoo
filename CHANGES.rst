@@ -4,6 +4,12 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- Issue #119: Handler timeout takes the max of the random interval or
+  the read timeout to ensure a negative number isn't used for the read
+  timeout.
 
 1.3.1 (2013-09-25)
 ------------------
