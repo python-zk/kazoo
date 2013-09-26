@@ -1,6 +1,5 @@
 """Zookeeper Protocol Connection Handler"""
 import logging
-import itertools
 import os
 import random
 import select
@@ -459,10 +458,9 @@ class ConnectionHandler(object):
 
         retry = self.retry_sleeper.copy()
         try:
-            hosts = itertools.cycle(self.client.hosts)
             while not self.client._stopped.is_set():
                 # If the connect_loop returns STOP_CONNECTING, stop retrying
-                if retry(self._connect_loop, hosts, retry) is STOP_CONNECTING:
+                if retry(self._connect_loop, retry) is STOP_CONNECTING:
                     break
         except RetryFailedError:
             self.logger.warning("Failed connecting to Zookeeper "
@@ -472,29 +470,28 @@ class ConnectionHandler(object):
             self.connection_stopped.set()
             self.logger.debug('Connection stopped')
 
-    def _connect_loop(self, hosts, retry):
+    def _connect_loop(self, retry):
         # Iterate through the hosts a full cycle before starting over
-        total_hosts = len(self.client.hosts)
-        cur = 0
         status = None
-        while cur < total_hosts and status is not STOP_CONNECTING:
+        for host, port in self.client.hosts:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break
-            status = self._connect_attempt(hosts, retry)
-            cur += 1
+            status = self._connect_attempt(host, port, retry)
+            if status is STOP_CONNECTING:
+                break
+
         if status is STOP_CONNECTING:
             return STOP_CONNECTING
         else:
             raise ForceRetryError('Reconnecting')
 
-    def _connect_attempt(self, hosts, retry):
+    def _connect_attempt(self, host, port, retry):
         client = self.client
         TimeoutError = self.handler.timeout_exception
         close_connection = False
 
         self._socket = None
-        host, port = advance_iterator(hosts)
 
         # Were we given a r/w server? If so, use that instead
         if self._rw_server:
