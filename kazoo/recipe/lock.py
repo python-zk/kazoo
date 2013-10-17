@@ -22,36 +22,100 @@ from kazoo.exceptions import CancelledError
 from kazoo.exceptions import KazooException
 from kazoo.exceptions import LockTimeout
 from kazoo.exceptions import NoNodeError
-from kazoo.protocol.states import KazooState
+from kazoo.protocol.states import KazooState, EventType
 
 
 class Lock(object):
     """Kazoo Lock
 
-    Example usage with a :class:`~kazoo.client.KazooClient` instance:
+    Kazoo `Lock` supports three different locking strategies for a lock path.
+
+    **Exclusive locks** represent the least complex locking strategy and
+    guarantee that only a single ``Lock`` instance can acquire a lock path at
+    any given time. This applies even if other locking strategies (as described
+    below) are simultaneously in use for the same lock path. Exclusive locks
+    are the default and will be provided if :py:meth:`__init__` is invoked
+    with the default ``exclusive=True`` parameter.
+
+    **Shared locks** allow different ``Lock`` instances to simultaneously
+    acquire locks to the same lock path. In this strategy, a ``Lock`` instance
+    is constructed with either ``exclusive=True`` (which is known as an
+    "exclusive lock" and is described above) or ``exclusive=False`` (which is
+    known as a "shared lock"). A shared lock will only be acquired if no
+    exclusive locks are pending at the time acquisition is attempted. This
+    means multiple shared locks can be acquired simultaneously, however
+    additional shared locks will not be acquired once any exclusive lock for
+    the lock path is pending. The shared lock strategy is most useful when
+    multiple clients require read-only access to a resource but writing to that
+    resource requires exclusive access. To use the shared locks strategy,
+    invoke :py:meth:`__init__` and indicate a shared or exclusive lock via the
+    ``exclusive`` parameter.
+
+    **Revocable shared locks** provide the same locking guarantees and usage
+    behavior as the shared locks strategy described above, however add the
+    ability for any blocked lock acquisition request to signal to the blocking
+    locks (or other lock requests which would be granted before it) to revoke.
+    This is useful if shared lock holders do not routinely release resources
+    (eg they are long-running readers) but are able to do so on request. Given
+    cooperation from earlier lock holders or requestors is required, a callback
+    is used to signal a revocation request. In the callback any resources
+    should be released and then :py:meth:`cancel` and :py:meth:`release`
+    invoked so the lock is removed. Note that a callback may safely ignore the
+    callback notification if desired. To use the revocable shared locks
+    strategy, invoke :py:meth:`acquire` with ``revoke=True``. This indicates a
+    blocked lock request should request the revocation of any earlier blocking
+    locks. For locks that can be interrupted and respond to such revocation
+    requests, use the ``unlock`` parameter of :py:meth:`acquire` to provide the
+    callback function that should be invoked on the first (and only first)
+    revocation request.
+
+    Example exclusive lock usage with a :class:`~kazoo.client.KazooClient`
+    instance:
 
     .. code-block:: python
 
         zk = KazooClient()
         lock = zk.Lock("/lockpath", "my-identifier")
-        with lock:  # blocks waiting for lock acquisition
+        with lock:  # blocks waiting for exclusive lock acquisition
             # do something with the lock
 
     """
-    _NODE_NAME = '__lock__'
+    _MODE_SHARED = '__SHARED__'
+    _MODE_EXCLUSIVE = '__EXCLUSIVE__'
+    _UNLOCK_REQUEST = '__UNLOCK__'
+    _UNLOCK_SUFFIX = ' ' + _UNLOCK_REQUEST
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(self, client, path, identifier=None, exclusive=True):
         """Create a Kazoo lock.
 
-        :param client: A :class:`~kazoo.client.KazooClient` instance.
-        :param path: The lock path to use.
-        :param identifier: Name to use for this lock contender. This
-                           can be useful for querying to see who the
-                           current lock contenders are.
+        :param client: The Kazoo client
+        :type client: :class:`~kazoo.client.KazooClient`
+        :param path: The lock path to use. May not contain the strings
+                     ``__SHARED__`` or ``__EXCLUSIVE__``, as they are used
+                     internally
+        :type path: str
+        :param identifier: Name to use for this lock contender, which may be
+                           useful for querying to see who the current lock
+                           :py:meth:`contenders` are. May not contain the
+                           string ``__UNLOCK__``, as this is used internally.
+        :type identifier: str
+        :param exclusive: Whether this is an exclusive lock (``False`` means
+                          a "shared lock" as described above)
+        :type exclusive: bool
 
+        .. versionadded:: 1.4
+            The exclusive option.
         """
+        if self._MODE_SHARED in path or self._MODE_EXCLUSIVE in path:
+            raise ValueError('Path "{}" contains a reserved word'.format(path))
+
+        if identifier and self._UNLOCK_REQUEST in identifier:
+            raise ValueError('Identifier "{}" contains a reserved word'.format(
+                identifier))
+
         self.client = client
         self.path = path
+        self.exclusive = exclusive
 
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
@@ -59,11 +123,13 @@ class Lock(object):
 
         self.wake_event = client.handler.event_object()
 
+        mode_suffix = self._MODE_EXCLUSIVE if exclusive else self._MODE_SHARED
+
         # props to Netflix Curator for this trick. It is possible for our
         # create request to succeed on the server, but for a failure to
         # prevent us from getting back the full path name. We prefix our
         # lock name with a uuid and can check for its presence on retry.
-        self.prefix = uuid.uuid4().hex + self._NODE_NAME
+        self.prefix = uuid.uuid4().hex + mode_suffix
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
@@ -81,7 +147,7 @@ class Lock(object):
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True, timeout=None):
+    def acquire(self, blocking=True, timeout=None, revoke=False, unlock=None):
         """
         Acquire the lock. By defaults blocks and waits forever.
 
@@ -89,6 +155,17 @@ class Lock(object):
         :type blocking: bool
         :param timeout: Don't wait forever to acquire the lock.
         :type timeout: float or None
+        :param revoke: Identify all existing locks and lock requests that
+                       prevent this lock being acquired and immediately request
+                       them to unlock (this does not mean they will unlock or
+                       are even listening for such requests though)
+        :type revoke: bool
+        :param unlock: The callback which will be invoked exactly once if
+                       another lock used ``revoke=True`` and this lock or lock
+                       request is blocking that lock from being acquired (it is
+                       legal to use ``None`` to ignore revocation requests, or
+                       provide a callback which takes no action)
+        :type unlock: a zero-parameter function
 
         :returns: Was the lock acquired?
         :rtype: bool
@@ -98,18 +175,21 @@ class Lock(object):
 
         .. versionadded:: 1.1
             The timeout option.
+        .. versionadded:: 1.4
+            The revoke and unlock options.
         """
         try:
             retry = self._retry.copy()
             retry.deadline = timeout
-            self.is_acquired = retry(self._inner_acquire,
-                blocking=blocking, timeout=timeout)
+            self.is_acquired = retry(self._inner_acquire, blocking=blocking,
+                                     timeout=timeout, revoke=revoke,
+                                     unlock=unlock)
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
             raise
-        except RetryFailedError:
+        except RetryFailedError:  # pragma: nocover
             self._best_effort_cleanup()
 
         if not self.is_acquired:
@@ -117,7 +197,7 @@ class Lock(object):
 
         return self.is_acquired
 
-    def _inner_acquire(self, blocking, timeout):
+    def _inner_acquire(self, blocking, timeout, revoke, unlock):
         # make sure our election parent node exists
         if not self.assured_path:
             self._ensure_path()
@@ -131,6 +211,21 @@ class Lock(object):
         if not node:
             node = self.client.create(self.create_path, self.data,
                                       ephemeral=True, sequence=True)
+            if unlock:
+                # watch this node for its first data change (the only other
+                # events would be deletion or additional data change events, so
+                # either way the absence of additional events is fine)
+                def unlock_callback(event):
+                    if event.type == EventType.CHANGED:
+                        unlock()
+
+                data, _ = self.client.get(node, unlock_callback)
+                if self._UNLOCK_REQUEST in data.decode('utf-8'):
+                    # a request to revoke our request has already been received
+                    # (we let the callback know about this, but we keep going
+                    # given the callback is under no obligation to comply)
+                    unlock()  # pragma: nocover
+
             # strip off path to node
             node = node[len(self.path) + 1:]
 
@@ -153,14 +248,29 @@ class Lock(object):
                 # node was removed
                 raise ForceRetryError()
 
-            if self.acquired_lock(children, our_index):
+            acquired, blockers = self.acquired_lock(children, our_index)
+            if acquired:
                 return True
 
             if not blocking:
                 return False
 
-            # otherwise we are in the mix. watch predecessor and bide our time
-            predecessor = self.path + "/" + children[our_index - 1]
+            # we are in the mix
+            if revoke:
+                for child in blockers:
+                    try:
+                        child_path = self.path + "/" + child
+                        data, stat = self.client.get(child_path)
+                        decoded_data = data.decode('utf-8')
+                        if self._UNLOCK_REQUEST not in decoded_data:
+                            data = str(decoded_data +
+                                       self._UNLOCK_SUFFIX).encode('utf-8')
+                            self.client.set(child_path, data)
+                    except NoNodeError:  # pragma: nocover
+                        pass
+
+            # watch the last blocker and bide our time
+            predecessor = self.path + "/" + blockers[-1]
             if self.client.exists(predecessor, self._watch_predecessor):
                 self.wake_event.wait(timeout)
                 if not self.wake_event.isSet():
@@ -168,7 +278,20 @@ class Lock(object):
                                       "seconds" % (self.path, timeout))
 
     def acquired_lock(self, children, index):
-        return index == 0
+        """Return if we acquired the lock, and if not, the blocking
+        contenders.
+
+        """
+        prior_nodes = children[:index]
+        if self.exclusive:
+            return (index == 0, prior_nodes)
+
+        # Shared locks are only unavailable if a prior lock is exclusive
+        prior_exclusive = [x for x in prior_nodes
+                           if self._MODE_EXCLUSIVE in x]
+        if prior_exclusive:
+            return (False, prior_exclusive)
+        return (True, None)
 
     def _watch_predecessor(self, event):
         self.wake_event.set()
@@ -176,9 +299,8 @@ class Lock(object):
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
 
-        # can't just sort directly: the node names are prefixed by uuids
-        lockname = self._NODE_NAME
-        children.sort(key=lambda c: c[c.find(lockname) + len(lockname):])
+        # zookeeper sequence node suffix of %010d is relied upon for sorting
+        children.sort(key=lambda c: c[-10:])
         return children
 
     def _find_node(self):
@@ -217,7 +339,7 @@ class Lock(object):
 
         return True
 
-    def contenders(self):
+    def contenders(self, unlocks_only=False):
         """Return an ordered list of the current contenders for the
         lock.
 
@@ -226,6 +348,15 @@ class Lock(object):
             If the contenders did not set an identifier, it will appear
             as a blank string.
 
+        :param unlocks_only: indicates whether to only return those contenders
+                             which have been requested to revoke their locks or
+                             lock requests
+        :type unlocks_only: bool
+        :return: a list of contender identifiers
+        :type: list
+
+        .. versionadded:: 1.4
+            The unlocks_only option.
         """
         # make sure our election parent node exists
         if not self.assured_path:
@@ -237,7 +368,10 @@ class Lock(object):
         for child in children:
             try:
                 data, stat = self.client.get(self.path + "/" + child)
-                contenders.append(data.decode('utf-8'))
+                identifier = data.decode('utf-8')
+                if not unlocks_only or self._UNLOCK_REQUEST in identifier:
+                    identifier = identifier.replace(self._UNLOCK_SUFFIX, '')
+                    contenders.append(identifier)
             except NoNodeError:  # pragma: nocover
                 pass
         return contenders
