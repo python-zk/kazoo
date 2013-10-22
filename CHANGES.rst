@@ -4,6 +4,32 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Bug Handling
+************
+
+- Issue #119: Handler timeout takes the max of the random interval or
+  the read timeout to ensure a negative number isn't used for the read
+  timeout.
+
+1.3.1 (2013-09-25)
+------------------
+
+Bug Handling
+************
+
+- #118, #125, #128: Fix unknown variable in KazooClient `command_retry`
+  argument handling.
+
+- #126: Fix `KazooRetry.copy` to correctly copy sleep function.
+
+- #118: Correct session/socket timeout conversion (int vs. float).
+
+Documentation
+*************
+
+- #121: Add a note about `kazoo.recipe.queue.LockingQueue` requiring a
+  Zookeeper 3.4+ server.
+
 
 1.3 (2013-09-05)
 ----------------

@@ -176,11 +176,9 @@ class KazooClient(object):
         self.auth_data = auth_data if auth_data else set([])
         self.default_acl = default_acl
         self.randomize_hosts = randomize_hosts
-        self.hosts, chroot = collect_hosts(hosts, randomize_hosts)
-        if chroot:
-            self.chroot = normpath(chroot)
-        else:
-            self.chroot = ''
+        self.hosts = None
+        self.chroot = None
+        self.set_hosts(hosts)
 
         # Curator like simplified state tracking, and listeners for
         # state transitions
@@ -218,7 +216,7 @@ class KazooClient(object):
 
         if command_retry is not None:
             self.retry = command_retry
-            if self.handler.sleep_func != self.comand_retry.sleep_func:
+            if self.handler.sleep_func != self.retry.sleep_func:
                 raise ConfigurationError("Command retry handler and event handler "
                                          " must use the same sleep func")
 
@@ -316,6 +314,47 @@ class KazooClient(object):
         """Returns whether the Zookeeper connection has been
         established."""
         return self._live.is_set()
+
+    def set_hosts(self, hosts, randomize_hosts=None):
+        """ sets the list of hosts used by this client.
+
+        This function accepts the same format hosts parameter as the init
+        function and sets the client to use the new hosts the next time it
+        needs to look up a set of hosts. This function does not affect the
+        current connected status.
+
+        It is not currently possible to change the chroot with this function,
+        setting a host list with a new chroot will raise a ConfigurationError.
+
+        :param hosts: see description in :meth:`KazooClient.__init__`
+        :param randomize_hosts: override client default for host randomization
+        :raises:
+            :exc:`ConfigurationError` if the hosts argument changes the chroot
+
+        .. versionadded:: 1.4
+
+        .. warning::
+
+            Using this function to point a client to a completely disparate
+            zookeeper server cluster has undefined behavior.
+
+        """
+
+        if randomize_hosts is None:
+            randomize_hosts = self.randomize_hosts
+
+        self.hosts, chroot = collect_hosts(hosts, randomize_hosts)
+
+        if chroot:
+            new_chroot = normpath(chroot)
+        else:
+            new_chroot = ''
+
+        if self.chroot is not None and new_chroot != self.chroot:
+            raise ConfigurationError("Changing chroot at runtime is not "
+                                     "currently supported")
+
+        self.chroot = new_chroot
 
     def add_listener(self, listener):
         """Add a function to be called for connection state changes.
@@ -560,7 +599,8 @@ class KazooClient(object):
             raise ConnectionLoss("No connection to server")
 
         peer = self._connection._socket.getpeername()
-        sock = self.handler.create_connection(peer, timeout=self._session_timeout)
+        sock = self.handler.create_connection(
+            peer, timeout=self._session_timeout / 1000.0)
         sock.sendall(cmd)
         result = sock.recv(8192)
         sock.close()

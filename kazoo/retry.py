@@ -88,9 +88,13 @@ class KazooRetry(object):
 
     def copy(self):
         """Return a clone of this retry manager"""
-        obj = KazooRetry(self.max_tries, self.delay, self.backoff,
-                         self.max_jitter / 100.0, self.max_delay,
-                         self.sleep_func, deadline=self.deadline,
+        obj = KazooRetry(max_tries=self.max_tries,
+                         delay=self.delay,
+                         backoff=self.backoff,
+                         max_jitter=self.max_jitter / 100.0,
+                         max_delay=self.max_delay,
+                         sleep_func=self.sleep_func,
+                         deadline=self.deadline,
                          interrupt=self.interrupt)
         obj.retry_exceptions = self.retry_exceptions
         return obj

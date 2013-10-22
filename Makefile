@@ -8,7 +8,7 @@ INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 
 BUILD_DIRS = bin build include lib lib64 man share
 
-GEVENT_VERSION ?= 1.0rc2
+GEVENT_VERSION ?= 1.0rc3
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
 PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
 TRAVIS ?= false
@@ -37,7 +37,7 @@ $(PYTHON):
 build: $(PYTHON)
 ifeq ($(GEVENT_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_gevent.txt
-	$(INSTALL) -f http://code.google.com/p/gevent/downloads/list gevent==$(GEVENT_VERSION)
+	$(INSTALL) -f https://github.com/surfly/gevent/releases gevent==$(GEVENT_VERSION)
 endif
 ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt

@@ -92,8 +92,8 @@ Authors
 
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
-`Zope Corporation`_. It has seen further contributions from `reddit`_,
-`Quora`_ and `SageCloud`_.
+`Zope Corporation`_. It has since gathered an active community of over two
+dozen contributors.
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
 .. _Zookeeper Programmers Guide: http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html
@@ -103,6 +103,3 @@ the open-source community has been merged with code from `Mozilla`_ and the
 .. _Mozilla: http://www.mozilla.org/
 .. _Netflix Curator: https://github.com/Netflix/curator
 .. _gevent: http://gevent.org/
-.. _reddit: http://www.reddit.com/
-.. _Quora: https://www.quora.com/
-.. _SageCloud: http://sagecloud.com/

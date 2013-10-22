@@ -742,6 +742,29 @@ class TestClient(KazooTestCase):
         from kazoo.protocol.states import KeeperState
         eq_(self.client.client_state, KeeperState.CONNECTED)
 
+    def test_update_host_list(self):
+        from kazoo.client import KazooClient
+        from kazoo.protocol.states import KeeperState
+        hosts = self.cluster[0].address
+        # create a client with only one server in its list
+        client = KazooClient(hosts=hosts)
+        client.start()
+
+        # try to change the chroot, not currently allowed
+        self.assertRaises(ConfigurationError,
+                          client.set_hosts, hosts + '/new_chroot')
+
+        # grow the cluster to 3
+        client.set_hosts(self.servers)
+
+        # shut down the first host
+        try:
+            self.cluster[0].stop()
+            time.sleep(5)
+            eq_(client.client_state, KeeperState.CONNECTED)
+        finally:
+            self.cluster[0].run()
+
 
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,
