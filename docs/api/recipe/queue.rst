@@ -27,3 +27,10 @@ Public API
 
         .. automethod:: __init__
         .. automethod:: __len__
+
+    .. autoclass:: LockingUniqQueue
+        :members:
+        :inherited-members:
+
+        .. automethod:: __init__
+        .. automethod:: __len__

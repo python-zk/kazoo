@@ -6,6 +6,7 @@ import uuid
 from kazoo.exceptions import NoNodeError, NodeExistsError
 from kazoo.retry import ForceRetryError
 from kazoo.protocol.states import EventType
+from kazoo.recipe.lock import Lock
 
 
 class BaseQueue(object):
@@ -306,3 +307,107 @@ class LockingQueue(BaseQueue):
             # Item is already consumed or locked
             return None
         return (id_, value)
+
+class LockingUniqQueue(LockingQueue):
+    """Queue based on :class:`LockingQueue` for storing only unique values.
+    """
+
+    uniq_lock = '/uniq_lock'
+
+    def __init__(self, client, path, ignore_duplicates=False):
+        """
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The queue path to use in ZooKeeper.
+        :param ignore_duplicates:
+            Ignore duplicated entries. If is set to False than
+            raise ValueError exception.
+        """
+
+        super(LockingUniqQueue, self).__init__(client, path)
+        self._uniq_lock_path = self.path + self.uniq_lock
+        self._ignore_duplicates = ignore_duplicates
+
+    def _check_uniq(self, value):
+        children = self.client.retry(self.client.get_children,
+            self._entries_path)
+
+        values = [ self.client.retry(self.client.get,
+            self._entries_path + '/' + chld)[0] for chld in children ]
+
+        if value in values:
+            return False
+
+        return True
+        
+
+    def put(self, value, priority=100, timeout=None):
+        """Put an entry into the queue.
+
+        :param value: Byte string to put into the queue.
+        :param priority:
+            An optional priority as an integer with at most 3 digits.
+            Lower values signify higher priority.
+        :param timeout:
+            Maximum waiting time in seconds. If None then it will wait
+            untill lock will be released
+        """
+        self._check_put_arguments(value, priority)
+
+        lock = Lock(self.client, self._uniq_lock_path)
+        lock.acquire(timeout=timeout)
+
+        if self._check_uniq(value):
+            self._ensure_paths()
+            self.client.create(
+                "{path}/{prefix}-{priority:03d}-".format(
+                    path=self._entries_path,
+                    prefix=self.entry,
+                    priority=priority),
+                value, sequence=True)
+        elif not self._ignore_duplicates:
+            raise ValueError("Duplicate value {value}".format(
+                value=value))
+
+        lock.release()
+
+    def put_all(self, values, priority=100, timeout=None):
+        """Put several entries into the queue. The action only succeeds
+        if all entries where put into the queue.
+
+        :param values: A list of values to put into the queue.
+        :param priority:
+            An optional priority as an integer with at most 3 digits.
+            Lower values signify higher priority.
+        :param timeout:
+            Maximum waiting time in seconds. If None then it will wait
+            untill lock will be released
+        """
+        if not isinstance(values, list):
+            raise TypeError("values must be a list of byte strings")
+        if not isinstance(priority, int):
+            raise TypeError("priority must be an int")
+        elif priority < 0 or priority > 999:
+            raise ValueError("priority must be between 0 and 999")
+
+        lock = Lock(self.client, self._uniq_lock_path)
+        lock.acquire(timeout=timeout)
+
+        self._ensure_paths()
+
+        with self.client.transaction() as transaction:
+            for value in values:
+                if not isinstance(value, bytes):
+                    raise TypeError("value must be a byte string")
+                if self._check_uniq(value):
+                    transaction.create(
+                        "{path}/{prefix}-{priority:03d}-".format(
+                            path=self._entries_path,
+                            prefix=self.entry,
+                            priority=priority),
+                        value, sequence=True)
+                elif not self._ignore_duplicates:
+                    raise ValueError("Duplicate value {value}".format(
+                        value=value))
+
+        lock.release()
+
