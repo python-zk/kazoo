@@ -365,19 +365,20 @@ class LockingUniqQueue(LockingQueue):
         lock = Lock(self.client, self._uniq_lock_path)
         lock.acquire(timeout=timeout)
 
-        if self._check_uniq(value):
-            self._ensure_paths()
-            self.client.create(
-                "{path}/{prefix}-{priority:03d}-".format(
-                    path=self._entries_path,
-                    prefix=self.entry,
-                    priority=priority),
-                value, sequence=True)
-        elif not self._ignore_duplicates:
-            raise ValueError("Duplicate value {value}".format(
-                value=value))
-
-        lock.release()
+        try:
+            if self._check_uniq(value):
+                self._ensure_paths()
+                self.client.create(
+                    "{path}/{prefix}-{priority:03d}-".format(
+                        path=self._entries_path,
+                        prefix=self.entry,
+                        priority=priority),
+                    value, sequence=True)
+            elif not self._ignore_duplicates:
+                raise ValueError("Duplicate value {value}".format(
+                    value=value))
+        finally:
+            lock.release()
 
     def put_all(self, values, priority=100, timeout=None):
         """Put several entries into the queue. The action only succeeds
@@ -401,22 +402,23 @@ class LockingUniqQueue(LockingQueue):
         lock = Lock(self.client, self._uniq_lock_path)
         lock.acquire(timeout=timeout)
 
-        self._ensure_paths()
+        try:
+            self._ensure_paths()
 
-        with self.client.transaction() as transaction:
-            for value in values:
-                if not isinstance(value, bytes):
-                    raise TypeError("value must be a byte string")
-                if self._check_uniq(value):
-                    transaction.create(
-                        "{path}/{prefix}-{priority:03d}-".format(
-                            path=self._entries_path,
-                            prefix=self.entry,
-                            priority=priority),
-                        value, sequence=True)
-                elif not self._ignore_duplicates:
-                    raise ValueError("Duplicate value {value}".format(
-                        value=value))
-
-        lock.release()
+            with self.client.transaction() as transaction:
+                for value in values:
+                    if not isinstance(value, bytes):
+                        raise TypeError("value must be a byte string")
+                    if self._check_uniq(value):
+                        transaction.create(
+                            "{path}/{prefix}-{priority:03d}-".format(
+                                path=self._entries_path,
+                                prefix=self.entry,
+                                priority=priority),
+                            value, sequence=True)
+                    elif not self._ignore_duplicates:
+                        raise ValueError("Duplicate value {value}".format(
+                            value=value))
+        finally:
+            lock.release()
 
