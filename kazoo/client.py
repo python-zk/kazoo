@@ -788,8 +788,15 @@ class KazooClient(object):
 
         async_result = self.handler.async_result()
 
+        @capture_exceptions(async_result)
         def do_create():
-            self._create_async_inner(path, value, acl, flags, trailing=sequence).rawlink(create_completion)
+            result = self._create_async_inner(path, value, acl, flags, trailing=sequence)
+            if result.exception is not None:
+                # Closed connection might have set the exception for
+                # the async_result object. If that is the case, we'll
+                # raise the exception immediately
+                raise result.exception
+            result.rawlink(create_completion)
 
         @capture_exceptions(async_result)
         def retry_completion(result):

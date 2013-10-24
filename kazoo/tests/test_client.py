@@ -342,6 +342,14 @@ class TestClient(KazooTestCase):
         eq_(path, "/1")
         self.assertTrue(client.exists("/1"))
 
+    def test_create_on_closed_connection(self):
+        client = self.client
+        client.stop()
+        client.close()
+
+        self.assertRaises(ConnectionClosedError, client.create,
+                          '/closedpath', b'bar')
+
     def test_create_unicode_path(self):
         client = self.client
         path = client.create(u("/ascii"))
