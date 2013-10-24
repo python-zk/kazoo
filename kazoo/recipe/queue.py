@@ -309,7 +309,16 @@ class LockingQueue(BaseQueue):
         return (id_, value)
 
 class LockingUniqQueue(LockingQueue):
-    """Queue based on :class:`LockingQueue` for storing only unique values.
+    """A distributed queue based on :class:`LockingQueue` with support of
+    filtering values.
+
+    This queue will be useful if you need to prevent duplication of entries.
+    Unlike :meth:`LockingQueue.put`, implementation of :meth:`LockingUniqQueue.put`
+    is using :class:`~kazoo.recipe.lock.Lock` to synchronize operation to
+    appending entries. Before adding entry to queue, :meth:`LockingUniqQueue.put`
+    locks execution(or waits for release lock) to check is entry already
+    in queue. This functionality can be used for storing the same entries
+    to one queue from more than one data source.
     """
 
     uniq_lock = '/uniq_lock'
