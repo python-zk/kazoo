@@ -1,3 +1,8 @@
+.. image:: https://travis-ci.org/benalexau/kazoo.png?branch=master
+   :alt: Travis build status image
+   :align: left
+   :target: https://travis-ci.org/benalexau/kazoo
+
 =====
 Kazoo
 =====
