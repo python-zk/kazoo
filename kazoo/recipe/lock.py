@@ -109,7 +109,7 @@ class Lock(object):
         if self._MODE_SHARED in path or self._MODE_EXCLUSIVE in path:
             raise ValueError('Path "{}" contains a reserved word'.format(path))
 
-        if identifier and self._UNLOCK_REQUEST in identifier:
+        if identifier and self._UNLOCK_REQUEST in str(identifier):
             raise ValueError('Identifier "{}" contains a reserved word'.format(
                 identifier))
 
