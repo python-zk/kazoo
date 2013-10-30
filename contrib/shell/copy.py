@@ -105,6 +105,12 @@ class Proxy(object):
 
         return urlparse.urlparse(url_string)
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        pass
+
     def check_path(self):
         raise NotImplementedError, "check_path must be implemented"
 
@@ -133,7 +139,7 @@ class ZKProxy(Proxy):
     def check_path(self):
         retval = True if self.client.exists(self.path) else False
         if retval is not self.exists:
-            if exists:
+            if self.exists:
                 m = "znode %s in %s doesn't exist" % \
                     (self.path, self.host)
             else:
@@ -229,14 +235,16 @@ def copy(src_url, dst_url, recursive=False, overwrite=False, verbose=False):
     src = Proxy.from_string(src_url, True)
     dst = Proxy.from_string(dst_url, None if overwrite else False)
 
-    if not recursive:
-        do_copy(src, dst, verbose)
-    else:
-        if src.scheme == "zk" and dst.scheme == "file":
-            raise CopyError("Recursive copy from zk to fs isn't supported")
+    # basic sanity check
+    if recursive and src.scheme == "zk" and dst.scheme == "file":
+        raise CopyError("Recursive copy from zk to fs isn't supported")
 
-        children = src.children_of()
-        for c in children:
-            src.set_url("%s/%s" % (src_url, c))
-            dst.set_url("%s/%s" % (dst_url, c))
+    with src, dst:
+        if not recursive:
             do_copy(src, dst, verbose)
+        else:
+            children = src.children_of()
+            for c in children:
+                src.set_url("%s/%s" % (src_url, c))
+                dst.set_url("%s/%s" % (dst_url, c))
+                do_copy(src, dst, verbose)
