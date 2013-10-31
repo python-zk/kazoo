@@ -178,10 +178,8 @@ class FileProxy(Proxy):
 
     def check_path(self):
         if os.path.exists(self.path) is not self.exists:
-            if exists:
-                m = "Path %s doesn't exist" % (self.path)
-            else:
-                m = "Path %s exists" % (self.path)
+            m = "Path %s " % (self.path)
+            m += "doesn't exist" if self.exists else "exists"
             raise CopyError(m)
 
     def read_path(self):
