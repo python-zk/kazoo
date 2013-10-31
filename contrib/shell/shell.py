@@ -556,4 +556,7 @@ if __name__ == '__main__':
     parser.add_argument("hosts", nargs="*", help="ZK hosts to connect")
     params = parser.parse_args()
 
-    Shell(params.hosts).run()
+    try:
+        Shell(params.hosts).run()
+    except KeyboardInterrupt:
+        print("\n")
