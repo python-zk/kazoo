@@ -274,6 +274,12 @@ class JSONProxy(Proxy):
         self._tree[self.path]["acls"] = []  # not implemented (yet)
         self._dirty = True
 
+    def children_of(self):
+        offs = 1 if self.path == "/" else len(self.path) + 1
+        return map(lambda c: c[offs:],
+                   filter(lambda k: k != self.path and k.startswith(self.path),
+                          self._tree.keys()))
+
 
 def do_copy(src, dst, verbose=False):
     if verbose:
@@ -313,9 +319,8 @@ def copy(src_url, dst_url, recursive=False, overwrite=False, verbose=False):
         raise CopyError("Recursive copy from zk to fs isn't supported")
 
     with src, dst:
-        if not recursive:
-            do_copy(src, dst, verbose)
-        else:
+        do_copy(src, dst, verbose)
+        if recursive:
             children = src.children_of()
             for c in children:
                 src.set_url(url_join(src_url, c))
