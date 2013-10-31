@@ -131,12 +131,13 @@ example:
 
     @connected
     @ensure_params([("path", True), ("acls", "+")])
+    @check_path_exists
     def do_set_acls(self, params):
         acls = self._extract_acls(params.acls)
         try:
             self._zk.set_acls(params.path, acls)
         except Exception as ex:
-            print(str(ex))
+            print("Failed to set ACLs: %s. Error: %s" % (str(acls), str(ex)))
 
     def help_set_acls(self):
         print("""
