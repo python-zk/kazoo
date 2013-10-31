@@ -2,7 +2,8 @@
 
 from __future__ import print_function
 
-from collections import namedtuple
+from collections import defaultdict, namedtuple
+import json
 import os
 import re
 import urlparse
@@ -216,6 +217,64 @@ class FileProxy(Proxy):
         return all
 
 
+@scheme_handler("json")
+class JSONProxy(Proxy):
+    """ read/write from JSON files discovered via:
+
+          json://!some!path!backup.json/some/path
+
+        the serialized version looks like this:
+
+        .. code-block:: python
+
+         {
+          '/some/path': {
+             'content': 'blob',
+             'acls': []},
+          '/some/other/path': {
+             'content': 'other-blob',
+             'acls': []},
+         }
+
+        For simplicity, a flat dictionary is used as opposed as
+        using a tree like format with children accessible from
+        their parent.
+    """
+
+    def __enter__(self):
+        self._dirty = False  # tracks writes
+        self._file_path = self.host.replace("!", "/")
+
+        self._tree = defaultdict(dict)
+        if os.path.exists(self._file_path):
+            with open(self._file_path, "r") as fp:
+                self._tree = json.load(fp)
+
+        if self.exists is not None:
+            self.check_path()
+
+    def __exit__(self, type, value, traceback):
+        if not self._dirty:
+            return
+
+        with open(self._file_path, "w") as fp:
+            json.dump(self._tree, fp, indent=4)
+
+    def check_path(self):
+        if (self.path in self._tree) != self.exists:
+            m = "Path %s " % (self.path)
+            m += "doesn't exist" if self.exists else "exists"
+            raise CopyError(m)
+
+    def read_path(self):
+        return self._tree[self.path]["content"].encode('utf-8')
+
+    def write_path(self, content):
+        self._tree[self.path]["content"] = content
+        self._tree[self.path]["acls"] = []  # not implemented (yet)
+        self._dirty = True
+
+
 def do_copy(src, dst, verbose=False):
     if verbose:
         print("Copying from %s to %s" % (src.geturl(), dst.geturl()))
@@ -226,9 +285,25 @@ def do_copy(src, dst, verbose=False):
         raise CopyError("Failed to copy: %s" % (str(ex)))
 
 
+def url_join(url_root, child_path):
+    if url_root.endswith("/"):
+        return "%s%s" % (url_root, child_path)
+    else:
+        return "%s/%s" % (url_root, child_path)
+
+
 def copy(src_url, dst_url, recursive=False, overwrite=False, verbose=False):
     """
-    src and dst can be any either file://<path> or zk://[user:passwd@]host/<path>
+       src and dst can be any of:
+
+       file://<path>
+       zk://[user:passwd@]host/<path>
+       json://!some!path!backup.json/some/path
+
+       with a few restrictions (i.e.: bare in mind the semantic differences
+       that znodes have with filesystem directories - so recursive copying
+       from znodes to an fs could lose data, but to a JSON file it would
+       work just fine.
     """
     src = Proxy.from_string(src_url, True)
     dst = Proxy.from_string(dst_url, None if overwrite else False)
@@ -243,6 +318,6 @@ def copy(src_url, dst_url, recursive=False, overwrite=False, verbose=False):
         else:
             children = src.children_of()
             for c in children:
-                src.set_url("%s/%s" % (src_url, c))
-                dst.set_url("%s/%s" % (dst_url, c))
+                src.set_url(url_join(src_url, c))
+                dst.set_url(url_join(dst_url, c))
                 do_copy(src, dst, verbose)
