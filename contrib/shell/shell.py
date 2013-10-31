@@ -209,6 +209,9 @@ example:
             znodes = self._zk.get_children(params.path)
         print(" ".join(znodes))
 
+    def complete_ls(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     @ensure_params([("src", True), ("dst", True),
                     ("recursive", False), ("overwrite", False),
                     ("verbose", False)])
@@ -236,6 +239,9 @@ example:
         print(".")
         self._print_tree(params.path, 0)
 
+    def complete_tree(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     def _print_tree(self, path, indent):
         for c in self._zk.get_children(path):
             print(u"%s├── %s" % (u"│   " * indent, c))
@@ -247,6 +253,9 @@ example:
     def do_cd(self, params):
         self._update_curdir(params.path)
 
+    def complete_cd(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     @connected
     @ensure_params([("path", True), ("watch", False)])
     @check_path_exists
@@ -256,6 +265,9 @@ example:
         else:
             value, stat = self._zk.get(params.path)
         print(value)
+
+    def complete_get(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
 
     def help_get(self):
         print("""
@@ -282,6 +294,9 @@ example:
         else:
             stat = self._zk.exists(params.path)
         print(stat)
+
+    def complete_exists(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
 
     def help_exists(self):
         print("""
@@ -354,6 +369,9 @@ example:
     def do_set(self, params):
         self._zk.set(params.path, params.value)
 
+    def complete_set(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     def help_set(self):
         print("""
 sets the value for a znode.
@@ -371,6 +389,9 @@ example:
         except NotEmptyError:
             print("%s is not empty." % (path))
 
+    def complete_rm(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     @connected
     @ensure_params([("path", True)])
     @check_path_exists
@@ -383,6 +404,9 @@ example:
             self._delete_recursive(child_path)
 
         self._zk.delete(path)
+
+    def complete_rmr(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
 
     def help_rmr(self):
         print("""
@@ -501,6 +525,30 @@ example:
         except IOError:
             pass
         atexit.register(readline.write_history_file, histfile)
+
+    def _complete_path(self, cmd_param_text, full_cmd):
+        pieces = shlex.split(full_cmd)
+        cmd_param = pieces[1] if len(pieces) > 1 else cmd_param_text
+        offs = len(cmd_param) - len(cmd_param_text)
+        path = cmd_param[:-1] if cmd_param.endswith("/") else cmd_param
+
+        if re.match("^\s*$", path):
+            return self._zk.get_children(self.curdir)
+
+        if self._zk.exists(path):
+            opts = map(lambda z: "%s/%s" % (path, z),
+                       self._zk.get_children(self._abspath(path)))
+        elif "/" not in path:
+            znodes = self._zk.get_children(self.curdir)
+            opts = filter(lambda z: z.startswith(path), znodes)
+        else:
+            parent = os.path.dirname(path)
+            child = os.path.basename(path)
+            opts = map(lambda z: "%s/%s" % (parent, z),
+                       filter(lambda z: z.startswith(child),
+                              self._zk.get_children(parent)))
+
+        return map(lambda x: x[offs:], opts)
 
 
 if __name__ == '__main__':
