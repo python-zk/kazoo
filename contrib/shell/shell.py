@@ -385,6 +385,9 @@ example:
                         sequence=sequence,
                         makepath=makepath)
 
+    def complete_create(self, cmd_param_text, full_cmd, start_idx, end_idx):
+        return self._complete_path(cmd_param_text, full_cmd)
+
     def help_create(self):
         print("""
 creates a znode in a given path. it can also be ephemeral and/or sequential. it can also be created recursively.
