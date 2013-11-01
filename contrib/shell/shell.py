@@ -30,7 +30,6 @@ from __future__ import print_function
 
 import argparse
 import cmd
-from collections import defaultdict
 import os
 import re
 import shlex
@@ -38,10 +37,11 @@ import sys
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NotEmptyError
-from kazoo.protocol.states import EventType
 from kazoo.security import make_acl, make_digest_acl
 
 from copy import copy, CopyError
+from watch_manager import get_watch_manager
+
 
 class ShellParser(argparse.ArgumentParser):
     def error(self, message):
@@ -59,7 +59,6 @@ class Shell(cmd.Cmd):
         self._zk = None
         self._read_only = False
         self.connected = False
-        self._watching_paths = {}
 
         if len(self._hosts) > 0:
             self._connect(self._hosts)
@@ -221,46 +220,25 @@ example:
                     ("path", True)])
     @check_path_exists
     def do_watch(self, params):
+        wm = get_watch_manager(self._zk)
         if params.command == "start":
-            if params.path in self._watching_paths:
-                print("%s is already being watched" % (params.path))
-                return
-
-            self._watching_paths[params.path] = defaultdict(int)
-            self._set_watches(params.path)
+            wm.add(params.path)
         elif params.command == "stop":
-            if params.path not in self._watching_paths:
-                print("%s is not being watched" % (params.path))
-                return
-            del self._watching_paths[params.path]
+            wm.remove(params.path)
         elif params.command == "stats":
-            if params.path not in self._watching_paths:
-                print("%s is not being watched" % (params.path))
-                return
-
-            print("\nWatches Stats\n")
-            for path, count in self._watching_paths[params.path].items():
-                print("%s: %d" % (path, count))
+            wm.stats(params.path)
         else:
             print("watch <start|stop> <path> [verbose]")
 
-    def _set_watches(self, path):
-        for c in self._zk.get_children(path, self._watches_stats_watcher):
-            self._set_watches("%s/%s" % (path, c))
+    def help_watch(self):
+        print("""
+Recursively watch for all changes under a path.
 
-    def _watches_stats_watcher(self, watched_event):
-        try:
-            if watched_event.type != EventType.CHILD:
-                return
-
-            for path, stats in self._watching_paths.items():
-                if watched_event.path.startswith(path):
-                    stats[watched_event.path] += 1
-
-            self._zk.get_children(watched_event.path,
-                                  self._watches_stats_watcher)
-        except Exception as ex:
-            print(str(ex))
+examples:
+  watch start /foo/bar
+  watch stop /foo/bar
+  watch stats /foo/bar
+""")
 
     @ensure_params([("src", True), ("dst", True),
                     ("recursive", False), ("overwrite", False),
