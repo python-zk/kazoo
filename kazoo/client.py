@@ -791,11 +791,7 @@ class KazooClient(object):
         @capture_exceptions(async_result)
         def do_create():
             result = self._create_async_inner(path, value, acl, flags, trailing=sequence)
-            if isinstance(result.exception, (
-                    KeeperState.AUTH_FAILED,
-                    KeeperState.CLOSED,
-                    KeeperState.EXPIRED_SESSION,
-                    KeeperState.CONNECTIONG)):
+            if isinstance(result.exception, ConnectionClosedError):
                 # Closed connection might have set the exception for
                 # the async_result object. If that is the case, we'll
                 # raise the exception immediately
