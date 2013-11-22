@@ -112,7 +112,6 @@ class Lock(object):
             self.cancelled = False
             raise
 
-
         if not self.is_acquired:
             self._delete_node(self.node)
 
