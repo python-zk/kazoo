@@ -387,13 +387,12 @@ class ConnectionHandler(object):
         elif header.xid == AUTH_XID:
             self.logger.debug('Received AUTH')
 
+            request, async_object, xid = client._pending.popleft()
             if header.err:
-                # We go ahead and fail out the connection, mainly because
-                # thats what Zookeeper client docs think is appropriate
-
-                # XXX TODO: Should we fail out? Or handle auth failure
-                # differently here since the session id is actually valid!
+                async_object.set_exception(AuthFailedError())
                 client._session_callback(KeeperState.AUTH_FAILED)
+            else:
+                async_object.set(True)
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
         else:
@@ -427,17 +426,15 @@ class ConnectionHandler(object):
 
         # Special case for auth packets
         if request.type == Auth.type:
-            self._submit(request, connect_timeout, AUTH_XID)
-            client._queue.popleft()
-            os.read(self._read_pipe, 1)
-            return
+            xid = AUTH_XID
+        else:
+            self._xid += 1
+            xid = self._xid
 
-        self._xid += 1
-
-        self._submit(request, connect_timeout, self._xid)
+        self._submit(request, connect_timeout, xid)
         client._queue.popleft()
         os.read(self._read_pipe, 1)
-        client._pending.append((request, async_object, self._xid))
+        client._pending.append((request, async_object, xid))
 
     def _send_ping(self, connect_timeout):
         self.ping_outstanding.set()
