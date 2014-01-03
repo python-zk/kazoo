@@ -45,6 +45,12 @@ class DataWatch(object):
     If the node does not exist, then the function will be called with
     ``None`` for all values.
 
+    .. tip::
+
+        Because :class:`DataWatch` can watch nodes that don't exist, it
+        can be used alternatively as a higher-level Exists watcher that
+        survives reconnections and session loss.
+
     Example with client:
 
     .. code-block:: python

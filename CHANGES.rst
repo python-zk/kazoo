@@ -13,6 +13,11 @@ Bug Handling
   the read timeout to ensure a negative number isn't used for the read
   timeout.
 
+Documentation
+*************
+
+- Add note about alternate use of DataWatch.
+
 1.3.1 (2013-09-25)
 ------------------
 
