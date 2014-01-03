@@ -7,6 +7,8 @@ Changelog
 Bug Handling
 ************
 
+- Passing dictionaries to KazooClient.__init__() wasn't actually working
+  properly. Patch by Ryan Uber.
 - Issue #119: Handler timeout takes the max of the random interval or
   the read timeout to ensure a negative number isn't used for the read
   timeout.
