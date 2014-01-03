@@ -94,6 +94,14 @@ class TestClientConstructor(unittest.TestCase):
         timeout = client.handler.timeout_exception
         self.assertRaises(timeout, client.start, 0.1)
 
+    def test_retry_options_dict(self):
+        from kazoo.retry import KazooRetry
+        client = self._makeOne(command_retry=dict(max_tries=99),
+                               connection_retry=dict(delay=99))
+        self.assertTrue(type(client._conn_retry) is KazooRetry)
+        self.assertTrue(type(client.retry) is KazooRetry)
+        eq_(client.retry.max_tries, 99)
+        eq_(client._conn_retry.delay, 99)
 
 class TestConnection(KazooTestCase):
     def _makeAuth(self, *args, **kwargs):
