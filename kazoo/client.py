@@ -477,19 +477,24 @@ class KazooClient(object):
 
     def _call(self, request, async_object):
         """Ensure there's an active connection and put the request in
-        the queue if there is."""
+        the queue if there is.
+
+        Returns False if the call short circuits due to AUTH_FAILED,
+        CLOSED, EXPIRED_SESSION or CONNECTING state.
+
+        """
 
         if self._state == KeeperState.AUTH_FAILED:
             async_object.set_exception(AuthFailedError())
-            return
+            return False
         elif self._state == KeeperState.CLOSED:
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
-            return
+            return False
         elif self._state in (KeeperState.EXPIRED_SESSION,
                              KeeperState.CONNECTING):
             async_object.set_exception(SessionExpiredError())
-            return
+            return False
 
         self._queue.append((request, async_object))
 
@@ -806,8 +811,10 @@ class KazooClient(object):
 
         async_result = self.handler.async_result()
 
+        @capture_exceptions(async_result)
         def do_create():
-            self._create_async_inner(path, value, acl, flags, trailing=sequence).rawlink(create_completion)
+            result = self._create_async_inner(path, value, acl, flags, trailing=sequence)
+            result.rawlink(create_completion)
 
         @capture_exceptions(async_result)
         def retry_completion(result):
@@ -832,8 +839,16 @@ class KazooClient(object):
 
     def _create_async_inner(self, path, value, acl, flags, trailing=False):
         async_result = self.handler.async_result()
-        self._call(Create(_prefix_root(self.chroot, path, trailing=trailing), value, acl, flags),
-                   async_result)
+        call_result = self._call(
+            Create(_prefix_root(self.chroot, path, trailing=trailing),
+                   value, acl, flags), async_result)
+        if call_result is False:
+            # We hit a short-circuit exit on the _call. Because we are
+            # not using the original async_result here, we bubble the
+            # exception upwards to the do_create function in
+            # KazooClient.create so that it gets set on the correct
+            # async_result object
+            raise async_result.exception
         return async_result
 
     def ensure_path(self, path, acl=None):

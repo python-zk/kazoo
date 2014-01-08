@@ -11,6 +11,7 @@ from nose.tools import raises
 
 from kazoo.testing import KazooTestCase
 from kazoo.exceptions import (
+    AuthFailedError,
     BadArgumentsError,
     ConfigurationError,
     ConnectionClosedError,
@@ -19,7 +20,9 @@ from kazoo.exceptions import (
     NoAuthError,
     NoNodeError,
     NodeExistsError,
+    SessionExpiredError,
 )
+from kazoo.protocol.states import KeeperState
 
 
 if sys.version_info > (3, ):  # pragma: nocover
@@ -365,6 +368,27 @@ class TestClient(KazooTestCase):
         path = client.create("/1")
         eq_(path, "/1")
         self.assertTrue(client.exists("/1"))
+
+    def test_create_on_broken_connection(self):
+        client = self.client
+        client.start()
+
+        client._state = KeeperState.EXPIRED_SESSION
+        self.assertRaises(SessionExpiredError, client.create,
+                          '/closedpath', b'bar')
+
+        client._state = KeeperState.AUTH_FAILED
+        self.assertRaises(AuthFailedError, client.create,
+                          '/closedpath', b'bar')
+
+        client._state = KeeperState.CONNECTING
+        self.assertRaises(SessionExpiredError, client.create,
+                          '/closedpath', b'bar')
+        client.stop()
+        client.close()
+
+        self.assertRaises(ConnectionClosedError, client.create,
+                          '/closedpath', b'bar')
 
     def test_create_unicode_path(self):
         client = self.client
