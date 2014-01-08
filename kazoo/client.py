@@ -633,8 +633,16 @@ class KazooClient(object):
         :param scheme: authentication scheme (default supported:
                        "digest").
         :param credential: the credential -- value depends on scheme.
+
+        :returns: True if it was successful.
+        :rtype: bool
+
+        :raises:
+            :exc:`~kazoo.exceptions.AuthFailedError` if it failed though
+            the session state will be set to AUTH_FAILED as well.
+
         """
-        return self.add_auth_async(scheme, credential)
+        return self.add_auth_async(scheme, credential).get()
 
     def add_auth_async(self, scheme, credential):
         """Asynchronously send credentials to server. Takes the same
@@ -647,8 +655,10 @@ class KazooClient(object):
             raise TypeError("Invalid type for scheme")
         if not isinstance(credential, basestring):
             raise TypeError("Invalid type for credential")
-        self._call(Auth(0, scheme, credential), None)
-        return True
+
+        async_result = self.handler.async_result()
+        self._call(Auth(0, scheme, credential), async_result)
+        return async_result
 
     def unchroot(self, path):
         """Strip the chroot if applicable from the path."""

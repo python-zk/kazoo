@@ -201,6 +201,22 @@ class TestConnection(KazooTestCase):
         self.assertRaises(TypeError, self.client.add_auth,
             None, ('user', 'pass'))
 
+    def test_async_auth(self):
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
+        digest_auth = "%s:%s" % (username, password)
+        result = self.client.add_auth_async("digest", digest_auth)
+        self.assertTrue(result.get())
+
+    def test_async_auth_failure(self):
+        from kazoo.exceptions import AuthFailedError
+
+        username = uuid.uuid4().hex
+        password = uuid.uuid4().hex
+        digest_auth = "%s:%s" % (username, password)
+
+        self.assertRaises(AuthFailedError, self.client.add_auth, "unknown-scheme", digest_auth)
+
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
 
