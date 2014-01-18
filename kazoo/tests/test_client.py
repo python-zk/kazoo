@@ -449,6 +449,13 @@ class TestClient(KazooTestCase):
         version = client.server_version()
         self.assertEqual(len(acls), 1 if version > (3, 4) else 2)
 
+    def test_create_acl_empty_list(self):
+        from kazoo.security import OPEN_ACL_UNSAFE
+        client = self.client
+        client.create("/1", acl=[])
+        acls, stat = client.get_acls("/1")
+        self.assertEqual(acls, OPEN_ACL_UNSAFE)
+
     def test_version_no_connection(self):
         @raises(ConnectionLoss)
         def testit():
