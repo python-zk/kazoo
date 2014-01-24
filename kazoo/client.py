@@ -792,7 +792,7 @@ class KazooClient(object):
         if acl and (isinstance(acl, ACL) or
                     not isinstance(acl, (tuple, list))):
             raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(value, bytes):
+        if value is not None and not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
         if not isinstance(ephemeral, bool):
             raise TypeError("ephemeral must be a bool")
@@ -1164,7 +1164,7 @@ class KazooClient(object):
         """
         if not isinstance(path, basestring):
             raise TypeError("path must be a string")
-        if not isinstance(value, bytes):
+        if value is not None and not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
         if not isinstance(version, int):
             raise TypeError("version must be an int")
