@@ -4,6 +4,17 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Features
+********
+
+- Logging levels have been reduced.
+
+  - Logging previously at the ``logging.DEBUG`` level is now logged at
+    the ``kazoo.loggingsupport.BLATHER`` level (5).
+
+  - Some low-level logging previously at the ``logging.INFO`` level is
+    now logged at the ``logging.DEBUG`` level.
+
 Bug Handling
 ************
 

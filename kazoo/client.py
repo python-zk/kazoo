@@ -21,6 +21,7 @@ from kazoo.exceptions import (
 from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
+from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
@@ -418,7 +419,7 @@ class KazooClient(object):
         # transitions since they only apply after
         # we've established a connection
         if dead_state and state == KeeperState.CONNECTING:
-            self.logger.debug("Skipping state change")
+            self.logger.log(BLATHER, "Skipping state change")
             return
 
         if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
@@ -1394,5 +1395,5 @@ class TransactionRequest(object):
 
     def _add(self, request, post_processor=None):
         self._check_tx_state()
-        self.client.logger.debug('Added %r to %r', request, self)
+        self.client.logger.log(BLATHER, 'Added %r to %r', request, self)
         self.operations.append(request)
