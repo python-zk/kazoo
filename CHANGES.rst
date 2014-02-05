@@ -4,6 +4,12 @@ Changelog
 1.4 (unreleased)
 ----------------
 
+Features
+********
+
+- Issue #xxx: Add shared locks and revocable shared lock support.
+
+
 Bug Handling
 ************
 

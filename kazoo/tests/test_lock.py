@@ -1,7 +1,7 @@
 import uuid
 import threading
 
-from nose.tools import eq_, ok_
+from nose.tools import eq_, ok_, raises
 
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import LockTimeout
@@ -68,7 +68,7 @@ class KazooLockTests(KazooTestCase):
         self.released.wait()
         thread.join()
 
-    def test_lock(self):
+    def test_exclusive_only_lock(self):
         threads = []
         names = ["contender" + str(i) for i in range(5)]
 
@@ -250,6 +250,212 @@ class KazooLockTests(KazooTestCase):
             e.set()
             t.join()
             client2.stop()
+
+
+class KazooSharedLockTests(KazooTestCase):
+    def setUp(self):
+        super(KazooSharedLockTests, self).setUp()
+        self.lockpath = "/" + uuid.uuid4().hex
+        self.condition = threading.Condition()
+        self.active_threads = []
+        self.cancelled_threads = []
+        self.callback_threads = []
+
+    def test_all_exclusive_locks(self):
+        self._do_test(contender_count=10, exclusive_mod=1)
+
+    def test_all_shared_locks(self):
+        self._do_test(contender_count=10, exclusive_mod=0)
+
+    def test_mixture_shared_exclusive_locks(self):
+        self._do_test(contender_count=10, exclusive_mod=3)
+
+    def test_revocations_published(self):
+        self._do_test(contender_count=10, exclusive_mod=2, revocation_mod=4)
+
+    def test_revocations_call_back(self):
+        self._do_test(contender_count=10, exclusive_mod=2, revocation_mod=4,
+                      callback_mod=3)
+
+    @raises(ValueError)
+    def test_reserved_word_shared(self):
+        self.client.Lock(self.lockpath + "__SHARED__")
+
+    @raises(ValueError)
+    def test_reserved_word_exclusive(self):
+        self.client.Lock(self.lockpath + "__EXCLUSIVE__")
+
+    @raises(ValueError)
+    def test_reserved_word_unlock(self):
+        self.client.Lock(self.lockpath, "identifier __UNLOCK__")
+
+    def _do_test(self, contender_count, exclusive_mod=0,
+                 revocation_mod=0, callback_mod=0,
+                 callback_action_mod=0):
+        """Runs a shared lock test based on the parameters given. Allows
+        testing different combinations of shared vs exclusive locks, locks that
+        request revocations, and locks that receive callbacks. This is useful
+        given the range of lock strategies offered by ``Lock``.
+
+        The method computes the expected groups of locks that should occur
+        given the parameters. It then tests the state of the lock system at
+        each of these phases, such as which locks have been acquired, which
+        are pending, whether revocations have been issued, and whether a single
+        revocation callback has been received for impacted locks.
+
+        The main parameter is ``contender_count``, which indicates how many
+        concurrent lock contenders with associated threads will be created. The
+        remaining parameters indicate the modulus interval (of the contender
+        identifier) that will attract a particular behavior. For example, a
+        ``contender_count`` of 20 with an ``exclusive_mod`` of 6 will produce
+        lock contenders numbered 0 to 19, and contenders numbered 0, 6, 12 and
+        18 will request exclusive locks. Use modulus 0 to disable a behaviour.
+
+        :param contender_count: number of contenders to create
+        :param exclusive_mod: the modulus that will be used to produce
+                              exclusive locks (use 1 to make all contenders use
+                              exclusive locks, or 0 for all contenders to use
+                              shared locks)
+        :param revocation_mod: the modulus that will request revocation of any
+                               existing lock
+        :param callback_mod: the modulus that will request an unlock callback
+
+        """
+        # record the lock contenders we're creating
+        def build_contenders(contender_count, modulus):
+            if modulus == 0:
+                return []
+            return ["contender" + str(i) for i in range(contender_count)
+                    if i % modulus == 0]
+
+        names = build_contenders(contender_count, 1)
+        exclusives = build_contenders(contender_count, exclusive_mod)
+        revokers = build_contenders(contender_count, revocation_mod)
+        callbacks = build_contenders(contender_count, callback_mod)
+
+        # compute the phases (ie groups of concurrent locks) that should occur
+        phases = []
+        this_phase = []
+        for name in names:
+            if name in exclusives:
+                if len(this_phase) > 0:
+                    phases.append(this_phase)  # store last phase
+                phases.append([name])  # record a phase with just the exclusive
+                this_phase = []  # start new phase
+            else:
+                this_phase.append(name)  # shared
+        phases.append(this_phase)  # store the final phase
+
+        # setup our contenders
+        threads = []
+        contender_bits = {}
+        for name in names:
+            e = threading.Event()
+
+            exclusive = True if name in exclusives else False
+            l = self.client.Lock(self.lockpath, name, exclusive=exclusive)
+
+            revoke = True if name in revokers else False
+            callback = True if name in callbacks else False
+            revoke = True if name in revokers else False
+            t = threading.Thread(target=self._thread_lock_acquire_til_event,
+                                 args=(name, l, e, revoke, callback))
+            contender_bits[name] = (t, e)
+            threads.append(t)
+
+        # acquire the lock ourselves first to make the others line up
+        lock = self.client.Lock(self.lockpath, "test")
+        lock.acquire()
+
+        # start threads one-by-one to prevent thread scheduling inconsistencies
+        for contender in names:
+            thread, event = contender_bits[contender]
+            thread.start()
+            wait(lambda: contender in lock.contenders())
+
+        contenders = lock.contenders()
+        eq_(contenders[0], "test")
+        contenders = contenders[1:]
+        remaining = list(contenders)
+
+        # release the lock and contenders should claim it in order
+        lock.release()
+
+        # validate state at each phase
+        for phase in phases:
+            for contender in phase:
+                thread, event = contender_bits[contender]
+
+                with self.condition:
+                    while not contender in self.active_threads:
+                        self.condition.wait()
+
+            # all claim to have their locks, so check expected remainders
+            eq_(lock.contenders(), remaining)
+            remaining = [x for x in remaining if x not in phase]
+
+            unlocks = lock.contenders(unlocks_only=True)
+            if not set(remaining).isdisjoint(revokers):
+                # 1+ revoker is remaining, so revocations should have been made
+                # for at least all members of this phase
+                ok_(set(phase).issubset(set(unlocks)))
+
+                # in addition all members of this phase with callbacks should
+                # have fired
+                for expected_callback in set(phase).intersection(callbacks):
+                    with self.condition:
+                        while not expected_callback in self.callback_threads:
+                            self.condition.wait()
+
+            # release their locks
+            for contender in phase:
+                thread, event = contender_bits[contender]
+                event.set()
+
+                with self.condition:
+                    while contender in self.active_threads:
+                        self.condition.wait()
+
+        # ensure all terminate
+        for thread in threads:
+            thread.join()
+
+    def _thread_lock_acquire_til_event(self, name, lock, event, revoke,
+                                       listener):
+        unlock = None
+        if listener:
+            def unlock_callback():
+                with self.condition:
+                    # ensures callback only fired once
+                    ok_(name not in self.callback_threads)
+                    self.callback_threads.append(name)
+                    self.condition.notify_all()
+            unlock = unlock_callback
+
+        try:
+            if lock.acquire(revoke=revoke, unlock=unlock):
+                # record we have a lock
+                with self.condition:
+                    ok_(name not in self.active_threads)
+                    self.active_threads.append(name)
+                    self.condition.notify_all()
+
+                event.wait()
+
+                # record we're releasing our lock
+                with self.condition:
+                    ok_(name in self.active_threads)
+                    self.active_threads.remove(name)
+                    self.condition.notify_all()
+            else:
+                raise AssertionError('{} never acquired lock'.format(name))
+        except CancelledError:
+            with self.condition:
+                self.cancelled_threads.append(name)
+                self.condition.notify_all()
+        finally:
+            lock.cancel()
+            lock.release()
 
 
 class TestSemaphore(KazooTestCase):
