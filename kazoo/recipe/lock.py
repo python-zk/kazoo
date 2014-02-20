@@ -117,6 +117,10 @@ class Lock(object):
 
         return self.is_acquired
 
+    def _watch_session(self, state):
+        self.wake_event.set()
+        return True
+
     def _inner_acquire(self, blocking, timeout):
         # make sure our election parent node exists
         if not self.assured_path:
@@ -161,11 +165,15 @@ class Lock(object):
 
             # otherwise we are in the mix. watch predecessor and bide our time
             predecessor = self.path + "/" + children[our_index - 1]
-            if self.client.exists(predecessor, self._watch_predecessor):
-                self.wake_event.wait(timeout)
-                if not self.wake_event.isSet():
-                    raise LockTimeout("Failed to acquire lock on %s after %s "
-                                      "seconds" % (self.path, timeout))
+            self.client.add_listener(self._watch_session)
+            try:
+                if self.client.exists(predecessor, self._watch_predecessor):
+                    self.wake_event.wait(timeout)
+                    if not self.wake_event.isSet():
+                        raise LockTimeout("Failed to acquire lock on %s after %s "
+                                          "seconds" % (self.path, timeout))
+            finally:
+                self.client.remove_listener(self._watch_session)
 
     def acquired_lock(self, children, index):
         return index == 0
