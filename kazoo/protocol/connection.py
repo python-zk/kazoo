@@ -17,6 +17,7 @@ from kazoo.exceptions import (
     NoNodeError
 )
 from kazoo.handlers.utils import create_pipe
+from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
     Auth,
     Close,
@@ -240,7 +241,8 @@ class ConnectionHandler(object):
                 zxid = header.zxid
             if header.err:
                 callback_exception = EXCEPTIONS[header.err]()
-                self.logger.info('Received error(xid=%s) %r', xid, callback_exception)
+                self.logger.debug(
+                    'Received error(xid=%s) %r', xid, callback_exception)
                 raise callback_exception
             return zxid
 
@@ -257,7 +259,7 @@ class ConnectionHandler(object):
 
                 # raise ConnectionDropped so connect loop will retry
                 raise ConnectionDropped('invalid server response')
-            self.logger.debug('Read response %s', obj)
+            self.logger.log(BLATHER, 'Read response %s', obj)
             return obj, zxid
 
         return zxid
@@ -271,7 +273,7 @@ class ConnectionHandler(object):
         if request.type:
             b.extend(int_struct.pack(request.type))
         b += request.serialize()
-        self.logger.log((logging.DEBUG if isinstance(request, Ping) else logging.INFO),
+        self.logger.log((BLATHER if isinstance(request, Ping) else logging.DEBUG),
                         "Sending request(xid=%s): %s", xid, request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
@@ -297,7 +299,7 @@ class ConnectionHandler(object):
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
 
-        self.logger.info('Received EVENT: %s', watch)
+        self.logger.debug('Received EVENT: %s', watch)
 
         watchers = []
 
@@ -340,7 +342,8 @@ class ConnectionHandler(object):
         # Set the exception if its not an exists error
         if header.err and not exists_error:
             callback_exception = EXCEPTIONS[header.err]()
-            self.logger.info('Received error(xid=%s) %r', xid, callback_exception)
+            self.logger.debug(
+                'Received error(xid=%s) %r', xid, callback_exception)
             if async_object:
                 async_object.set_exception(callback_exception)
         elif request and async_object:
@@ -356,7 +359,8 @@ class ConnectionHandler(object):
                                           " of request: %s", request)
                     async_object.set_exception(exc)
                     return
-                self.logger.info('Received response(xid=%s): %r', xid, response)
+                self.logger.debug(
+                    'Received response(xid=%s): %r', xid, response)
 
                 # We special case a Transaction as we have to unchroot things
                 if request.type == Transaction.type:
@@ -373,7 +377,7 @@ class ConnectionHandler(object):
                     client._data_watchers[request.path].add(watcher)
 
         if isinstance(request, Close):
-            self.logger.debug('Read close response')
+            self.logger.log(BLATHER, 'Read close response')
             return CLOSE_RESPONSE
 
     def _read_socket(self, read_timeout):
@@ -382,10 +386,10 @@ class ConnectionHandler(object):
 
         header, buffer, offset = self._read_header(read_timeout)
         if header.xid == PING_XID:
-            self.logger.debug('Received Ping')
+            self.logger.log(BLATHER, 'Received Ping')
             self.ping_outstanding.clear()
         elif header.xid == AUTH_XID:
-            self.logger.debug('Received AUTH')
+            self.logger.log(BLATHER, 'Received AUTH')
 
             request, async_object, xid = client._pending.popleft()
             if header.err:
@@ -396,7 +400,7 @@ class ConnectionHandler(object):
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
         else:
-            self.logger.debug('Reading for header %r', header)
+            self.logger.log(BLATHER, 'Reading for header %r', header)
 
             return self._read_response(header, buffer, offset)
 
@@ -449,7 +453,7 @@ class ConnectionHandler(object):
 
     def zk_loop(self):
         """Main Zookeeper handling loop"""
-        self.logger.debug('ZK loop started')
+        self.logger.log(BLATHER, 'ZK loop started')
 
         self.connection_stopped.clear()
 
@@ -465,7 +469,7 @@ class ConnectionHandler(object):
             self.client._session_callback(KeeperState.CLOSED)
         finally:
             self.connection_stopped.set()
-            self.logger.debug('Connection stopped')
+            self.logger.log(BLATHER, 'Connection stopped')
 
     def _connect_loop(self, retry):
         # Iterate through the hosts a full cycle before starting over
@@ -492,7 +496,8 @@ class ConnectionHandler(object):
 
         # Were we given a r/w server? If so, use that instead
         if self._rw_server:
-            self.logger.debug("Found r/w server to use, %s:%s", host, port)
+            self.logger.log(BLATHER,
+                            "Found r/w server to use, %s:%s", host, port)
             host, port = self._rw_server
             self._rw_server = None
 
@@ -561,7 +566,8 @@ class ConnectionHandler(object):
         client = self.client
         self.logger.info('Connecting to %s:%s', host, port)
 
-        self.logger.debug('    Using session_id: %r session_passwd: %s',
+        self.logger.log(BLATHER,
+                          '    Using session_id: %r session_passwd: %s',
                           client._session_id,
                           hexlify(client._session_passwd))
 
@@ -590,7 +596,8 @@ class ConnectionHandler(object):
         read_timeout = negotiated_session_timeout * 2.0 / 3.0
         client._session_passwd = connect_result.passwd
 
-        self.logger.debug('Session created, session_id: %r session_passwd: %s\n'
+        self.logger.log(BLATHER,
+                          'Session created, session_id: %r session_passwd: %s\n'
                           '    negotiated session timeout: %s\n'
                           '    connect timeout: %s\n'
                           '    read timeout: %s', client._session_id,
