@@ -120,6 +120,33 @@ class KazooLockTests(KazooTestCase):
         for thread in threads:
             thread.join()
 
+    def test_lock_reconnect(self):
+        event = threading.Event()
+        other_lock = self.client.Lock(self.lockpath, 'contender')
+        thread = threading.Thread(target=self._thread_lock_acquire_til_event,
+                                  args=('contender', other_lock, event))
+
+        # acquire the lock ourselves first to make the contender line up
+        lock = self.client.Lock(self.lockpath, "test")
+        lock.acquire()
+
+        thread.start()
+        # wait for the contender to line up on the lock
+        wait(lambda: len(lock.contenders()) == 1)
+        eq_(lock.contenders(), ['test', 'contender'])
+
+        self.expire_session()
+
+        lock.release()
+
+        with self.condition:
+            while not self.active_thread:
+                self.condition.wait()
+            eq_(self.active_thread, 'contender')
+
+        event.set()
+        thread.join()
+
     def test_lock_non_blocking(self):
         lock_name = uuid.uuid4().hex
         lock = self.client.Lock(self.lockpath, lock_name)
