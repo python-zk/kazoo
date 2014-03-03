@@ -18,6 +18,8 @@ Features
 Bug Handling
 ************
 
+- Partitioner should handle a suspended connection properly and restore
+  an allocated state if it was allocated previously. Patch by Manish Tomar.
 - Issue #167: Closing a client that was never started throws a type error.
   Patch by Joshua Harlow.
 - Passing dictionaries to KazooClient.__init__() wasn't actually working
