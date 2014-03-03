@@ -172,6 +172,7 @@ class SetPartitioner(object):
                                           identifier=self._identifier)
         self._party.join()
 
+        self._was_allocated = False
         self._state_change = client.handler.rlock_object()
         client.add_listener(self._establish_sessionwatch)
 
@@ -342,6 +343,22 @@ class SetPartitioner(object):
     def _establish_sessionwatch(self, state):
         """Register ourself to listen for session events, we shut down
         if we become lost"""
+        with self._state_change:
+            # Handle network partition: If connection gets suspended,
+            # change state to ALLOCATING if we had already ACQUIRED. This way
+            # the caller does not process the members since we could eventually
+            # lose session get repartitioned. If we got connected after a suspension
+            # it means we've not lost the session and still have our members. Hence,
+            # restore to ACQUIRED
+            if state == KazooState.SUSPENDED:
+                if self.state == PartitionState.ACQUIRED:
+                    self._was_allocated = True
+                    self.state = PartitionState.ALLOCATING
+            elif state == KazooState.CONNECTED:
+                if self._was_allocated:
+                    self._was_allocated = False
+                    self.state = PartitionState.ACQUIRED
+
         if state == KazooState.LOST:
             self._client.handler.spawn(self._fail_out)
             return True
