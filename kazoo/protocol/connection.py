@@ -193,8 +193,10 @@ class ConnectionHandler(object):
         self.connection_closed.set()
         wp, rp = self._write_pipe, self._read_pipe
         self._write_pipe = self._read_pipe = None
-        os.close(wp)
-        os.close(rp)
+        if wp is not None:
+            os.close(wp)
+        if rp is not None:
+            os.close(rp)
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
