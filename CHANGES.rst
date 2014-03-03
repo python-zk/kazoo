@@ -18,6 +18,8 @@ Features
 Bug Handling
 ************
 
+- Issue #167: Closing a client that was never started throws a type error.
+  Patch by Joshua Harlow.
 - Passing dictionaries to KazooClient.__init__() wasn't actually working
   properly. Patch by Ryan Uber.
 - Issue #119: Handler timeout takes the max of the random interval or
