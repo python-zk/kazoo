@@ -34,6 +34,8 @@ API Changes
 - Null or None data is no longer treated as "". Pull req #165, patch by
   Raul Gutierrez S. This will affect how you should treat null data in a
   znode vs. an empty string.
+- Passing acl=[] to create() now works properly instead of an InvalidACLError
+  as it returned before. Patch by Raul Gutierrez S in PR #164.
 
 Documentation
 *************
