@@ -27,6 +27,8 @@ Bug Handling
 - Issue #119: Handler timeout takes the max of the random interval or
   the read timeout to ensure a negative number isn't used for the read
   timeout.
+- Fix ordering of exception catches in lock.acquire as it was capturing a
+  parent exception before the child. Patch by ReneSac.
 
 API Changes
 ***********
