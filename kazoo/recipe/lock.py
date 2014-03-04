@@ -104,13 +104,13 @@ class Lock(object):
             retry.deadline = timeout
             self.is_acquired = retry(self._inner_acquire,
                 blocking=blocking, timeout=timeout)
+        except RetryFailedError:
+            self._best_effort_cleanup()
         except KazooException:
             # if we did ultimately fail, attempt to clean up
             self._best_effort_cleanup()
             self.cancelled = False
             raise
-        except RetryFailedError:
-            self._best_effort_cleanup()
 
         if not self.is_acquired:
             self._delete_node(self.node)
