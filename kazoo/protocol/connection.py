@@ -468,9 +468,9 @@ class ConnectionHandler(object):
         except RetryFailedError:
             self.logger.warning("Failed connecting to Zookeeper "
                                 "within the connection retry policy.")
-            self.client._session_callback(KeeperState.CLOSED)
         finally:
             self.connection_stopped.set()
+            self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, 'Connection stopped')
 
     def _connect_loop(self, retry):
