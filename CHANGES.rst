@@ -28,6 +28,13 @@ Bug Handling
   the read timeout to ensure a negative number isn't used for the read
   timeout.
 
+API Changes
+***********
+
+- Null or None data is no longer treated as "". Pull req #165, patch by
+  Raul Gutierrez S. This will affect how you should treat null data in a
+  znode vs. an empty string.
+
 Documentation
 *************
 
