@@ -54,7 +54,7 @@ def write_string(bytes):
 
 
 def write_buffer(bytes):
-    if not bytes:
+    if bytes is None:
         return int_struct.pack(-1)
     else:
         return int_struct.pack(len(bytes)) + bytes
@@ -64,7 +64,7 @@ def read_buffer(bytes, offset):
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return b'', offset
+        return None, offset
     else:
         index = offset
         offset += length

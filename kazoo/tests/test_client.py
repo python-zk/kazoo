@@ -390,6 +390,18 @@ class TestClient(KazooTestCase):
         self.assertRaises(ConnectionClosedError, client.create,
                           '/closedpath', b'bar')
 
+    def test_create_null_data(self):
+        client = self.client
+        client.create("/nulldata", None)
+        value, _ = client.get("/nulldata")
+        self.assertEqual(value, None)
+
+    def test_create_empty_string(self):
+        client = self.client
+        client.create("/empty", "")
+        value, _ = client.get("/empty")
+        eq_(value, "")
+
     def test_create_unicode_path(self):
         client = self.client
         path = client.create(u("/ascii"))
@@ -700,6 +712,20 @@ class TestClient(KazooTestCase):
         data, stat2 = client.get('a')
         self.assertEqual(data, b'second')
         self.assertEqual(stat, stat2)
+
+    def test_set_null_data(self):
+        client = self.client
+        client.create("/nulldata", "not none")
+        client.set("/nulldata", None)
+        value, _ = client.get("/nulldata")
+        self.assertEqual(value, None)
+
+    def test_set_empty_string(self):
+        client = self.client
+        client.create("/empty", "not empty")
+        client.set("/empty", "")
+        value, _ = client.get("/empty")
+        eq_(value, "")
 
     def test_set_invalid_arguments(self):
         client = self.client
