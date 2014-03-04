@@ -771,6 +771,7 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
+        acl = acl or self.default_acl
         return self.create_async(path, value, acl=acl, ephemeral=ephemeral,
             sequence=sequence, makepath=makepath).get()
 
