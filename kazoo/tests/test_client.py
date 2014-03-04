@@ -22,7 +22,8 @@ from kazoo.exceptions import (
     NodeExistsError,
     SessionExpiredError,
 )
-from kazoo.protocol.states import KeeperState
+from kazoo.protocol.connection import _CONNECTION_DROP
+from kazoo.protocol.states import KeeperState, KazooState
 
 
 if sys.version_info > (3, ):  # pragma: nocover
@@ -35,7 +36,6 @@ else:  # pragma: nocover
 
 class TestClientTransitions(KazooTestCase):
     def test_connection_and_disconnection(self):
-        from kazoo.client import KazooState
         states = []
         rc = threading.Event()
 
@@ -294,12 +294,36 @@ class TestConnection(KazooTestCase):
         self.assertFalse(called[0])
 
     def test_no_connection(self):
-        from kazoo.exceptions import SessionExpiredError
         client = self.client
         client.stop()
         self.assertFalse(client.connected)
         self.assertTrue(client.client_id is None)
-        self.assertRaises(SessionExpiredError, client.exists, '/')
+        self.assertRaises(ConnectionClosedError, client.exists, '/')
+
+    def test_close_connecting_connection(self):
+        client = self.client
+        client.stop()
+        ev = threading.Event()
+
+        def close_on_connecting(state):
+            if state in (KazooState.CONNECTED, KazooState.LOST):
+                ev.set()
+
+        client.add_listener(close_on_connecting)
+        client.start()
+
+        # Wait until we connect
+        ev.wait(5)
+        ev.clear()
+        self.client._call(_CONNECTION_DROP, client.handler.async_result())
+
+        client.stop()
+
+        # ...and then wait until the connection is lost
+        ev.wait(5)
+
+        self.assertRaises(ConnectionClosedError,
+                          self.client.create, '/foobar')
 
     def test_double_start(self):
         self.assertTrue(self.client.connected)
