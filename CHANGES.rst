@@ -29,6 +29,8 @@ Bug Handling
   timeout.
 - Fix ordering of exception catches in lock.acquire as it was capturing a
   parent exception before the child. Patch by ReneSac.
+- Fix issue with client.stop() not always setting the client state to
+  KeeperState.CLOSED. Patch by Jyrki Pulliainen in PR #174.
 
 API Changes
 ***********
