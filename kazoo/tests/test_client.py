@@ -422,9 +422,9 @@ class TestClient(KazooTestCase):
 
     def test_create_empty_string(self):
         client = self.client
-        client.create("/empty", "")
+        client.create("/empty", b"")
         value, _ = client.get("/empty")
-        eq_(value, "")
+        eq_(value, b"")
 
     def test_create_unicode_path(self):
         client = self.client
@@ -746,17 +746,17 @@ class TestClient(KazooTestCase):
 
     def test_set_null_data(self):
         client = self.client
-        client.create("/nulldata", "not none")
+        client.create("/nulldata", b"not none")
         client.set("/nulldata", None)
         value, _ = client.get("/nulldata")
         self.assertEqual(value, None)
 
     def test_set_empty_string(self):
         client = self.client
-        client.create("/empty", "not empty")
-        client.set("/empty", "")
+        client.create("/empty", b"not empty")
+        client.set("/empty", b"")
         value, _ = client.get("/empty")
-        eq_(value, "")
+        eq_(value, b"")
 
     def test_set_invalid_arguments(self):
         client = self.client
