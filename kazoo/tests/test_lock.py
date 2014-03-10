@@ -132,7 +132,7 @@ class KazooLockTests(KazooTestCase):
 
         thread.start()
         # wait for the contender to line up on the lock
-        wait(lambda: len(lock.contenders()) == 1)
+        wait(lambda: len(lock.contenders()) == 2)
         eq_(lock.contenders(), ['test', 'contender'])
 
         self.expire_session()
