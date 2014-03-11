@@ -219,6 +219,7 @@ class KazooClient(object):
         elif type(command_retry) is KazooRetry:
             self.retry = command_retry
 
+
         if type(self._conn_retry) is KazooRetry:
             if self.handler.sleep_func != self._conn_retry.sleep_func:
                 raise ConfigurationError("Retry handler and event handler "
@@ -258,6 +259,13 @@ class KazooClient(object):
         self._conn_retry.interrupt = lambda: self._stopped.is_set()
         self._connection = ConnectionHandler(self, self._conn_retry.copy(),
             logger=self.logger)
+
+        # Every retry call should have its own copy of the retry helper
+        # to avoid shared retry counts
+        self._retry = self.retry
+        def _retry(*args, **kwargs):
+            return self._retry.copy()(*args, **kwargs)
+        self.retry = _retry
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
