@@ -53,6 +53,8 @@ from kazoo.recipe.barrier import Barrier
 from kazoo.recipe.barrier import DoubleBarrier
 from kazoo.recipe.counter import Counter
 from kazoo.recipe.election import Election
+from kazoo.recipe.lease import NonBlockingLease
+from kazoo.recipe.lease import MultiNonBlockingLease
 from kazoo.recipe.lock import Lock
 from kazoo.recipe.lock import Semaphore
 from kazoo.recipe.partitioner import SetPartitioner
@@ -274,6 +276,8 @@ class KazooClient(object):
         self.ChildrenWatch = partial(ChildrenWatch, self)
         self.DataWatch = partial(DataWatch, self)
         self.Election = partial(Election, self)
+        self.NonBlockingLease = partial(NonBlockingLease, self)
+        self.MultiNonBlockingLease = partial(MultiNonBlockingLease, self)
         self.Lock = partial(Lock, self)
         self.Party = partial(Party, self)
         self.Queue = partial(Queue, self)
