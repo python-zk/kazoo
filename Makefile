@@ -4,7 +4,7 @@ PYTHON = $(BIN)/python
 
 PIP_DOWNLOAD_CACHE ?= $(HERE)/.pip_cache
 INSTALL = $(BIN)/pip install
-INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
+INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE)
 
 BUILD_DIRS = bin build include lib lib64 man share
 
@@ -31,8 +31,7 @@ endif
 all: build
 
 $(PYTHON):
-	python sw/virtualenv.py --distribute .
-	rm distribute-0.6.*.tar.gz
+	python sw/virtualenv.py .
 
 build: $(PYTHON)
 ifeq ($(GEVENT_SUPPORTED),yes)
