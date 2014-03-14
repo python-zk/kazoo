@@ -40,6 +40,8 @@ API Changes
   znode vs. an empty string.
 - Passing acl=[] to create() now works properly instead of an InvalidACLError
   as it returned before. Patch by Raul Gutierrez S in PR #164.
+- Removed the dependency on zope.interface. The classes in the interfaces
+  module are left for documentation purposes only (issue #131).
 
 Documentation
 *************
