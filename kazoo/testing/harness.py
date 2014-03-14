@@ -24,12 +24,18 @@ def get_global_cluster():
     if CLUSTER is None:
         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
         ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
+        ZK_PORT_OFFSET = int(os.environ.get("ZOOKEEPER_PORT_OFFSET", 20000))
+
         assert ZK_HOME or ZK_CLASSPATH, (
             "either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment variable "
             "must be defined.\n"
             "For deb package installations this is /usr/share/java")
 
-        CLUSTER = ZookeeperCluster(ZK_HOME, classpath=ZK_CLASSPATH)
+        CLUSTER = ZookeeperCluster(
+            install_path=ZK_HOME,
+            classpath=ZK_CLASSPATH,
+            port_offset=ZK_PORT_OFFSET,
+        )
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
 

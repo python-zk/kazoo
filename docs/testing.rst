@@ -19,6 +19,10 @@ If your Java setup is complex, you may also override our classpath mechanism
 completely by specifying an environment variable called `ZOOKEEPER_CLASSPATH`.
 If provided, it will be used unmodified as the Java classpath for Zookeeper.
 
+You can specify an optional `ZOOKEEPER_PORT_OFFSET` environment variable to
+influence the ports the cluster is using. By default the offset is 20000 and
+a cluster with three members will use ports 20000, 20010 and 20020.
+
 
 Kazoo Test Harness
 ==================
