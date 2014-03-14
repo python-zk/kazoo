@@ -82,7 +82,7 @@ class Queue(BaseQueue):
             self._children = list(sorted(self._children))
         if not self._children:
             return None
-        name = self._children.pop(0)
+        name = self._children[0]
         try:
             data, stat = self.client.get(self.path + "/" + name)
         except NoNodeError:  # pragma: nocover
@@ -96,6 +96,7 @@ class Queue(BaseQueue):
             # the node in the meantime. consider the item as processed
             # by the other process
             raise ForceRetryError()
+        self._children.pop(0)
         return data
 
     def put(self, value, priority=100):
