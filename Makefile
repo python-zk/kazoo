@@ -15,7 +15,7 @@ TRAVIS ?= false
 TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
 
 ZOOKEEPER = $(BIN)/zookeeper
-ZOOKEEPER_VERSION ?= 3.4.5
+ZOOKEEPER_VERSION ?= 3.4.6
 ZOOKEEPER_PATH ?= $(ZOOKEEPER)
 
 GEVENT_SUPPORTED = yes
