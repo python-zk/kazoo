@@ -16,7 +16,7 @@ If the developer needs to use objects implementing the :class:`IAsyncResult`
 interface, the :meth:`IHandler.async_result` method must be used instead of
 instantiating one directly.
 
-    .. autointerface:: IHandler
+    .. autoclass:: IHandler
      :members:
 
 Private API
@@ -29,5 +29,5 @@ instead of taking a completion callback for async functions, developers
 wishing to have their own callback called should use the
 :meth:`IAsyncResult.rawlink` method.
 
-  .. autointerface:: IAsyncResult
+  .. autoclass:: IAsyncResult
      :members:

@@ -14,11 +14,8 @@ import gevent.thread
 from gevent.queue import Empty
 from gevent.queue import Queue
 from gevent import socket
-from zope.interface import implementer
 
 from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
-from kazoo.interfaces import IAsyncResult
-from kazoo.interfaces import IHandler
 
 _using_libevent = gevent.__version__.startswith('0.')
 
@@ -26,10 +23,9 @@ log = logging.getLogger(__name__)
 
 _STOP = object()
 
-AsyncResult = implementer(IAsyncResult)(gevent.event.AsyncResult)
+AsyncResult = gevent.event.AsyncResult
 
 
-@implementer(IHandler)
 class SequentialGeventHandler(object):
     """Gevent handler for sequentially executing callbacks.
 

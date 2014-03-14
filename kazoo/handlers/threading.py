@@ -24,11 +24,7 @@ try:
 except ImportError:  # pragma: nocover
     import queue as Queue
 
-from zope.interface import implementer
-
 from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
-from kazoo.interfaces import IAsyncResult
-from kazoo.interfaces import IHandler
 
 # sentinel objects
 _NONE = object()
@@ -41,7 +37,6 @@ class TimeoutError(Exception):
     pass
 
 
-@implementer(IAsyncResult)
 class AsyncResult(object):
     """A one-time event that stores a value or an exception"""
     def __init__(self, handler):
@@ -148,7 +143,6 @@ class AsyncResult(object):
                 self._callbacks.remove(callback)
 
 
-@implementer(IHandler)
 class SequentialThreadingHandler(object):
     """Threading handler for sequentially executing callbacks.
 

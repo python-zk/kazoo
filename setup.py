@@ -14,9 +14,7 @@ with open(os.path.join(here, 'CHANGES.rst')) as f:
 PYTHON3 = sys.version_info > (3, )
 PYPY = getattr(sys, 'pypy_version_info', False) and True or False
 
-install_requires = [
-    'zope.interface >= 3.8.0',  # has zope.interface.registry
-]
+install_requires = []
 
 tests_require = install_requires + [
     'coverage',
@@ -33,7 +31,6 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     install_requires.extend([
         'gevent',
-        'repoze.sphinx.autointerface',
     ])
 
 setup(
