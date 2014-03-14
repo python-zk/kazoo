@@ -1,14 +1,18 @@
-"""Kazoo Interfaces"""
-from zope.interface import (
-    Attribute,
-    Interface,
-)
+"""Kazoo Interfaces
+
+.. versionchanged:: 1.4
+
+    The classes in this module used to be interface declarations based on
+    `zope.interface.Interface`. They were converted to normal classes and
+    now serve as documentation only.
+
+"""
 
 # public API
 
 
-class IHandler(Interface):
-    """A Callback Handler for Zookeeper completion and watch callbacks
+class IHandler(object):
+    """A Callback Handler for Zookeeper completion and watch callbacks.
 
     This object must implement several methods responsible for
     determining how completion / watch callbacks are handled as well as
@@ -24,55 +28,59 @@ class IHandler(Interface):
     * Zookeeper completion events
     * Zookeeper watch events
 
+    .. attribute:: name
+
+        Human readable name of the Handler interface.
+
+    .. attribute:: timeout_exception
+
+        Exception class that should be thrown and captured if a
+        result is not available within the given time.
+
+    .. attribute:: sleep_func
+
+        Appropriate sleep function that can be called with a single
+        argument and sleep.
+
     """
-    name = Attribute(
-        """Human readable name of the Handler interface""")
 
-    timeout_exception = Attribute(
-        """Exception class that should be thrown and captured if a
-        result is not available within the given time""")
-
-    sleep_func = Attribute(
-        """Appropriate sleep function that can be called with a single
-        argument and sleep.""")
-
-    def start():
+    def start(self):
         """Start the handler, used for setting up the handler."""
 
-    def stop():
+    def stop(self):
         """Stop the handler. Should block until the handler is safely
         stopped."""
 
-    def select():
+    def select(self):
         """A select method that implements Python's select.select
         API"""
 
-    def socket():
+    def socket(self):
         """A socket method that implements Python's socket.socket
         API"""
 
-    def create_connection():
+    def create_connection(self):
         """A socket method that implements Python's
         socket.create_connection API"""
 
-    def event_object():
+    def event_object(self):
         """Return an appropriate object that implements Python's
         threading.Event API"""
 
-    def lock_object():
+    def lock_object(self):
         """Return an appropriate object that implements Python's
         threading.Lock API"""
 
-    def rlock_object():
+    def rlock_object(self):
         """Return an appropriate object that implements Python's
         threading.RLock API"""
 
-    def async_result():
+    def async_result(self):
         """Return an instance that conforms to the
         :class:`~IAsyncResult` interface appropriate for this
         handler"""
 
-    def spawn(func, *args, **kwargs):
+    def spawn(self, func, *args, **kwargs):
         """Spawn a function to run asynchronously
 
         :param args: args to call the function with.
@@ -83,7 +91,7 @@ class IHandler(Interface):
 
         """
 
-    def dispatch_callback(callback):
+    def dispatch_callback(self, callback):
         """Dispatch to the callback object
 
         :param callback: A :class:`~kazoo.protocol.states.Callback`
@@ -92,9 +100,9 @@ class IHandler(Interface):
         """
 
 
-class IAsyncResult(Interface):
+class IAsyncResult(object):
     """An Async Result object that can be queried for a value that has
-    been set asynchronously
+    been set asynchronously.
 
     This object is modeled on the ``gevent`` AsyncResult object.
 
@@ -103,24 +111,27 @@ class IAsyncResult(Interface):
     Zookeeper thread which may require extra care under asynchronous
     environments.
 
+    .. attribute:: value
+
+        Holds the value passed to :meth:`set` if :meth:`set` was
+        called. Otherwise `None`.
+
+    .. attribute:: exception
+
+        Holds the exception instance passed to :meth:`set_exception`
+        if :meth:`set_exception` was called. Otherwise `None`.
+
     """
-    value = Attribute(
-        """Holds the value passed to :meth:`set` if :meth:`set` was
-        called. Otherwise `None`""")
 
-    exception = Attribute(
-        """Holds the exception instance passed to :meth:`set_exception`
-        if :meth:`set_exception` was called. Otherwise `None`""")
-
-    def ready():
+    def ready(self):
         """Return `True` if and only if it holds a value or an
         exception"""
 
-    def successful():
+    def successful(self):
         """Return `True` if and only if it is ready and holds a
         value"""
 
-    def set(value=None):
+    def set(self, value=None):
         """Store the value. Wake up the waiters.
 
         :param value: Value to store as the result.
@@ -129,7 +140,7 @@ class IAsyncResult(Interface):
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
         block at all."""
 
-    def set_exception(exception):
+    def set_exception(self, exception):
         """Store the exception. Wake up the waiters.
 
         :param exception: Exception to raise when fetching the value.
@@ -138,7 +149,7 @@ class IAsyncResult(Interface):
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
         block at all."""
 
-    def get(block=True, timeout=None):
+    def get(self, block=True, timeout=None):
         """Return the stored value or raise the exception
 
         :param block: Whether this method should block or return
@@ -153,13 +164,13 @@ class IAsyncResult(Interface):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def get_nowait():
+    def get_nowait(self):
         """Return the value or raise the exception without blocking.
 
         If nothing is available, raise the Timeout exception class on
         the associated :class:`IHandler` interface."""
 
-    def wait(timeout=None):
+    def wait(self, timeout=None):
         """Block until the instance is ready.
 
         :param timeout: How long to wait for a value when `block` is
@@ -171,7 +182,7 @@ class IAsyncResult(Interface):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def rawlink(callback):
+    def rawlink(self, callback):
         """Register a callback to call when a value or an exception is
         set
 
@@ -183,7 +194,7 @@ class IAsyncResult(Interface):
 
         """
 
-    def unlink(callback):
+    def unlink(self, callback):
         """Remove the callback set by :meth:`rawlink`
 
         :param callback: A callback function to remove.
