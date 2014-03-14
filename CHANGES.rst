@@ -15,6 +15,9 @@ Features
   - Some low-level logging previously at the ``logging.INFO`` level is
     now logged at the ``logging.DEBUG`` level.
 
+- Issue #133: Introduce a new environment variable `ZOOKEEPER_PORT_OFFSET`
+  for the testing support, to run the testing cluster on a different range.
+
 Bug Handling
 ************
 
