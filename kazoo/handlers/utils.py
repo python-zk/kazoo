@@ -9,11 +9,15 @@ import functools
 import os
 
 
+def _set_fd_cloexec(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+    fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+
+
 def _set_default_tcpsock_options(module, sock):
     sock.setsockopt(module.IPPROTO_TCP, module.TCP_NODELAY, 1)
     if HAS_FNCTL:
-        flags = fcntl.fcntl(sock, fcntl.F_GETFD)
-        fcntl.fcntl(sock, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+        _set_fd_cloexec(sock)
     return sock
 
 
@@ -24,6 +28,8 @@ def create_pipe():
     if HAS_FNCTL:
         fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
         fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
+        _set_fd_cloexec(r)
+        _set_fd_cloexec(w)
     return r, w
 
 
