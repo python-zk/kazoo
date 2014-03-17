@@ -36,6 +36,7 @@ from kazoo.protocol.serialization import (
     GetACL,
     SetACL,
     GetData,
+    SASLAuth,
     SetData,
     Sync,
     Transaction
@@ -598,9 +599,14 @@ class KazooClient(object):
         """
         if not isinstance(scheme, basestring):
             raise TypeError("Invalid type for scheme")
-        if not isinstance(credential, basestring):
-            raise TypeError("Invalid type for credential")
-        self._call(Auth(0, scheme, credential), None)
+        if scheme.upper() == 'GSSAPI':
+            if credential is not None:
+                raise TypeError("Invalid type for credential")
+            self._call(SASLAuth(self._connection._initialize_sasl()), None)
+        else:
+            if not isinstance(credential, basestring):
+                raise TypeError("Invalid type for credential")
+            self._call(Auth(0, scheme, credential), None)
         return True
 
     def unchroot(self, path):

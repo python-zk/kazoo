@@ -9,6 +9,11 @@ import sys
 import time
 from binascii import hexlify
 from contextlib import contextmanager
+from gssapi.base.types import GSSError
+from gssapi.client import (
+    BasicSASLGSSClient,
+    GSSClientError
+)
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -27,9 +32,11 @@ from kazoo.protocol.serialization import (
     Ping,
     PingInstance,
     ReplyHeader,
+    SASLAuth,
     Transaction,
     Watch,
-    int_struct
+    int_struct,
+    read_buffer
 )
 from kazoo.protocol.states import (
     Callback,
@@ -60,6 +67,7 @@ CHILD_EVENT = 4
 WATCH_XID = -1
 PING_XID = -2
 AUTH_XID = -4
+AUTH_SASL_XID = -5
 
 CLOSE_RESPONSE = Close.type
 
@@ -155,6 +163,12 @@ class ConnectionHandler(object):
 
         self._connection_routine = None
 
+        # Helpers for sasl authentication
+        self._sasl = None
+        self._sasl_step2_complete = False
+        self._sasl_step3_complete = False
+        self._sasl_host = None
+
     # This is instance specific to avoid odd thread bug issues in Python
     # during shutdown global cleanup
     @contextmanager
@@ -225,7 +239,14 @@ class ConnectionHandler(object):
                     raise ConnectionDropped('socket connection broken')
                 msgparts.append(chunk)
                 remaining -= len(chunk)
-            return b"".join(msgparts)
+            raw = b"".join(msgparts)
+            if self._sasl and self._sasl_step3_complete:
+                # At the moment, ZooKeeper doesn't actually support a security
+                # layer, but there's no harm in doing this as a matter of
+                # future-proofing.
+                return self._sasl.decrypt(raw)
+            else:
+                return raw
 
     def _invoke(self, timeout, request, xid=None):
         """A special writer used during connection establishment
@@ -243,6 +264,8 @@ class ConnectionHandler(object):
                 callback_exception = EXCEPTIONS[header.err]()
                 self.logger.info('Received error(xid=%s) %r', xid, callback_exception)
                 raise callback_exception
+            if header.xid == AUTH_SASL_XID:
+                self._sasl_auth_server(header, buffer, offset)
             return zxid
 
         msg = self._read(4, timeout)
@@ -276,8 +299,16 @@ class ConnectionHandler(object):
                         "Sending request(xid=%s): %s", xid, request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
-    def _write(self, msg, timeout):
+    def _write(self, raw, timeout):
         """Write a raw msg to the socket"""
+        if self._sasl and self._sasl_step3_complete:
+            # At the moment, ZooKeeper doesn't actually support a security
+            # layer, but there's no harm in doing this as a matter of
+            # future-proofing.
+            msg = self._sasl.encrypt(raw)
+        else:
+            msg = raw
+
         sent = 0
         msg_length = len(msg)
         with self._socket_error_handling():
@@ -385,7 +416,7 @@ class ConnectionHandler(object):
         if header.xid == PING_XID:
             self.logger.debug('Received Ping')
             self.ping_outstanding.clear()
-        elif header.xid == AUTH_XID:
+        elif header.xid in (AUTH_XID, AUTH_SASL_XID):
             self.logger.debug('Received AUTH')
 
             if header.err:
@@ -395,12 +426,51 @@ class ConnectionHandler(object):
                 # XXX TODO: Should we fail out? Or handle auth failure
                 # differently here since the session id is actually valid!
                 client._session_callback(KeeperState.AUTH_FAILED)
+
+            if header.xid == AUTH_SASL_XID:
+                self._sasl_auth_server(header, buffer, offset)
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
         else:
             self.logger.debug('Reading for header %r', header)
 
             return self._read_response(header, buffer, offset)
+
+    def _sasl_auth_server(self, header, buffer, offset):
+        """Called when handling authentication responses from a server"""
+
+        server_token = read_buffer(buffer, offset)[0]
+        client = self.client
+
+        if self._sasl_step3_complete:
+            # We've negotiated our security strength factor. That sounds better
+            # than it is, since zookeeper doesn't support this we don't use it.
+            assert server_token == ''
+            self.logger.info("SASL/GSSAPI authentication complete")
+            return header.zxid
+        elif self._sasl_step2_complete:
+            # We've authenticated the server, now we negotiate our security
+            # strength factor to finish the process.
+            try:
+                token = self._sasl.step3(server_token)
+            except (GSSError, GSSClientError) as e:
+                self.logger.error("Unable to authenticate server, GSSError %s", e)
+                client._session_callback(KeeperState.AUTH_FAILED)
+            else:
+                self._sasl_step3_complete = True
+                ap = SASLAuth(token)
+                return self._invoke(client._session_timeout, ap, xid=AUTH_SASL_XID)
+        else:
+            # We've authenticated to the server, now it's time to perform
+            # mutual authentication so that we know we can trust the server.
+            try:
+                token = self._sasl.step2(server_token)
+            except (GSSError, GSSClientError) as e:
+                client._session_callback(KeeperState.AUTH_FAILED)
+            else:
+                self._sasl_step2_complete = True
+                ap = SASLAuth(token)
+                return self._invoke(client._session_timeout, ap, xid=AUTH_SASL_XID)
 
     def _send_request(self, read_timeout, connect_timeout):
         """Called when we have something to send out on the socket"""
@@ -429,6 +499,12 @@ class ConnectionHandler(object):
         # Special case for auth packets
         if request.type == Auth.type:
             self._submit(request, connect_timeout, AUTH_XID)
+            client._queue.popleft()
+            os.read(self._read_pipe, 1)
+            return
+        # Special case for sasl based auth packets
+        if request.type == SASLAuth.type:
+            self._submit(request, connect_timeout, AUTH_SASL_XID)
             client._queue.popleft()
             os.read(self._read_pipe, 1)
             return
@@ -561,6 +637,18 @@ class ConnectionHandler(object):
             if self._socket is not None:
                 self._socket.close()
 
+    def _initialize_sasl(self):
+        """Reset sasl state & generate an auth token for the current server"""
+        self.logger.debug("Initializing SASL/GSSAPI")
+        self._sasl_step2_complete = False
+        self._sasl_step3_complete = False
+        self._sasl = BasicSASLGSSClient(
+            username="",
+            target="zookeeper@%s" % self._sasl_host,
+            security_type="any",
+        )
+        return self._sasl.step1()
+
     def _connect(self, host, port):
         client = self.client
         self.logger.info('Connecting to %s:%s', host, port)
@@ -572,6 +660,8 @@ class ConnectionHandler(object):
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
                 (host, port), client._session_timeout / 1000.0)
+            # We need to cache this to support GSSAPI with client.add_auth
+            self._sasl_host = host
 
         self._socket.setblocking(0)
 
@@ -610,8 +700,13 @@ class ConnectionHandler(object):
             self._ro_mode = None
 
         for scheme, auth in client.auth_data:
-            ap = Auth(0, scheme, auth)
-            zxid = self._invoke(connect_timeout, ap, xid=AUTH_XID)
+            if scheme.upper() == 'GSSAPI':
+                ap = SASLAuth(self._initialize_sasl())
+                zxid = self._invoke(connect_timeout, ap, xid=AUTH_SASL_XID)
+            else:
+                ap = Auth(0, scheme, auth)
+                zxid = self._invoke(connect_timeout, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
         return read_timeout, connect_timeout

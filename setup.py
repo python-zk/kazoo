@@ -16,6 +16,7 @@ PYPY = getattr(sys, 'pypy_version_info', False) and True or False
 
 install_requires = [
     'zope.interface >= 3.8.0',  # has zope.interface.registry
+    'PyGSSAPI >= 1.0.0',        # for SASL/GSSAPI authentication support
 ]
 
 tests_require = install_requires + [

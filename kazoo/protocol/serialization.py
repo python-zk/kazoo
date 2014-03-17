@@ -359,6 +359,15 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
         return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
                 write_string(self.auth))
 
+class SASLAuth(namedtuple('SASLAuth', 'token')):
+    type = 102
+
+    def serialize(self):
+        if self.token is None:
+            # Empty message
+            return int_struct.pack(0)
+        return write_buffer(self.token)
+
 
 class Watch(namedtuple('Watch', 'type state path')):
     @classmethod
