@@ -294,6 +294,7 @@ class KazooClient(object):
         self._reset_watchers()
         self._reset_session()
         self.last_zxid = 0
+        self._protocol_version = None
 
     def _reset_watchers(self):
         self._child_watchers = defaultdict(set)
