@@ -21,6 +21,8 @@ Features
 Bug Handling
 ************
 
+- Fix atexit handling for kazoo threading handler, PR #183. Patch by
+  Brian Wickman.
 - Partitioner should handle a suspended connection properly and restore
   an allocated state if it was allocated previously. Patch by Manish Tomar.
 - Issue #167: Closing a client that was never started throws a type error.
