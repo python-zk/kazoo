@@ -174,11 +174,13 @@ class SequentialThreadingHandler(object):
     name = "sequential_threading_handler"
     timeout_exception = TimeoutError
     sleep_func = staticmethod(time.sleep)
+    queue_impl = Queue.Queue
+    queue_empty = Queue.Empty
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""
-        self.callback_queue = Queue.Queue()
-        self.completion_queue = Queue.Queue()
+        self.callback_queue = self.queue_impl()
+        self.completion_queue = self.queue_impl()
         self._running = False
         self._state_change = threading.Lock()
         self._workers = []
@@ -197,7 +199,7 @@ class SequentialThreadingHandler(object):
                         log.exception("Exception in worker queue thread")
                     finally:
                         queue.task_done()
-                except Queue.Empty:
+                except self.queue_empty:
                     continue
         t = threading.Thread(target=thread_worker)
 
@@ -239,8 +241,8 @@ class SequentialThreadingHandler(object):
                 worker.join()
 
             # Clear the queues
-            self.callback_queue = Queue.Queue()
-            self.completion_queue = Queue.Queue()
+            self.callback_queue = self.queue_impl()
+            self.completion_queue = self.queue_impl()
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)
