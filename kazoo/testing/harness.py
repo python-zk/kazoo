@@ -11,7 +11,6 @@ from kazoo.exceptions import NotEmptyError
 from kazoo.protocol.states import (
     KazooState
 )
-from kazoo.retry import KazooRetry
 from kazoo.testing.common import ZookeeperCluster
 from kazoo.protocol.connection import _SESSION_EXPIRED
 
