@@ -11,6 +11,7 @@ from kazoo.exceptions import NotEmptyError
 from kazoo.protocol.states import (
     KazooState
 )
+from kazoo.retry import KazooRetry
 from kazoo.testing.common import ZookeeperCluster
 from kazoo.protocol.connection import _SESSION_EXPIRED
 
@@ -83,8 +84,6 @@ class KazooTestHarness(unittest.TestCase):
         return KazooClient(self.servers)
 
     def _get_client(self, **kwargs):
-        kwargs['retry_max_delay'] = 2
-        kwargs['max_retries'] = 35
         c = KazooClient(self.hosts, **kwargs)
         try:
             self._clients.append(c)
