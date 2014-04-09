@@ -870,6 +870,41 @@ class TestClient(KazooTestCase):
         finally:
             self.cluster[0].run()
 
+    def test_remove_watches(self):
+        from kazoo.protocol.states import WatcherType
+        from kazoo.exceptions import NoWatcherError
+
+        ver = self.client.server_version()
+        if ver[1] < 5:
+            raise SkipTest("Must use zookeeper 3.5 or above")
+
+        def watcher(event):
+            pass
+
+        self.client.create("/watches", b'first')
+
+        self.client.get("/watches", watcher)
+        rc = self.client.remove_watches("/watches", WatcherType.DATA)
+        self.assertTrue(rc)
+
+        self.client.get_children("/watches", watcher)
+        rc = self.client.remove_watches("/watches", WatcherType.CHILDREN)
+        self.assertTrue(rc)
+
+        self.client.get_children("/watches", watcher)
+        rc = self.client.remove_watches("/watches", WatcherType.ANY)
+        self.assertTrue(rc)
+
+        ###
+        # This depends on a bugfix from upstream to work:
+        # https://issues.apache.org/jira/browse/ZOOKEEPER-1909
+        #
+        # self.assertRaises(NoWatcherError,
+        #                   self.client.remove_watches,
+        #                   "/no/watch/for/this/path",
+        #                   WatcherType.ANY)
+        #
+
 
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,

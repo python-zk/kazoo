@@ -235,3 +235,26 @@ class ZnodeStat(namedtuple('ZnodeStat', 'czxid mzxid ctime mtime version'
     @property
     def children_count(self):
         return self.numChildren
+
+
+class WatcherType(object):
+    """Zookeeper Watcher Type
+
+    Represents the type of watcher, used when removing watchers.
+
+    .. attribute:: CHILDREN
+
+        Watcher for children related watches.
+
+    .. attribute:: DATA
+
+        Watcher for data related watches.
+
+    .. attribute:: ANY
+
+        Any type of watcher (CHILDREN and/or DATA).
+
+    """
+    CHILDREN = 1
+    DATA = 2
+    ANY = 3

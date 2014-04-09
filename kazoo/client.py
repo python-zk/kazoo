@@ -34,6 +34,7 @@ from kazoo.protocol.serialization import (
     Exists,
     GetChildren,
     GetChildren2,
+    RemoveWatches,
     GetACL,
     SetACL,
     GetData,
@@ -1274,6 +1275,47 @@ class KazooClient(object):
             self.delete(path)
         except NoNodeError:  # pragma: nocover
             pass
+
+    def remove_watches(self, path, wtype):
+        """Remove watches for a given path.
+
+        This call will remove the watch (or watches) set for path and
+        unregister all the related watchers.
+
+        If wtype is WatcherType.ANY, then both the watches for CHILDREN
+        and DATA events will be removed.
+
+        :param path: Path for which the watcher(s) will be removed.
+        :param wtype: The type of watcher to remove.
+        :type wtype: :class:`~kazoo.states.WatcherType`
+
+        :raises:
+            :exc:`~kazoo.exceptions.NoWatcherError` if the watcher doesn't
+            exist.
+
+            :exc:`ConnectionLoss` if there is no connection open.
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+
+        """
+        return self.remove_watches_async(path, wtype).get()
+
+    def remove_watches_async(self, path, wtype):
+        """Asynchronously remove watches for a path. Takes the same arguments as
+        :meth:`remove_watches`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        """
+        if not isinstance(path, basestring):
+            raise TypeError("path must be a string")
+        if not isinstance(wtype, int):
+            raise TypeError("wtype must be an int")
+        async_result = self.handler.async_result()
+        self._call(RemoveWatches(_prefix_root(self.chroot, path), wtype),
+                   async_result)
+        return async_result
 
 
 class TransactionRequest(object):

@@ -173,6 +173,14 @@ class NotReadOnlyCallError(ZookeeperError):
     a read-only server"""
 
 
+@_zookeeper_exception(-123)
+class NoWatcherError(ZookeeperError):
+    """There was no watch for the given path
+
+    .. versionadded:: 1.4
+    """
+
+
 class ConnectionClosedError(SessionExpiredError):
     """Connection is closed"""
 

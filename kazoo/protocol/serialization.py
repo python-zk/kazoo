@@ -394,3 +394,14 @@ class MultiHeader(namedtuple('MultiHeader', 'type done err')):
         t, done, err = multiheader_struct.unpack_from(bytes, offset)
         offset += multiheader_struct.size
         return cls(t, done is 1, err), offset
+
+
+class RemoveWatches(namedtuple('Auth', 'path wtype')):
+    type = 17
+
+    def serialize(self):
+        return (write_string(self.path) + int_struct.pack(self.wtype))
+
+    @classmethod
+    def deserialize(self, bytes, offset):
+        return True
