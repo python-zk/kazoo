@@ -243,7 +243,8 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
-            atexit.unregister(self.stop)
+            if hasattr(atexit, "unregister"):
+                atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)

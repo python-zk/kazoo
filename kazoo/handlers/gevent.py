@@ -109,7 +109,8 @@ class SequentialGeventHandler(object):
             # Clear the queues
             self.callback_queue = Queue()  # pragma: nocover
 
-            atexit.unregister(self.stop)
+            if hasattr(atexit, "unregister"):
+                atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
