@@ -56,7 +56,6 @@ class SequentialGeventHandler(object):
         self._async = None
         self._state_change = gevent.coros.Semaphore()
         self._workers = []
-        atexit.register(self.stop)
 
     class timeout_exception(gevent.event.Timeout):
         def __init__(self, msg):
@@ -90,6 +89,7 @@ class SequentialGeventHandler(object):
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
+            atexit.register(self.stop)
 
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
@@ -108,6 +108,8 @@ class SequentialGeventHandler(object):
 
             # Clear the queues
             self.callback_queue = Queue()  # pragma: nocover
+
+            atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)

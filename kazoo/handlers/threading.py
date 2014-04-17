@@ -184,7 +184,6 @@ class SequentialThreadingHandler(object):
         self._running = False
         self._state_change = threading.Lock()
         self._workers = []
-        atexit.register(self.stop)
 
     def _create_thread_worker(self, queue):
         def thread_worker():  # pragma: nocover
@@ -223,6 +222,7 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
+            atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -243,6 +243,7 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
+            atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)
