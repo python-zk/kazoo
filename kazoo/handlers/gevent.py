@@ -5,7 +5,6 @@ import atexit
 import logging
 
 import gevent
-import gevent.coros
 import gevent.event
 import gevent.queue
 import gevent.select
@@ -14,6 +13,10 @@ import gevent.thread
 from gevent.queue import Empty
 from gevent.queue import Queue
 from gevent import socket
+try:
+    from gevent.lock import Semaphore, RLock
+except ImportError:
+    from gevent.coros import Semaphore, RLock
 
 from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
 
@@ -54,7 +57,7 @@ class SequentialGeventHandler(object):
         self.callback_queue = Queue()
         self._running = False
         self._async = None
-        self._state_change = gevent.coros.Semaphore()
+        self._state_change = Semaphore()
         self._workers = []
         atexit.register(self.stop)
 
@@ -128,7 +131,7 @@ class SequentialGeventHandler(object):
 
     def rlock_object(self):
         """Create an appropriate RLock object"""
-        return gevent.coros.RLock()
+        return RLock()
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance
