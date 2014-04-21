@@ -1,5 +1,8 @@
 """Zookeeper Partitioner Implementation
 
+:Maintainer: None
+:Status: Unknown
+
 :class:`SetPartitioner` implements a partitioning scheme using
 Zookeeper for dividing up resources amongst members of a party.
 

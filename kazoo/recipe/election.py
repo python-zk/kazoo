@@ -1,4 +1,9 @@
-"""ZooKeeper Leader Elections"""
+"""ZooKeeper Leader Elections
+
+:Maintainer: None
+:Status: Unknown
+
+"""
 from kazoo.exceptions import CancelledError
 
 

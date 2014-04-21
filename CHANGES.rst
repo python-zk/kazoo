@@ -52,6 +52,8 @@ API Changes
 Documentation
 *************
 
+- Add section on contributing recipes, add maintainer/status information for
+  existing recipes.
 - Add note about alternate use of DataWatch.
 
 1.3.1 (2013-09-25)

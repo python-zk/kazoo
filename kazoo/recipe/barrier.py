@@ -1,4 +1,9 @@
-"""Zookeeper Barriers"""
+"""Zookeeper Barriers
+
+:Maintainer: None
+:Status: Unknown
+
+"""
 import os
 import socket
 import uuid

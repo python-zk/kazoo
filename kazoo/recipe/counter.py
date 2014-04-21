@@ -1,4 +1,9 @@
-"""Zookeeper Counter"""
+"""Zookeeper Counter
+
+:Maintainer: None
+:Status: Unknown
+
+"""
 
 from kazoo.exceptions import BadVersionError
 from kazoo.retry import ForceRetryError

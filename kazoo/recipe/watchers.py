@@ -1,4 +1,8 @@
 """Higher level child and data watching API's.
+
+:Maintainer: Ben Bangert <ben@groovie.org>
+:Status: Production
+
 """
 import logging
 import time

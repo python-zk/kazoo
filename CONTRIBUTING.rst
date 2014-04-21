@@ -62,6 +62,16 @@ If you introduce new functionality, please also add documentation and
 a short entry in the top-level ``CHANGES.rst`` file.
 
 
+Adding Recipes
+==============
+
+New recipes are welcome, however they should include the status/maintainer
+RST information so its clear who is maintaining the recipe. This does mean
+that if you submit a recipe for inclusion with Kazoo, you should be ready
+to support/maintain it, and address bugs that may be found.
+
+Ideally a recipe should have at least two maintainers.
+
 Legal
 =====
 

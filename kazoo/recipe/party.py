@@ -1,5 +1,8 @@
 """Party
 
+:Maintainer: Ben Bangert <ben@groovie.org>
+:Status: Production
+
 A Zookeeper pool of party members. The :class:`Party` object can be
 used for determining members of a party.
 

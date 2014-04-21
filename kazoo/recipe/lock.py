@@ -1,5 +1,8 @@
 """Zookeeper Locking Implementations
 
+:Maintainer: None
+:Status: Unknown
+
 Error Handling
 ==============
 

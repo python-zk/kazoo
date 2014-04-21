@@ -1,5 +1,8 @@
-"""
-Zookeeper based queue implementations.
+"""Zookeeper based queue implementations.
+
+:Maintainer: None
+:Status: Unknown
+
 """
 
 import uuid
