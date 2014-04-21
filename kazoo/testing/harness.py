@@ -83,8 +83,6 @@ class KazooTestHarness(unittest.TestCase):
         return KazooClient(self.servers)
 
     def _get_client(self, **kwargs):
-        kwargs['retry_max_delay'] = 2
-        kwargs['max_retries'] = 35
         c = KazooClient(self.hosts, **kwargs)
         try:
             self._clients.append(c)

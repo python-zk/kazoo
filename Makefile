@@ -58,15 +58,14 @@ html:
 
 $(ZOOKEEPER):
 	@echo "Installing Zookeeper"
-	mkdir -p bin
-	cd bin && \
+	mkdir -p $(BIN)
+	cd $(BIN) && \
 	curl -C - http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION)/zookeeper-$(ZOOKEEPER_VERSION).tar.gz | tar -zx
-	mv bin/zookeeper-$(ZOOKEEPER_VERSION) bin/zookeeper
-	cd bin/zookeeper
-	chmod a+x bin/zookeeper/bin/zkServer.sh
+	mv $(BIN)/zookeeper-$(ZOOKEEPER_VERSION) $(ZOOKEEPER_PATH)
+	chmod a+x $(ZOOKEEPER_PATH)/bin/zkServer.sh
 	@echo "Finished installing Zookeeper"
 
 zookeeper: $(ZOOKEEPER)
 
 clean-zookeeper:
-	rm -rf zookeeper bin/zookeeper
+	rm -rf zookeeper $(ZOOKEEPER_PATH)
