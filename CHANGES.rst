@@ -21,6 +21,8 @@ Features
 Bug Handling
 ************
 
+- Another fix for atexit handling so that when disposing of connections the
+  atexit handler is removed. PR #190, patch by Devaev Maxim.
 - Fix atexit handling for kazoo threading handler, PR #183. Patch by
   Brian Wickman.
 - Partitioner should handle a suspended connection properly and restore
