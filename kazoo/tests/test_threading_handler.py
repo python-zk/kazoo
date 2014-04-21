@@ -1,7 +1,11 @@
 import threading
 import unittest
 
-import mock
+try:  # python>=3.3 has mock builtin
+    from unittest import mock
+except ImportError:
+    import mock
+
 from nose.tools import assert_raises
 from nose.tools import eq_
 from nose.tools import raises

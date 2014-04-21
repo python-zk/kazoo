@@ -4,7 +4,11 @@ import time
 import uuid
 import unittest
 
-from mock import patch
+try:  # python>=3.3 has mock builtin
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+
 from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises

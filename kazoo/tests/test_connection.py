@@ -9,7 +9,11 @@ import struct
 from nose import SkipTest
 from nose.tools import eq_
 from nose.tools import raises
-import mock
+
+try:  # python>=3.3 has mock builtin
+    from unittest import mock
+except ImportError:
+    import mock
 
 from kazoo.exceptions import ConnectionLoss
 from kazoo.protocol.serialization import (
