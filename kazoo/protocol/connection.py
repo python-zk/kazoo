@@ -593,6 +593,7 @@ class ConnectionHandler(object):
 
         # Load return values
         client._session_id = connect_result.session_id
+        client._protocol_version = connect_result.protocol_version
         negotiated_session_timeout = connect_result.time_out
         connect_timeout = negotiated_session_timeout / len(client.hosts)
         read_timeout = negotiated_session_timeout * 2.0 / 3.0
