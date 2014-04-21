@@ -37,6 +37,7 @@ Reference Docs
    testing
    api
    Changelog <changelog>
+   Contributing <contributing>
 
 Why
 ===
