@@ -57,6 +57,14 @@ class Queue(BaseQueue):
 
     prefix = "entry-"
 
+    def __init__(self, client, path):
+        """
+        :param client: A :class:`~kazoo.client.KazooClient` instance.
+        :param path: The queue path to use in ZooKeeper.
+        """
+        super(Queue, self).__init__(client, path)
+        self._children = []
+
     def __len__(self):
         """Return queue size."""
         return super(Queue, self).__len__()
@@ -69,14 +77,15 @@ class Queue(BaseQueue):
         :rtype: bytes
         """
         self._ensure_paths()
-        children = self.client.retry(self.client.get_children, self.path)
-        children = list(sorted(children))
-        return self.client.retry(self._inner_get, children)
+        return self.client.retry(self._inner_get)
 
-    def _inner_get(self, children):
-        if not children:
+    def _inner_get(self):
+        if not self._children:
+            self._children = self.client.retry(self.client.get_children, self.path)
+            self._children = list(sorted(self._children))
+        if not self._children:
             return None
-        name = children.pop(0)
+        name = self._children[0]
         try:
             data, stat = self.client.get(self.path + "/" + name)
         except NoNodeError:  # pragma: nocover
@@ -90,6 +99,7 @@ class Queue(BaseQueue):
             # the node in the meantime. consider the item as processed
             # by the other process
             raise ForceRetryError()
+        self._children.pop(0)
         return data
 
     def put(self, value, priority=100):
