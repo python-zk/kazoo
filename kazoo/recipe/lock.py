@@ -40,6 +40,9 @@ class Lock(object):
         with lock:  # blocks waiting for lock acquisition
             # do something with the lock
 
+    Note: This lock is re-entrant. Repeat calls after acquired will
+    continue to return ''True''.
+
     """
     _NODE_NAME = '__lock__'
 
