@@ -76,7 +76,8 @@ class Lock(object):
         self.is_acquired = False
         self.assured_path = False
         self.cancelled = False
-        self._retry = KazooRetry(max_tries=None)
+        self._retry = KazooRetry(max_tries=None,
+                                 sleep_func=client.handler.sleep_func)
 
     def _ensure_path(self):
         self.client.ensure_path(self.path)

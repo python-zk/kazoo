@@ -21,6 +21,8 @@ Features
 Bug Handling
 ************
 
+- Lock recipe was failing to use the client's sleep_func causing issues with
+  gevent. Issue #150.
 - Calling a DataWatch or ChildrenWatch instance twice (decorator) now throws
   an exception as only a single function can be associated with a single
   watcher. Issue #154.
