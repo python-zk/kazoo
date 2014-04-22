@@ -3,6 +3,12 @@
 :Maintainer: Ben Bangert <ben@groovie.org>
 :Status: Production
 
+.. note::
+
+    :ref:`DataWatch` and :ref:`ChildrenWatch` may only handle a single
+    function, attempts to associate a single instance with multiple functions
+    will result in an exception being thrown.
+
 """
 import logging
 import time
@@ -10,7 +16,11 @@ import warnings
 from functools import partial, wraps
 
 from kazoo.retry import KazooRetry
-from kazoo.exceptions import ConnectionClosedError, NoNodeError
+from kazoo.exceptions import (
+    ConnectionClosedError,
+    NoNodeError,
+    KazooException
+)
 from kazoo.protocol.states import KazooState
 
 log = logging.getLogger(__name__)
@@ -103,6 +113,7 @@ class DataWatch(object):
             sleep_func=client.handler.sleep_func)
         self._include_event = None
         self._ever_called = False
+        self._used = False
 
         if args or kwargs:
             warnings.warn('Passing additional arguments to DataWatch is'
@@ -114,6 +125,7 @@ class DataWatch(object):
         # Register our session listener if we're going to resume
         # across session losses
         if func is not None:
+            self._used = True
             self._client.add_listener(self._session_watcher)
             self._get_data()
 
@@ -127,8 +139,14 @@ class DataWatch(object):
         :type func: callable
 
         """
+        if self._used:
+            raise KazooException(
+                "A function has already been associated with this "
+                "DataWatch instance.")
+
         self._func = func
 
+        self._used = True
         self._client.add_listener(self._session_watcher)
         self._get_data()
         return func
@@ -259,10 +277,12 @@ class ChildrenWatch(object):
         self._allow_session_lost = allow_session_lost
         self._run_lock = client.handler.lock_object()
         self._prior_children = None
+        self._used = False
 
         # Register our session listener if we're going to resume
         # across session losses
         if func is not None:
+            self._used = True
             if allow_session_lost:
                 self._client.add_listener(self._session_watcher)
             self._get_children()
@@ -276,8 +296,14 @@ class ChildrenWatch(object):
         :type func: callable
 
         """
+        if self._used:
+            raise KazooException(
+                "A function has already been associated with this "
+                "ChildrenWatch instance.")
+
         self._func = func
 
+        self._used = True
         if self._allow_session_lost:
             self._client.add_listener(self._session_watcher)
         self._get_children()

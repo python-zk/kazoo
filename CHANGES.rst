@@ -21,6 +21,9 @@ Features
 Bug Handling
 ************
 
+- Calling a DataWatch or ChildrenWatch instance twice (decorator) now throws
+  an exception as only a single function can be associated with a single
+  watcher. Issue #154.
 - Another fix for atexit handling so that when disposing of connections the
   atexit handler is removed. PR #190, patch by Devaev Maxim.
 - Fix atexit handling for kazoo threading handler, PR #183. Patch by

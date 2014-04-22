@@ -5,6 +5,7 @@ import uuid
 from nose.tools import eq_
 from nose.tools import raises
 
+from kazoo.exceptions import KazooException
 from kazoo.protocol.states import EventType
 from kazoo.testing import KazooTestCase
 
@@ -36,6 +37,32 @@ class KazooDataWatcherTests(KazooTestCase):
         update.wait(10)
         eq_(data[0], b'fred')
         update.clear()
+
+    def test_data_watcher_once(self):
+        update = threading.Event()
+        data = [True]
+
+        # Make it a non-existent path
+        self.path += 'f'
+
+        dwatcher = self.client.DataWatch(self.path)
+
+        @dwatcher
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        eq_(data, [None])
+        update.clear()
+
+        @raises(KazooException)
+        def test_it():
+            @dwatcher
+            def func(d, stat):
+                data.pop()
+        test_it()
 
     def test_data_watcher_with_event(self):
         # Test that the data watcher gets passed the event, if it
@@ -245,6 +272,30 @@ class KazooChildrenWatcherTests(KazooTestCase):
         self.client.create(self.path + '/' + 'george')
         update.wait(10)
         eq_(sorted(all_children), ['george', 'smith'])
+
+    def test_child_watcher_once(self):
+        update = threading.Event()
+        all_children = ['fred']
+
+        cwatch = self.client.ChildrenWatch(self.path)
+
+        @cwatch
+        def changed(children):
+            while all_children:
+                all_children.pop()
+            all_children.extend(children)
+            update.set()
+
+        update.wait(10)
+        eq_(all_children, [])
+        update.clear()
+
+        @raises(KazooException)
+        def test_it():
+            @cwatch
+            def changed_again(children):
+                update.set()
+        test_it()
 
     def test_child_watcher_with_event(self):
         update = threading.Event()
