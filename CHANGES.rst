@@ -21,6 +21,8 @@ Features
 Bug Handling
 ************
 
+- Change gevent import to remove deprecation warning when newer gevent is
+  used. PR #191, patch by Hiroaki Kawai.
 - Lock recipe was failing to use the client's sleep_func causing issues with
   gevent. Issue #150.
 - Calling a DataWatch or ChildrenWatch instance twice (decorator) now throws
