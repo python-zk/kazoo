@@ -220,6 +220,13 @@ class TestConnection(KazooTestCase):
 
         self.assertRaises(AuthFailedError, self.client.add_auth, "unknown-scheme", digest_auth)
 
+    def test_add_auth_on_reconnect(self):
+        self.client.add_auth("digest", "jsmith:jsmith")
+        self.client._connection._socket.close()
+        while not self.client.connected:
+            time.sleep(0.1)
+        self.assertTrue(("digest", "jsmith:jsmith") in self.client.auth_data)
+
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
 

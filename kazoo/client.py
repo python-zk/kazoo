@@ -671,6 +671,9 @@ class KazooClient(object):
         if not isinstance(credential, basestring):
             raise TypeError("Invalid type for credential")
 
+        # we need this auth data to re-authenticate on reconnect
+        self.auth_data.add((scheme, credential))
+
         async_result = self.handler.async_result()
         self._call(Auth(0, scheme, credential), async_result)
         return async_result

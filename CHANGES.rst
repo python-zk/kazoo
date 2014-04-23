@@ -21,6 +21,9 @@ Features
 Bug Handling
 ************
 
+- When authenticating via add_auth() the auth data will be saved to ensure that
+  the authentication happens on reconnect (as is the case when feeding auth
+  data via KazooClient's constructor). PR #172, patch by Raul Gutierrez S.
 - Change gevent import to remove deprecation warning when newer gevent is
   used. PR #191, patch by Hiroaki Kawai.
 - Lock recipe was failing to use the client's sleep_func causing issues with
