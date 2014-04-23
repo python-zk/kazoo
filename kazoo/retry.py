@@ -47,7 +47,8 @@ class KazooRetry(object):
         """Create a :class:`KazooRetry` instance for retrying function
         calls
 
-        :param max_tries: How many times to retry the command.
+        :param max_tries: How many times to retry the command. -1 means
+                          infinite tries.
         :param delay: Initial delay between retry attempts.
         :param backoff: Backoff multiplier between retry attempts.
                         Defaults to 2 for exponential backoff.
@@ -123,6 +124,7 @@ class KazooRetry(object):
             except ConnectionClosedError:
                 raise
             except self.retry_exceptions:
+                # Note: max_tries == -1 means infinite tries.
                 if self._attempts == self.max_tries:
                     raise RetryFailedError("Too many retry attempts")
                 self._attempts += 1
