@@ -82,7 +82,7 @@ class Queue(BaseQueue):
     def _inner_get(self):
         if not self._children:
             self._children = self.client.retry(self.client.get_children, self.path)
-            self._children = list(sorted(self._children))
+            self._children = sorted(self._children)
         if not self._children:
             return None
         name = self._children[0]
