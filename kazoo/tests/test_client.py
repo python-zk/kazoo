@@ -1,3 +1,4 @@
+import socket
 import sys
 import threading
 import time
@@ -222,7 +223,7 @@ class TestConnection(KazooTestCase):
 
     def test_add_auth_on_reconnect(self):
         self.client.add_auth("digest", "jsmith:jsmith")
-        self.client._connection._socket.close()
+        self.client._connection._socket.shutdown(socket.SHUT_RDWR)
         while not self.client.connected:
             time.sleep(0.1)
         self.assertTrue(("digest", "jsmith:jsmith") in self.client.auth_data)
