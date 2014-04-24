@@ -1,8 +1,19 @@
 Changelog
 =========
 
-1.4 (unreleased)
-----------------
+2.0b1 (2014-04-24)
+------------------
+
+API Changes
+***********
+
+- Null or None data is no longer treated as "". Pull req #165, patch by
+  Raul Gutierrez S. This will affect how you should treat null data in a
+  znode vs. an empty string.
+- Passing acl=[] to create() now works properly instead of an InvalidACLError
+  as it returned before. Patch by Raul Gutierrez S in PR #164.
+- Removed the dependency on zope.interface. The classes in the interfaces
+  module are left for documentation purposes only (issue #131).
 
 Features
 ********
@@ -49,17 +60,6 @@ Bug Handling
 - Fix issue with client.stop() not always setting the client state to
   KeeperState.CLOSED. Patch by Jyrki Pulliainen in PR #174.
 - Issue #169: Fixed pipes leaking into child processes.
-
-API Changes
-***********
-
-- Null or None data is no longer treated as "". Pull req #165, patch by
-  Raul Gutierrez S. This will affect how you should treat null data in a
-  znode vs. an empty string.
-- Passing acl=[] to create() now works properly instead of an InvalidACLError
-  as it returned before. Patch by Raul Gutierrez S in PR #164.
-- Removed the dependency on zope.interface. The classes in the interfaces
-  module are left for documentation purposes only (issue #131).
 
 Documentation
 *************
