@@ -453,7 +453,8 @@ class KazooClient(object):
             self._live.clear()
             self._notify_pending(state)
             self._make_state_change(KazooState.SUSPENDED)
-            self._reset_watchers()
+            if state != KeeperState.CONNECTING:
+                self._reset_watchers()
 
     def _notify_pending(self, state):
         """Used to clear a pending response queue and request queue
