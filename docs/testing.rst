@@ -66,3 +66,19 @@ one above:
             self.client.ensure_path('/test/path')
             result = self.client.get('/test/path')
             ...
+
+Zake
+====
+
+For those that do not need (or desire) to setup a zookeeper runtime to test
+integration with kazoo there is also a under developement library
+called `zake`_. Its code and repository can be found
+`here <https://github.com/yahoo/Zake>`_ (contributions welcome). It can be used
+to provide a *fake client* to layers of your application that interact
+with kazoo (using the same client interface) during testing to allow for
+introspection of what was stored, which watchers are active (and more) after
+your test of your application code has finished (this style of introspection
+is hard to when directly interfacing with zookeeper via a non-fake kazoo
+client).
+
+.. _zake: https://pypi.python.org/pypi/zake/
