@@ -1,6 +1,7 @@
 """A eventlet based handler."""
 from __future__ import absolute_import
 
+import atexit
 import logging
 
 import eventlet
@@ -89,6 +90,7 @@ class SequentialEventletHandler(object):
                     w = eventlet.spawn(_process_queue, q)
                     self._workers.append((w, q))
                 self._started = True
+                atexit.register(self.stop)
 
     def stop(self):
         with self._lock:
@@ -100,6 +102,8 @@ class SequentialEventletHandler(object):
                 self.callback_queue = eventlet.Queue()
                 self.completion_queue = eventlet.Queue()
                 self._started = False
+                if hasattr(atexit, "unregister"):
+                    atexit.unregister(self.stop)
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(green_socket)
