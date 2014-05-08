@@ -14,12 +14,13 @@ _NONE = object()
 
 class BaseAsyncResult(object):
     """A one-time event that stores a value or an exception"""
-    def __init__(self, handler, condition_factory):
+    def __init__(self, handler, condition_factory, timeout_factory):
         self._handler = handler
-        self.value = None
         self._exception = _NONE
         self._condition = condition_factory()
         self._callbacks = []
+        self._timeout_factory = timeout_factory
+        self.value = None
 
     def ready(self):
         """Return true if and only if it holds a value or an
@@ -77,7 +78,7 @@ class BaseAsyncResult(object):
                     raise self._exception
 
             # if we get to this point we timeout
-            raise self._handler.timeout_exception()
+            raise self._timeout_factory()
 
     def get_nowait(self):
         """Return the value or raise the exception without blocking.
