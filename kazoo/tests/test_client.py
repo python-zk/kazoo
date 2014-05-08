@@ -37,6 +37,10 @@ else:  # pragma: nocover
 
 
 class TestClientTransitions(KazooTestCase):
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
     def test_connection_and_disconnection(self):
         states = []
         rc = threading.Event()
@@ -56,7 +60,7 @@ class TestClientTransitions(KazooTestCase):
         eq_(states, [KazooState.CONNECTED])
         rc.clear()
         states.pop()
-        self.expire_session()
+        self.expire_session(self.make_event)
         rc.wait(2)
 
         req_states = [KazooState.LOST, KazooState.CONNECTED]
@@ -235,6 +239,13 @@ class TestAuthentication(KazooTestCase):
 
 
 class TestConnection(KazooTestCase):
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
+    @staticmethod
+    def make_condition():
+        return threading.Condition()
 
     def test_chroot_warning(self):
         k = self._get_nonchroot_client()
@@ -249,22 +260,22 @@ class TestConnection(KazooTestCase):
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
 
-        cv = threading.Event()
+        cv = self.make_event()
 
         def watch_events(event):
             if event == KazooState.LOST:
                 cv.set()
 
         self.client.add_listener(watch_events)
-        self.expire_session()
+        self.expire_session(self.make_event)
         cv.wait(3)
         assert cv.is_set()
 
     def test_bad_session_expire(self):
         from kazoo.protocol.states import KazooState
 
-        cv = threading.Event()
-        ab = threading.Event()
+        cv = self.make_event()
+        ab = self.make_event()
 
         def watch_events(event):
             if event == KazooState.LOST:
@@ -273,7 +284,7 @@ class TestConnection(KazooTestCase):
                 cv.set()
 
         self.client.add_listener(watch_events)
-        self.expire_session()
+        self.expire_session(self.make_event)
         ab.wait(0.5)
         assert ab.is_set()
         cv.wait(0.5)
@@ -282,7 +293,7 @@ class TestConnection(KazooTestCase):
     def test_state_listener(self):
         from kazoo.protocol.states import KazooState
         states = []
-        condition = threading.Condition()
+        condition = self.make_condition()
 
         def listener(state):
             with condition:
@@ -308,7 +319,7 @@ class TestConnection(KazooTestCase):
         from kazoo.protocol.states import KazooState
         self.assertTrue(self.client.state, KazooState.CONNECTED)
         called = [False]
-        condition = threading.Event()
+        condition = self.make_event()
 
         def listener(state):
             called[0] = True
@@ -329,7 +340,7 @@ class TestConnection(KazooTestCase):
     def test_close_connecting_connection(self):
         client = self.client
         client.stop()
-        ev = threading.Event()
+        ev = self.make_event()
 
         def close_on_connecting(state):
             if state in (KazooState.CONNECTED, KazooState.LOST):
@@ -584,7 +595,8 @@ class TestClient(KazooTestCase):
         credential = make_digest_acl_credential("username", "password")
         alt_client = KazooClient(
             self.cluster[0].address + self.client.chroot,
-            max_retries=5, auth_data=[("digest", credential)])
+            max_retries=5, auth_data=[("digest", credential)],
+            handler=self._makeOne())
         alt_client.start()
         alt_client.create("/1/2", b"val2", makepath=True, acl=CREATOR_ALL_ACL)
 
