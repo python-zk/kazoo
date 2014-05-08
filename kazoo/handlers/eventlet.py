@@ -68,6 +68,11 @@ class SequentialEventletHandler(object):
         self._workers = []
         self._started = False
 
+    @property
+    def running(self):
+        with self._lock:
+            return self._started
+
     timeout_exception = TimeoutError
 
     def start(self):
