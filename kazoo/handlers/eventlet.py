@@ -21,8 +21,11 @@ class TimeoutError(Exception):
 
 
 class AsyncResult(utils.BaseAsyncResult):
+    """A one-time event that stores a value or an exception"""
     def __init__(self, handler):
-        super(AsyncResult, self).__init__(handler, green_threading.Condition)
+        super(AsyncResult, self).__init__(handler,
+                                          green_threading.Condition,
+                                          TimeoutError)
 
 
 class SequentialEventletHandler(object):
