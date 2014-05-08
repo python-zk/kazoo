@@ -1,6 +1,7 @@
 import contextlib
 import unittest
 
+from nose import SkipTest
 from nose.tools import raises
 
 import mock
