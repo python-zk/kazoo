@@ -12,13 +12,13 @@ import os
 _NONE = object()
 
 
-class AsyncResult(object):
+class BaseAsyncResult(object):
     """A one-time event that stores a value or an exception"""
-    def __init__(self, handler, condition_cls):
+    def __init__(self, handler, condition_factory):
         self._handler = handler
         self.value = None
         self._exception = _NONE
-        self._condition = condition_cls()
+        self._condition = condition_factory()
         self._callbacks = []
 
     def ready(self):

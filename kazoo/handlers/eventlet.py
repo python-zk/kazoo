@@ -20,6 +20,11 @@ class TimeoutError(Exception):
     pass
 
 
+class AsyncResult(utils.BaseAsyncResult):
+    def __init__(self, handler):
+        super(AsyncResult, self).__init__(handler, green_threading.Condition)
+
+
 class SequentialEventletHandler(object):
     """Eventlet handler for sequentially executing callbacks.
 
@@ -112,7 +117,7 @@ class SequentialEventletHandler(object):
         return green_select.select(*args, **kwargs)
 
     def async_result(self):
-        return utils.AsyncResult(self, green_threading.Condition)
+        return AsyncResult(self)
 
     def spawn(self, func, *args, **kwargs):
         return eventlet.spawn(func, *args, **kwargs)
