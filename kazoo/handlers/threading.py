@@ -36,6 +36,11 @@ class KazooTimeoutError(Exception):
     pass
 
 
+class AsyncResult(utils.BaseAsyncResult):
+    def __init__(self, handler):
+        super(AsyncResult, self).__init__(handler, threading.Condition)
+
+
 class SequentialThreadingHandler(object):
     """Threading handler for sequentially executing callbacks.
 
@@ -162,7 +167,7 @@ class SequentialThreadingHandler(object):
 
     def async_result(self):
         """Create a :class:`AsyncResult` instance"""
-        return utils.AsyncResult(self, threading.Condition)
+        return AsyncResult(self)
 
     def spawn(self, func, *args, **kwargs):
         t = threading.Thread(target=func, args=args, kwargs=kwargs)
