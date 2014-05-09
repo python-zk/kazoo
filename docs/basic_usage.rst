@@ -4,6 +4,7 @@
 Basic Usage
 ===========
 
+
 Connection Handling
 ===================
 
@@ -28,6 +29,26 @@ instructed to drop a connection by calling `stop`:
 .. code-block:: python
 
     zk.stop()
+
+
+Logging Setup
+-------------
+
+If logging is not setup for your application, you can get following error:
+
+.. code-block:: python
+    
+    No handlers could be found for logger "kazoo.client"
+
+To avoid this issue you can do the following at the very minimum:
+
+.. code-block:: python
+    
+    import logging
+    logging.basicConfig()
+
+More details about logging setup can be found
+`here <https://docs.python.org/2/howto/logging.html#logging-howto>`_. 
 
 Listening for Connection Events
 -------------------------------
