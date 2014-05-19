@@ -2,8 +2,10 @@
 import atexit
 import logging
 import os
+import socket
 import uuid
 import threading
+import time
 import unittest
 
 from kazoo.client import KazooClient
@@ -122,6 +124,25 @@ class KazooTestHarness(unittest.TestCase):
         if not safe.isSet():
             raise Exception("Failed to see client reconnect")
         self.client.retry(self.client.get_async, '/')
+
+    def force_reconnect(self):
+        client = self.client
+        state_change_event = client.handler.event_object()
+
+        def listener(state):
+            if state is KazooState.SUSPENDED:
+                state_change_event.set()
+
+        client.add_listener(listener)
+
+        client._connection._socket.shutdown(socket.SHUT_RDWR)
+
+        state_change_event.wait(1)
+        self.assertTrue(state_change_event.is_set())
+
+        # wait until we are back
+        while not client.connected:
+            time.sleep(0.1)
 
     def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`
