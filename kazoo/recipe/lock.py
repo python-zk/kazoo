@@ -357,7 +357,7 @@ class Semaphore(object):
         The max_leases check.
 
     """
-    def __init__(self, client, path, identifier=None, max_leases=1):
+    def __init__(self, client, path, identifier=None, max_leases=1, ephemeral_lease=True):
         """Create a Kazoo Lock
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -367,13 +367,14 @@ class Semaphore(object):
                            current lock contenders are.
         :param max_leases: The maximum amount of leases available for
                            the semaphore.
+        :param ephemeral_lease: Wether the lease node should be ephemeral or not
 
         """
         # Implementation notes about how excessive thundering herd
         # and watches are avoided
         # - A node (lease pool) holds children for each lease in use
         # - A lock is acquired for a process attempting to acquire a
-        #   lease. If a lease is available, the ephemeral node is
+        #   lease. If a lease is available, the lease node is
         #   created in the lease pool and the lock is released.
         # - Only the lock holder watches for children changes in the
         #   lease pool
@@ -392,6 +393,7 @@ class Semaphore(object):
         self.assured_path = False
         self.cancelled = False
         self._session_expired = False
+        self.ephemeral_lease = ephemeral_lease
 
     def _ensure_path(self):
         result = self.client.ensure_path(self.path)
@@ -516,7 +518,7 @@ class Semaphore(object):
 
         # If there are leases available, acquire one
         if len(children) < self.max_leases:
-            self.client.create(self.create_path, self.data, ephemeral=True)
+            self.client.create(self.create_path, self.data, ephemeral=self.ephemeral_lease)
 
         # Check if our acquisition was successful or not. Update our state.
         if self.client.exists(self.create_path):
