@@ -7,6 +7,7 @@ Changelog
 Documentation
 *************
 
+- Issue #198: Mention Zake as a sophisticated kazoo mock testing library.
 - Issue #181: Add documentation on basic logging setup.
 
 2.0b1 (2014-04-24)
