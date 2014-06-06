@@ -4,6 +4,7 @@ from nose import SkipTest
 from nose.tools import eq_, ok_
 
 from kazoo.testing import KazooTestCase
+from kazoo.tests.util import TRAVIS_ZK_VERSION
 
 
 class KazooQueueTests(KazooTestCase):
@@ -55,9 +56,17 @@ class KazooLockingQueueTests(KazooTestCase):
 
     def setUp(self):
         KazooTestCase.setUp(self)
-        ver = self.client.server_version()
-        if ver[1] < 4:
-            raise SkipTest("Must use zookeeper 3.4 or above")
+        skip = False
+        if TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION < (3, 4):
+            skip = True
+        elif TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION >= (3, 4):
+            skip = False
+        else:
+            ver = self.client.server_version()
+            if ver[1] < 4:
+                skip = True
+        if skip:
+            raise SkipTest("Must use Zookeeper 3.4 or above")
 
     def _makeOne(self):
         path = "/" + uuid.uuid4().hex

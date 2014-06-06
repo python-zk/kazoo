@@ -13,7 +13,13 @@
 ##############################################################################
 
 import logging
+import os
 import time
+
+TRAVIS = os.environ.get('TRAVIS', False)
+TRAVIS_ZK_VERSION = TRAVIS and os.environ.get('ZOOKEEPER_VERSION', None)
+if TRAVIS_ZK_VERSION:
+    TRAVIS_ZK_VERSION = tuple([int(n) for n in TRAVIS_ZK_VERSION.split('.')])
 
 
 class Handler(logging.Handler):
