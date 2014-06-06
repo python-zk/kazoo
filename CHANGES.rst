@@ -7,6 +7,7 @@ Changelog
 Documentation
 *************
 
+- Extend support to Python 3.4, deprecating Python 3.2.
 - Issue #198: Mention Zake as a sophisticated kazoo mock testing library.
 - Issue #181: Add documentation on basic logging setup.
 
