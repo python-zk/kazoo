@@ -34,21 +34,22 @@ instructed to drop a connection by calling `stop`:
 Logging Setup
 -------------
 
-If logging is not setup for your application, you can get following error:
+If logging is not setup for your application, you can get following message:
 
 .. code-block:: python
     
     No handlers could be found for logger "kazoo.client"
 
-To avoid this issue you can do the following at the very minimum:
+To avoid this issue you can at the very minimum do the following:
 
 .. code-block:: python
     
     import logging
     logging.basicConfig()
 
-More details about logging setup can be found
-`here <https://docs.python.org/2/howto/logging.html#logging-howto>`_. 
+Read `Python's logging tutorial <https://docs.python.org/howto/logging.html>`_
+for more details.
+
 
 Listening for Connection Events
 -------------------------------

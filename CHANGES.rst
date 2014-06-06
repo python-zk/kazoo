@@ -4,6 +4,10 @@ Changelog
 2.0 (unreleased)
 ----------------
 
+Documentation
+*************
+
+- Issue #181: Add documentation on basic logging setup.
 
 2.0b1 (2014-04-24)
 ------------------
