@@ -108,20 +108,12 @@ class TestClientConstructor(unittest.TestCase):
         eq_(client._retry.max_tries, 99)
         eq_(client._conn_retry.delay, 99)
 
-class TestConnection(KazooTestCase):
+
+class TestAuthentication(KazooTestCase):
+
     def _makeAuth(self, *args, **kwargs):
         from kazoo.security import make_digest_acl
         return make_digest_acl(*args, **kwargs)
-
-    def test_chroot_warning(self):
-        k = self._get_nonchroot_client()
-        k.chroot = 'abba'
-        try:
-            with patch('warnings.warn') as mock_func:
-                k.start()
-                assert mock_func.called
-        finally:
-            k.stop()
 
     def test_auth(self):
         username = uuid.uuid4().hex
@@ -130,13 +122,15 @@ class TestConnection(KazooTestCase):
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
 
-        self.client.add_auth("digest", digest_auth)
-        self.client.default_acl = (acl,)
+        client = self._get_client()
+        client.start()
+        client.add_auth("digest", digest_auth)
+        client.default_acl = (acl,)
 
         try:
-            self.client.create("/1")
-            self.client.create("/1/2")
-            self.client.ensure_path("/1/2/3")
+            client.create("/1")
+            client.create("/1/2")
+            client.ensure_path("/1/2/3")
 
             eve = self._get_client()
             eve.start()
@@ -149,7 +143,7 @@ class TestConnection(KazooTestCase):
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
             # Ensure we remove the ACL protected nodes
-            self.client.delete("/1", recursive=True)
+            client.delete("/1", recursive=True)
             eve.stop()
             eve.close()
 
@@ -178,12 +172,14 @@ class TestConnection(KazooTestCase):
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
 
-        self.client.add_auth("digest", digest_auth)
-        self.client.default_acl = (acl,)
+        client = self._get_client()
+        client.start()
+        client.add_auth("digest", digest_auth)
+        client.default_acl = (acl,)
 
         try:
-            self.client.create("/1")
-            self.client.ensure_path("/1/2/3")
+            client.create("/1")
+            client.ensure_path("/1/2/3")
 
             eve = self._get_client()
             eve.start()
@@ -196,38 +192,58 @@ class TestConnection(KazooTestCase):
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
             # Ensure we remove the ACL protected nodes
-            self.client.delete("/1", recursive=True)
+            client.delete("/1", recursive=True)
             eve.stop()
             eve.close()
 
     def test_invalid_auth(self):
-        self.assertRaises(TypeError, self.client.add_auth,
-            'digest', ('user', 'pass'))
-        self.assertRaises(TypeError, self.client.add_auth,
-            None, ('user', 'pass'))
+        client = self._get_client()
+        client.start()
+        self.assertRaises(TypeError, client.add_auth,
+                          'digest', ('user', 'pass'))
+        self.assertRaises(TypeError, client.add_auth,
+                          None, ('user', 'pass'))
 
     def test_async_auth(self):
+        client = self._get_client()
+        client.start()
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
         digest_auth = "%s:%s" % (username, password)
-        result = self.client.add_auth_async("digest", digest_auth)
+        result = client.add_auth_async("digest", digest_auth)
         self.assertTrue(result.get())
 
     def test_async_auth_failure(self):
-        from kazoo.exceptions import AuthFailedError
-
+        client = self._get_client()
+        client.start()
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
         digest_auth = "%s:%s" % (username, password)
 
-        self.assertRaises(AuthFailedError, self.client.add_auth, "unknown-scheme", digest_auth)
+        self.assertRaises(AuthFailedError, client.add_auth,
+                          "unknown-scheme", digest_auth)
 
     def test_add_auth_on_reconnect(self):
-        self.client.add_auth("digest", "jsmith:jsmith")
-        self.client._connection._socket.shutdown(socket.SHUT_RDWR)
-        while not self.client.connected:
+        client = self._get_client()
+        client.start()
+        client.add_auth("digest", "jsmith:jsmith")
+        client._connection._socket.shutdown(socket.SHUT_RDWR)
+        while not client.connected:
             time.sleep(0.1)
-        self.assertTrue(("digest", "jsmith:jsmith") in self.client.auth_data)
+        self.assertTrue(("digest", "jsmith:jsmith") in client.auth_data)
+
+
+class TestConnection(KazooTestCase):
+
+    def test_chroot_warning(self):
+        k = self._get_nonchroot_client()
+        k.chroot = 'abba'
+        try:
+            with patch('warnings.warn') as mock_func:
+                k.start()
+                assert mock_func.called
+        finally:
+            k.stop()
 
     def test_session_expire(self):
         from kazoo.protocol.states import KazooState
@@ -359,8 +375,6 @@ class TestConnection(KazooTestCase):
         # close the connection to free the pipe
         client.close()
         eq_(client._connection._write_pipe, None)
-
-        from kazoo.protocol.states import KeeperState
 
         # sneak in and patch client to simulate race between a thread
         # calling stop(); close() and one running a command
