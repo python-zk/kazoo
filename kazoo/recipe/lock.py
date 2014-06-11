@@ -427,11 +427,23 @@ class Semaphore(object):
                 else:
                     # If not blocking, register another watch that will trigger
                     # self._get_lease() as soon as the children change again.
-                    self.client.get_children(self.path, self._get_lease)
+                    self.client.get_children(self.path, self._locked_lease)
                     return False
 
     def _watch_lease_change(self, event):
         self.wake_event.set()
+
+    def _locked_lease(self, data=None):
+        # Make sure the session is still valid
+        if self._session_expired:
+            raise ForceRetryError("Retry on session loss at top")
+
+        # Make sure that the request hasn't been canceled
+        if self.cancelled:
+            raise CancelledError("Semaphore cancelled")
+
+        with self.client.Lock(self.lock_path, self.data):
+            return self._inner_lease(data)
 
     def _get_lease(self, data=None):
         # Make sure the session is still valid
@@ -441,7 +453,9 @@ class Semaphore(object):
         # Make sure that the request hasn't been canceled
         if self.cancelled:
             raise CancelledError("Semaphore cancelled")
+        return self._inner_lease(data)
 
+    def _inner_lease(self, data=None):
         # Get a list of the current potential lock holders. If they change,
         # notify our wake_event object. This is used to unblock a blocking
         # self._inner_acquire call.
