@@ -262,6 +262,24 @@ class LockingQueue(BaseQueue):
         else:
             return False
 
+    def release(self):
+        """Removes the lock from currently processed item without consuming it.
+
+        :returns: True if the lock was removed successfully, False otherwise.
+        :rtype: bool
+        """
+        if not self.processing_element is None and self.holds_lock:
+            id_, value = self.processing_element
+            with self.client.transaction() as transaction:
+                transaction.delete("{path}/{id}".format(
+                    path=self._lock_path,
+                    id=id_))
+            self.processing_element = None
+            return True
+        else:
+            return False
+
+
     def _inner_get(self, timeout):
         flag = self.client.handler.event_object()
         lock = self.client.handler.lock_object()
