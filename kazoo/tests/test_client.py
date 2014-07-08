@@ -370,29 +370,29 @@ class TestConnection(KazooTestCase):
         client = self.client
         client.stop()
 
-        write_pipe = client._connection._write_pipe
+        pipe = client._connection._pipe
 
         # close the connection to free the pipe
         client.close()
-        eq_(client._connection._write_pipe, None)
+        eq_(client._connection._pipe, None)
 
         # sneak in and patch client to simulate race between a thread
         # calling stop(); close() and one running a command
         oldstate = client._state
         client._state = KeeperState.CONNECTED
-        client._connection._write_pipe = write_pipe
+        client._connection._pipe = pipe
         try:
             # simulate call made after write pipe is closed
             self.assertRaises(ConnectionClosedError, client.exists, '/')
 
             # simualte call made after write pipe is set to None
-            client._connection._write_pipe = None
+            client._connection._pipe = None
             self.assertRaises(ConnectionClosedError, client.exists, '/')
 
         finally:
             # reset for teardown
             client._state = oldstate
-            client._connection._write_pipe = None
+            client._connection._pipe = None
 
 
 class TestClient(KazooTestCase):
