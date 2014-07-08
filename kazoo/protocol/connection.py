@@ -145,8 +145,7 @@ class ConnectionHandler(object):
         self.connection_stopped.set()
         self.ping_outstanding = client.handler.event_object()
 
-        self._read_pipe = None
-        self._write_pipe = None
+        self._pipe = None
 
         self._socket = None
         self._xid = None
@@ -168,7 +167,8 @@ class ConnectionHandler(object):
     def start(self):
         """Start the connection up"""
         if self.connection_closed.is_set():
-            self._read_pipe, self._write_pipe = create_pipe()
+            self._pipe = create_pipe()
+            self._pipe.open()
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception("Unable to start, connection routine already "
@@ -191,12 +191,11 @@ class ConnectionHandler(object):
         if not self.connection_stopped.is_set():
             raise Exception("Cannot close connection until it is stopped")
         self.connection_closed.set()
-        wp, rp = self._write_pipe, self._read_pipe
-        self._write_pipe = self._read_pipe = None
-        if wp is not None:
-            os.close(wp)
-        if rp is not None:
-            os.close(rp)
+        pipe = self._pipe
+        self._pipe = None
+        if pipe is not None:
+            pipe.close()
+
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
@@ -418,7 +417,7 @@ class ConnectionHandler(object):
             try:
                 # Clear possible inconsistence (no request in the queue
                 # but have data in the read pipe), which causes cpu to spin.
-                os.read(self._read_pipe, 1)
+                self._pipe.read(1)
             except OSError:
                 pass
             return
@@ -439,7 +438,7 @@ class ConnectionHandler(object):
 
         self._submit(request, connect_timeout, xid)
         client._queue.popleft()
-        os.read(self._read_pipe, 1)
+        self._pipe.read(1)
         client._pending.append((request, async_object, xid))
 
     def _send_ping(self, connect_timeout):
@@ -518,7 +517,7 @@ class ConnectionHandler(object):
                 jitter_time = random.randint(0, 40) / 100.0
                 # Ensure our timeout is positive
                 timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
-                s = self.handler.select([self._socket, self._read_pipe],
+                s = self.handler.select([self._socket, self._pipe._read_pipe],
                                         [], [], timeout)[0]
 
                 if not s:
