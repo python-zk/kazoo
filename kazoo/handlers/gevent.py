@@ -122,7 +122,7 @@ class SequentialGeventHandler(object):
         return create_tcp_socket(socket)
 
     def socketpair(self):
-        return create_socketpair(socket)
+        return create_socketpair(self, socket)
 
     def create_connection(self, *args, **kwargs):
         return create_tcp_connection(socket, *args, **kwargs)
