@@ -32,6 +32,13 @@ def create_pipe():
         _set_fd_cloexec(w)
     return r, w
 
+def create_socketpair(module):
+    """Create socketpair with O_NONBLOCK
+    """
+    r, w = module.socketpair()
+    r.setblocking(0)
+    w.setblocking(0)
+    return r, w
 
 def create_tcp_socket(module):
     """Create a TCP socket with the CLOEXEC flag set.

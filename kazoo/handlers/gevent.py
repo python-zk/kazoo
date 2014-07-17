@@ -18,7 +18,7 @@ try:
 except ImportError:
     from gevent.coros import Semaphore, RLock
 
-from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
+from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection, create_socketpair
 
 _using_libevent = gevent.__version__.startswith('0.')
 
@@ -120,6 +120,9 @@ class SequentialGeventHandler(object):
 
     def socket(self, *args, **kwargs):
         return create_tcp_socket(socket)
+
+    def socketpair(self):
+        return create_socketpair(socket)
 
     def create_connection(self, *args, **kwargs):
         return create_tcp_connection(socket, *args, **kwargs)
