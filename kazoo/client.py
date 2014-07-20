@@ -1,6 +1,5 @@
 """Kazoo Zookeeper Client"""
 import inspect
-import itertools
 import logging
 import os
 import re
@@ -1389,9 +1388,6 @@ class TransactionRequest(object):
             results = result.get()
             if any(isinstance(r, KazooException) for r in results):
                 return
-            for r, op in itertools.izip(results, self.operations):
-                if isinstance(op, CheckVersion) and not r:
-                    return
             self.committed = True
 
         self._check_tx_state()
