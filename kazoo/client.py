@@ -1381,16 +1381,14 @@ class TransactionRequest(object):
 
         """
         def on_finish(result):
+            self.fired = False
             if not result.successful():
-                self.fired = False
                 return
             results = result.get()
             if any(isinstance(r, Exception) for r in results):
-                self.fired = False
                 return
             for result, op in zip(results, self.operations):
                 if isinstance(op, CheckVersion) and not result:
-                    self.fired = False
                     return
             self.committed = True
 
