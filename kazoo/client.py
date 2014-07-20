@@ -1,5 +1,6 @@
 """Kazoo Zookeeper Client"""
 import inspect
+import itertools
 import logging
 import os
 import re
@@ -13,6 +14,7 @@ from kazoo.exceptions import (
     ConfigurationError,
     ConnectionClosedError,
     ConnectionLoss,
+    KazooException,
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
@@ -1385,10 +1387,10 @@ class TransactionRequest(object):
             if not result.successful():
                 return
             results = result.get()
-            if any(isinstance(r, Exception) for r in results):
+            if any(isinstance(r, KazooException) for r in results):
                 return
-            for result, op in zip(results, self.operations):
-                if isinstance(op, CheckVersion) and not result:
+            for r, op in itertools.izip(results, self.operations):
+                if isinstance(op, CheckVersion) and not r:
                     return
             self.committed = True
 
