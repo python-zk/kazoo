@@ -13,6 +13,8 @@ from kazoo.exceptions import (
     ConfigurationError,
     ConnectionClosedError,
     ConnectionLoss,
+    KazooException,
+    KazooTransactionException,
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
@@ -1393,6 +1395,39 @@ class TransactionRequest(object):
 
         """
         return self.commit_async().get()
+
+    def checked_commit(self):
+        """Commit the transaction and checks that there were no failures.
+
+        :returns: A list of the results for each operation in the
+                  transaction.
+
+        :raises:
+            :exc:`~kazoo.exceptions.KazooTransactionException` if transcation
+            failures/issues happened during the committing process.
+        """
+        if not self.operations:
+            return []
+        results = self.commit()
+        failures = []
+        for op, result in zip(self.operations, results):
+            if isinstance(result, KazooException):
+                failures.append((op, result))
+        if len(results) < len(self.operations):
+            raise KazooTransactionException(
+                "Transaction returned %s results, this is less than"
+                " the number of expected transaction operations %s"
+                % (len(results), len(self.operations)), failures)
+        if len(results) > len(self.operations):
+            raise KazooTransactionException(
+                "Transaction returned %s results, this is greater than"
+                " the number of expected transaction operations %s"
+                % (len(results), len(self.operations)), failures)
+        if failures:
+            raise KazooTransactionException(
+                "Transaction with %s operations had %s failures"
+                % (len(self.operations), len(failures)), failures)
+        return results
 
     def __enter__(self):
         return self
