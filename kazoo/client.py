@@ -1403,7 +1403,7 @@ class TransactionRequest(object):
                   transaction.
 
         :raises:
-            :exc:`~kazoo.exceptions.KazooTransactionException` if transcation
+            :exc:`~kazoo.exceptions.KazooTransactionException` if transaction
             failures/issues happened during the committing process.
         """
         if not self.operations:
