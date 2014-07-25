@@ -12,7 +12,7 @@ class KazooTransactionException(KazooException):
 
     def __init__(self, message, failures):
         super(KazooTransactionException, self).__init__(message)
-        self._failures = failures
+        self._failures = tuple(failures)
 
     @property
     def failures(self):
