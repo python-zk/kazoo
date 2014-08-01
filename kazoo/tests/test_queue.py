@@ -126,6 +126,19 @@ class KazooLockingQueueTests(KazooTestCase):
         ok_(queue.consume())
         ok_(not queue.consume())
 
+    def test_release(self):
+        queue = self._makeOne()
+
+        queue.put(b"one")
+        eq_(queue.get(1), b"one")
+        ok_(queue.holds_lock())
+        ok_(queue.release())
+        ok_(not queue.holds_lock())
+        eq_(queue.get(1), b"one")
+        ok_(queue.consume())
+        ok_(not queue.release())
+        eq_(len(queue), 0)
+
     def test_holds_lock(self):
         queue = self._makeOne()
 
