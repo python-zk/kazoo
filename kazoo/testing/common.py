@@ -59,7 +59,8 @@ def to_java_compatible_path(path):
     return path
 
 ServerInfo = namedtuple(
-    "ServerInfo", "server_id client_port election_port leader_port")
+    "ServerInfo",
+    "server_id client_port election_port leader_port admin_port")
 
 
 class ManagedZooKeeper(object):
@@ -110,7 +111,10 @@ tickTime=2000
 dataDir=%s
 clientPort=%s
 maxClientCnxns=0
-""" % (to_java_compatible_path(data_path), self.server_info.client_port))
+admin.serverPort=%s
+""" % (to_java_compatible_path(data_path),
+       self.server_info.client_port,
+       self.server_info.admin_port))
 
         # setup a replicated setup if peers are specified
         if self.peers:
@@ -239,7 +243,7 @@ class ZookeeperCluster(object):
         peers = []
 
         for i in range(size):
-            info = ServerInfo(i + 1, port, port + 1, port + 2)
+            info = ServerInfo(i + 1, port, port + 1, port + 2, port + 3)
             peers.append(info)
             port += 10
 

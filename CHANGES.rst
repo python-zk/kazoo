@@ -4,6 +4,12 @@ Changelog
 2.0.1 (unreleased)
 ------------------
 
+Features
+********
+
+- Start running tests against Zookeeper 3.5.0 alpha and explicitly configure
+  the `admin.serverPort` in tests to avoid port conflicts. The Zookeeper
+  alpha version is not yet officially supported.
 
 2.0 (2014-06-19)
 ----------------
