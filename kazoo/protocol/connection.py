@@ -583,7 +583,7 @@ class ConnectionHandler(object):
                           client._session_id or 0, client._session_passwd,
                           client.read_only)
 
-        connect_result, zxid = self._invoke(client._session_timeout, connect)
+        connect_result, zxid = self._invoke(client._session_timeout / 1000.0, connect)
 
         if connect_result.time_out <= 0:
             raise SessionExpiredError("Session has expired")
@@ -617,7 +617,7 @@ class ConnectionHandler(object):
 
         for scheme, auth in client.auth_data:
             ap = Auth(0, scheme, auth)
-            zxid = self._invoke(connect_timeout, ap, xid=AUTH_XID)
+            zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
         return read_timeout, connect_timeout
