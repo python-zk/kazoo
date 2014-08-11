@@ -11,6 +11,11 @@ Features
   the `admin.serverPort` in tests to avoid port conflicts. The Zookeeper
   alpha version is not yet officially supported.
 
+Bug Handling
+************
+
+- #221: Let `client.command` work with IPv6 addresses.
+
 Documentation
 *************
 
