@@ -110,7 +110,7 @@ class DataWatch(object):
         self._run_lock = client.handler.lock_object()
         self._version = None
         self._retry = KazooRetry(max_tries=None,
-            sleep_func=client.handler.sleep_func)
+                                 sleep_func=client.handler.sleep_func)
         self._include_event = None
         self._ever_called = False
         self._used = False
@@ -343,8 +343,8 @@ class ChildrenWatch(object):
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
             self._watch_established = False
-        elif state == KazooState.CONNECTED and \
-             not self._watch_established and not self._stopped:
+        elif (state == KazooState.CONNECTED and
+              not self._watch_established and not self._stopped):
             self._client.handler.spawn(self._get_children)
 
 

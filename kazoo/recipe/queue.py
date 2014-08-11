@@ -81,7 +81,8 @@ class Queue(BaseQueue):
 
     def _inner_get(self):
         if not self._children:
-            self._children = self.client.retry(self.client.get_children, self.path)
+            self._children = self.client.retry(
+                self.client.get_children, self.path)
             self._children = sorted(self._children)
         if not self._children:
             return None
@@ -223,7 +224,7 @@ class LockingQueue(BaseQueue):
         :rtype: bytes
         """
         self._ensure_paths()
-        if not self.processing_element is None:
+        if self.processing_element is not None:
             return self.processing_element[1]
         else:
             return self._inner_get(timeout)
@@ -248,7 +249,7 @@ class LockingQueue(BaseQueue):
         :returns: True if element was removed successfully, False otherwise.
         :rtype: bool
         """
-        if not self.processing_element is None and self.holds_lock:
+        if self.processing_element is not None and self.holds_lock:
             id_, value = self.processing_element
             with self.client.transaction() as transaction:
                 transaction.delete("{path}/{id}".format(
@@ -269,21 +270,23 @@ class LockingQueue(BaseQueue):
         value = []
 
         def check_for_updates(event):
-            if not event is None and event.type != EventType.CHILD:
+            if event is not None and event.type != EventType.CHILD:
                 return
             with lock:
                 if canceled or flag.isSet():
                     return
-                values = self.client.retry(self.client.get_children,
+                values = self.client.retry(
+                    self.client.get_children,
                     self._entries_path,
                     check_for_updates)
-                taken = self.client.retry(self.client.get_children,
+                taken = self.client.retry(
+                    self.client.get_children,
                     self._lock_path,
                     check_for_updates)
                 available = self._filter_locked(values, taken)
                 if len(available) > 0:
                     ret = self._take(available[0])
-                    if not ret is None:
+                    if ret is not None:
                         # By this time, no one took the task
                         value.append(ret)
                         flag.set()
@@ -303,7 +306,7 @@ class LockingQueue(BaseQueue):
         taken = set(taken)
         available = sorted(values)
         return (available if len(taken) == 0 else
-            [x for x in available if x not in taken])
+                [x for x in available if x not in taken])
 
     def _take(self, id_):
         try:
@@ -313,7 +316,8 @@ class LockingQueue(BaseQueue):
                     id=id_),
                 self.id,
                 ephemeral=True)
-            value, stat = self.client.retry(self.client.get,
+            value, stat = self.client.retry(
+                self.client.get,
                 "{path}/{id}".format(path=self._entries_path, id=id_))
         except (NoNodeError, NodeExistsError):
             # Item is already consumed or locked

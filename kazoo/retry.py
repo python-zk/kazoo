@@ -128,15 +128,17 @@ class KazooRetry(object):
                 if self._attempts == self.max_tries:
                     raise RetryFailedError("Too many retry attempts")
                 self._attempts += 1
-                sleeptime = self._cur_delay + (random.randint(0, self.max_jitter) / 100.0)
+                sleeptime = self._cur_delay + (
+                    random.randint(0, self.max_jitter) / 100.0)
 
-                if self._cur_stoptime is not None and time.time() + sleeptime >= self._cur_stoptime:
+                if self._cur_stoptime is not None and \
+                   time.time() + sleeptime >= self._cur_stoptime:
                     raise RetryFailedError("Exceeded retry deadline")
 
                 if self.interrupt:
                     while sleeptime > 0:
-                        # Break the time period down and sleep for no longer than
-                        # 0.1 before calling the interrupt
+                        # Break the time period down and sleep for no
+                        # longer than 0.1 before calling the interrupt
                         if sleeptime < 0.1:
                             self.sleep_func(sleeptime)
                             sleeptime -= sleeptime
@@ -147,4 +149,5 @@ class KazooRetry(object):
                             raise InterruptedError()
                 else:
                     self.sleep_func(sleeptime)
-                self._cur_delay = min(self._cur_delay * self.backoff, self.max_delay)
+                self._cur_delay = min(self._cur_delay * self.backoff,
+                                      self.max_delay)

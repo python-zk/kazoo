@@ -110,7 +110,7 @@ class Lock(object):
             retry = self._retry.copy()
             retry.deadline = timeout
             self.is_acquired = retry(self._inner_acquire,
-                blocking=blocking, timeout=timeout)
+                                     blocking=blocking, timeout=timeout)
         except RetryFailedError:
             self._best_effort_cleanup()
         except KazooException:
@@ -177,8 +177,8 @@ class Lock(object):
                 if self.client.exists(predecessor, self._watch_predecessor):
                     self.wake_event.wait(timeout)
                     if not self.wake_event.isSet():
-                        raise LockTimeout("Failed to acquire lock on %s after %s "
-                                          "seconds" % (self.path, timeout))
+                        raise LockTimeout("Failed to acquire lock on %s after "
+                                          "%s seconds" % (self.path, timeout))
             finally:
                 self.client.remove_listener(self._watch_session)
 

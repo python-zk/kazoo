@@ -6,6 +6,7 @@ except ImportError:
     # try python3 then
     from urllib.parse import urlsplit
 
+
 def collect_hosts(hosts, randomize=True):
     """Collect a set of hosts and an optional chroot from a string."""
     host_ports, chroot = hosts.partition("/")[::2]

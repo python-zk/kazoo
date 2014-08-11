@@ -114,7 +114,7 @@ maxClientCnxns=0
 admin.serverPort=%s
 """ % (to_java_compatible_path(data_path),
        self.server_info.client_port,
-       self.server_info.admin_port))
+       self.server_info.admin_port))  # NOQA
 
         # setup a replicated setup if peers are specified
         if self.peers:
@@ -142,7 +142,7 @@ log4j.appender.ROLLINGFILE.layout=org.apache.log4j.PatternLayout
 log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
-log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(
+log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
                 self.working_path + os.sep + "zookeeper.log\n"))
 
         self.process = subprocess.Popen(
@@ -233,7 +233,8 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(
 
 class ZookeeperCluster(object):
 
-    def __init__(self, install_path=None, classpath=None, size=3, port_offset=20000):
+    def __init__(self, install_path=None, classpath=None,
+                 size=3, port_offset=20000):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
@@ -253,7 +254,8 @@ class ZookeeperCluster(object):
             server_info = server_peers.pop(i)
             self._servers.append(
                 ManagedZooKeeper(
-                    self._install_path, server_info, server_peers, classpath=self._classpath))
+                    self._install_path, server_info, server_peers,
+                    classpath=self._classpath))
 
     def __getitem__(self, k):
         return self._servers[k]

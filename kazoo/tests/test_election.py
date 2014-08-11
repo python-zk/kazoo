@@ -34,7 +34,7 @@ class KazooElectionTests(KazooTestCase):
 
     def _spawn_contender(self, contender_id, election):
         thread = threading.Thread(target=self._election_thread,
-            args=(contender_id, election))
+                                  args=(contender_id, election))
         thread.daemon = True
         thread.start()
         return thread
@@ -74,8 +74,8 @@ class KazooElectionTests(KazooTestCase):
         for _ in range(3):
             contender = "c" + uuid.uuid4().hex
             elections[contender] = self.client.Election(self.path, contender)
-            threads[contender] = self._spawn_contender(contender,
-                elections[contender])
+            threads[contender] = self._spawn_contender(
+                contender, elections[contender])
 
         # wait for a leader to be elected
         times = 0
@@ -112,8 +112,8 @@ class KazooElectionTests(KazooTestCase):
 
         # make first contender re-enter the race
         threads[first_leader].join()
-        threads[first_leader] = self._spawn_contender(first_leader,
-            elections[first_leader])
+        threads[first_leader] = self._spawn_contender(
+            first_leader, elections[first_leader])
 
         # contender set should now be the current leader plus the first leader
         wait(lambda: len(election.contenders()) == 2)

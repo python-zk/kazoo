@@ -237,8 +237,8 @@ class ConnectionHandler(object):
         if xid:
             header, buffer, offset = self._read_header(timeout)
             if header.xid != xid:
-                raise RuntimeError('xids do not match, expected %r received %r',
-                                   xid, header.xid)
+                raise RuntimeError('xids do not match, expected %r '
+                                   'received %r', xid, header.xid)
             if header.zxid > 0:
                 zxid = header.zxid
             if header.err:
@@ -256,8 +256,9 @@ class ConnectionHandler(object):
             try:
                 obj, _ = request.deserialize(msg, 0)
             except Exception:
-                self.logger.exception("Exception raised during deserialization"
-                                      " of request: %s", request)
+                self.logger.exception(
+                    "Exception raised during deserialization "
+                    "of request: %s", request)
 
                 # raise ConnectionDropped so connect loop will retry
                 raise ConnectionDropped('invalid server response')
@@ -275,8 +276,9 @@ class ConnectionHandler(object):
         if request.type:
             b.extend(int_struct.pack(request.type))
         b += request.serialize()
-        self.logger.log((BLATHER if isinstance(request, Ping) else logging.DEBUG),
-                        "Sending request(xid=%s): %s", xid, request)
+        self.logger.log(
+            (BLATHER if isinstance(request, Ping) else logging.DEBUG),
+            "Sending request(xid=%s): %s", xid, request)
         self._write(int_struct.pack(len(b)) + b, timeout)
 
     def _write(self, msg, timeout):
@@ -357,8 +359,9 @@ class ConnectionHandler(object):
                 try:
                     response = request.deserialize(buffer, offset)
                 except Exception as exc:
-                    self.logger.exception("Exception raised during deserialization"
-                                          " of request: %s", request)
+                    self.logger.exception(
+                        "Exception raised during deserialization "
+                        "of request: %s", request)
                     async_object.set_exception(exc)
                     return
                 self.logger.debug(
@@ -569,9 +572,9 @@ class ConnectionHandler(object):
         self.logger.info('Connecting to %s:%s', host, port)
 
         self.logger.log(BLATHER,
-                          '    Using session_id: %r session_passwd: %s',
-                          client._session_id,
-                          hexlify(client._session_passwd))
+                        '    Using session_id: %r session_passwd: %s',
+                        client._session_id,
+                        hexlify(client._session_passwd))
 
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
@@ -583,7 +586,8 @@ class ConnectionHandler(object):
                           client._session_id or 0, client._session_passwd,
                           client.read_only)
 
-        connect_result, zxid = self._invoke(client._session_timeout / 1000.0, connect)
+        connect_result, zxid = self._invoke(
+            client._session_timeout / 1000.0, connect)
 
         if connect_result.time_out <= 0:
             raise SessionExpiredError("Session has expired")
@@ -600,13 +604,13 @@ class ConnectionHandler(object):
         client._session_passwd = connect_result.passwd
 
         self.logger.log(BLATHER,
-                          'Session created, session_id: %r session_passwd: %s\n'
-                          '    negotiated session timeout: %s\n'
-                          '    connect timeout: %s\n'
-                          '    read timeout: %s', client._session_id,
-                          hexlify(client._session_passwd),
-                          negotiated_session_timeout, connect_timeout,
-                          read_timeout)
+                        'Session created, session_id: %r session_passwd: %s\n'
+                        '    negotiated session timeout: %s\n'
+                        '    connect timeout: %s\n'
+                        '    read timeout: %s', client._session_id,
+                        hexlify(client._session_passwd),
+                        negotiated_session_timeout, connect_timeout,
+                        read_timeout)
 
         if connect_result.read_only:
             client._session_callback(KeeperState.CONNECTED_RO)

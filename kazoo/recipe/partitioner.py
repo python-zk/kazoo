@@ -348,11 +348,11 @@ class SetPartitioner(object):
         if we become lost"""
         with self._state_change:
             # Handle network partition: If connection gets suspended,
-            # change state to ALLOCATING if we had already ACQUIRED. This way
-            # the caller does not process the members since we could eventually
-            # lose session get repartitioned. If we got connected after a suspension
-            # it means we've not lost the session and still have our members. Hence,
-            # restore to ACQUIRED
+            # change state to ALLOCATING if we had already ACQUIRED.
+            # This way the caller does not process the members since we
+            # could eventually lose session get repartitioned. If we got
+            # connected after a suspension it means we've not lost the
+            # session and still have our members. Hence, restore to ACQUIRED.
             if state == KazooState.SUSPENDED:
                 if self.state == PartitionState.ACQUIRED:
                     self._was_allocated = True

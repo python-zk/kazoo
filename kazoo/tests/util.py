@@ -65,8 +65,7 @@ class Handler(logging.Handler):
                           if line.strip()])
                )
               )
-              for record in self.records]
-              )
+             for record in self.records])
 
 
 class InstalledHandler(Handler):

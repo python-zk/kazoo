@@ -27,8 +27,8 @@ def get_global_cluster():
         ZK_PORT_OFFSET = int(os.environ.get("ZOOKEEPER_PORT_OFFSET", 20000))
 
         assert ZK_HOME or ZK_CLASSPATH, (
-            "either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment variable "
-            "must be defined.\n"
+            "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment "
+            "variable must be defined.\n"
             "For deb package installations this is /usr/share/java")
 
         CLUSTER = ZookeeperCluster(

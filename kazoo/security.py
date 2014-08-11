@@ -135,4 +135,4 @@ def make_digest_acl(username, password, read=False, write=False,
     """
     cred = make_digest_acl_credential(username, password)
     return make_acl("digest", cred, read=read, write=write, create=create,
-        delete=delete, admin=admin, all=all)
+                    delete=delete, admin=admin, all=all)

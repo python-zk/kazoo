@@ -47,7 +47,8 @@ def basename(p):
 
 def _prefix_root(root, path, trailing=False):
     """Prepend a root to a path. """
-    return normpath(join(_norm_root(root), path.lstrip('/')), trailing=trailing)
+    return normpath(join(_norm_root(root), path.lstrip('/')),
+                    trailing=trailing)
 
 
 def _norm_root(root):

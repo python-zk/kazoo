@@ -45,7 +45,7 @@ class KazooLockTests(KazooTestCase):
         event = threading.Event()
 
         thread = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=(lock_name, lock, event))
+                                  args=(lock_name, lock, event))
         thread.start()
 
         lock2_name = uuid.uuid4().hex
@@ -79,7 +79,7 @@ class KazooLockTests(KazooTestCase):
 
             l = self.client.Lock(self.lockpath, name)
             t = threading.Thread(target=self._thread_lock_acquire_til_event,
-                args=(name, l, e))
+                                 args=(name, l, e))
             contender_bits[name] = (t, e)
             threads.append(t)
 
@@ -153,7 +153,7 @@ class KazooLockTests(KazooTestCase):
         event = threading.Event()
 
         thread = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=(lock_name, lock, event))
+                                  args=(lock_name, lock, event))
         thread.start()
 
         lock1 = self.client.Lock(self.lockpath, lock_name)
@@ -173,7 +173,7 @@ class KazooLockTests(KazooTestCase):
         event1 = threading.Event()
         lock1 = self.client.Lock(self.lockpath, "one")
         thread1 = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=("one", lock1, event1))
+                                   args=("one", lock1, event1))
         thread1.start()
 
         # wait for this thread to acquire the lock
@@ -189,7 +189,7 @@ class KazooLockTests(KazooTestCase):
         event1 = threading.Event()
         lock1 = self.client.Lock(self.lockpath, "one")
         thread1 = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=("one", lock1, event1))
+                                   args=("one", lock1, event1))
         thread1.start()
 
         # wait for this thread to acquire the lock
@@ -203,7 +203,7 @@ class KazooLockTests(KazooTestCase):
         event2 = threading.Event()
         lock2 = client2.Lock(self.lockpath, "two")
         thread2 = threading.Thread(target=self._thread_lock_acquire_til_event,
-            args=("two", lock2, event2))
+                                   args=("two", lock2, event2))
         thread2.start()
 
         # this one should block in acquire. check that it is a contender
@@ -212,7 +212,7 @@ class KazooLockTests(KazooTestCase):
 
         lock2.cancel()
         with self.condition:
-            if not "two" in self.cancelled_threads:
+            if "two" not in self.cancelled_threads:
                 self.condition.wait()
                 assert "two" in self.cancelled_threads
 

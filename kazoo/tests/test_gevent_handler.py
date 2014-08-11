@@ -15,7 +15,7 @@ class TestGeventHandler(unittest.TestCase):
 
     def setUp(self):
         try:
-            import gevent
+            import gevent  # NOQA
         except ImportError:
             raise SkipTest('gevent not available.')
 
@@ -82,7 +82,7 @@ class TestBasicGeventClient(KazooTestCase):
 
     def setUp(self):
         try:
-            import gevent
+            import gevent  # NOQA
         except ImportError:
             raise SkipTest('gevent not available.')
         KazooTestCase.setUp(self)
@@ -146,7 +146,7 @@ class TestGeventClient(test_client.TestClient):
 
     def setUp(self):
         try:
-            import gevent
+            import gevent  # NOQA
         except ImportError:
             raise SkipTest('gevent not available.')
         KazooTestCase.setUp(self)

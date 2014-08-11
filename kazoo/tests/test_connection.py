@@ -41,7 +41,8 @@ class Delete(namedtuple('Delete', 'path version')):
 class TestConnectionHandler(KazooTestCase):
     def test_bad_deserialization(self):
         async_object = self.client.handler.async_result()
-        self.client._queue.append((Delete(self.client.chroot, -1), async_object))
+        self.client._queue.append(
+            (Delete(self.client.chroot, -1), async_object))
         os.write(self.client._connection._write_pipe, b'\0')
 
         @raises(ValueError)
