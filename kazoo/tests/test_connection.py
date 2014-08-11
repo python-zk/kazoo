@@ -42,7 +42,7 @@ class TestConnectionHandler(KazooTestCase):
     def test_bad_deserialization(self):
         async_object = self.client.handler.async_result()
         self.client._queue.append((Delete(self.client.chroot, -1), async_object))
-        os.write(self.client._connection._write_pipe, b'\0')
+        self.client._connection._write_pipe.send(b'\0')
 
         @raises(ValueError)
         def testit():
@@ -195,14 +195,14 @@ class TestConnectionHandler(KazooTestCase):
         client.stop()
         assert read_pipe is not None
         assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        os.fstat(read_pipe.fileno())
+        os.fstat(write_pipe.fileno())
 
         # close client, and pipes should be
         client.close()
 
         try:
-            os.fstat(read_pipe)
+            os.fstat(read_pipe.fileno())
         except OSError as e:
             if not e.errno == errno.EBADF:
                 raise
@@ -210,7 +210,7 @@ class TestConnectionHandler(KazooTestCase):
             self.fail("Expected read_pipe to be closed")
 
         try:
-            os.fstat(write_pipe)
+            os.fstat(write_pipe.fileno())
         except OSError as e:
             if not e.errno == errno.EBADF:
                 raise
@@ -224,8 +224,8 @@ class TestConnectionHandler(KazooTestCase):
 
         assert read_pipe is not None
         assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        os.fstat(read_pipe.fileno())
+        os.fstat(write_pipe.fileno())
 
     def test_dirty_pipe(self):
         client = self.client
@@ -236,7 +236,7 @@ class TestConnectionHandler(KazooTestCase):
         # blow up client. simulates case where some error leaves
         # a byte in the pipe which doesn't correspond to the
         # request queue.
-        os.write(write_pipe, b'\0')
+        write_pipe.send(b'\0')
 
         # eventually this byte should disappear from pipe
         wait(lambda: client.handler.select([read_pipe], [], [], 0)[0] == [])

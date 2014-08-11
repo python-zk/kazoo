@@ -32,6 +32,25 @@ def create_pipe():
         _set_fd_cloexec(w)
     return r, w
 
+def create_socketpair(handler, module):
+    """Create socketpair with O_NONBLOCK
+    """
+    if hasattr(module, "socketpair"):
+        r, w = module.socketpair()
+    else:
+        listener = module.socket(module.AF_INET, module.SOCK_STREAM)
+        listener.setsockopt(module.SOL_SOCKET, module.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1",0))
+        listener.listen(1)
+        ar = handler.async_result()
+        handler.spawn(lambda:ar.set(listener.accept()[0]))
+        w = module.socket(module.AF_INET, module.SOCK_STREAM)
+        w.connect(listener.getsockname())
+        listener.close()
+        r = ar.get()
+    r.setblocking(0)
+    w.setblocking(0)
+    return r, w
 
 def create_tcp_socket(module):
     """Create a TCP socket with the CLOEXEC flag set.

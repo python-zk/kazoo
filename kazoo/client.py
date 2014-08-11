@@ -1,7 +1,6 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
-import os
 import re
 import warnings
 from collections import defaultdict, deque
@@ -514,7 +513,7 @@ class KazooClient(object):
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
         try:
-            os.write(write_pipe, b'\0')
+            write_pipe.send(b'\0')
         except:
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
@@ -584,7 +583,7 @@ class KazooClient(object):
 
         self._stopped.set()
         self._queue.append((CloseInstance, None))
-        os.write(self._connection._write_pipe, b'\0')
+        self._connection._write_pipe.send(b'\0')
         self._safe_close()
 
     def restart(self):
@@ -596,7 +595,7 @@ class KazooClient(object):
         """Free any resources held by the client.
 
         This method should be called on a stopped client before it is
-        discarded. Not doing so may result in filehandles being leaked.
+        discarded.
 
         .. versionadded:: 1.0
         """
