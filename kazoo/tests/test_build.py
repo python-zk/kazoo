@@ -26,4 +26,7 @@ class TestBuildEnvironment(KazooTestCase):
         server_version = '.'.join([str(i) for i in server_version])
         env_version = os.environ.get('ZOOKEEPER_VERSION')
         if env_version:
+            if '-' in env_version:
+                # Ignore pre-release markers like -alpha
+                env_version = env_version.split('-')[0]
             self.assertEqual(env_version, server_version)
