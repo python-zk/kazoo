@@ -16,6 +16,8 @@ Bug Handling
 
 - #221: Let `client.command` work with IPv6 addresses.
 
+- #216: Fixed timeout for ConnectionHandler._invoke.
+
 Documentation
 *************
 
