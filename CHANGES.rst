@@ -11,6 +11,11 @@ Features
   the `admin.serverPort` in tests to avoid port conflicts. The Zookeeper
   alpha version is not yet officially supported.
 
+Documentation
+*************
+
+- #230: Document return value of the client's ensure_path method.
+
 2.0 (2014-06-19)
 ----------------
 
