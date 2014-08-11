@@ -40,13 +40,23 @@ class Lock(object):
         with lock:  # blocks waiting for lock acquisition
             # do something with the lock
 
+    Example usage for a non-blocking lock implementation:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        lock = zk.Lock("/lockpath", "my-identifier", blocking=False)
+        with lock:  # will continue even if lock is not acquired
+            if lock.is_acquired:
+                # do something with the lock
+
     Note: This lock is re-entrant. Repeat calls after acquired will
     continue to return ''True''.
 
     """
     _NODE_NAME = '__lock__'
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(self, client, path, identifier=None, blocking=True):
         """Create a Kazoo lock.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -54,10 +64,12 @@ class Lock(object):
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
-
+        :param blocking: Default blocking behavior to be used by
+                           self.acquire() if none is specified.
         """
         self.client = client
         self.path = path
+        self.blocking = blocking
 
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
@@ -90,10 +102,12 @@ class Lock(object):
 
     def acquire(self, blocking=True, timeout=None):
         """
-        Acquire the lock. By defaults blocks and waits forever.
+        Acquire the lock.
 
         :param blocking: Block until lock is obtained or return immediately.
         :type blocking: bool
+        .. note::
+            If blocking is True, can be overridden by self.blocking.
         :param timeout: Don't wait forever to acquire the lock.
         :type timeout: float or None
 
@@ -106,6 +120,7 @@ class Lock(object):
         .. versionadded:: 1.1
             The timeout option.
         """
+        blocking = self.blocking if blocking else blocking
         try:
             retry = self._retry.copy()
             retry.deadline = timeout
