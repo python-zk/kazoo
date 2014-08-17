@@ -1,4 +1,5 @@
 from collections import namedtuple
+import sys
 import os
 import errno
 import threading
@@ -150,7 +151,7 @@ class TestConnectionHandler(KazooTestCase):
 
         deserialize_ev = threading.Event()
 
-        def bad_deserialize(bytes, offset):
+        def bad_deserialize(_bytes, offset):
             deserialize_ev.set()
             raise struct.error()
 
@@ -196,28 +197,35 @@ class TestConnectionHandler(KazooTestCase):
         client.stop()
         assert read_pipe is not None
         assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        if sys.platform != "win32"
+            os.fstat(read_pipe)
+            os.fstat(write_pipe)
+        else:
+            read_pipe.getsockname()
+            write_pipe.getsockname()
 
         # close client, and pipes should be
         client.close()
 
-        try:
-            os.fstat(read_pipe)
-        except OSError as e:
-            if not e.errno == errno.EBADF:
-                raise
+        if sys.platform != "win32"
+            try:
+                os.fstat(read_pipe)
+            except OSError as e:
+                if not e.errno == errno.EBADF:
+                    raise
+            else:
+                self.fail("Expected read_pipe to be closed")
+    
+            try:
+                os.fstat(write_pipe)
+            except OSError as e:
+                if not e.errno == errno.EBADF:
+                    raise
+            else:
+                self.fail("Expected write_pipe to be closed")
         else:
-            self.fail("Expected read_pipe to be closed")
-
-        try:
-            os.fstat(write_pipe)
-        except OSError as e:
-            if not e.errno == errno.EBADF:
-                raise
-        else:
-            self.fail("Expected write_pipe to be closed")
-
+            pass # Not sure what to do here
+            
         # start client back up. should get a new, valid pipe
         client.start()
         read_pipe = client._connection._read_pipe
@@ -225,8 +233,13 @@ class TestConnectionHandler(KazooTestCase):
 
         assert read_pipe is not None
         assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        if sys.platform != "win32"
+            os.fstat(read_pipe)
+            os.fstat(write_pipe)
+        else:
+            read_pipe.getsockname()
+            write_pipe.getsockname()
+            
 
     def test_dirty_pipe(self):
         client = self.client
@@ -237,7 +250,7 @@ class TestConnectionHandler(KazooTestCase):
         # blow up client. simulates case where some error leaves
         # a byte in the pipe which doesn't correspond to the
         # request queue.
-        os.write(write_pipe, b'\0')
+        pipe_or_sock_write(write_pipe, b'\0')
 
         # eventually this byte should disappear from pipe
         wait(lambda: client.handler.select([read_pipe], [], [], 0)[0] == [])

@@ -7,7 +7,9 @@ except ImportError:  # pragma: nocover
     HAS_FNCTL = False
 import functools
 import os
-
+import sys
+import socket
+import errno
 
 def _set_fd_cloexec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
@@ -20,18 +22,83 @@ def _set_default_tcpsock_options(module, sock):
         _set_fd_cloexec(sock)
     return sock
 
+def pipe_or_sock_read(p_or_s, n):
+    ''' Use a socket or a pipe to read something'''
+    if isinstance(p_or_s, int):
+        # This is a pipe
+        return os.read(p_or_s, n)
+    else:
+        return p_or_s.recv(n)
 
-def create_pipe():
-    """Create a non-blocking read/write pipe.
+def pipe_or_sock_close(p_or_s):
+    ''' Closes either a socket or a pipe'''
+    if isinstance(p_or_s, int):
+        os.close(p_or_s)
+    else:
+        p_or_s.close()
+        
+def pipe_or_sock_write(p_or_s, b):
+    ''' Read from a socket or a pipe depending on what is passed'''
+    if isinstance(p_or_s, int):
+        # This is a pipe
+        os.write(p_or_s,b)
+    else:
+        p_or_s.send(b)
+        
+def create_pipe_or_sock():
+    """ Create a non-blocking read/write pipe.
+        On Windows create a pair of sockets
     """
-    r, w = os.pipe()
-    if HAS_FNCTL:
-        fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
-        fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
-        _set_fd_cloexec(r)
-        _set_fd_cloexec(w)
+    if sys.platform == "win32":
+        r, w = create_sock_pair()
+    else:
+        r, w = os.pipe()
+        if HAS_FNCTL:
+            fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
+            fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
+            _set_fd_cloexec(r)
+            _set_fd_cloexec(w)
     return r, w
 
+
+
+def create_sock_pair(port=0):
+    """Create socket pair.
+
+    If socket.socketpair isn't available, we emulate it.
+    """
+    # See if socketpair() is available.
+    have_socketpair = hasattr(socket, 'socketpair')
+    if have_socketpair:
+        client_sock, srv_sock = socket.socketpair()
+        return client_sock, srv_sock
+
+    # Create a non-blocking temporary server socket
+    temp_srv_sock = socket.socket()
+    temp_srv_sock.setblocking(False)
+    temp_srv_sock.bind(('', port))
+    port = temp_srv_sock.getsockname()[1]
+    temp_srv_sock.listen(1)
+
+    # Create non-blocking client socket
+    client_sock = socket.socket()
+    client_sock.setblocking(False)
+    try:
+        client_sock.connect(('localhost', port))
+    except socket.error as err:
+        # EWOULDBLOCK is not an error, as the socket is non-blocking
+        if err.errno != errno.EWOULDBLOCK:
+            raise
+
+    # Use select to wait for connect() to succeed.
+    import select
+    timeout = 1
+    readable = select.select([temp_srv_sock], [], [], timeout)[0]
+    if temp_srv_sock not in readable:
+        raise Exception('Client socket not connected in {} second(s)'.format(timeout))
+    srv_sock, _ = temp_srv_sock.accept()
+
+    return client_sock, srv_sock
 
 def create_tcp_socket(module):
     """Create a TCP socket with the CLOEXEC flag set.
