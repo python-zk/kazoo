@@ -321,7 +321,7 @@ class SetPartitioner(object):
             # locks, abort
             self._fail_out()
             return
-        return self._child_watching(self._allocate_transition)
+        return self._child_watching(self._allocate_transition, async=True)
 
     def _child_watching(self, func=None, async=False):
         """Called when children are being watched to stabilize
