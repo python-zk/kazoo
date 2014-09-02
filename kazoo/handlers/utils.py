@@ -22,47 +22,7 @@ def _set_default_tcpsock_options(module, sock):
         _set_fd_cloexec(sock)
     return sock
 
-def pipe_or_sock_read(p_or_s, n):
-    ''' Use a socket or a pipe to read something'''
-    if isinstance(p_or_s, int):
-        # This is a pipe
-        return os.read(p_or_s, n)
-    else:
-        return p_or_s.recv(n)
-
-def pipe_or_sock_close(p_or_s):
-    ''' Closes either a socket or a pipe'''
-    if isinstance(p_or_s, int):
-        os.close(p_or_s)
-    else:
-        p_or_s.close()
-        
-def pipe_or_sock_write(p_or_s, b):
-    ''' Read from a socket or a pipe depending on what is passed'''
-    if isinstance(p_or_s, int):
-        # This is a pipe
-        os.write(p_or_s,b)
-    else:
-        p_or_s.send(b)
-        
-def create_pipe_or_sock():
-    """ Create a non-blocking read/write pipe.
-        On Windows create a pair of sockets
-    """
-    if sys.platform == "win32":
-        r, w = create_sock_pair()
-    else:
-        r, w = os.pipe()
-        if HAS_FNCTL:
-            fcntl.fcntl(r, fcntl.F_SETFL, os.O_NONBLOCK)
-            fcntl.fcntl(w, fcntl.F_SETFL, os.O_NONBLOCK)
-            _set_fd_cloexec(r)
-            _set_fd_cloexec(w)
-    return r, w
-
-
-
-def create_sock_pair(port=0):
+def create_socket_pair(port=0):
     """Create socket pair.
 
     If socket.socketpair isn't available, we emulate it.

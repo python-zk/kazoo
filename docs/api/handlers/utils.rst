@@ -14,5 +14,5 @@ Public API
 Private API
 +++++++++++
 
-  .. autofunction:: create_pipe
+  .. autofunction:: create_socket_pair
   .. autofunction:: create_tcp_socket

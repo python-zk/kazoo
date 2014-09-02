@@ -19,7 +19,7 @@ from kazoo.exceptions import (
     WriterNotClosedException,
 )
 from kazoo.handlers.threading import SequentialThreadingHandler
-from kazoo.handlers.utils import capture_exceptions, wrap, pipe_or_sock_write
+from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.connection import ConnectionHandler
@@ -512,12 +512,12 @@ class KazooClient(object):
         self._queue.append((request, async_object))
 
         # wake the connection, guarding against a race with close()
-        write_pipe = self._connection._write_pipe
-        if write_pipe is None:
+        write_sock = self._connection._write_sock
+        if write_sock is None:
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
         try:
-            pipe_or_sock_write(write_pipe, b'\0')
+            write_sock.send(b'\0')
         except:
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
@@ -587,7 +587,7 @@ class KazooClient(object):
 
         self._stopped.set()
         self._queue.append((CloseInstance, None))
-        pipe_or_sock_write(self._connection._write_pipe, b'\0')
+        self._connection._write_sock.send(b'\0')
         self._safe_close()
 
     def restart(self):

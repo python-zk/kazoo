@@ -9,8 +9,7 @@ In the initial pipe_open call, return a socket pair if the platform
 is Windows. The pipe_or_sock files branch on whether or not they've
 been called with a pipe (int) or not.
 
-These are the minimal changes to Kazoo to make it work.  It would be 
-better to refactor the code to not rely on pipes at all.
+All the pipe references have been changed to sockets
 
 I think all the tests run and work and most cases are fixed but this
 needs to be tested on Linux.
