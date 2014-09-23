@@ -1,7 +1,12 @@
 """Zookeeper based queue implementations.
 
 :Maintainer: None
-:Status: Unknown
+:Status: Possibly Buggy
+
+.. note::
+
+    This queue was reported to cause memory leaks over long running periods.
+    See: https://github.com/python-zk/kazoo/issues/175
 
 """
 
