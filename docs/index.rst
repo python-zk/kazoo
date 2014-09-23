@@ -61,13 +61,13 @@ zk/kazoo>`_.
 Bugs/Support
 ============
 
-Bugs and support issues should be reported on the `kazoo github issue tracker
+Bugs should be reported on the `kazoo github issue tracker
 <https://github.com/python-zk/kazoo/issues>`_.
 
 The developers of ``kazoo`` can frequently be found on the Freenode IRC
 network in the #zookeeper channel.
 
-For general discussions, please use the
+For general discussions and support questions, please use the
 `python-zk <https://groups.google.com/forum/#!forum/python-zk>`_ mailing list
 hosted on Google Groups.
 
