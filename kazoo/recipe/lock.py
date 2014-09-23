@@ -1,7 +1,7 @@
 """Zookeeper Locking Implementations
 
-:Maintainer: None
-:Status: Unknown
+:Maintainer: Ben Bangert <ben@groovie.org>
+:Status: Production
 
 Error Handling
 ==============
