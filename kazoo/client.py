@@ -1297,6 +1297,13 @@ class TransactionRequest(object):
     Transactions are not thread-safe and should not be accessed from
     multiple threads at once.
 
+    .. note::
+
+        The ``committed`` attribute only indicates whether this
+        transaction has been sent to Zookeeper and is used to prevent
+        duplicate commits of the same transaction. The result should be
+        checked to determine if the transaction executed as desired.
+
     .. versionadded:: 0.6
         Requires Zookeeper 3.4+
 
