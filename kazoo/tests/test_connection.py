@@ -1,4 +1,5 @@
 from collections import namedtuple
+import sys
 import os
 import errno
 import threading
@@ -43,7 +44,7 @@ class TestConnectionHandler(KazooTestCase):
         async_object = self.client.handler.async_result()
         self.client._queue.append(
             (Delete(self.client.chroot, -1), async_object))
-        os.write(self.client._connection._write_pipe, b'\0')
+        self.client._connection._write_sock.send(b'\0')
 
         @raises(ValueError)
         def testit():
@@ -150,7 +151,7 @@ class TestConnectionHandler(KazooTestCase):
 
         deserialize_ev = threading.Event()
 
-        def bad_deserialize(bytes, offset):
+        def bad_deserialize(_bytes, offset):
             deserialize_ev.set()
             raise struct.error()
 
@@ -184,63 +185,51 @@ class TestConnectionHandler(KazooTestCase):
         # should be able to restart
         self.client.start()
 
-    def test_connection_pipe(self):
+    def test_connection_sock(self):
         client = self.client
-        read_pipe = client._connection._read_pipe
-        write_pipe = client._connection._write_pipe
+        read_sock = client._connection._read_sock
+        write_sock = client._connection._write_sock
 
-        assert read_pipe is not None
-        assert write_pipe is not None
+        assert read_sock is not None
+        assert write_sock is not None
 
-        # stop client and pipe should not yet be closed
+        # stop client and socket should not yet be closed
         client.stop()
-        assert read_pipe is not None
-        assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        assert read_sock is not None
+        assert write_sock is not None
+        
+        read_sock.getsockname()
+        write_sock.getsockname()
 
-        # close client, and pipes should be
+        # close client, and sockets should be closed
         client.close()
 
-        try:
-            os.fstat(read_pipe)
-        except OSError as e:
-            if not e.errno == errno.EBADF:
-                raise
-        else:
-            self.fail("Expected read_pipe to be closed")
-
-        try:
-            os.fstat(write_pipe)
-        except OSError as e:
-            if not e.errno == errno.EBADF:
-                raise
-        else:
-            self.fail("Expected write_pipe to be closed")
-
-        # start client back up. should get a new, valid pipe
+        # Todo check socket closing
+                   
+        # start client back up. should get a new, valid socket
         client.start()
-        read_pipe = client._connection._read_pipe
-        write_pipe = client._connection._write_pipe
+        read_sock = client._connection._read_sock
+        write_sock = client._connection._write_sock
 
-        assert read_pipe is not None
-        assert write_pipe is not None
-        os.fstat(read_pipe)
-        os.fstat(write_pipe)
+        assert read_sock is not None
+        assert write_sock is not None
+        read_sock.getsockname()
+        write_sock.getsockname()
+            
 
-    def test_dirty_pipe(self):
+    def test_dirty_sock(self):
         client = self.client
-        read_pipe = client._connection._read_pipe
-        write_pipe = client._connection._write_pipe
+        read_sock = client._connection._read_sock
+        write_sock = client._connection._write_sock
 
-        # add a stray byte to the pipe and ensure that doesn't
+        # add a stray byte to the socket and ensure that doesn't
         # blow up client. simulates case where some error leaves
-        # a byte in the pipe which doesn't correspond to the
+        # a byte in the socket which doesn't correspond to the
         # request queue.
-        os.write(write_pipe, b'\0')
+        write_sock.send(b'\0')
 
-        # eventually this byte should disappear from pipe
-        wait(lambda: client.handler.select([read_pipe], [], [], 0)[0] == [])
+        # eventually this byte should disappear from socket
+        wait(lambda: client.handler.select([read_sock], [], [], 0)[0] == [])
 
 
 class TestConnectionDrop(KazooTestCase):

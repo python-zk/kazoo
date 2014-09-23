@@ -16,7 +16,7 @@ from kazoo.exceptions import (
     SessionExpiredError,
     NoNodeError
 )
-from kazoo.handlers.utils import create_pipe
+from kazoo.handlers.utils import create_socket_pair
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
     Auth,
@@ -145,8 +145,8 @@ class ConnectionHandler(object):
         self.connection_stopped.set()
         self.ping_outstanding = client.handler.event_object()
 
-        self._read_pipe = None
-        self._write_pipe = None
+        self._read_sock = None
+        self._write_sock = None
 
         self._socket = None
         self._xid = None
@@ -168,7 +168,7 @@ class ConnectionHandler(object):
     def start(self):
         """Start the connection up"""
         if self.connection_closed.is_set():
-            self._read_pipe, self._write_pipe = create_pipe()
+            self._read_sock, self._write_sock = create_socket_pair()
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception("Unable to start, connection routine already "
@@ -191,12 +191,12 @@ class ConnectionHandler(object):
         if not self.connection_stopped.is_set():
             raise Exception("Cannot close connection until it is stopped")
         self.connection_closed.set()
-        wp, rp = self._write_pipe, self._read_pipe
-        self._write_pipe = self._read_pipe = None
-        if wp is not None:
-            os.close(wp)
-        if rp is not None:
-            os.close(rp)
+        ws, rs = self._write_sock, self._read_sock
+        self._write_sock = self._read_sock = None
+        if ws is not None:
+            ws.close()
+        if rs is not None:
+            rs.close()
 
     def _server_pinger(self):
         """Returns a server pinger iterable, that will ping the next
@@ -417,11 +417,11 @@ class ConnectionHandler(object):
         except IndexError:
             # Not actually something on the queue, this can occur if
             # something happens to cancel the request such that we
-            # don't clear the pipe below after sending
+            # don't clear the socket below after sending
             try:
                 # Clear possible inconsistence (no request in the queue
-                # but have data in the read pipe), which causes cpu to spin.
-                os.read(self._read_pipe, 1)
+                # but have data in the read socket), which causes cpu to spin.
+                self._read_sock.recv(1)
             except OSError:
                 pass
             return
@@ -442,7 +442,7 @@ class ConnectionHandler(object):
 
         self._submit(request, connect_timeout, xid)
         client._queue.popleft()
-        os.read(self._read_pipe, 1)
+        self._read_sock.recv(1)
         client._pending.append((request, async_object, xid))
 
     def _send_ping(self, connect_timeout):
@@ -494,7 +494,7 @@ class ConnectionHandler(object):
 
     def _connect_attempt(self, host, port, retry):
         client = self.client
-        TimeoutError = self.handler.timeout_exception
+        KazooTimeoutError = self.handler.timeout_exception
         close_connection = False
 
         self._socket = None
@@ -521,7 +521,7 @@ class ConnectionHandler(object):
                 jitter_time = random.randint(0, 40) / 100.0
                 # Ensure our timeout is positive
                 timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
-                s = self.handler.select([self._socket, self._read_pipe],
+                s = self.handler.select([self._socket, self._read_sock],
                                         [], [], timeout)[0]
 
                 if not s:
@@ -539,7 +539,7 @@ class ConnectionHandler(object):
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
-        except (ConnectionDropped, TimeoutError) as e:
+        except (ConnectionDropped, KazooTimeoutError) as e:
             if isinstance(e, ConnectionDropped):
                 self.logger.warning('Connection dropped: %s', e)
             else:

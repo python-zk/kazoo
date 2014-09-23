@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Kazoo relies on pipes being selectable.  This is only true for unix and its
+derivatives.  
+Isolated all the instances of calling a pipe to read or write and converted
+them into wrapper functions pipe_or_sock_read, pipe_or_sock_write etc.
+In the initial pipe_open call, return a socket pair if the platform
+is Windows. The pipe_or_sock files branch on whether or not they've
+been called with a pipe (int) or not.
+
+All the pipe references have been changed to sockets
+
+I think all the tests run and work and most cases are fixed but this
+needs to be tested on Linux.
+
 2.0.1 (unreleased)
 ------------------
 
