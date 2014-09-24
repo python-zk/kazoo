@@ -7,15 +7,13 @@ except ImportError:  # pragma: nocover
     HAS_FNCTL = False
 import errno
 import functools
-import os
 import socket
-import sys
 
 # sentinel objects
 _NONE = object()
 
 
-class BaseAsyncResult(object):
+class AsyncResult(object):
     """A one-time event that stores a value or an exception"""
     def __init__(self, handler, condition_factory, timeout_factory):
         self._handler = handler
