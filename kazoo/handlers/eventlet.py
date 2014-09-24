@@ -7,7 +7,9 @@ import logging
 import eventlet
 from eventlet.green import select as green_select
 from eventlet.green import socket as green_socket
+from eventlet.green import time as green_time
 from eventlet.green import threading as green_threading
+from eventlet import queue as green_queue
 
 from kazoo.handlers import utils
 
@@ -21,7 +23,7 @@ class TimeoutError(Exception):
     pass
 
 
-class AsyncResult(utils.BaseAsyncResult):
+class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
     def __init__(self, handler):
         super(AsyncResult, self).__init__(handler,
@@ -58,57 +60,68 @@ class SequentialEventletHandler(object):
 
     """
     name = "sequential_eventlet_handler"
-    sleep_func = staticmethod(eventlet.sleep)
 
     def __init__(self):
         """Create a :class:`SequentialEventletHandler` instance"""
-        self.callback_queue = eventlet.Queue()
-        self.completion_queue = eventlet.Queue()
-        self._lock = green_threading.Lock()
+        self.callback_queue = green_queue.LightQueue()
+        self.completion_queue = green_queue.LightQueue()
         self._workers = []
         self._started = False
 
+    @staticmethod
+    def sleep_func(wait):
+        green_time.sleep(wait)
+
     @property
     def running(self):
-        with self._lock:
-            return self._started
+        return self._started
 
     timeout_exception = TimeoutError
 
-    def start(self):
-        def _process_queue(queue):
-            while True:
-                func = queue.get()
-                if func is _STOP:
-                    break
-                try:
-                    func()
-                except Exception:
-                    LOG.warning("Exception in worker greenlet", exc_info=True)
+    def _process_completion_queue(self):
+        while True:
+            cb = self.completion_queue.get()
+            if cb is _STOP:
+                break
+            LOG.debug("Completion queue calling %s", cb.func)
+            try:
+                cb.func(*cb.args)
+            except Exception:
+                LOG.warning("Exception in worker greenlet calling %s",
+                            cb.func, exc_info=True)
 
-        with self._lock:
-            if not self._started:
-                # Spawn our worker threads, we have
-                # - A callback worker for watch events to be called
-                # - A completion worker for completion events to be called
-                for q in (self.callback_queue, self.completion_queue):
-                    w = eventlet.spawn(_process_queue, q)
-                    self._workers.append((w, q))
-                self._started = True
-                atexit.register(self.stop)
+    def _process_callback_queue(self):
+        while True:
+            cb = self.callback_queue.get()
+            if cb is _STOP:
+                break
+            LOG.debug("Callback queue calling %s", cb.func)
+            try:
+                cb.func(*cb.args)
+            except Exception:
+                LOG.warning("Exception in worker greenlet calling %s",
+                            cb.func, exc_info=True)
+
+    def start(self):
+        if not self._started:
+            # Spawn our worker threads, we have
+            # - A callback worker for watch events to be called
+            # - A completion worker for completion events to be called
+            w = eventlet.spawn(self._process_completion_queue)
+            self._workers.append((w, self.completion_queue))
+            w = eventlet.spawn(self._process_callback_queue)
+            self._workers.append((w, self.callback_queue))
+            self._started = True
+            atexit.register(self.stop)
 
     def stop(self):
-        with self._lock:
-            if self._started:
-                while self._workers:
-                    w, q = self._workers.pop()
-                    q.put(_STOP)
-                    w.wait()
-                self.callback_queue = eventlet.Queue()
-                self.completion_queue = eventlet.Queue()
-                self._started = False
-                if hasattr(atexit, "unregister"):
-                    atexit.unregister(self.stop)
+        while self._workers:
+            w, q = self._workers.pop()
+            q.put(_STOP)
+            w.wait()
+        self._started = False
+        if hasattr(atexit, "unregister"):
+            atexit.unregister(self.stop)
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(green_socket)
@@ -132,7 +145,7 @@ class SequentialEventletHandler(object):
         return AsyncResult(self)
 
     def spawn(self, func, *args, **kwargs):
-        return eventlet.spawn(func, *args, **kwargs)
+        eventlet.spawn_n(func, *args, **kwargs)
 
     def dispatch_callback(self, callback):
-        self.callback_queue.put(lambda: callback.func(*callback.args))
+        self.callback_queue.put(callback)

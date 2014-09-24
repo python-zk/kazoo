@@ -56,7 +56,7 @@ class TestClientTransitions(KazooTestCase):
         eq_(states, [KazooState.CONNECTED])
         rc.clear()
         states.pop()
-        self.expire_session()
+        self.expire_session(threading.Event)
         rc.wait(2)
 
         req_states = [KazooState.LOST, KazooState.CONNECTED]
@@ -256,7 +256,7 @@ class TestConnection(KazooTestCase):
                 cv.set()
 
         self.client.add_listener(watch_events)
-        self.expire_session()
+        self.expire_session(threading.Event)
         cv.wait(3)
         assert cv.is_set()
 
@@ -273,7 +273,7 @@ class TestConnection(KazooTestCase):
                 cv.set()
 
         self.client.add_listener(watch_events)
-        self.expire_session()
+        self.expire_session(threading.Event)
         ab.wait(0.5)
         assert ab.is_set()
         cv.wait(0.5)

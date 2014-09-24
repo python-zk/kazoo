@@ -135,7 +135,7 @@ class KazooLockTests(KazooTestCase):
         wait(lambda: len(lock.contenders()) == 2)
         eq_(lock.contenders(), ['test', 'contender'])
 
-        self.expire_session()
+        self.expire_session(threading.Lock)
 
         lock.release()
 
@@ -280,12 +280,24 @@ class KazooLockTests(KazooTestCase):
 
 
 class TestSemaphore(KazooTestCase):
+
+    @staticmethod
+    def make_condition():
+        return threading.Condition()
+
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
+    @staticmethod
+    def make_thread(*args, **kwargs):
+        return threading.Thread(*args, **kwargs)
+
     def setUp(self):
         super(TestSemaphore, self).setUp()
         self.lockpath = "/" + uuid.uuid4().hex
-
-        self.condition = threading.Condition()
-        self.released = threading.Event()
+        self.condition = self.make_condition()
+        self.released = self.make_event()
         self.active_thread = None
         self.cancelled_threads = []
 
@@ -297,8 +309,8 @@ class TestSemaphore(KazooTestCase):
     def test_lock_one(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
         sem2 = self.client.Semaphore(self.lockpath, max_leases=1)
-        started = threading.Event()
-        event = threading.Event()
+        started = self.make_event()
+        event = self.make_event()
 
         sem1.acquire()
 
@@ -307,7 +319,7 @@ class TestSemaphore(KazooTestCase):
             with sem2:
                 event.set()
 
-        thread = threading.Thread(target=sema_one, args=())
+        thread = self.make_thread(target=sema_one, args=())
         thread.start()
         started.wait(10)
 
@@ -350,15 +362,15 @@ class TestSemaphore(KazooTestCase):
         sem2.release()
 
     def test_holders(self):
-        started = threading.Event()
-        event = threading.Event()
+        started = self.make_event()
+        event = self.make_event()
 
         def sema_one():
             with self.client.Semaphore(self.lockpath, 'fred', max_leases=1):
                 started.set()
                 event.wait()
 
-        thread = threading.Thread(target=sema_one, args=())
+        thread = self.make_thread(target=sema_one, args=())
         thread.start()
         started.wait()
         sem1 = self.client.Semaphore(self.lockpath)
@@ -371,8 +383,8 @@ class TestSemaphore(KazooTestCase):
         sem1 = self.client.Semaphore(self.lockpath, 'fred', max_leases=1)
         sem2 = self.client.Semaphore(self.lockpath, 'george', max_leases=1)
         sem1.acquire()
-        started = threading.Event()
-        event = threading.Event()
+        started = self.make_event()
+        event = self.make_event()
 
         def sema_one():
             started.set()
@@ -382,7 +394,7 @@ class TestSemaphore(KazooTestCase):
             except CancelledError:
                 event.set()
 
-        thread = threading.Thread(target=sema_one, args=())
+        thread = self.make_thread(target=sema_one, args=())
         thread.start()
         started.wait()
         eq_(sem1.lease_holders(), ['fred'])
@@ -409,9 +421,9 @@ class TestSemaphore(KazooTestCase):
         lh_semaphore = client.Semaphore(self.lockpath, 'george', max_leases=1)
         lh_semaphore.acquire()
 
-        started = threading.Event()
-        event = threading.Event()
-        event2 = threading.Event()
+        started = self.make_event()
+        event = self.make_event()
+        event2 = self.make_event()
 
         def sema_one():
             started.set()
@@ -419,20 +431,20 @@ class TestSemaphore(KazooTestCase):
                 event.set()
                 event2.wait()
 
-        thread = threading.Thread(target=sema_one, args=())
+        thread = self.make_thread(target=sema_one, args=())
         thread.start()
 
         started.wait()
         eq_(lh_semaphore.lease_holders(), ['george'])
 
         # Fired in a separate thread to make sure we can see the effect
-        expired = threading.Event()
+        expired = self.make_event()
 
         def expire():
-            self.expire_session()
+            self.expire_session(self.make_event)
             expired.set()
 
-        thread = threading.Thread(target=expire, args=())
+        thread = self.make_thread(target=expire, args=())
         thread.start()
         expire_semaphore.wake_event.wait()
         expired.wait()
@@ -440,7 +452,7 @@ class TestSemaphore(KazooTestCase):
         lh_semaphore.release()
         client.stop()
 
-        event.wait(5)
+        event.wait(15)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
         thread.join()
@@ -480,8 +492,8 @@ class TestSemaphore(KazooTestCase):
 
     def test_timeout(self):
         timeout = 3
-        e = threading.Event()
-        started = threading.Event()
+        e = self.make_event()
+        started = self.make_event()
 
         # In the background thread, acquire the lock and wait thrice the time
         # that the main thread is going to wait to acquire the lock.
@@ -495,7 +507,7 @@ class TestSemaphore(KazooTestCase):
                     # Eventually fail to avoid hanging the tests
                     self.fail("sem2 never timed out")
 
-        t = threading.Thread(target=_thread, args=(sem1, e, timeout * 3))
+        t = self.make_thread(target=_thread, args=(sem1, e, timeout * 3))
         t.start()
 
         # Start the main thread's kazoo client and try to acquire the lock

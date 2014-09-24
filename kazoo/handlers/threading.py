@@ -36,12 +36,12 @@ class KazooTimeoutError(Exception):
     pass
 
 
-class AsyncResult(utils.BaseAsyncResult):
+class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
     def __init__(self, handler):
         super(AsyncResult, self).__init__(handler,
                                           threading.Condition,
-                                          TimeoutError)
+                                          KazooTimeoutError)
 
 
 class SequentialThreadingHandler(object):

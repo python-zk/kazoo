@@ -6,11 +6,15 @@ from nose.tools import raises
 
 import mock
 
+from kazoo.client import KazooClient
 from kazoo.handlers import utils
 from kazoo.protocol import states as kazoo_states
+from kazoo.tests import test_client
+from kazoo.tests import test_lock
 
 try:
     import eventlet
+    from eventlet.green import threading
     from kazoo.handlers import eventlet as eventlet_handler
     EVENTLET_HANDLER_AVAILABLE = True
 except ImportError:
@@ -134,3 +138,38 @@ class TestEventletHandler(unittest.TestCase):
 
         self.assertFalse(r.successful())
         check_exc(r)
+
+
+class TestEventletClient(test_client.TestClient):
+    def _makeOne(self, *args):
+        return eventlet_handler.SequentialEventletHandler(*args)
+
+    def _get_client(self, **kwargs):
+        kwargs["handler"] = self._makeOne()
+        return KazooClient(self.hosts, **kwargs)
+
+
+class TestEventletSemaphore(test_lock.TestSemaphore):
+    @staticmethod
+    def make_condition():
+        return threading.Condition()
+
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
+    @staticmethod
+    def make_thread(*args, **kwargs):
+        return threading.Thread(*args, **kwargs)
+
+    def _makeOne(self, *args):
+        return eventlet_handler.SequentialEventletHandler(*args)
+
+    def _get_client(self, **kwargs):
+        kwargs["handler"] = self._makeOne()
+        c = KazooClient(self.hosts, **kwargs)
+        try:
+            self._clients.append(c)
+        except AttributeError:
+            self._client = [c]
+        return c

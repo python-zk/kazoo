@@ -9,6 +9,8 @@ import errno
 import functools
 import socket
 
+from kazoo.protocol import states
+
 # sentinel objects
 _NONE = object()
 
@@ -42,22 +44,18 @@ class AsyncResult(object):
         with self._condition:
             self.value = value
             self._exception = None
-
             for callback in self._callbacks:
-                self._handler.completion_queue.put(
-                    lambda: callback(self)
-                )
+                cb = states.Callback('completion', callback, [self])
+                self._handler.completion_queue.put(cb)
             self._condition.notify_all()
 
     def set_exception(self, exception):
         """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
-
             for callback in self._callbacks:
-                self._handler.completion_queue.put(
-                    lambda: callback(self)
-                )
+                cb = states.Callback('completion', callback, [self])
+                self._handler.completion_queue.put(cb)
             self._condition.notify_all()
 
     def get(self, block=True, timeout=None):
@@ -101,9 +99,8 @@ class AsyncResult(object):
         with self._condition:
             # Are we already set? Dispatch it now
             if self.ready():
-                self._handler.completion_queue.put(
-                    lambda: callback(self)
-                )
+                cb = states.Callback('completion', callback, [self])
+                self._handler.completion_queue.put(cb)
                 return
 
             if callback not in self._callbacks:

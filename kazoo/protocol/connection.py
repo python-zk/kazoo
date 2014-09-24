@@ -4,6 +4,7 @@ import os
 import random
 import select
 import socket
+
 import sys
 import time
 from binascii import hexlify
@@ -523,7 +524,6 @@ class ConnectionHandler(object):
                 timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
                 s = self.handler.select([self._socket, self._read_sock],
                                         [], [], timeout)[0]
-
                 if not s:
                     if self.ping_outstanding.is_set():
                         self.ping_outstanding.clear()
@@ -543,7 +543,7 @@ class ConnectionHandler(object):
             if isinstance(e, ConnectionDropped):
                 self.logger.warning('Connection dropped: %s', e)
             else:
-                self.logger.warning('Connection time-out')
+                self.logger.warning('Connection time-out: %s', e)
             if client._state != KeeperState.CONNECTING:
                 self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)
