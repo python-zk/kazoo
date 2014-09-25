@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import atexit
+import contextlib
 import logging
 
 import eventlet
@@ -17,6 +18,16 @@ LOG = logging.getLogger(__name__)
 
 # sentinel objects
 _STOP = object()
+
+
+@contextlib.contextmanager
+def _yield_before_after():
+    # Yield to any other co-routines...
+    eventlet.sleep(0)
+    try:
+        yield
+    finally:
+        eventlet.sleep(0)
 
 
 class TimeoutError(Exception):
@@ -84,7 +95,8 @@ class SequentialEventletHandler(object):
             if cb is _STOP:
                 break
             try:
-                cb()
+                with _yield_before_after():
+                    cb()
             except Exception:
                 LOG.warning("Exception in worker completion queue greenlet",
                             exc_info=True)
@@ -95,7 +107,8 @@ class SequentialEventletHandler(object):
             if cb is _STOP:
                 break
             try:
-                cb()
+                with _yield_before_after():
+                    cb()
             except Exception:
                 LOG.warning("Exception in worker callback queue greenlet",
                             exc_info=True)
@@ -140,7 +153,8 @@ class SequentialEventletHandler(object):
         return utils.create_tcp_connection(green_socket, *args, **kwargs)
 
     def select(self, *args, **kwargs):
-        return green_select.select(*args, **kwargs)
+        with _yield_before_after():
+            return green_select.select(*args, **kwargs)
 
     def async_result(self):
         return AsyncResult(self)
