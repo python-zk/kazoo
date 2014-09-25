@@ -17,7 +17,6 @@ from kazoo.exceptions import (
     SessionExpiredError,
     NoNodeError
 )
-from kazoo.handlers.utils import create_socket_pair
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
     Auth,
@@ -169,7 +168,8 @@ class ConnectionHandler(object):
     def start(self):
         """Start the connection up"""
         if self.connection_closed.is_set():
-            self._read_sock, self._write_sock = create_socket_pair()
+            rw_sockets = self.handler.create_socket_pair()
+            self._read_sock, self._write_sock = rw_sockets
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception("Unable to start, connection routine already "

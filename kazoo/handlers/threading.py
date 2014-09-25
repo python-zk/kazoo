@@ -156,6 +156,9 @@ class SequentialThreadingHandler(object):
     def create_connection(self, *args, **kwargs):
         return utils.create_tcp_connection(socket, *args, **kwargs)
 
+    def create_socket_pair(self):
+        return utils.create_socket_pair()
+
     def event_object(self):
         """Create an appropriate Event object"""
         return threading.Event()

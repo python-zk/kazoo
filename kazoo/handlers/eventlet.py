@@ -126,6 +126,9 @@ class SequentialEventletHandler(object):
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(green_socket)
 
+    def create_socket_pair(self):
+        return green_socket.socketpair()
+
     def event_object(self):
         return green_threading.Event()
 
