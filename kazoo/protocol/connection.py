@@ -221,7 +221,8 @@ class ConnectionHandler(object):
                 if not s:  # pragma: nocover
                     # If the read list is empty, we got a timeout. We don't
                     # have to check wlist and xlist as we don't set any
-                    raise self.handler.timeout_exception("socket time-out")
+                    raise self.handler.timeout_exception("socket time-out"
+                                                         " during read")
 
                 chunk = self._socket.recv(remaining)
                 if chunk == b'':
@@ -292,7 +293,8 @@ class ConnectionHandler(object):
                 if not s:  # pragma: nocover
                     # If the write list is empty, we got a timeout. We don't
                     # have to check rlist and xlist as we don't set any
-                    raise self.handler.timeout_exception("socket time-out")
+                    raise self.handler.timeout_exception("socket time-out"
+                                                         " during write")
                 msg_slice = buffer(msg, sent)
                 bytes_sent = self._socket.send(msg_slice)
                 if not bytes_sent:

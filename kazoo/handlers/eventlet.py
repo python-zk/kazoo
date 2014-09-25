@@ -148,7 +148,10 @@ class SequentialEventletHandler(object):
         return AsyncResult(self)
 
     def spawn(self, func, *args, **kwargs):
-        eventlet.spawn_n(func, *args, **kwargs)
+        t = green_threading.Thread(target=func, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
+        return t
 
     def dispatch_callback(self, callback):
         self.callback_queue.put(callback)
