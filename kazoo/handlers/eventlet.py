@@ -83,24 +83,22 @@ class SequentialEventletHandler(object):
             cb = self.completion_queue.get()
             if cb is _STOP:
                 break
-            LOG.debug("Completion queue calling %s", cb.func)
             try:
-                cb.func(*cb.args)
+                cb()
             except Exception:
-                LOG.warning("Exception in worker greenlet calling %s",
-                            cb.func, exc_info=True)
+                LOG.warning("Exception in worker completion queue greenlet",
+                            exc_info=True)
 
     def _process_callback_queue(self):
         while True:
             cb = self.callback_queue.get()
             if cb is _STOP:
                 break
-            LOG.debug("Callback queue calling %s", cb.func)
             try:
-                cb.func(*cb.args)
+                cb()
             except Exception:
-                LOG.warning("Exception in worker greenlet calling %s",
-                            cb.func, exc_info=True)
+                LOG.warning("Exception in worker callback queue greenlet",
+                            exc_info=True)
 
     def start(self):
         if not self._started:
@@ -154,4 +152,4 @@ class SequentialEventletHandler(object):
         return t
 
     def dispatch_callback(self, callback):
-        self.callback_queue.put(callback)
+        self.callback_queue.put(lambda: callback.func(*callback.args))
