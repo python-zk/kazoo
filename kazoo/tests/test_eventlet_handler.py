@@ -15,6 +15,9 @@ from kazoo.tests import test_lock
 try:
     import eventlet
     from eventlet.green import threading
+    from eventlet import hubs
+    # Until fixed: https://github.com/eventlet/eventlet/issues/142
+    hubs.use_hub('selects')
     from kazoo.handlers import eventlet as eventlet_handler
     EVENTLET_HANDLER_AVAILABLE = True
 except ImportError:
