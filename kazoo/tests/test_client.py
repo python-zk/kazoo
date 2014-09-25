@@ -408,6 +408,10 @@ class TestConnection(KazooTestCase):
 
 
 class TestClient(KazooTestCase):
+    def _makeOne(self, *args):
+        from kazoo.handlers.threading import SequentialThreadingHandler
+        return SequentialThreadingHandler(*args)
+
     def _getKazooState(self):
         from kazoo.protocol.states import KazooState
         return KazooState

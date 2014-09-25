@@ -35,6 +35,7 @@ class TestEventletHandler(unittest.TestCase):
     def setUp(self):
         if not EVENTLET_HANDLER_AVAILABLE:
             raise SkipTest('eventlet handler not available.')
+        super(TestEventletHandler, self).setUp()
 
     def test_started(self):
         with start_stop_one() as handler:
@@ -140,6 +141,11 @@ class TestEventletHandler(unittest.TestCase):
 
 
 class TestEventletClient(test_client.TestClient):
+    def setUp(self):
+        if not EVENTLET_HANDLER_AVAILABLE:
+            raise SkipTest('eventlet handler not available.')
+        super(TestEventletClient, self).setUp()
+
     @staticmethod
     def make_event():
         return threading.Event()
@@ -157,6 +163,11 @@ class TestEventletClient(test_client.TestClient):
 
 
 class TestEventletSemaphore(test_lock.TestSemaphore):
+    def setUp(self):
+        if not EVENTLET_HANDLER_AVAILABLE:
+            raise SkipTest('eventlet handler not available.')
+        super(TestEventletSemaphore, self).setUp()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -183,6 +194,11 @@ class TestEventletSemaphore(test_lock.TestSemaphore):
 
 
 class TestEventletLock(test_lock.KazooLockTests):
+    def setUp(self):
+        if not EVENTLET_HANDLER_AVAILABLE:
+            raise SkipTest('eventlet handler not available.')
+        super(TestEventletLock, self).setUp()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
