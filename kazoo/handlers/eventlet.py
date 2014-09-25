@@ -23,6 +23,10 @@ _STOP = object()
 @contextlib.contextmanager
 def _yield_before_after():
     # Yield to any other co-routines...
+    #
+    # See http://eventlet.net/doc/modules/greenthread.html#eventlet.greenthread.sleep
+    # for how this zero sleep is really a cooperative yield to other potential
+    # co-routines...
     eventlet.sleep(0)
     try:
         yield
