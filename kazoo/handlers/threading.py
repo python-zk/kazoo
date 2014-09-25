@@ -13,6 +13,7 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
+import errno
 import logging
 import select
 import socket
@@ -247,7 +248,14 @@ class SequentialThreadingHandler(object):
                 atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
-        return select.select(*args, **kwargs)
+        while True:
+            try:
+                return select.select(*args, **kwargs)
+            except select.error as ex:
+                # if the system call was interrupted, we can just try again
+                if ex[0] == errno.EINTR:
+                    continue
+                raise
 
     def socket(self):
         return create_tcp_socket(socket)
