@@ -4,6 +4,7 @@ import os
 import random
 import select
 import socket
+
 import sys
 import time
 from binascii import hexlify
@@ -16,7 +17,6 @@ from kazoo.exceptions import (
     SessionExpiredError,
     NoNodeError
 )
-from kazoo.handlers.utils import create_socket_pair
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
     Auth,
@@ -168,7 +168,8 @@ class ConnectionHandler(object):
     def start(self):
         """Start the connection up"""
         if self.connection_closed.is_set():
-            self._read_sock, self._write_sock = create_socket_pair()
+            rw_sockets = self.handler.create_socket_pair()
+            self._read_sock, self._write_sock = rw_sockets
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception("Unable to start, connection routine already "
@@ -220,7 +221,8 @@ class ConnectionHandler(object):
                 if not s:  # pragma: nocover
                     # If the read list is empty, we got a timeout. We don't
                     # have to check wlist and xlist as we don't set any
-                    raise self.handler.timeout_exception("socket time-out")
+                    raise self.handler.timeout_exception("socket time-out"
+                                                         " during read")
 
                 chunk = self._socket.recv(remaining)
                 if chunk == b'':
@@ -291,7 +293,8 @@ class ConnectionHandler(object):
                 if not s:  # pragma: nocover
                     # If the write list is empty, we got a timeout. We don't
                     # have to check rlist and xlist as we don't set any
-                    raise self.handler.timeout_exception("socket time-out")
+                    raise self.handler.timeout_exception("socket time-out"
+                                                         " during write")
                 msg_slice = buffer(msg, sent)
                 bytes_sent = self._socket.send(msg_slice)
                 if not bytes_sent:
@@ -523,7 +526,6 @@ class ConnectionHandler(object):
                 timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
                 s = self.handler.select([self._socket, self._read_sock],
                                         [], [], timeout)[0]
-
                 if not s:
                     if self.ping_outstanding.is_set():
                         self.ping_outstanding.clear()
@@ -543,7 +545,7 @@ class ConnectionHandler(object):
             if isinstance(e, ConnectionDropped):
                 self.logger.warning('Connection dropped: %s', e)
             else:
-                self.logger.warning('Connection time-out')
+                self.logger.warning('Connection time-out: %s', e)
             if client._state != KeeperState.CONNECTING:
                 self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)

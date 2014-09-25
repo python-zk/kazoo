@@ -90,7 +90,7 @@ class KazooTestHarness(unittest.TestCase):
             self._client = [c]
         return c
 
-    def expire_session(self, client_id=None):
+    def expire_session(self, event_factory, client_id=None):
         """Force ZK to expire a client session
 
         :param client_id: id of client to expire. If unspecified, the id of
@@ -99,8 +99,8 @@ class KazooTestHarness(unittest.TestCase):
         """
         client_id = client_id or self.client.client_id
 
-        lost = threading.Event()
-        safe = threading.Event()
+        lost = event_factory()
+        safe = event_factory()
 
         def watch_loss(state):
             if state == KazooState.LOST:
