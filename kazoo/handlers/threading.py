@@ -253,7 +253,10 @@ class SequentialThreadingHandler(object):
                 return select.select(*args, **kwargs)
             except select.error as ex:
                 # if the system call was interrupted, we can just try again
-                if ex[0] == errno.EINTR:
+                # in Python 3, system call interruptions are a native exception
+                # in Python 2, they are not
+                errnum = ex.errno if isinstance(ex, OSError) else ex[0]
+                if errnum == errno.EINTR:
                     continue
                 raise
 
