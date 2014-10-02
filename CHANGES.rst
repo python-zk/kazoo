@@ -24,7 +24,6 @@ Bug Handling
 Documentation
 *************
 
-- #230: Document return value of the client's ensure_path method.
 - #222: Document that committed on the transaction is used to ensure only one
   commit and is not an indicator of whether operations in the transaction
   returned desired results.

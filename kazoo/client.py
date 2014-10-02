@@ -870,13 +870,10 @@ class KazooClient(object):
         return async_result
 
     def ensure_path(self, path, acl=None):
-        """Recursively create a path if it doesn't exist. Also return value indicates
-        if path already existed or had to be created.
+        """Recursively create a path if it doesn't exist.
 
         :param path: Path of node.
         :param acl: Permissions for node.
-        :returns `True` if path existed, `False` otherwise.
-        :rtype: bool
 
         """
         return self.ensure_path_async(path, acl).get()
