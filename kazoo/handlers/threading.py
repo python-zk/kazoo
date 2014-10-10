@@ -248,17 +248,18 @@ class SequentialThreadingHandler(object):
                 atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
-        while True:
-            try:
-                return select.select(*args, **kwargs)
-            except select.error as ex:
-                # if the system call was interrupted, we can just try again
-                # in Python 3, system call interruptions are a native exception
-                # in Python 2, they are not
-                errnum = ex.errno if isinstance(ex, OSError) else ex[0]
-                if errnum == errno.EINTR:
-                    continue
-                raise
+        try:
+            return select.select(*args, **kwargs)
+        except select.error as ex:
+            # if the system call was interrupted, we can just try again
+            # in Python 3, system call interruptions are a native exception
+            # in Python 2, they are not
+            errnum = ex.errno if isinstance(ex, OSError) else ex[0]
+            # if we were interrupted, we'll treat it as a timeout
+            # to do so we return the same thing select does when nothing happens
+            if errnum == errno.EINTR:
+                return ([], [], [])
+            raise
 
     def socket(self):
         return create_tcp_socket(socket)
