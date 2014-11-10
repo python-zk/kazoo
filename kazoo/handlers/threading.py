@@ -32,6 +32,7 @@ _STOP = object()
 
 log = logging.getLogger(__name__)
 
+atexit._exithandlers = []
 
 class KazooTimeoutError(Exception):
     pass
@@ -245,6 +246,10 @@ class SequentialThreadingHandler(object):
             self.completion_queue = self.queue_impl()
             if hasattr(atexit, "unregister"):
                 atexit.unregister(self.stop)
+            else:
+                handler_entries = [e for e in atexit._exithandlers if e[0] == self.stop]
+                for e in handler_entries:
+                    atexit._exithandlers.remove(e)
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)
