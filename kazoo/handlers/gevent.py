@@ -24,6 +24,8 @@ _using_libevent = gevent.__version__.startswith('0.')
 
 log = logging.getLogger(__name__)
 
+atexit._exithandlers = []
+
 _STOP = object()
 
 AsyncResult = gevent.event.AsyncResult
@@ -114,6 +116,10 @@ class SequentialGeventHandler(object):
 
             if hasattr(atexit, "unregister"):
                 atexit.unregister(self.stop)
+            else:
+                handler_entries = [e for e in atexit._exithandlers if e[0] == self.stop]
+                for e in handler_entries:
+                    atexit._exithandlers.remove(e)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
