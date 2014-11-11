@@ -32,8 +32,6 @@ _STOP = object()
 
 log = logging.getLogger(__name__)
 
-atexit._exithandlers = []
-
 class KazooTimeoutError(Exception):
     pass
 

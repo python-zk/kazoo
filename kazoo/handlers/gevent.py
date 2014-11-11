@@ -24,8 +24,6 @@ _using_libevent = gevent.__version__.startswith('0.')
 
 log = logging.getLogger(__name__)
 
-atexit._exithandlers = []
-
 _STOP = object()
 
 AsyncResult = gevent.event.AsyncResult
