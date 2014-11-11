@@ -1,4 +1,4 @@
-__version__ = '2.0.2'
+__version__ = '2.0.1'
 
 import os
 import sys
@@ -34,7 +34,7 @@ if on_rtd:
     ])
 
 setup(
-    name='asana-kazoo',
+    name='kazoo',
     version=__version__,
     description='Higher Level Zookeeper Client',
     long_description=README + '\n\n' + CHANGES,
