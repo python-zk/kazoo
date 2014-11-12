@@ -19,6 +19,8 @@ import socket
 import threading
 import time
 
+import kazoo.python2atexit as python2atexit
+
 try:
     import Queue
 except ImportError:  # pragma: nocover
@@ -221,7 +223,11 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
-            atexit.register(self.stop)
+            # python2.x doesn't have atexit.unregister
+            if hasattr(atexit, "unregister"):
+                atexit.register(self.stop)
+            else:
+                python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -245,9 +251,7 @@ class SequentialThreadingHandler(object):
             if hasattr(atexit, "unregister"):
                 atexit.unregister(self.stop)
             else:
-                handler_entries = [e for e in atexit._exithandlers if e[0] == self.stop]
-                for e in handler_entries:
-                    atexit._exithandlers.remove(e)
+                python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)

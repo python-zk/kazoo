@@ -10,6 +10,8 @@ import gevent.queue
 import gevent.select
 import gevent.thread
 
+import kazoo.python2atexit as python2atexit
+
 from gevent.queue import Empty
 from gevent.queue import Queue
 from gevent import socket
@@ -92,7 +94,11 @@ class SequentialGeventHandler(object):
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
-            atexit.register(self.stop)
+            # python2.x doesn't have atexit.unregister
+            if hasattr(atexit, "unregister"):
+                atexit.register(self.stop)
+            else:
+                python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
@@ -115,9 +121,7 @@ class SequentialGeventHandler(object):
             if hasattr(atexit, "unregister"):
                 atexit.unregister(self.stop)
             else:
-                handler_entries = [e for e in atexit._exithandlers if e[0] == self.stop]
-                for e in handler_entries:
-                    atexit._exithandlers.remove(e)
+                python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
