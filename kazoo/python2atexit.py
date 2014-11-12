@@ -61,7 +61,5 @@ def unregister(func):
 
 if not hasattr(atexit, "unregister"):
     # Only in python 2.x
-    if hasattr(sys, "exitfunc"):
-        # Assume it's another registered exit function - append it to our list
-        register(sys.exitfunc)
-    sys.exitfunc = _run_exitfuncs
+    atexit.register(_run_exitfuncs)
+
