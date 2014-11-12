@@ -12,7 +12,6 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
-import atexit
 import logging
 import select
 import socket
@@ -223,11 +222,7 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
-            # python2.x doesn't have atexit.unregister
-            if hasattr(atexit, "unregister"):
-                atexit.register(self.stop)
-            else:
-                python2atexit.register(self.stop)
+            python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -248,10 +243,7 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
-            if hasattr(atexit, "unregister"):
-                atexit.unregister(self.stop)
-            else:
-                python2atexit.unregister(self.stop)
+            python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return select.select(*args, **kwargs)

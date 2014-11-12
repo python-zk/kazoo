@@ -1,7 +1,6 @@
 """A gevent based handler."""
 from __future__ import absolute_import
 
-import atexit
 import logging
 
 import gevent
@@ -94,11 +93,7 @@ class SequentialGeventHandler(object):
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
-            # python2.x doesn't have atexit.unregister
-            if hasattr(atexit, "unregister"):
-                atexit.register(self.stop)
-            else:
-                python2atexit.register(self.stop)
+            python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
@@ -118,10 +113,7 @@ class SequentialGeventHandler(object):
             # Clear the queues
             self.callback_queue = Queue()  # pragma: nocover
 
-            if hasattr(atexit, "unregister"):
-                atexit.unregister(self.stop)
-            else:
-                python2atexit.unregister(self.stop)
+            python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)

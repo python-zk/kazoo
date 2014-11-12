@@ -1,7 +1,10 @@
-"""Same as atexit except it supports unregister"""
-__all__ = ["register"]
+"""Uses the old atexit with added unregister for python 2.x
+and the new atexit for python 3.x
+"""
+__all__ = ["register", "unregister"]
 
 import sys
+import atexit
 
 _exithandlers = []
 def _run_exitfuncs():
@@ -37,7 +40,10 @@ def register(func, *targs, **kargs):
 
     func is returned to facilitate usage as a decorator.
     """
-    _exithandlers.append((func, targs, kargs))
+    if hasattr(atexit, "unregister"):
+        atexit.register(func, targs, kargs)
+    else:
+        _exithandlers.append((func, targs, kargs))
     return func
 
 def unregister(func):
@@ -46,11 +52,16 @@ def unregister(func):
 
     func = function to be unregistered
     """
-    handler_entries = [e for e in _exithandlers if e[0] == func]
-    for e in handler_entries:
-        _exithandlers.remove(e)
+    if hasattr(atexit, "unregister"):
+        atexit.unregister(func)
+    else:
+        handler_entries = [e for e in _exithandlers if e[0] == func]
+        for e in handler_entries:
+            _exithandlers.remove(e)
 
-if hasattr(sys, "exitfunc"):
-    # Assume it's another registered exit function - append it to our list
-    register(sys.exitfunc)
-sys.exitfunc = _run_exitfuncs
+if not hasattr(atexit, "unregister"):
+    # Only in python 2.x
+    if hasattr(sys, "exitfunc"):
+        # Assume it's another registered exit function - append it to our list
+        register(sys.exitfunc)
+    sys.exitfunc = _run_exitfuncs
