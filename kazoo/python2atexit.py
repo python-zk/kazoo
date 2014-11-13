@@ -6,8 +6,6 @@ __all__ = ["register", "unregister"]
 import sys
 import atexit
 
-from __future___ import print_function
-
 _exithandlers = []
 def _run_exitfuncs():
     """run any registered exit functions
@@ -25,7 +23,7 @@ def _run_exitfuncs():
             exc_info = sys.exc_info()
         except:
             import traceback
-            print("Error in atexit._run_exitfuncs:", file=sys.stderr)
+            sys.stderr("Error in atexit._run_exitfuncs:\n")
             traceback.print_exc()
             exc_info = sys.exc_info()
 
