@@ -15,10 +15,12 @@ class KazooInterruptTests(KazooTestCase):
             raise SkipTest('Unable to reproduce error case on non-linux platforms')
 
         path = 'interrupt_test'
-        self.client.create(path, b"1")
+        value = b"1"
+        self.client.create(path, value)
 
         # set the euid to the current process' euid.
         # glibc sends SIGRT to all children, which will interrupt the system call
         os.seteuid(os.geteuid())
 
-        self.client.get_children(path)
+        # basic sanity test that it worked alright
+        assert self.client.get(path)[0] == value
