@@ -13,6 +13,7 @@ environments that use threads.
 from __future__ import absolute_import
 
 import atexit
+import errno
 import logging
 import select
 import socket
@@ -247,7 +248,17 @@ class SequentialThreadingHandler(object):
                 atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
-        return select.select(*args, **kwargs)
+        try:
+            return select.select(*args, **kwargs)
+        except select.error as ex:
+            # if the system call was interrupted, we'll return as a timeout
+            # in Python 3, system call interruptions are a native exception
+            # in Python 2, they are not
+            errnum = ex.errno if isinstance(ex, OSError) else ex[0]
+            # to mimic a timeout, we return the same thing select would
+            if errnum == errno.EINTR:
+                return ([], [], [])
+            raise
 
     def socket(self):
         return create_tcp_socket(socket)

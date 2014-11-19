@@ -516,25 +516,26 @@ class ConnectionHandler(object):
             retry.reset()
             self._xid = 0
 
-            while not close_connection:
-                # Watch for something to read or send
-                jitter_time = random.randint(0, 40) / 100.0
-                # Ensure our timeout is positive
-                timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
-                s = self.handler.select([self._socket, self._read_sock],
-                                        [], [], timeout)[0]
+            with self._socket_error_handling():
+                while not close_connection:
+                    # Watch for something to read or send
+                    jitter_time = random.randint(0, 40) / 100.0
+                    # Ensure our timeout is positive
+                    timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
+                    s = self.handler.select([self._socket, self._read_sock],
+                                            [], [], timeout)[0]
 
-                if not s:
-                    if self.ping_outstanding.is_set():
-                        self.ping_outstanding.clear()
-                        raise ConnectionDropped(
-                            "outstanding heartbeat ping not received")
-                    self._send_ping(connect_timeout)
-                elif s[0] == self._socket:
-                    response = self._read_socket(read_timeout)
-                    close_connection = response == CLOSE_RESPONSE
-                else:
-                    self._send_request(read_timeout, connect_timeout)
+                    if not s:
+                        if self.ping_outstanding.is_set():
+                            self.ping_outstanding.clear()
+                            raise ConnectionDropped(
+                                "outstanding heartbeat ping not received")
+                        self._send_ping(connect_timeout)
+                    elif s[0] == self._socket:
+                        response = self._read_socket(read_timeout)
+                        close_connection = response == CLOSE_RESPONSE
+                    else:
+                        self._send_request(read_timeout, connect_timeout)
 
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
