@@ -251,12 +251,11 @@ class SequentialThreadingHandler(object):
         try:
             return select.select(*args, **kwargs)
         except select.error as ex:
-            # if the system call was interrupted, we can just try again
+            # if the system call was interrupted, we'll return as a timeout
             # in Python 3, system call interruptions are a native exception
             # in Python 2, they are not
             errnum = ex.errno if isinstance(ex, OSError) else ex[0]
-            # if we were interrupted, we'll treat it as a timeout
-            # to do so we return the same thing select does when nothing happens
+            # to mimic a timeout, we return the same thing select would
             if errnum == errno.EINTR:
                 return ([], [], [])
             raise
