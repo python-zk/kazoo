@@ -383,6 +383,10 @@ class PatientChildrenWatch(object):
         self.children = []
         self.time_boundary = time_boundary
         self.children_changed = client.handler.event_object()
+        self.async_result = None
+        self._stopped = True
+        self._suspended = False
+        self.client.add_listener(self._session_watcher)
 
     def start(self):
         """Begin the watching process asynchronously
@@ -396,24 +400,43 @@ class PatientChildrenWatch(object):
         self.client.handler.spawn(self._inner_start)
         return asy
 
+    def _get_children(self):
+        return self.client.retry(self.client.get_children, self.path, self._children_watcher)
+
+    def _check_children(self):
+        """
+            Check if children where changed during suspended connection
+        """
+        if frozenset(self.children) != frozenset(self._get_children()):
+            self._children_watcher()
+
     def _inner_start(self):
         try:
             while True:
-                async_result = self.client.handler.async_result()
-                self.children = self.client.retry(
-                    self.client.get_children, self.path,
-                    partial(self._children_watcher, async_result))
+                self.async_result = self.client.handler.async_result()
+                self.children = self._get_children()
                 self.client.handler.sleep_func(self.time_boundary)
 
                 if self.children_changed.is_set():
                     self.children_changed.clear()
                 else:
                     break
-
-            self.asy.set((self.children, async_result))
+            self._suspended = False
+            self._stopped = False
+            self.asy.set((self.children, self.async_result))
         except Exception as exc:
             self.asy.set_exception(exc)
 
-    def _children_watcher(self, async, event):
+    def _children_watcher(self, event=None):
         self.children_changed.set()
-        async.set(time.time())
+        if not self._stopped:
+            self.async_result.set(time.time())
+            self._stopped = True
+
+    def _session_watcher(self, state):
+        if state in (KazooState.LOST, KazooState.SUSPENDED):
+            self._suspended = True
+        elif (state == KazooState.CONNECTED and
+              self._suspended and not self._stopped):
+            self._suspended = False
+            self.client.handler.spawn(self._check_children)
