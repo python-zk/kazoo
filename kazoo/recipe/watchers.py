@@ -436,7 +436,8 @@ class PatientChildrenWatch(object):
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):
             self._suspended = True
-        elif (state == KazooState.CONNECTED and
-              self._suspended and not self._stopped):
+        elif (state == KazooState.CONNECTED):
+            if (self._suspended and not self._stopped):
+                self.client.handler.spawn(self._check_children)
             self._suspended = False
-            self.client.handler.spawn(self._check_children)
+            
