@@ -293,6 +293,9 @@ class SetPartitioner(object):
 
         # All locks acquired! Time for state transition, make sure
         # we didn't inadvertently get lost thus far
+        if self._children_updated or self.failed:
+            # check children after last lock
+            return self._abort_lock_acquisition()
         with self._state_change:
             if self.failed:  # pragma: nocover
                 return self.finish()
@@ -321,7 +324,7 @@ class SetPartitioner(object):
             # locks, abort
             self._fail_out()
             return
-        return self._child_watching(self._allocate_transition)
+        return self._child_watching(self._allocate_transition, async=True)
 
     def _child_watching(self, func=None, async=False):
         """Called when children are being watched to stabilize
