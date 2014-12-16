@@ -12,13 +12,14 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
-import atexit
 import errno
 import logging
 import select
 import socket
 import threading
 import time
+
+import kazoo.python2atexit as python2atexit
 
 try:
     import Queue
@@ -32,7 +33,6 @@ _NONE = object()
 _STOP = object()
 
 log = logging.getLogger(__name__)
-
 
 class KazooTimeoutError(Exception):
     pass
@@ -223,7 +223,7 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
-            atexit.register(self.stop)
+            python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -244,8 +244,7 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
-            if hasattr(atexit, "unregister"):
-                atexit.unregister(self.stop)
+            python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         try:
