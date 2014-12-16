@@ -12,7 +12,6 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
-import atexit
 import errno
 import logging
 import select
