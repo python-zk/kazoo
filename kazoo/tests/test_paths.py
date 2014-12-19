@@ -39,6 +39,9 @@ class NormPathTestCase(TestCase):
         self.assertRaises(ValueError, paths.normpath, './a/b')
         self.assertRaises(ValueError, paths.normpath, '/a/../b')
 
+    def test_normpath_trailing(self):
+        self.assertEqual(paths.normpath('/', trailing=True), '/')
+
 
 class JoinTestCase(TestCase):
 

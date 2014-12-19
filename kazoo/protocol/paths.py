@@ -11,7 +11,7 @@ def normpath(path, trailing=False):
     new_path = '/'.join(new_comps)
     if trailing is True and path.endswith('/'):
         new_path += '/'
-    if path.startswith('/'):
+    if path.startswith('/') and new_path != '/':
         return '/' + new_path
     return new_path
 

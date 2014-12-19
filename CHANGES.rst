@@ -21,6 +21,8 @@ Bug Handling
 
 - #216: Fixed timeout for ConnectionHandler._invoke.
 
+- #261: Creating a sequential znode under / doesn't work.
+
 Documentation
 *************
 
