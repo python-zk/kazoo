@@ -26,7 +26,7 @@ try:
 except ImportError:  # pragma: nocover
     import queue as Queue
 
-from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection
+from kazoo.handlers.utils import create_tcp_socket, create_tcp_connection, create_socket_pair
 
 # sentinel objects
 _NONE = object()
@@ -264,6 +264,9 @@ class SequentialThreadingHandler(object):
 
     def create_connection(self, *args, **kwargs):
         return create_tcp_connection(socket, *args, **kwargs)
+
+    def socketpair(self, *args, **kwargs):
+        return create_socket_pair(socket)
 
     def event_object(self):
         """Create an appropriate Event object"""
