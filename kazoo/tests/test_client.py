@@ -15,6 +15,7 @@ from kazoo.testing import KazooTestCase
 from kazoo.exceptions import (
     AuthFailedError,
     BadArgumentsError,
+    BadVersionError,
     ConfigurationError,
     ConnectionClosedError,
     ConnectionLoss,
@@ -1147,3 +1148,57 @@ class TestNonChrootClient(KazooTestCase):
         client.chroot = '/a'
         self.assertEquals(client.unchroot('/a/b'), '/b')
         self.assertEquals(client.unchroot('/b/c'), '/b/c')
+
+
+class TestReconfig(KazooTestCase):
+
+    def setUp(self):
+        KazooTestCase.setUp(self)
+        if TRAVIS_ZK_VERSION:
+            version = TRAVIS_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 5):
+            raise SkipTest("Must use Zookeeper 3.5 or above")
+
+    def test_add_remove_observer(self):
+        def free_sock_port():
+            s = socket.socket()
+            s.bind(('', 0))
+            return s, s.getsockname()[1]
+
+        # get ports for election, zab and client endpoints. we need to use
+        # ports for which we'd immediately get a RST upon connect(); otherwise
+        # the cluster could crash if it gets a SocketTimeoutException:
+        # https://issues.apache.org/jira/browse/ZOOKEEPER-2202
+        s1, port1 = free_sock_port()
+        s2, port2 = free_sock_port()
+        s3, port3 = free_sock_port()
+
+        joining = 'server.100=0.0.0.0:%d:%d:observer;0.0.0.0:%d' % (
+            port1, port2, port3)
+        data, _ = self.client.reconfig(joining=joining,
+                                       leaving=None,
+                                       new_members=None)
+        self.assertIn(joining, data)
+
+        data, _ = self.client.reconfig(joining=None,
+                                       leaving='100',
+                                       new_members=None)
+        self.assertNotIn(joining, data)
+
+        # try to add it again, but a config number in the future
+        curver = int(data.split('\n')[-1].split('=')[1], base=16)
+        self.assertRaises(BadVersionError,
+                          self.client.reconfig,
+                          joining=joining,
+                          leaving=None,
+                          new_members=None,
+                          from_config=curver + 1)
+
+    def test_bad_input(self):
+        self.assertRaises(BadArgumentsError,
+                          self.client.reconfig,
+                          joining='some thing',
+                          leaving=None,
+                          new_members=None)

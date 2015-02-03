@@ -7,6 +7,8 @@ Changelog
 Features
 ********
 
+-  Issue #234: Add support for reconfig cluster membership operation
+
 Bug Handling
 ************
 

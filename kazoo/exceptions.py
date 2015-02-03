@@ -107,6 +107,16 @@ class BadArgumentsError(ZookeeperError):
     pass
 
 
+@_zookeeper_exception(-13)
+class NewConfigNoQuorumError(ZookeeperError):
+    pass
+
+
+@_zookeeper_exception(-14)
+class ReconfigInProcessError(ZookeeperError):
+    pass
+
+
 @_zookeeper_exception(-100)
 class APIError(ZookeeperError):
     pass

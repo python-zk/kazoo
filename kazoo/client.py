@@ -39,6 +39,7 @@ from kazoo.protocol.serialization import (
     GetACL,
     SetACL,
     GetData,
+    Reconfig,
     SetData,
     Sync,
     Transaction
@@ -1325,6 +1326,98 @@ class KazooClient(object):
             self.delete(path)
         except NoNodeError:  # pragma: nocover
             pass
+
+    def reconfig(self, joining, leaving, new_members, from_config=-1):
+        """Reconfig a cluster.
+
+        This call will succeed if the cluster was reconfigured accordingly.
+
+        :param joining: a comma separated list of servers being added
+                        (see example for format) (incremental reconfiguration)
+        :param leaving: a comma separated list of servers being removed
+                        (see example for format) (incremental reconfiguration)
+        :param new_members: a comma separated list of new membership
+                            (non-incremental reconfiguration)
+        :param from_config: version of the current configuration (optional -
+                           causes reconfiguration to throw an exception if
+                           configuration is no longer current)
+        :type from_config: int
+        :returns:
+            Tuple (value, :class:`~kazoo.protocol.states.ZnodeStat`) of
+            node.
+        :rtype: tuple
+
+        Basic Example:
+
+        .. code-block:: python
+
+            zk = KazooClient()
+            zk.start()
+
+            # first add an observer (incremental reconfiguration)
+            joining = 'server.100=10.0.0.10:2889:3888:observer;0.0.0.0:2181'
+            data, _ = zk.reconfig(
+              joining=joining, leaving=None, new_members=None)
+
+            # wait and then remove it (just by using its id) (incremental)
+            data, _ = zk.reconfig(joining=None, leaving='100', new_members=None)
+
+            # now do a full change of the cluster (non-incremental)
+            new = [
+              'server.100=10.0.0.10:2889:3888:observer;0.0.0.0:2181',
+              'server.100=10.0.0.11:2889:3888:observer;0.0.0.0:2181',
+              'server.100=10.0.0.12:2889:3888:observer;0.0.0.0:2181',
+            ]
+            data, _ = zk.reconfig(
+              joining=None, leaving=None, new_members=','.join(new))
+
+            zk.stop()
+
+        :raises:
+            :exc:`~kazoo.exceptions.UnimplementedError` if not supported.
+
+            :exc:`~kazoo.exceptions.NewConfigNoQuorumError` if no quorum of new
+            config is connected and up-to-date with the leader of last
+            commmitted config - try invoking reconfiguration after new servers
+            are connected and synced.
+
+            :exc:`~kazoo.exceptions.ReconfigInProcessError` if another
+            reconfiguration is in progress.
+
+            :exc:`~kazoo.exceptions.BadVersionError` if version doesn't
+            match.
+
+            :exc:`~kazoo.exceptions.BadArgumentsError` if any of the given
+            lists of servers has a bad format.
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+
+        """
+        result = self.reconfig_async(joining, leaving, new_members, from_config)
+        return result.get()
+
+    def reconfig_async(self, joining, leaving, new_members, from_config):
+        """Asynchronously reconfig a cluster. Takes the same arguments as
+        :meth:`reconfig`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+
+        """
+        if joining and not isinstance(joining, basestring):
+            raise TypeError("joining must be a string")
+        if leaving and not isinstance(leaving, basestring):
+            raise TypeError("leaving must be a string")
+        if new_members and not isinstance(new_members, basestring):
+            raise TypeError("new_members must be a string")
+        if not isinstance(from_config, int):
+            raise TypeError("from_config must be an int")
+
+        async_result = self.handler.async_result()
+        reconfig = Reconfig(joining, leaving, new_members, from_config)
+        self._call(reconfig, async_result)
+
+        return async_result
 
 
 class TransactionRequest(object):
