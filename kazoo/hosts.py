@@ -16,7 +16,8 @@ def collect_hosts(hosts, randomize=True):
     for host_port in host_ports.split(","):
         # put all complexity of dealing with
         # IPv4 & IPv6 address:port on the urlsplit
-        res = urlsplit("xxx://" + host_port)
+        # Note: we use http as urlsplit with xxx:// doesn't work properly in python 2.6.x
+        res = urlsplit("http://" + host_port)
         host = res.hostname
         port = int(res.port) if res.port else 2181
         result.append((host.strip(), port))
