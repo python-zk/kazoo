@@ -134,7 +134,7 @@ class SetPartitioner(object):
 
     """
     def __init__(self, client, path, set, partition_func=None,
-                 identifier=None, time_boundary=30):
+                 identifier=None, time_boundary=30, state_change_event=None):
         """Create a :class:`~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -147,9 +147,13 @@ class SetPartitioner(object):
                            hostname + process id.
         :param time_boundary: How long the party members must be stable
                               before allocation can complete.
+        :param state_change_event: An optional Event object that will be set
+                                   on every state change.
 
         """
         self.state = PartitionState.ALLOCATING
+        self.state_change_event = state_change_event or \
+            client.handler.event_object()
 
         self._client = client
         self._path = path
@@ -235,7 +239,7 @@ class SetPartitioner(object):
             with self._state_change:
                 if self.failed:
                     return
-                self.state = PartitionState.ALLOCATING
+                self._set_state(PartitionState.ALLOCATING)
         self._child_watching(self._allocate_transition, async=True)
 
     def finish(self):
@@ -245,7 +249,7 @@ class SetPartitioner(object):
 
     def _fail_out(self):
         with self._state_change:
-            self.state = PartitionState.FAILURE
+            self._set_state(PartitionState.FAILURE)
         if self._party.participating:
             try:
                 self._party.leave()
@@ -266,7 +270,7 @@ class SetPartitioner(object):
         def updated(result):
             with self._state_change:
                 if self.acquired:
-                    self.state = PartitionState.RELEASE
+                    self._set_state(PartitionState.RELEASE)
             self._children_updated = True
 
         async_result.rawlink(updated)
@@ -295,7 +299,7 @@ class SetPartitioner(object):
         with self._state_change:
             if self.failed:  # pragma: nocover
                 return self.finish()
-            self.state = PartitionState.ACQUIRED
+            self._set_state(PartitionState.ACQUIRED)
             self._acquire_event.set()
 
     def _release_locks(self):
@@ -351,7 +355,7 @@ class SetPartitioner(object):
             elif state == KazooState.LOST:
                 self._client.handler.spawn(self._fail_out)
             elif not self.release:
-                self.state = PartitionState.RELEASE
+                self._set_state(PartitionState.RELEASE)
 
         return state == KazooState.LOST
 
@@ -364,3 +368,7 @@ class SetPartitioner(object):
         # Now return the partition list starting at our location and
         # skipping the other workers
         return all_partitions[i::len(workers)]
+
+    def _set_state(self, state):
+        self.state = state
+        self.state_change_event.set()
