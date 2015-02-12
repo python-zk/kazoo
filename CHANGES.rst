@@ -10,6 +10,12 @@ Features
 - Start running tests against Zookeeper 3.5.0 alpha and explicitly configure
   the `admin.serverPort` in tests to avoid port conflicts. The Zookeeper
   alpha version is not yet officially supported.
+- Integrate eventlet *handler* support into kazoo so that along with [gevent,
+  threading] handlers there can now be a dedicated eventlet handler for
+  projects that need to (or want to) use eventlet (such as those working
+  in the openstack community). The ``requirements_eventlet.txt`` file lists
+  the optional eventlet requirement(s) that needs to be satisfied when this
+  new handler is used.
 
 Bug Handling
 ************

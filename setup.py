@@ -25,12 +25,14 @@ tests_require = install_requires + [
 if not (PYTHON3 or PYPY):
     tests_require += [
         'gevent',
+        'eventlet',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     install_requires.extend([
         'gevent',
+        'eventlet',
     ])
 
 setup(
