@@ -40,12 +40,17 @@ class KazooPartitionerTests(KazooTestCase):
         self.__assert_state(PartitionState.ACQUIRED)
         self.__assert_partitions([0, 2], [1])
 
+        for partitioner in self.__partitioners:
+            partitioner.state_change_event.clear()
+
         # Add another partition, wait till they settle
         self.__create_partitioner(size=3, identifier="2")
         self.__wait()
 
         self.__assert_state(PartitionState.RELEASE,
                             partitioners=self.__partitioners[:-1])
+        for partitioner in self.__partitioners[-1]:
+            eq_(partitioner.state_change_event.is_set(), True)
         self.__release(self.__partitioners[:-1])
 
         self.__wait_for_acquire()
@@ -71,6 +76,35 @@ class KazooPartitionerTests(KazooTestCase):
         partitioner._fail_out()
         partitioner.release_set()
         self.assertTrue(partitioner.failed)
+
+    def test_connection_loss(self):
+        self.__create_partitioner(identifier="0", size=3)
+        self.__create_partitioner(identifier="1", size=3)
+
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 2], [1])
+
+        # Emulate connection loss
+        self.lose_connection()
+        self.__assert_state(PartitionState.RELEASE)
+        self.__release()
+
+        # Check that partitioners settle after connection loss
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 2], [1])
+
+        # Check that partitioners react on new events after connection loss
+        self.__create_partitioner(identifier="2", size=3)
+        self.__wait()
+
+        self.__assert_state(PartitionState.RELEASE,
+                            partitioners=self.__partitioners[:-1])
+        self.__release(partitioners=self.__partitioners[:-1])
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0], [1], [2])
 
     def __create_partitioner(self, size, identifier=None):
         partitioner = self.client.SetPartitioner(
