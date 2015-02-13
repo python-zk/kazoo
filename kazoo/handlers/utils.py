@@ -9,6 +9,7 @@ except ImportError:  # pragma: nocover
 import errno
 import functools
 import os
+import select
 import socket
 import sys
 
@@ -160,13 +161,11 @@ def create_socket_pair(module, port=0):
             raise
 
     # Use select to wait for connect() to succeed.
-    import select
     timeout = 1
     readable = select.select([temp_srv_sock], [], [], timeout)[0]
     if temp_srv_sock not in readable:
         raise Exception('Client socket not connected in {} second(s)'.format(timeout))
     srv_sock, _ = temp_srv_sock.accept()
-
     return client_sock, srv_sock
 
 def create_tcp_socket(module):
