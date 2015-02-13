@@ -72,6 +72,7 @@ class Lock(object):
         self.prefix = uuid.uuid4().hex + self._NODE_NAME
         self.create_path = self.path + "/" + self.prefix
 
+        self.node = None
         self.create_tried = False
         self.is_acquired = False
         self.assured_path = False
@@ -119,8 +120,9 @@ class Lock(object):
             self.cancelled = False
             raise
 
-        if not self.is_acquired:
+        if not self.is_acquired and self.node:
             self._delete_node(self.node)
+            self.node = None
 
         return self.is_acquired
 
