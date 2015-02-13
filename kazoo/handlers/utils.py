@@ -1,16 +1,13 @@
 """Kazoo handler helpers"""
 
+import errno
+import functools
+
 HAS_FNCTL = True
 try:
     import fcntl
 except ImportError:  # pragma: nocover
     HAS_FNCTL = False
-
-import errno
-import functools
-import os
-import socket
-import sys
 
 # sentinel objects
 _NONE = object()
@@ -120,6 +117,7 @@ class AsyncResult(object):
             if callback in self._callbacks:
                 self._callbacks.remove(callback)
 
+
 def _set_fd_cloexec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
@@ -130,6 +128,7 @@ def _set_default_tcpsock_options(module, sock):
     if HAS_FNCTL:
         _set_fd_cloexec(sock)
     return sock
+
 
 def create_socket_pair(module, port=0):
     """Create socket pair.
@@ -164,10 +163,12 @@ def create_socket_pair(module, port=0):
     timeout = 1
     readable = select.select([temp_srv_sock], [], [], timeout)[0]
     if temp_srv_sock not in readable:
-        raise Exception('Client socket not connected in {} second(s)'.format(timeout))
+        raise Exception('Client socket not connected in %s'
+                        ' second(s)' % (timeout))
     srv_sock, _ = temp_srv_sock.accept()
 
     return client_sock, srv_sock
+
 
 def create_tcp_socket(module):
     """Create a TCP socket with the CLOEXEC flag set.
