@@ -11,7 +11,8 @@ Kazoo features:
 * Data and Children Watchers
 * Simplified Zookeeper connection state tracking
 * Unified asynchronous API for use with greenlets or threads
-* Support for gevent 0.13 and gevent 1.0
+* Support for `gevent`_ 0.13 and `gevent`_ 1.0
+* Support for `eventlet`_
 * Support for Zookeeper 3.3 and 3.4 servers
 * Integrated testing helpers for Zookeeper clusters
 * Pure-Python based implementation of the wire protocol, avoiding all the
@@ -45,12 +46,12 @@ Why
 Using :term:`Zookeeper` in a safe manner can be difficult due to the variety of
 edge-cases in :term:`Zookeeper` and other bugs that have been present in the
 Python C binding. Due to how the C library utilizes a separate C thread for
-:term:`Zookeeper` communication some libraries like `gevent`_ also don't work
-properly by default.
+:term:`Zookeeper` communication some libraries like `gevent`_ (or `eventlet`_)
+also don't work properly by default.
 
 By utilizing a pure Python implementation, Kazoo handles all of these
 cases and provides a new asynchronous API which is consistent when
-using threads or `gevent`_ greenlets.
+using threads or `gevent`_ (or `eventlet`_) greenlets.
 
 Source Code
 ===========
@@ -65,7 +66,7 @@ Bugs should be reported on the `kazoo github issue tracker
 <https://github.com/python-zk/kazoo/issues>`_.
 
 The developers of ``kazoo`` can frequently be found on the Freenode IRC
-network in the #zookeeper channel.
+network in the `\#zookeeper`_ channel.
 
 For general discussions and support questions, please use the
 `python-zk <https://groups.google.com/forum/#!forum/python-zk>`_ mailing list
@@ -94,7 +95,8 @@ Authors
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
 `Zope Corporation`_. It has since gathered an active community of over two
-dozen contributors.
+dozen contributors from a variety of companies (twitter, mozilla, yahoo! and
+others).
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
 .. _Zookeeper Programmers Guide: http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html
@@ -104,3 +106,5 @@ dozen contributors.
 .. _Mozilla: http://www.mozilla.org/
 .. _Netflix Curator: https://github.com/Netflix/curator
 .. _gevent: http://gevent.org/
+.. _eventlet: http://eventlet.net/
+.. _\#zookeeper: irc://chat.freenode.net/zookeeper

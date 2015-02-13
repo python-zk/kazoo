@@ -43,10 +43,11 @@ used because its possible that we might never connect and that should be
 handled gracefully.
 
 The :class:`~kazoo.handlers.gevent.SequentialGeventHandler` is used when you
-want to use gevent. Kazoo doesn't rely on gevents monkey patching and requires
+want to use gevent (and
+:class:`~kazoo.handlers.eventlet.SequentialEventletHandler` when eventlet is
+used). Kazoo doesn't rely on gevents/eventlet monkey patching and requires
 that you pass in the appropriate handler, the default handler is
 :class:`~kazoo.handlers.threading.SequentialThreadingHandler`.
-
 
 Asynchronous Callbacks
 ======================
