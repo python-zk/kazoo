@@ -90,13 +90,13 @@ class KazooTestHarness(unittest.TestCase):
             self._client = [c]
         return c
 
-    def lose_connection(self):
+    def lose_connection(self, event_factory):
         """Force client to lose connection with server"""
-        self.__break_connection(_CONNECTION_DROP, KazooState.SUSPENDED)
+        self.__break_connection(_CONNECTION_DROP, KazooState.SUSPENDED, event_factory)
 
-    def expire_session(self):
+    def expire_session(self, event_factory):
         """Force ZK to expire a client session"""
-        self.__break_connection(_SESSION_EXPIRED, KazooState.LOST)
+        self.__break_connection(_SESSION_EXPIRED, KazooState.LOST, event_factory)
 
     def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`
@@ -146,11 +146,11 @@ class KazooTestHarness(unittest.TestCase):
             del client
         self._clients = None
 
-    def __break_connection(self, event, expected_state):
+    def __break_connection(self, break_event, expected_state, event_factory):
         """Break ZooKeeper connection using the specified event."""
 
-        lost = threading.Event()
-        safe = threading.Event()
+        lost = event_factory()
+        safe = event_factory()
 
         def watch_loss(state):
             if state == expected_state:
@@ -160,7 +160,7 @@ class KazooTestHarness(unittest.TestCase):
                 return True
 
         self.client.add_listener(watch_loss)
-        self.client._call(event, None)
+        self.client._call(break_event, None)
 
         lost.wait(5)
         if not lost.isSet():

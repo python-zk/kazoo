@@ -124,7 +124,7 @@ class KazooDataWatcherTests(KazooTestCase):
         eq_(data, [b""])
         update.clear()
 
-        self.expire_session()
+        self.expire_session(threading.Event)
         self.client.retry(self.client.set, self.path, b'fred')
         update.wait(25)
         eq_(data[0], b'fred')
@@ -389,7 +389,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
-        self.expire_session()
+        self.expire_session(threading.Event)
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
@@ -415,7 +415,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.wait(10)
         eq_(all_children, ['smith'])
         update.clear()
-        self.expire_session()
+        self.expire_session(threading.Event)
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')

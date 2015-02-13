@@ -1,4 +1,5 @@
 import uuid
+import threading
 import time
 
 from nose.tools import eq_
@@ -8,6 +9,10 @@ from kazoo.recipe.partitioner import PartitionState
 
 
 class KazooPartitionerTests(KazooTestCase):
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
     def setUp(self):
         super(KazooPartitionerTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
@@ -86,7 +91,7 @@ class KazooPartitionerTests(KazooTestCase):
         self.__assert_partitions([0, 2], [1])
 
         # Emulate connection loss
-        self.lose_connection()
+        self.lose_connection(self.make_event)
         self.__assert_state(PartitionState.RELEASE)
         self.__release()
 
