@@ -2,6 +2,7 @@
 
 import errno
 import functools
+import select
 
 HAS_FNCTL = True
 try:
@@ -159,14 +160,12 @@ def create_socket_pair(module, port=0):
             raise
 
     # Use select to wait for connect() to succeed.
-    import select
     timeout = 1
     readable = select.select([temp_srv_sock], [], [], timeout)[0]
     if temp_srv_sock not in readable:
         raise Exception('Client socket not connected in %s'
                         ' second(s)' % (timeout))
     srv_sock, _ = temp_srv_sock.accept()
-
     return client_sock, srv_sock
 
 

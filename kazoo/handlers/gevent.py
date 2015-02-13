@@ -9,8 +9,6 @@ import gevent.queue
 import gevent.select
 import gevent.thread
 
-import kazoo.python2atexit as python2atexit
-
 from gevent.queue import Empty
 from gevent.queue import Queue
 from gevent import socket
@@ -20,6 +18,7 @@ except ImportError:
     from gevent.coros import Semaphore, RLock
 
 from kazoo.handlers import utils
+from kazoo import python2atexit
 
 _using_libevent = gevent.__version__.startswith('0.')
 
