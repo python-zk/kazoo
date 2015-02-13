@@ -12,7 +12,7 @@ from kazoo.protocol.states import (
     KazooState
 )
 from kazoo.testing.common import ZookeeperCluster
-from kazoo.protocol.connection import _SESSION_EXPIRED
+from kazoo.protocol.connection import _CONNECTION_DROP, _SESSION_EXPIRED
 
 log = logging.getLogger(__name__)
 
@@ -90,38 +90,13 @@ class KazooTestHarness(unittest.TestCase):
             self._client = [c]
         return c
 
-    def expire_session(self, client_id=None):
-        """Force ZK to expire a client session
+    def lose_connection(self):
+        """Force client to lose connection with server"""
+        self.__break_connection(_CONNECTION_DROP, KazooState.SUSPENDED)
 
-        :param client_id: id of client to expire. If unspecified, the id of
-                          self.client will be used.
-
-        """
-        client_id = client_id or self.client.client_id
-
-        lost = threading.Event()
-        safe = threading.Event()
-
-        def watch_loss(state):
-            if state == KazooState.LOST:
-                lost.set()
-            if lost.is_set() and state == KazooState.CONNECTED:
-                safe.set()
-                return True
-
-        self.client.add_listener(watch_loss)
-
-        self.client._call(_SESSION_EXPIRED, None)
-
-        lost.wait(5)
-        if not lost.isSet():
-            raise Exception("Failed to get notified of session loss")
-
-        # Wait for the reconnect now
-        safe.wait(15)
-        if not safe.isSet():
-            raise Exception("Failed to see client reconnect")
-        self.client.retry(self.client.get_async, '/')
+    def expire_session(self):
+        """Force ZK to expire a client session"""
+        self.__break_connection(_SESSION_EXPIRED, KazooState.LOST)
 
     def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`
@@ -170,6 +145,32 @@ class KazooTestHarness(unittest.TestCase):
             client.stop()
             del client
         self._clients = None
+
+    def __break_connection(self, event, expected_state):
+        """Break ZooKeeper connection using the specified event."""
+
+        lost = threading.Event()
+        safe = threading.Event()
+
+        def watch_loss(state):
+            if state == expected_state:
+                lost.set()
+            elif lost.is_set() and state == KazooState.CONNECTED:
+                safe.set()
+                return True
+
+        self.client.add_listener(watch_loss)
+        self.client._call(event, None)
+
+        lost.wait(5)
+        if not lost.isSet():
+            raise Exception("Failed to get notified of broken connection.")
+
+        safe.wait(15)
+        if not safe.isSet():
+            raise Exception("Failed to see client reconnect.")
+
+        self.client.retry(self.client.get_async, '/')
 
 
 class KazooTestCase(KazooTestHarness):
