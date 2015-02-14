@@ -33,6 +33,7 @@ _STOP = object()
 
 log = logging.getLogger(__name__)
 
+
 class KazooTimeoutError(Exception):
     pass
 

@@ -1,6 +1,5 @@
 """Zookeeper Protocol Connection Handler"""
 import logging
-import os
 import random
 import select
 import socket
@@ -523,7 +522,8 @@ class ConnectionHandler(object):
                     # Watch for something to read or send
                     jitter_time = random.randint(0, 40) / 100.0
                     # Ensure our timeout is positive
-                    timeout = max([read_timeout / 2.0 - jitter_time, jitter_time])
+                    timeout = max([read_timeout / 2.0 - jitter_time,
+                                   jitter_time])
                     s = self.handler.select([self._socket, self._read_sock],
                                             [], [], timeout)[0]
 

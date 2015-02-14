@@ -1,7 +1,5 @@
 from collections import namedtuple
-import sys
 import os
-import errno
 import threading
 import time
 import uuid
@@ -197,7 +195,7 @@ class TestConnectionHandler(KazooTestCase):
         client.stop()
         assert read_sock is not None
         assert write_sock is not None
-        
+
         read_sock.getsockname()
         write_sock.getsockname()
 
@@ -205,7 +203,7 @@ class TestConnectionHandler(KazooTestCase):
         client.close()
 
         # Todo check socket closing
-                   
+
         # start client back up. should get a new, valid socket
         client.start()
         read_sock = client._connection._read_sock
@@ -215,7 +213,6 @@ class TestConnectionHandler(KazooTestCase):
         assert write_sock is not None
         read_sock.getsockname()
         write_sock.getsockname()
-            
 
     def test_dirty_sock(self):
         client = self.client

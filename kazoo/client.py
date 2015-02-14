@@ -1,12 +1,13 @@
 """Kazoo Zookeeper Client"""
 import inspect
 import logging
-import os
 import re
 import warnings
 from collections import defaultdict, deque
 from functools import partial
 from os.path import split
+
+import six
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -62,10 +63,8 @@ from kazoo.recipe.queue import LockingQueue
 from kazoo.recipe.watchers import ChildrenWatch
 from kazoo.recipe.watchers import DataWatch
 
-try:  # pragma: nocover
-    basestring
-except NameError:  # pragma: nocover
-    basestring = str
+string_types = six.string_types
+bytes_types = (six.binary_type,)
 
 LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
                KeeperState.CLOSED)
@@ -669,10 +668,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(scheme, basestring):
-            raise TypeError("Invalid type for scheme")
-        if not isinstance(credential, basestring):
-            raise TypeError("Invalid type for credential")
+        if not isinstance(scheme, string_types):
+            raise TypeError("Invalid type for 'scheme' (string expected)")
+        if not isinstance(credential, string_types):
+            raise TypeError("Invalid type for 'credential' (string expected)")
 
         # we need this auth data to re-authenticate on reconnect
         self.auth_data.add((scheme, credential))
@@ -804,19 +803,20 @@ class KazooClient(object):
         if acl is None and self.default_acl:
             acl = self.default_acl
 
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if acl and (isinstance(acl, ACL) or
                     not isinstance(acl, (tuple, list))):
-            raise TypeError("acl must be a tuple/list of ACL's")
-        if value is not None and not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
+            raise TypeError("Invalid type for 'acl' (acl must be a tuple/list"
+                            " of ACL's")
+        if value is not None and not isinstance(value, bytes_types):
+            raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(ephemeral, bool):
-            raise TypeError("ephemeral must be a bool")
+            raise TypeError("Invalid type for 'ephemeral' (bool expected)")
         if not isinstance(sequence, bool):
-            raise TypeError("sequence must be a bool")
+            raise TypeError("Invalid type for 'sequence' (bool expected)")
         if not isinstance(makepath, bool):
-            raise TypeError("makepath must be a bool")
+            raise TypeError("Invalid type for 'makepath' (bool expected)")
 
         flags = 0
         if ephemeral:
@@ -946,10 +946,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
-            raise TypeError("watch must be a callable")
+            raise TypeError("Invalid type for 'watch' (must be a callable)")
 
         async_result = self.handler.async_result()
         self._call(Exists(_prefix_root(self.chroot, path), watch),
@@ -988,10 +988,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
-            raise TypeError("watch must be a callable")
+            raise TypeError("Invalid type for 'watch' (must be a callable)")
 
         async_result = self.handler.async_result()
         self._call(GetData(_prefix_root(self.chroot, path), watch),
@@ -1041,12 +1041,12 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
-            raise TypeError("watch must be a callable")
+            raise TypeError("Invalid type for 'watch' (must be a callable)")
         if not isinstance(include_data, bool):
-            raise TypeError("include_data must be a bool")
+            raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         async_result = self.handler.async_result()
         if include_data:
@@ -1083,8 +1083,8 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
 
         async_result = self.handler.async_result()
         self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
@@ -1126,12 +1126,13 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if isinstance(acls, ACL) or not isinstance(acls, (tuple, list)):
-            raise TypeError("acl must be a tuple/list of ACL's")
+            raise TypeError("Invalid type for 'acl' (acl must be a tuple/list"
+                            " of ACL's")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
 
         async_result = self.handler.async_result()
         self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
@@ -1180,12 +1181,12 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
-        if value is not None and not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if value is not None and not isinstance(value, bytes_types):
+            raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
 
         async_result = self.handler.async_result()
         self._call(SetData(_prefix_root(self.chroot, path), value, version),
@@ -1255,10 +1256,10 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
         async_result = self.handler.async_result()
         self._call(Delete(_prefix_root(self.chroot, path), version),
                    async_result)
@@ -1322,16 +1323,17 @@ class TransactionRequest(object):
         if acl is None and self.client.default_acl:
             acl = self.client.default_acl
 
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if acl and not isinstance(acl, (tuple, list)):
-            raise TypeError("acl must be a tuple/list of ACL's")
-        if not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
+            raise TypeError("Invalid type for 'acl' (acl must be a tuple/list"
+                            " of ACL's")
+        if not isinstance(value, bytes_types):
+            raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(ephemeral, bool):
-            raise TypeError("ephemeral must be a bool")
+            raise TypeError("Invalid type for 'ephemeral' (bool expected)")
         if not isinstance(sequence, bool):
-            raise TypeError("sequence must be a bool")
+            raise TypeError("Invalid type for 'sequence' (bool expected)")
 
         flags = 0
         if ephemeral:
@@ -1350,10 +1352,10 @@ class TransactionRequest(object):
         `recursive`.
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
         self._add(Delete(_prefix_root(self.client.chroot, path), version))
 
     def set_data(self, path, value, version=-1):
@@ -1361,12 +1363,12 @@ class TransactionRequest(object):
         arguments as :meth:`KazooClient.set`.
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
-        if not isinstance(value, bytes):
-            raise TypeError("value must be a byte string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if not isinstance(value, bytes_types):
+            raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
         self._add(SetData(_prefix_root(self.client.chroot, path), value,
                   version))
 
@@ -1377,10 +1379,10 @@ class TransactionRequest(object):
         does not match the specified version.
 
         """
-        if not isinstance(path, basestring):
-            raise TypeError("path must be a string")
+        if not isinstance(path, string_types):
+            raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
-            raise TypeError("version must be an int")
+            raise TypeError("Invalid type for 'version' (int expected)")
         self._add(CheckVersion(_prefix_root(self.client.chroot, path),
                   version))
 

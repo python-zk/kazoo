@@ -16,6 +16,9 @@ Features
   in the openstack community). The ``requirements_eventlet.txt`` file lists
   the optional eventlet requirement(s) that needs to be satisfied when this
   new handler is used.
+- Use ``six`` to nicely handle the cross compatibility of kazoo with
+  python 2.x and 3.x (reducing/removing the need to have custom compatibility
+  code that replicates what six already provides).
 - Add ``state_change_event`` to ``kazoo.recipe.partitioner.SetPartitioner``
   which is set on every state change.
 

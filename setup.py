@@ -14,7 +14,7 @@ with open(os.path.join(here, 'CHANGES.rst')) as f:
 PYTHON3 = sys.version_info > (3, )
 PYPY = getattr(sys, 'pypy_version_info', False) and True or False
 
-install_requires = []
+install_requires = ['six']
 
 tests_require = install_requires + [
     'coverage',

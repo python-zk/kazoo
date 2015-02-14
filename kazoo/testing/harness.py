@@ -3,7 +3,6 @@ import atexit
 import logging
 import os
 import uuid
-import threading
 import unittest
 
 from kazoo.client import KazooClient
