@@ -16,6 +16,8 @@ Features
   in the openstack community). The ``requirements_eventlet.txt`` file lists
   the optional eventlet requirement(s) that needs to be satisfied when this
   new handler is used.
+- Add ``state_change_event`` to ``kazoo.recipe.partitioner.SetPartitioner``
+  which is set on every state change.
 
 Bug Handling
 ************
@@ -28,6 +30,8 @@ Bug Handling
 - #216: Fixed timeout for ConnectionHandler._invoke.
 
 - #261: Creating a sequential znode under / doesn't work.
+
+- #271: Fixed handling of KazooState.SUSPENDED in SetPartitioner.
 
 Documentation
 *************
