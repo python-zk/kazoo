@@ -675,7 +675,7 @@ class KazooClient(object):
         version = _try_fetch()
         if _is_valid(version):
             return version
-        for _i in range(0, retries):
+        for _i in six.moves.range(0, retries):
             version = _try_fetch()
             if _is_valid(version):
                 return version
