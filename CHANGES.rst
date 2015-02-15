@@ -32,6 +32,9 @@ Bug Handling
 
 - #261: Creating a sequential znode under / doesn't work.
 
+- #274: Add server_version() retries (by default 4 attempts will be made) to
+  better handle flakey responses.
+
 Documentation
 *************
 
