@@ -14,6 +14,7 @@ from kazoo.exceptions import (
     ConfigurationError,
     ConnectionClosedError,
     ConnectionLoss,
+    KazooException,
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
@@ -678,7 +679,9 @@ class KazooClient(object):
             version = _try_fetch()
             if _is_valid(version):
                 return version
-        return None
+        raise KazooException("Unable to fetch useable server"
+                             " version after trying %s times"
+                             % (1 + max(0, retries)))
 
     def add_auth(self, scheme, credential):
         """Send credentials to server.
