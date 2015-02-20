@@ -36,6 +36,9 @@ Bug Handling
 
 - #271: Fixed handling of KazooState.SUSPENDED in SetPartitioner.
 
+- #283: Fixed a race condition in SetPartitioner when party changes during
+  handling of lock acquisition.
+
 Documentation
 *************
 
