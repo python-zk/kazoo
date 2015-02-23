@@ -29,6 +29,10 @@ Bug Handling
 
 - #261: Creating a sequential znode under / doesn't work.
 
+- #279: Fixed AttributeError 'Lock' object has no attribute 'node'. Caused
+        by the missing definition of self.node in __init__.
+
+
 Documentation
 *************
 
