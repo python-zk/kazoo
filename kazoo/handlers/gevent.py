@@ -52,9 +52,10 @@ class SequentialGeventHandler(object):
     name = "sequential_gevent_handler"
     sleep_func = staticmethod(gevent.sleep)
 
-    def __init__(self):
+    def __init__(self, register_at_exit=True):
         """Create a :class:`SequentialGeventHandler` instance"""
         self.callback_queue = Queue()
+        self.register_at_exit = register_at_exit
         self._running = False
         self._async = None
         self._state_change = Semaphore()
@@ -92,7 +93,8 @@ class SequentialGeventHandler(object):
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
-            python2atexit.register(self.stop)
+            if self.register_at_exit:
+                python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
@@ -112,7 +114,8 @@ class SequentialGeventHandler(object):
             # Clear the queues
             self.callback_queue = Queue()  # pragma: nocover
 
-            python2atexit.unregister(self.stop)
+            if self.register_at_exit:
+                python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)

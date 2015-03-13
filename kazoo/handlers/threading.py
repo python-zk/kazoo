@@ -80,10 +80,11 @@ class SequentialThreadingHandler(object):
     queue_impl = Queue.Queue
     queue_empty = Queue.Empty
 
-    def __init__(self):
+    def __init__(self, register_at_exit=True):
         """Create a :class:`SequentialThreadingHandler` instance"""
         self.callback_queue = self.queue_impl()
         self.completion_queue = self.queue_impl()
+        self.register_at_exit = register_at_exit
         self._running = False
         self._state_change = threading.Lock()
         self._workers = []
@@ -125,7 +126,8 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(queue)
                 self._workers.append(w)
             self._running = True
-            python2atexit.register(self.stop)
+            if self.register_at_exit:
+                python2atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -146,7 +148,8 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
-            python2atexit.unregister(self.stop)
+            if self.register_at_exit:
+                python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         try:

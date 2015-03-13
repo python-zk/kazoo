@@ -76,10 +76,11 @@ class SequentialEventletHandler(object):
     """
     name = "sequential_eventlet_handler"
 
-    def __init__(self):
+    def __init__(self, register_at_exit=True):
         """Create a :class:`SequentialEventletHandler` instance"""
         self.callback_queue = green_queue.LightQueue()
         self.completion_queue = green_queue.LightQueue()
+        self.register_at_exit = register_at_exit
         self._workers = []
         self._started = False
 
@@ -127,7 +128,8 @@ class SequentialEventletHandler(object):
             w = eventlet.spawn(self._process_callback_queue)
             self._workers.append((w, self.callback_queue))
             self._started = True
-            atexit.register(self.stop)
+            if self.register_at_exit:
+                atexit.register(self.stop)
 
     def stop(self):
         while self._workers:
@@ -135,8 +137,9 @@ class SequentialEventletHandler(object):
             q.put(_STOP)
             w.wait()
         self._started = False
-        if hasattr(atexit, "unregister"):
-            atexit.unregister(self.stop)
+        if self.register_at_exit:
+            if hasattr(atexit, "unregister"):
+                atexit.unregister(self.stop)
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(green_socket)
