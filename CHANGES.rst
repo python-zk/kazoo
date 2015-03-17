@@ -23,6 +23,13 @@ Features
 Bug Handling
 ************
 
+- #291: Kazoo lock recipe was only partially re-entrant in that multiple
+  calls to `acquire` would obtain the the lock but the first call to `release`
+  would remove the underlying lock. This would leave the X - 1 other `acquire`
+  statements unprotected (and no longer holding there expected lock). To fix
+  this the comment about that lock recipe being re-entrant has been removed
+  and multiple acquires will now raise a ``RuntimeError`` when attempted.
+
 - #78: Kazoo now uses socketpairs instead of pipes making it compatible with
   Windows.
 
