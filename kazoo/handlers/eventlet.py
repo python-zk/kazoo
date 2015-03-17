@@ -75,6 +75,7 @@ class SequentialEventletHandler(object):
 
     """
     name = "sequential_eventlet_handler"
+    current_thread = staticmethod(eventlet.getcurrent)
 
     def __init__(self):
         """Create a :class:`SequentialEventletHandler` instance"""
