@@ -272,7 +272,7 @@ class Semaphore(object):
     indicate how many available leases are available for the lock
     rather than counting.
 
-    Note: This lock is not meant to *re-entrant*.
+    Note: This lock is not meant to be *re-entrant*.
 
     Example:
 
