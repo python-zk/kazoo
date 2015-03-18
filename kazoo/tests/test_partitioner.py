@@ -2,10 +2,44 @@ import uuid
 import threading
 import time
 
+import mock
 from nose.tools import eq_
 
+from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
 from kazoo.recipe.partitioner import PartitionState
+
+
+class SlowLockMock():
+    """Emulates a slow ZooKeeper lock."""
+
+    default_delay_time = 3
+
+    def __init__(self, client, lock, delay_time=None):
+        self._client = client
+        self._lock = lock
+        self.delay_time = self.default_delay_time \
+            if delay_time is None else delay_time
+
+    def acquire(self, timeout=None):
+        sleep = self._client.handler.sleep_func
+        sleep(self.delay_time)
+
+        if timeout is None:
+            return self._lock.acquire()
+
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            if self._lock.acquire(False):
+                return True
+
+            sleep(0.1)
+
+        raise LockTimeout("Mocked slow lock has timed out.")
+
+    def release(self):
+        self._lock.release()
 
 
 class KazooPartitionerTests(KazooTestCase):
@@ -110,6 +144,71 @@ class KazooPartitionerTests(KazooTestCase):
         self.__wait_for_acquire()
         self.__assert_state(PartitionState.ACQUIRED)
         self.__assert_partitions([0], [1], [2])
+
+    def test_race_condition_new_partitioner_during_the_lock(self):
+        locks = {}
+        def get_lock(path):
+            lock = locks.setdefault(path, self.client.handler.lock_object())
+            return SlowLockMock(self.client, lock)
+
+        with mock.patch.object(self.client, "Lock", side_effect=get_lock):
+            # Create first partitioner. It will start to acquire the set members.
+            self.__create_partitioner(identifier="0", size=2)
+
+            # Wait until the first partitioner has acquired first lock and
+            # started to acquire the second lock.
+            self.client.handler.sleep_func(SlowLockMock.default_delay_time + 1)
+
+            # Create the second partitioner a the time when the first
+            # partitioner is in the process of acquiring the lock that should
+            # belong to the second partitioner.
+            self.__create_partitioner(identifier="1", size=2)
+
+            # The first partitioner should acquire the both locks but then it
+            # must notice that the party has changed and it must reacquire
+            # the set. No deadlocks must happen.
+            self.__wait_for_acquire()
+
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0], [1])
+
+    def test_race_condition_new_partitioner_steals_the_lock(self):
+        locks = {}
+
+        def get_lock(path):
+            new_lock = self.client.handler.lock_object()
+            lock = locks.setdefault(path, new_lock)
+
+            if lock is new_lock:
+                # The first partitioner will be delayed
+                delay_time = SlowLockMock.default_delay_time
+            else:
+                # The second partitioner won't be delayed
+                delay_time = 0
+
+            return SlowLockMock(self.client, lock, delay_time=delay_time)
+
+        with mock.patch.object(self.client, "Lock", side_effect=get_lock):
+            # Create first partitioner. It will start to acquire the set members.
+            self.__create_partitioner(identifier="0", size=2)
+
+            # Wait until the first partitioner has acquired first lock and
+            # started to acquire the second lock.
+            self.client.handler.sleep_func(SlowLockMock.default_delay_time + 1)
+
+            # Create the second partitioner a the time when the first
+            # partitioner is in the process of acquiring the lock that should
+            # belong to the second partitioner. The second partitioner should
+            # steal the lock because it won't be delayed.
+            self.__create_partitioner(identifier="1", size=2)
+
+            # The first partitioner should fail to acquire the second lock and
+            # must notice that the party has changed and it must reacquire the
+            # set. No deadlocks must happen.
+            self.__wait_for_acquire()
+
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0], [1])
 
     def __create_partitioner(self, size, identifier=None):
         partitioner = self.client.SetPartitioner(
