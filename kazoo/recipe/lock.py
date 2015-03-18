@@ -14,7 +14,11 @@ changes and re-act appropriately. In the event that a
 and/or the lease has been lost.
 
 """
+import logging
+import sys
 import uuid
+
+import six
 
 from kazoo.retry import (
     KazooRetry,
@@ -26,6 +30,8 @@ from kazoo.exceptions import KazooException
 from kazoo.exceptions import LockTimeout
 from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import KazooState
+
+log = logging.getLogger(__name__)
 
 
 class Lock(object):
@@ -73,9 +79,9 @@ class Lock(object):
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
-        self.is_acquired = False
         self.assured_path = False
         self.cancelled = False
+        self.acquired_by = []
         self._retry = KazooRetry(max_tries=None,
                                  sleep_func=client.handler.sleep_func)
 
@@ -87,6 +93,10 @@ class Lock(object):
         """Cancel a pending lock acquire."""
         self.cancelled = True
         self.wake_event.set()
+
+    @property
+    def is_acquired(self):
+        return len(self.acquired_by) > 0
 
     def acquire(self, blocking=True, timeout=None):
         """
@@ -112,19 +122,19 @@ class Lock(object):
         try:
             retry = self._retry.copy()
             retry.deadline = timeout
-            self.is_acquired = retry(self._inner_acquire,
-                                     blocking=blocking, timeout=timeout)
+            retry(self._inner_acquire, blocking=blocking, timeout=timeout)
         except RetryFailedError:
-            self._best_effort_cleanup()
+            if not self.acquired_by:
+                self._best_effort_cleanup()
         except KazooException:
-            # if we did ultimately fail, attempt to clean up
-            self._best_effort_cleanup()
+            exc_info = sys.exc_info()
+            if not self.acquired_by:
+                self._best_effort_cleanup()
             self.cancelled = False
-            raise
+            six.reraise(exc_info[0], exc_info[1], exc_info[2])
 
-        if not self.is_acquired:
+        if not self.acquired_by:
             self._delete_node(self.node)
-
         return self.is_acquired
 
     def _watch_session(self, state):
@@ -168,6 +178,7 @@ class Lock(object):
                 raise ForceRetryError()
 
             if self.acquired_lock(children, our_index):
+                self.acquired_by.append(self.client.handler.current_thread())
                 return True
 
             if not blocking:
@@ -219,20 +230,41 @@ class Lock(object):
 
     def release(self):
         """Release the lock immediately."""
-        return self.client.retry(self._inner_release)
-
-    def _inner_release(self):
         if not self.is_acquired:
             return False
+        trigger_release = False
+        acquirer_id = None
+        try:
+            acquirer_id = self.acquired_by.pop()
+        except IndexError:
+            trigger_release = True
+        else:
+            if len(self.acquired_by) == 0:
+                trigger_release = True
+            active_id = self.client.handler.current_thread()
+            if acquirer_id != active_id:
+                log.warn("release() called from different thread"
+                         " than acquire()")
+        if trigger_release:
+            try:
+                return self.client.retry(self._inner_release)
+            except KazooException:
+                exc_info = sys.exc_info()
+                # put it back on; failed to actually release...
+                if acquirer_id is not None:
+                    self.acquired_by.append(acquirer_id)
+                six.reraise(exc_info[0], exc_info[1], exc_info[2])
+        else:
+            # not yet!
+            return True
 
+    def _inner_release(self):
         try:
             self._delete_node(self.node)
         except NoNodeError:  # pragma: nocover
             pass
-
-        self.is_acquired = False
         self.node = None
-
+        self.acquired_by = []
         return True
 
     def contenders(self):

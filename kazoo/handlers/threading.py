@@ -79,6 +79,7 @@ class SequentialThreadingHandler(object):
     sleep_func = staticmethod(time.sleep)
     queue_impl = Queue.Queue
     queue_empty = Queue.Empty
+    current_thread = staticmethod(threading.current_thread)
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""

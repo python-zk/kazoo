@@ -51,6 +51,7 @@ class SequentialGeventHandler(object):
     """
     name = "sequential_gevent_handler"
     sleep_func = staticmethod(gevent.sleep)
+    current_thread = staticmethod(gevent.getcurrent)
 
     def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
