@@ -40,8 +40,8 @@ class Lock(object):
         with lock:  # blocks waiting for lock acquisition
             # do something with the lock
 
-    Note: This lock is re-entrant. Repeat calls after acquired will
-    continue to return ''True''.
+    Note: This lock is not *re-entrant*. Repeated calls after already
+    acquired will raise a ``RuntimeError``.
 
     """
     _NODE_NAME = '__lock__'
@@ -106,6 +106,9 @@ class Lock(object):
         .. versionadded:: 1.1
             The timeout option.
         """
+        if self.is_acquired:
+            raise RuntimeError("Lock at path '%s' has already been"
+                               " acquired" % self.path)
         try:
             retry = self._retry.copy()
             retry.deadline = timeout
@@ -271,6 +274,8 @@ class Semaphore(object):
     Python threading version only uses the concept of leases to
     indicate how many available leases are available for the lock
     rather than counting.
+
+    Note: This lock is not meant to be *re-entrant*.
 
     Example:
 

@@ -148,11 +148,17 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
         self.process = subprocess.Popen(
             args=["java",
                   "-cp", self.classpath,
+
+                  # "-Dlog4j.debug",
                   "-Dreadonlymode.enabled=true",
                   "-Dzookeeper.log.dir=%s" % log_path,
                   "-Dzookeeper.root.logger=INFO,CONSOLE",
                   "-Dlog4j.configuration=file:%s" % log4j_path,
-                  # "-Dlog4j.debug",
+
+                  # OS X: Prevent java from appearing in menu bar, process dock
+                  # and from activation of the main workspace on run.
+                  "-Djava.awt.headless=true",
+
                   "org.apache.zookeeper.server.quorum.QuorumPeerMain",
                   config_path])
         self._running = True

@@ -22,7 +22,7 @@ import os
 import socket
 from functools import partial
 
-from kazoo.exceptions import KazooException
+from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
 from kazoo.recipe.watchers import PatientChildrenWatch
 
@@ -134,7 +134,8 @@ class SetPartitioner(object):
 
     """
     def __init__(self, client, path, set, partition_func=None,
-                 identifier=None, time_boundary=30):
+                 identifier=None, time_boundary=30, max_reaction_time=1,
+                 state_change_event=None):
         """Create a :class:`~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -147,9 +148,17 @@ class SetPartitioner(object):
                            hostname + process id.
         :param time_boundary: How long the party members must be stable
                               before allocation can complete.
+        :param max_reaction_time: Maximum reaction time for party members
+                                  change.
+        :param state_change_event: An optional Event object that will be set
+                                   on every state change.
 
         """
+        # Used to differentiate two states with the same names in time
+        self.state_id = 0
         self.state = PartitionState.ALLOCATING
+        self.state_change_event = state_change_event or \
+            client.handler.event_object()
 
         self._client = client
         self._path = path
@@ -162,6 +171,7 @@ class SetPartitioner(object):
         self._lock_path = '/'.join([path, 'locks'])
         self._party_path = '/'.join([path, 'party'])
         self._time_boundary = time_boundary
+        self._max_reaction_time = max_reaction_time
 
         self._acquire_event = client.handler.event_object()
 
@@ -175,13 +185,11 @@ class SetPartitioner(object):
                                           identifier=self._identifier)
         self._party.join()
 
-        self._was_allocated = False
         self._state_change = client.handler.rlock_object()
         client.add_listener(self._establish_sessionwatch)
 
         # Now watch the party and set the callback on the async result
         # so we know when we're ready
-        self._children_updated = False
         self._child_watching(self._allocate_transition, async=True)
 
     def __iter__(self):
@@ -236,7 +244,7 @@ class SetPartitioner(object):
             with self._state_change:
                 if self.failed:
                     return
-                self.state = PartitionState.ALLOCATING
+                self._set_state(PartitionState.ALLOCATING)
         self._child_watching(self._allocate_transition, async=True)
 
     def finish(self):
@@ -246,7 +254,7 @@ class SetPartitioner(object):
 
     def _fail_out(self):
         with self._state_change:
-            self.state = PartitionState.FAILURE
+            self._set_state(PartitionState.FAILURE)
         if self._party.participating:
             try:
                 self._party.leave()
@@ -255,49 +263,90 @@ class SetPartitioner(object):
 
     def _allocate_transition(self, result):
         """Called when in allocating mode, and the children settled"""
+
         # Did we get an exception waiting for children to settle?
         if result.exception:  # pragma: nocover
             self._fail_out()
             return
 
         children, async_result = result.get()
-        self._children_updated = False
+        children_changed = self._client.handler.event_object()
 
-        # Add a callback when children change on the async_result
         def updated(result):
             with self._state_change:
+                children_changed.set()
                 if self.acquired:
-                    self.state = PartitionState.RELEASE
-            self._children_updated = True
+                    self._set_state(PartitionState.RELEASE)
 
-        async_result.rawlink(updated)
+        with self._state_change:
+            # We can lose connection during processing the event
+            if not self.allocating:
+                return
+
+            # Remember the state ID to check later for race conditions
+            state_id = self.state_id
+
+            # updated() will be called when children change
+            async_result.rawlink(updated)
+
+        # Check whether the state has changed during the lock acquisition
+        # and abort the process if so.
+        def abort_if_needed():
+            if self.state_id == state_id:
+                if children_changed.is_set():
+                    # The party has changed. Repartitioning...
+                    self._abort_lock_acquisition()
+                    return True
+                else:
+                    return False
+            else:
+                if self.allocating or self.acquired:
+                    # The connection was lost and user initiated a new
+                    # allocation process. Abort it to eliminate race
+                    # conditions with locks.
+                    with self._state_change:
+                        self._set_state(PartitionState.RELEASE)
+
+                return True
 
         # Split up the set
-        self._partition_set = self._partition_func(
+        partition_set = self._partition_func(
             self._identifier, list(self._party), self._set)
 
         # Proceed to acquire locks for the working set as needed
-        for member in self._partition_set:
-            if self._children_updated or self.failed:
-                # Still haven't settled down, release locks acquired
-                # so far and go back
-                return self._abort_lock_acquisition()
+        for member in partition_set:
+            lock = self._client.Lock(self._lock_path + '/' + str(member))
 
-            lock = self._client.Lock(self._lock_path + '/' +
-                                     str(member))
-            try:
-                lock.acquire()
-            except KazooException:  # pragma: nocover
-                return self.finish()
+            while True:
+                try:
+                    # We mustn't lock without timeout because in that case we
+                    # can get a deadlock if the party state will change during
+                    # lock acquisition.
+                    lock.acquire(timeout=self._max_reaction_time)
+                except LockTimeout:
+                    if abort_if_needed():
+                        return
+                except KazooException:
+                    return self.finish()
+                else:
+                    break
+
             self._locks.append(lock)
 
-        # All locks acquired! Time for state transition, make sure
-        # we didn't inadvertently get lost thus far
+            if abort_if_needed():
+                return
+
+        # All locks acquired. Time for state transition.
         with self._state_change:
-            if self.failed:  # pragma: nocover
-                return self.finish()
-            self.state = PartitionState.ACQUIRED
-            self._acquire_event.set()
+            if self.state_id == state_id and not children_changed.is_set():
+                self._partition_set = partition_set
+                self._set_state(PartitionState.ACQUIRED)
+                self._acquire_event.set()
+                return
+
+        if not abort_if_needed():
+            # This mustn't happen. Means a logical error.
+            self._fail_out()
 
     def _release_locks(self):
         """Attempt to completely remove all the locks"""
@@ -314,14 +363,16 @@ class SetPartitioner(object):
 
     def _abort_lock_acquisition(self):
         """Called during lock acquisition if a party change occurs"""
-        self._partition_set = []
+
         self._release_locks()
+
         if self._locks:
             # This shouldn't happen, it means we couldn't release our
             # locks, abort
             self._fail_out()
             return
-        return self._child_watching(self._allocate_transition)
+
+        self._child_watching(self._allocate_transition, async=True)
 
     def _child_watching(self, func=None, async=False):
         """Called when children are being watched to stabilize
@@ -347,24 +398,14 @@ class SetPartitioner(object):
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         with self._state_change:
-            # Handle network partition: If connection gets suspended,
-            # change state to ALLOCATING if we had already ACQUIRED.
-            # This way the caller does not process the members since we
-            # could eventually lose session get repartitioned. If we got
-            # connected after a suspension it means we've not lost the
-            # session and still have our members. Hence, restore to ACQUIRED.
-            if state == KazooState.SUSPENDED:
-                if self.state == PartitionState.ACQUIRED:
-                    self._was_allocated = True
-                    self.state = PartitionState.ALLOCATING
-            elif state == KazooState.CONNECTED:
-                if self._was_allocated:
-                    self._was_allocated = False
-                    self.state = PartitionState.ACQUIRED
+            if self.failed:
+                pass
+            elif state == KazooState.LOST:
+                self._client.handler.spawn(self._fail_out)
+            elif not self.release:
+                self._set_state(PartitionState.RELEASE)
 
-        if state == KazooState.LOST:
-            self._client.handler.spawn(self._fail_out)
-            return True
+        return state == KazooState.LOST
 
     def _partitioner(self, identifier, members, partitions):
         # Ensure consistent order of partitions/members
@@ -375,3 +416,8 @@ class SetPartitioner(object):
         # Now return the partition list starting at our location and
         # skipping the other workers
         return all_partitions[i::len(workers)]
+
+    def _set_state(self, state):
+        self.state = state
+        self.state_id += 1
+        self.state_change_event.set()

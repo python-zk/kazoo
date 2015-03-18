@@ -240,12 +240,14 @@ class KazooLockTests(KazooTestCase):
         thread1.join()
         client2.stop()
 
-    def test_lock_double_calls(self):
+    def test_lock_no_double_calls(self):
         lock1 = self.client.Lock(self.lockpath, "one")
         lock1.acquire()
-        lock1.acquire()
+        self.assertTrue(lock1.is_acquired)
+        self.assertRaises(RuntimeError, lock1.acquire)
+        self.assertTrue(lock1.is_acquired)
         lock1.release()
-        lock1.release()
+        self.assertFalse(lock1.is_acquired)
 
     def test_lock_reacquire(self):
         lock = self.client.Lock(self.lockpath, "one")

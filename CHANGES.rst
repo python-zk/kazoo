@@ -19,9 +19,18 @@ Features
 - Use ``six`` to nicely handle the cross compatibility of kazoo with
   python 2.x and 3.x (reducing/removing the need to have custom compatibility
   code that replicates what six already provides).
+- Add ``state_change_event`` to ``kazoo.recipe.partitioner.SetPartitioner``
+  which is set on every state change.
 
 Bug Handling
 ************
+
+- #291: Kazoo lock recipe was only partially re-entrant in that multiple
+  calls to `acquire` would obtain the the lock but the first call to `release`
+  would remove the underlying lock. This would leave the X - 1 other `acquire`
+  statements unprotected (and no longer holding there expected lock). To fix
+  this the comment about that lock recipe being re-entrant has been removed
+  and multiple acquires will now raise a ``RuntimeError`` when attempted.
 
 - #78: Kazoo now uses socketpairs instead of pipes making it compatible with
   Windows.
@@ -34,6 +43,11 @@ Bug Handling
 
 - #274: Add server_version() retries (by default 4 attempts will be made) to
   better handle flakey responses.
+
+- #271: Fixed handling of KazooState.SUSPENDED in SetPartitioner.
+
+- #283: Fixed a race condition in SetPartitioner when party changes during
+  handling of lock acquisition.
 
 Documentation
 *************
