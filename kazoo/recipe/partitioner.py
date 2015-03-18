@@ -134,7 +134,7 @@ class SetPartitioner(object):
 
     """
     def __init__(self, client, path, set, partition_func=None,
-                 identifier=None, time_boundary=30):
+                 identifier=None, time_boundary=30, state_change_event=None):
         """Create a :class:`~SetPartitioner` instance
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -147,9 +147,13 @@ class SetPartitioner(object):
                            hostname + process id.
         :param time_boundary: How long the party members must be stable
                               before allocation can complete.
+        :param state_change_event: An optional Event object that will be set
+                                   on every state change.
 
         """
         self.state = PartitionState.ALLOCATING
+        self.state_change_event = state_change_event or \
+            client.handler.event_object()
 
         self._client = client
         self._path = path
@@ -175,7 +179,6 @@ class SetPartitioner(object):
                                           identifier=self._identifier)
         self._party.join()
 
-        self._was_allocated = False
         self._state_change = client.handler.rlock_object()
         client.add_listener(self._establish_sessionwatch)
 
@@ -236,7 +239,7 @@ class SetPartitioner(object):
             with self._state_change:
                 if self.failed:
                     return
-                self.state = PartitionState.ALLOCATING
+                self._set_state(PartitionState.ALLOCATING)
         self._child_watching(self._allocate_transition, async=True)
 
     def finish(self):
@@ -246,7 +249,7 @@ class SetPartitioner(object):
 
     def _fail_out(self):
         with self._state_change:
-            self.state = PartitionState.FAILURE
+            self._set_state(PartitionState.FAILURE)
         if self._party.participating:
             try:
                 self._party.leave()
@@ -267,7 +270,7 @@ class SetPartitioner(object):
         def updated(result):
             with self._state_change:
                 if self.acquired:
-                    self.state = PartitionState.RELEASE
+                    self._set_state(PartitionState.RELEASE)
             self._children_updated = True
 
         async_result.rawlink(updated)
@@ -296,7 +299,7 @@ class SetPartitioner(object):
         with self._state_change:
             if self.failed:  # pragma: nocover
                 return self.finish()
-            self.state = PartitionState.ACQUIRED
+            self._set_state(PartitionState.ACQUIRED)
             self._acquire_event.set()
 
     def _release_locks(self):
@@ -347,24 +350,14 @@ class SetPartitioner(object):
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         with self._state_change:
-            # Handle network partition: If connection gets suspended,
-            # change state to ALLOCATING if we had already ACQUIRED.
-            # This way the caller does not process the members since we
-            # could eventually lose session get repartitioned. If we got
-            # connected after a suspension it means we've not lost the
-            # session and still have our members. Hence, restore to ACQUIRED.
-            if state == KazooState.SUSPENDED:
-                if self.state == PartitionState.ACQUIRED:
-                    self._was_allocated = True
-                    self.state = PartitionState.ALLOCATING
-            elif state == KazooState.CONNECTED:
-                if self._was_allocated:
-                    self._was_allocated = False
-                    self.state = PartitionState.ACQUIRED
+            if self.failed:
+                pass
+            elif state == KazooState.LOST:
+                self._client.handler.spawn(self._fail_out)
+            elif not self.release:
+                self._set_state(PartitionState.RELEASE)
 
-        if state == KazooState.LOST:
-            self._client.handler.spawn(self._fail_out)
-            return True
+        return state == KazooState.LOST
 
     def _partitioner(self, identifier, members, partitions):
         # Ensure consistent order of partitions/members
@@ -375,3 +368,7 @@ class SetPartitioner(object):
         # Now return the partition list starting at our location and
         # skipping the other workers
         return all_partitions[i::len(workers)]
+
+    def _set_state(self, state):
+        self.state = state
+        self.state_change_event.set()

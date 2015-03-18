@@ -19,6 +19,8 @@ Features
 - Use ``six`` to nicely handle the cross compatibility of kazoo with
   python 2.x and 3.x (reducing/removing the need to have custom compatibility
   code that replicates what six already provides).
+- Add ``state_change_event`` to ``kazoo.recipe.partitioner.SetPartitioner``
+  which is set on every state change.
 
 Bug Handling
 ************
@@ -38,6 +40,8 @@ Bug Handling
 - #216: Fixed timeout for ConnectionHandler._invoke.
 
 - #261: Creating a sequential znode under / doesn't work.
+
+- #271: Fixed handling of KazooState.SUSPENDED in SetPartitioner.
 
 Documentation
 *************

@@ -1,4 +1,5 @@
 import uuid
+import threading
 import time
 
 from nose.tools import eq_
@@ -8,85 +9,140 @@ from kazoo.recipe.partitioner import PartitionState
 
 
 class KazooPartitionerTests(KazooTestCase):
+    @staticmethod
+    def make_event():
+        return threading.Event()
+
     def setUp(self):
         super(KazooPartitionerTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
+        self.__partitioners = []
 
     def test_party_of_one(self):
-        partitioner = self.client.SetPartitioner(
-            self.path, set=(1, 2, 3), time_boundary=0.2)
-        partitioner.wait_for_acquire(14)
-        eq_(partitioner.state, PartitionState.ACQUIRED)
-        eq_(list(partitioner), [1, 2, 3])
-        partitioner.finish()
+        self.__create_partitioner(size=3)
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 1, 2])
+        self.__finish()
 
     def test_party_of_two(self):
-        partitioners = [self.client.SetPartitioner(self.path, (1, 2),
-                        identifier="p%s" % i, time_boundary=0.2)
-                        for i in range(2)]
+        for i in range(2):
+            self.__create_partitioner(size=2, identifier=str(i))
 
-        partitioners[0].wait_for_acquire(14)
-        partitioners[1].wait_for_acquire(14)
-        eq_(list(partitioners[0]), [1])
-        eq_(list(partitioners[1]), [2])
-        partitioners[0].finish()
-        time.sleep(0.1)
-        eq_(partitioners[1].release, True)
-        partitioners[1].finish()
+        self.__wait_for_acquire()
+        self.__assert_partitions([0], [1])
+
+        self.__partitioners[0].finish()
+        self.__wait()
+        eq_(self.__partitioners[1].release, True)
+        self.__partitioners[1].finish()
 
     def test_party_expansion(self):
-        partitioners = [self.client.SetPartitioner(self.path, (1, 2, 3),
-                        identifier="p%s" % i, time_boundary=0.2)
-                        for i in range(2)]
+        for i in range(2):
+            self.__create_partitioner(size=3, identifier=str(i))
 
-        partitioners[0].wait_for_acquire(14)
-        partitioners[1].wait_for_acquire(14)
-        eq_(partitioners[0].state, PartitionState.ACQUIRED)
-        eq_(partitioners[1].state, PartitionState.ACQUIRED)
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 2], [1])
 
-        eq_(list(partitioners[0]), [1, 3])
-        eq_(list(partitioners[1]), [2])
+        for partitioner in self.__partitioners:
+            partitioner.state_change_event.clear()
 
         # Add another partition, wait till they settle
-        partitioners.append(self.client.SetPartitioner(self.path, (1, 2, 3),
-                            identifier="p2", time_boundary=0.2))
-        time.sleep(0.1)
-        eq_(partitioners[0].release, True)
-        for p in partitioners[:-1]:
-            p.release_set()
+        self.__create_partitioner(size=3, identifier="2")
+        self.__wait()
 
-        for p in partitioners:
-            p.wait_for_acquire(14)
+        self.__assert_state(PartitionState.RELEASE,
+                            partitioners=self.__partitioners[:-1])
+        for partitioner in self.__partitioners[-1]:
+            eq_(partitioner.state_change_event.is_set(), True)
+        self.__release(self.__partitioners[:-1])
 
-        eq_(list(partitioners[0]), [1])
-        eq_(list(partitioners[1]), [2])
-        eq_(list(partitioners[2]), [3])
+        self.__wait_for_acquire()
+        self.__assert_partitions([0], [1], [2])
 
-        for p in partitioners:
-            p.finish()
+        self.__finish()
 
     def test_more_members_than_set_items(self):
-        partitioners = [self.client.SetPartitioner(self.path, (1,),
-                        identifier="p%s" % i, time_boundary=0.2)
-                        for i in range(2)]
+        for i in range(2):
+            self.__create_partitioner(size=1, identifier=str(i))
 
-        partitioners[0].wait_for_acquire(14)
-        partitioners[1].wait_for_acquire(14)
-        eq_(partitioners[0].state, PartitionState.ACQUIRED)
-        eq_(partitioners[1].state, PartitionState.ACQUIRED)
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0], [])
 
-        eq_(list(partitioners[0]), [1])
-        eq_(list(partitioners[1]), [])
-
-        for p in partitioners:
-            p.finish()
+        self.__finish()
 
     def test_party_session_failure(self):
-        partitioner = self.client.SetPartitioner(
-            self.path, set=(1, 2, 3), time_boundary=0.2)
-        partitioner.wait_for_acquire(14)
+        partitioner = self.__create_partitioner(size=3)
+        self.__wait_for_acquire()
         eq_(partitioner.state, PartitionState.ACQUIRED)
         # simulate session failure
         partitioner._fail_out()
         partitioner.release_set()
         self.assertTrue(partitioner.failed)
+
+    def test_connection_loss(self):
+        self.__create_partitioner(identifier="0", size=3)
+        self.__create_partitioner(identifier="1", size=3)
+
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 2], [1])
+
+        # Emulate connection loss
+        self.lose_connection(self.make_event)
+        self.__assert_state(PartitionState.RELEASE)
+        self.__release()
+
+        # Check that partitioners settle after connection loss
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0, 2], [1])
+
+        # Check that partitioners react on new events after connection loss
+        self.__create_partitioner(identifier="2", size=3)
+        self.__wait()
+
+        self.__assert_state(PartitionState.RELEASE,
+                            partitioners=self.__partitioners[:-1])
+        self.__release(partitioners=self.__partitioners[:-1])
+        self.__wait_for_acquire()
+        self.__assert_state(PartitionState.ACQUIRED)
+        self.__assert_partitions([0], [1], [2])
+
+    def __create_partitioner(self, size, identifier=None):
+        partitioner = self.client.SetPartitioner(
+            self.path, set=range(size), time_boundary=0.2, identifier=identifier)
+        self.__partitioners.append(partitioner)
+        return partitioner
+
+    def __wait_for_acquire(self):
+        for partitioner in self.__partitioners:
+            partitioner.wait_for_acquire(14)
+
+    def __assert_state(self, state, partitioners=None):
+        if partitioners is None:
+            partitioners = self.__partitioners
+
+        for partitioner in partitioners:
+            eq_(partitioner.state, state)
+
+    def __assert_partitions(self, *partitions):
+        eq_(len(partitions), len(self.__partitioners))
+        for partitioner, own_partitions in zip(self.__partitioners, partitions):
+            eq_(list(partitioner), own_partitions)
+
+    def __wait(self):
+        time.sleep(0.1)
+
+    def __release(self, partitioners=None):
+        if partitioners is None:
+            partitioners = self.__partitioners
+
+        for partitioner in partitioners:
+            partitioner.release_set()
+
+    def __finish(self):
+        for partitioner in self.__partitioners:
+            partitioner.finish()
