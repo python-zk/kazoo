@@ -44,7 +44,7 @@ endif
 clean:
 	rm -rf $(BUILD_DIRS)
 
-test: $(PYTHON)
+test:
 	tox -e$(TOX_VENV)
 
 html:
