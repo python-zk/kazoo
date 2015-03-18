@@ -30,7 +30,7 @@ $(PYTHON):
 
 build: $(PYTHON)
 ifeq ($(GREENLET_SUPPORTED),yes)
-    $(INSTALL) -U -r requirements_eventlet.txt
+	$(INSTALL) -U -r requirements_eventlet.txt
 	$(INSTALL) -U -r requirements_gevent.txt
 	$(INSTALL) -f https://github.com/surfly/gevent/releases gevent==$(GEVENT_VERSION)
 endif
