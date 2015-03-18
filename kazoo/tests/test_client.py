@@ -5,6 +5,7 @@ import time
 import uuid
 import unittest
 
+import mock
 from mock import patch
 from nose import SkipTest
 from nose.tools import eq_
@@ -22,6 +23,7 @@ from kazoo.exceptions import (
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
+    KazooException,
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.protocol.states import KeeperState, KazooState
@@ -415,6 +417,31 @@ class TestClient(KazooTestCase):
     def _getKazooState(self):
         from kazoo.protocol.states import KazooState
         return KazooState
+
+    def test_server_version_retries_fail(self):
+        client = self.client
+        side_effects = [
+            '',
+            'zookeeper.version=',
+            'zookeeper.version=1.',
+            'zookeeper.ver',
+        ]
+        client.command = mock.MagicMock()
+        client.command.side_effect = side_effects
+        self.assertRaises(KazooException,
+                          client.server_version,
+                          retries=len(side_effects) - 1)
+
+    def test_server_version_retries_eventually_ok(self):
+        client = self.client
+        actual_version = 'zookeeper.version=1.2'
+        side_effects = []
+        for i in range(0, len(actual_version) + 1):
+            side_effects.append(actual_version[0:i])
+        client.command = mock.MagicMock()
+        client.command.side_effect = side_effects
+        self.assertEqual((1, 2),
+                         client.server_version(retries=len(side_effects) - 1))
 
     def test_client_id(self):
         client_id = self.client.client_id
