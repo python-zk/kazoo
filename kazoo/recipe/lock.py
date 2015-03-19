@@ -139,7 +139,7 @@ class Lock(object):
                 gotten = retry(self._inner_acquire,
                                blocking=blocking, timeout=timeout)
             except RetryFailedError:
-                if not already_acquired
+                if not already_acquired:
                     self._best_effort_cleanup()
             except KazooException:
                 # if we did ultimately fail, attempt to clean up
