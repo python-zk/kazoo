@@ -14,7 +14,11 @@ changes and re-act appropriately. In the event that a
 and/or the lease has been lost.
 
 """
+
+import sys
 import uuid
+
+import six
 
 from kazoo.retry import (
     KazooRetry,
@@ -41,7 +45,7 @@ class Lock(object):
             # do something with the lock
 
     Note: This lock is not *re-entrant*. Repeated calls after already
-    acquired will raise a ``RuntimeError``.
+    acquired will block.
 
     """
     _NODE_NAME = '__lock__'
@@ -78,6 +82,7 @@ class Lock(object):
         self.cancelled = False
         self._retry = KazooRetry(max_tries=None,
                                  sleep_func=client.handler.sleep_func)
+        self._lock = client.handler.lock_object()
 
     def _ensure_path(self):
         self.client.ensure_path(self.path)
@@ -106,32 +111,60 @@ class Lock(object):
         .. versionadded:: 1.1
             The timeout option.
         """
-        if self.is_acquired:
-            raise RuntimeError("Lock at path '%s' has already been"
-                               " acquired" % self.path)
+
+        def _acquire_lock():
+            got_it = self._lock.acquire(False)
+            if not got_it:
+                raise ForceRetryError()
+
+        retry = self._retry.copy()
+        retry.deadline = timeout
+
+        # Ensure we are locked so that we avoid multiple threads in
+        # this acquistion routine at the same time...
+        locked = self._lock.acquire(False)
+        if not locked and not blocking:
+            return False
+        if not locked:
+            # Lock acquire doesn't take a timeout, so simulate it...
+            try:
+                retry(_acquire_lock)
+            except RetryFailedError:
+                return False
+        already_acquired = self.is_acquired
         try:
-            retry = self._retry.copy()
-            retry.deadline = timeout
-            self.is_acquired = retry(self._inner_acquire,
-                                     blocking=blocking, timeout=timeout)
-        except RetryFailedError:
-            self._best_effort_cleanup()
-        except KazooException:
-            # if we did ultimately fail, attempt to clean up
-            self._best_effort_cleanup()
-            self.cancelled = False
-            raise
-
-        if not self.is_acquired:
-            self._delete_node(self.node)
-
-        return self.is_acquired
+            gotten = False
+            try:
+                gotten = retry(self._inner_acquire,
+                               blocking=blocking, timeout=timeout)
+            except RetryFailedError:
+                if not already_acquired
+                    self._best_effort_cleanup()
+            except KazooException:
+                # if we did ultimately fail, attempt to clean up
+                exc_info = sys.exc_info()
+                if not already_acquired:
+                    self._best_effort_cleanup()
+                    self.cancelled = False
+                six.reraise(exc_info[0], exc_info[1], exc_info[2])
+            if gotten:
+                self.is_acquired = gotten
+            if not gotten and not already_acquired:
+                self._delete_node(self.node)
+            return gotten
+        finally:
+            self._lock.release()
 
     def _watch_session(self, state):
         self.wake_event.set()
         return True
 
     def _inner_acquire(self, blocking, timeout):
+
+        # wait until it's our chance to get it..
+        if self.is_acquired:
+            raise ForceRetryError()
+
         # make sure our election parent node exists
         if not self.assured_path:
             self._ensure_path()
@@ -232,7 +265,6 @@ class Lock(object):
 
         self.is_acquired = False
         self.node = None
-
         return True
 
     def contenders(self):

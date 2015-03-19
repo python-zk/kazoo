@@ -30,7 +30,7 @@ Bug Handling
   would remove the underlying lock. This would leave the X - 1 other `acquire`
   statements unprotected (and no longer holding there expected lock). To fix
   this the comment about that lock recipe being re-entrant has been removed
-  and multiple acquires will now raise a ``RuntimeError`` when attempted.
+  and multiple acquires will now raise a block when attempted.
 
 - #78: Kazoo now uses socketpairs instead of pipes making it compatible with
   Windows.

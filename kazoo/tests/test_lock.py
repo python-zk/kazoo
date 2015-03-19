@@ -1,4 +1,5 @@
 import uuid
+import time
 import threading
 
 from nose.tools import eq_, ok_
@@ -244,10 +245,32 @@ class KazooLockTests(KazooTestCase):
         lock1 = self.client.Lock(self.lockpath, "one")
         lock1.acquire()
         self.assertTrue(lock1.is_acquired)
-        self.assertRaises(RuntimeError, lock1.acquire)
+        self.assertFalse(lock1.acquire(timeout=0.5))
         self.assertTrue(lock1.is_acquired)
         lock1.release()
         self.assertFalse(lock1.is_acquired)
+
+    def test_lock_many_threads(self):
+        lock1 = self.client.Lock(self.lockpath, "one")
+        acquires = []
+
+        def _acquire():
+            with lock1:
+                time.sleep(0.01)
+                acquires.append(True)
+
+        threads = []
+        for _i in range(0, 10):
+            t = self.make_thread(target=_acquire)
+            t.start()
+            threads.append(t)
+
+        while threads:
+            t = threads.pop()
+            t.join()
+
+        self.assertEqual(10, len(acquires))
+        self.assertTrue(all(acquires))
 
     def test_lock_reacquire(self):
         lock = self.client.Lock(self.lockpath, "one")
