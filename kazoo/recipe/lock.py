@@ -116,6 +116,7 @@ class Lock(object):
             got_it = self._lock.acquire(False)
             if not got_it:
                 raise ForceRetryError()
+            return True
 
         retry = self._retry.copy()
         retry.deadline = timeout
@@ -128,7 +129,7 @@ class Lock(object):
         if not locked:
             # Lock acquire doesn't take a timeout, so simulate it...
             try:
-                retry(_acquire_lock)
+                locked = retry(_acquire_lock)
             except RetryFailedError:
                 return False
         already_acquired = self.is_acquired
