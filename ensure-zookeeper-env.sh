@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x -e
+set -e
 
 HERE=`pwd`
 ZOO_BASE_DIR="$HERE/bin/"
@@ -18,6 +18,9 @@ function download_zookeeper(){
 
 if [ ! -d "$ZOOKEEPER_PATH" ]; then
     download_zookeeper
+    echo "Downloaded zookeeper $ZOOKEEPER_VERSION to $ZOOKEEPER_PATH"
+else
+    echo "Already downloaded zookeeper $ZOOKEEPER_VERSION to $ZOOKEEPER_PATH"
 fi
 
 export ZOOKEEPER_PATH
