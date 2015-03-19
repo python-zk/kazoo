@@ -12,7 +12,7 @@ ZOO_MIRROR_URL="http://apache.osuosl.org/"
 function download_zookeeper(){
     mkdir -p $ZOO_BASE_DIR
     cd $ZOO_BASE_DIR
-	curl -C - $ZOO_MIRROR_URL/zookeeper/zookeeper-$ZOOKEEPER_VERSION/zookeeper-$ZOOKEEPER_VERSION.tar.gz | tar -zx
+	curl --silent -C - $ZOO_MIRROR_URL/zookeeper/zookeeper-$ZOOKEEPER_VERSION/zookeeper-$ZOOKEEPER_VERSION.tar.gz | tar -zx
 	chmod a+x $ZOOKEEPER_PATH/bin/zkServer.sh
 }
 
