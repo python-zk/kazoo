@@ -42,5 +42,8 @@ notifications:
 before_install:
     - sudo apt-get install libevent-dev
 
+install:
+    - pip install tox
+
 script:
     - make test
