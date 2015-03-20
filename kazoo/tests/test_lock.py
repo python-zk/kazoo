@@ -14,9 +14,10 @@ from kazoo.tests import util as test_util
 class SleepBarrier(object):
     """A crappy spinning barrier."""
 
-    def __init__(self, wait_for):
+    def __init__(self, wait_for, sleep_func):
         self._wait_for = wait_for
         self._arrived = collections.deque()
+        self._sleep_func = sleep_func
 
     def __enter__(self):
         self._arrived.append(threading.current_thread())
@@ -30,7 +31,7 @@ class SleepBarrier(object):
 
     def wait(self):
         while len(self._arrived) < self._wait_for:
-            time.sleep(0.001)
+            self._sleep_func(0.001)
 
 
 class KazooLockTests(KazooTestCase):
@@ -274,12 +275,13 @@ class KazooLockTests(KazooTestCase):
         self.assertFalse(lock1.is_acquired)
 
     def test_lock_many_threads(self):
+        sleep_func = self.client.handler.sleep_func
         lock = self.client.Lock(self.lockpath, "one")
         acquires = collections.deque()
         chain = collections.deque()
         thread_count = 20
         differences = collections.deque()
-        barrier = SleepBarrier(thread_count)
+        barrier = SleepBarrier(thread_count, sleep_func)
 
         def _acquire():
             # Wait until all threads are ready to go...
@@ -291,7 +293,7 @@ class KazooLockTests(KazooTestCase):
                     # the count that was captured and examining it post run.
                     starting_count = len(acquires)
                     acquires.append(1)
-                    time.sleep(0.01)
+                    sleep_func(0.01)
                     end_count = len(acquires)
                     differences.append(end_count - starting_count)
 
