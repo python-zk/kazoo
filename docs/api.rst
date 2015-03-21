@@ -18,6 +18,7 @@ organized alphabetically by module name.
    api/recipe/barrier
    api/recipe/counter
    api/recipe/election
+   api/recipe/lease
    api/recipe/lock
    api/recipe/partitioner
    api/recipe/party

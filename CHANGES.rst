@@ -21,6 +21,10 @@ Features
   code that replicates what six already provides).
 - Add ``state_change_event`` to ``kazoo.recipe.partitioner.SetPartitioner``
   which is set on every state change.
+- Add a NonBlockingLease recipe.  The recipe allows e.g. cron jobs scheduled
+  on multiple machines to ensure that at most N instances will run a particular
+  job, with lease timeout for graceful handover in case of node failures.
+
 
 Bug Handling
 ************
@@ -62,6 +66,7 @@ Documentation
 - Extend support to Python 3.4, deprecating Python 3.2.
 - Issue #198: Mention Zake as a sophisticated kazoo mock testing library.
 - Issue #181: Add documentation on basic logging setup.
+
 
 2.0b1 (2014-04-24)
 ------------------
