@@ -14,6 +14,8 @@ def collect_hosts(hosts, randomize=True):
         # IPv4 & IPv6 address:port on the urlsplit
         res = urllib_parse.urlsplit("xxx://" + host_port)
         host = res.hostname
+        if host is None:
+            raise ValueError("bad hostname")
         port = int(res.port) if res.port else 2181
         result.append((host.strip(), port))
 

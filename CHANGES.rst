@@ -50,6 +50,8 @@ Bug Handling
 - #283: Fixed a race condition in SetPartitioner when party changes during
   handling of lock acquisition.
 
+- #303: don't crash on random input as the hosts string.
+
 Documentation
 *************
 
