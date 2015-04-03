@@ -104,6 +104,11 @@ class TestClientConstructor(unittest.TestCase):
         timeout = client.handler.timeout_exception
         self.assertRaises(timeout, client.start, 0.1)
 
+    def test_another_invalid_hostname(self):
+        self.assertRaises(
+            ValueError,
+            self._makeOne, hosts='/nosuchhost/a')
+
     def test_retry_options_dict(self):
         from kazoo.retry import KazooRetry
         client = self._makeOne(command_retry=dict(max_tries=99),
