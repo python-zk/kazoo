@@ -43,11 +43,18 @@ class Lock(object):
     Note: This lock is not *re-entrant*. Repeated calls after already
     acquired will raise a ``RuntimeError``.
 
+    This is an exclusive lock. For a read/write lock, see :method:`WLock` and
+    :method:`RLock`.
+
     """
 
-    def __init__(self, client, path, identifier=None, node_name=None,
+    def __init__(self, client, path, identifier=None, node_name="__lock__",
                  exclude_names=None):
         """Create a Kazoo lock.
+
+        node_name and exclude_names are typically only used internally to
+        implement read/write locks. They should be left unset for exclusive
+        locks.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The lock path to use.
@@ -71,8 +78,6 @@ class Lock(object):
 
         self.wake_event = client.handler.event_object()
 
-        if node_name is None:
-            node_name = "__lock__"
         self.node_name = node_name
 
         if exclude_names is None:
@@ -299,7 +304,7 @@ def WLock(*args, **kwargs):
     .. code-block:: python
 
         zk = KazooClient()
-        lock = WLock("/lockpath", "my-identifier")
+        lock = WLock(zk, "/lockpath", "my-identifier")
         with lock:  # blocks waiting for any outstanding readers and writers
             # do something with the lock
 
@@ -324,7 +329,7 @@ def RLock(*args, **kwargs):
     .. code-block:: python
 
         zk = KazooClient()
-        lock = RLock("/lockpath", "my-identifier")
+        lock = RLock(zk, "/lockpath", "my-identifier")
         with lock:  # blocks waiting for any outstanding writers
             # do something with the lock
 
