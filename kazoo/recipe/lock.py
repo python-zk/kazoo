@@ -218,7 +218,8 @@ class Lock(object):
                 idx = c.find(name)
                 if idx != -1:
                     return c[idx + len(name):]
-            raise ValueError("Unknown node type: %s" % c)
+            # Sort unknown node names eg. "lease_holder" last.
+            return '~'
         children.sort(key=_seq)
         return children
 
