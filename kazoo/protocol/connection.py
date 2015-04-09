@@ -517,6 +517,7 @@ class ConnectionHandler(object):
             connect_timeout = connect_timeout / 1000.0
             retry.reset()
             self._xid = 0
+            self.ping_outstanding.clear()
             with self._socket_error_handling():
                 while not close_connection:
                     # Watch for something to read or send
