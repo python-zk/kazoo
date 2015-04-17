@@ -7,6 +7,18 @@ class KazooException(Exception):
     inherit from"""
 
 
+class KazooTransactionException(KazooException):
+    """Raised when a transaction fails."""
+
+    def __init__(self, message, failures):
+        super(KazooTransactionException, self).__init__(message)
+        self._failures = tuple(failures)
+
+    @property
+    def failures(self):
+        return self._failures
+
+
 class ZookeeperError(KazooException):
     """Base Zookeeper exception for errors originating from the
     Zookeeper server"""
