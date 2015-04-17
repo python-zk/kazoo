@@ -14,6 +14,7 @@ from kazoo.exceptions import (
     ConfigurationError,
     ConnectionClosedError,
     ConnectionLoss,
+    KazooException,
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
@@ -70,7 +71,8 @@ bytes_types = (six.binary_type,)
 
 LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
                KeeperState.CLOSED)
-ENVI_VERSION = re.compile('[\w\s:.]*=([\d\.]*).*', re.DOTALL)
+ENVI_VERSION = re.compile('([\d\.]*).*', re.DOTALL)
+ENVI_VERSION_KEY = 'zookeeper.version'
 log = logging.getLogger(__name__)
 
 
@@ -635,7 +637,7 @@ class KazooClient(object):
         sock.close()
         return result.decode('utf-8', 'replace')
 
-    def server_version(self):
+    def server_version(self, retries=3):
         """Get the version of the currently connected ZK server.
 
         :returns: The server version, for example (3, 4, 3).
@@ -644,9 +646,46 @@ class KazooClient(object):
         .. versionadded:: 0.5
 
         """
-        data = self.command(b'envi')
-        string = ENVI_VERSION.match(data).group(1)
-        return tuple([int(i) for i in string.split('.')])
+        def _try_fetch():
+            data = self.command(b'envi')
+            data_parsed = {}
+            for line in data.splitlines():
+                try:
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip()
+                except ValueError:
+                    pass
+                else:
+                    if k:
+                        data_parsed[k] = v
+            version = data_parsed.get(ENVI_VERSION_KEY, '')
+            version_digits = ENVI_VERSION.match(version).group(1)
+            try:
+                return tuple([int(d) for d in version_digits.split('.')])
+            except ValueError:
+                return None
+
+        def _is_valid(version):
+            # All zookeeper versions should have at least major.minor
+            # version numbers; if we get one that doesn't it is likely not
+            # correct and was truncated...
+            if version and len(version) > 1:
+                return True
+            return False
+
+        # Try 1 + retries amount of times to get a version that we know
+        # will likely be acceptable...
+        version = _try_fetch()
+        if _is_valid(version):
+            return version
+        for _i in six.moves.range(0, retries):
+            version = _try_fetch()
+            if _is_valid(version):
+                return version
+        raise KazooException("Unable to fetch useable server"
+                             " version after trying %s times"
+                             % (1 + max(0, retries)))
 
     def add_auth(self, scheme, credential):
         """Send credentials to server.

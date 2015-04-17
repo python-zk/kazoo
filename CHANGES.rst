@@ -45,6 +45,9 @@ Bug Handling
 
 - #261: Creating a sequential znode under / doesn't work.
 
+- #274: Add server_version() retries (by default 4 attempts will be made) to
+  better handle flakey responses.
+
 - #271: Fixed handling of KazooState.SUSPENDED in SetPartitioner.
 
 - #283: Fixed a race condition in SetPartitioner when party changes during
