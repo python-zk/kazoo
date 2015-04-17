@@ -1,5 +1,7 @@
-import uuid
+import collections
 import threading
+import time
+import uuid
 
 from nose.tools import eq_, ok_
 
@@ -7,6 +9,29 @@ from kazoo.exceptions import CancelledError
 from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util
+
+
+class SleepBarrier(object):
+    """A crappy spinning barrier."""
+
+    def __init__(self, wait_for, sleep_func):
+        self._wait_for = wait_for
+        self._arrived = collections.deque()
+        self._sleep_func = sleep_func
+
+    def __enter__(self):
+        self._arrived.append(threading.current_thread())
+        return self
+
+    def __exit__(self, type, value, traceback):
+        try:
+            self._arrived.remove(threading.current_thread())
+        except ValueError:
+            pass
+
+    def wait(self):
+        while len(self._arrived) < self._wait_for:
+            self._sleep_func(0.001)
 
 
 class KazooLockTests(KazooTestCase):
@@ -244,10 +269,46 @@ class KazooLockTests(KazooTestCase):
         lock1 = self.client.Lock(self.lockpath, "one")
         lock1.acquire()
         self.assertTrue(lock1.is_acquired)
-        self.assertRaises(RuntimeError, lock1.acquire)
+        self.assertFalse(lock1.acquire(timeout=0.5))
         self.assertTrue(lock1.is_acquired)
         lock1.release()
         self.assertFalse(lock1.is_acquired)
+
+    def test_lock_many_threads(self):
+        sleep_func = self.client.handler.sleep_func
+        lock = self.client.Lock(self.lockpath, "one")
+        acquires = collections.deque()
+        chain = collections.deque()
+        thread_count = 20
+        differences = collections.deque()
+        barrier = SleepBarrier(thread_count, sleep_func)
+
+        def _acquire():
+            # Wait until all threads are ready to go...
+            with barrier as b:
+                b.wait()
+                with lock:
+                    # Ensure that no two threads enter here and cause the
+                    # count to differ by more than one, do this by recording
+                    # the count that was captured and examining it post run.
+                    starting_count = len(acquires)
+                    acquires.append(1)
+                    sleep_func(0.01)
+                    end_count = len(acquires)
+                    differences.append(end_count - starting_count)
+
+        threads = []
+        for _i in range(0, thread_count):
+            t = self.make_thread(target=_acquire)
+            threads.append(t)
+            t.start()
+
+        while threads:
+            t = threads.pop()
+            t.join()
+
+        self.assertEqual(thread_count, len(acquires))
+        self.assertEqual([1] * thread_count, list(differences))
 
     def test_lock_reacquire(self):
         lock = self.client.Lock(self.lockpath, "one")
