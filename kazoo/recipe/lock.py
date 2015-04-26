@@ -274,7 +274,14 @@ class Lock(object):
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
 
-        # can't just sort directly: the node names are prefixed by uuids
+        # Node names are prefixed by uuids: strip the prefix first, which may
+        # be one of multiple values in case of a read-write lock, and return
+        # only the sequence number (as a string since it is padded and will sort
+        # correctly anyway).
+        #
+        # In some cases, the lock path may contain nodes with other prefixes
+        # (eg. in case of a lease), just sort them last ('~' sorts after all
+        # ASCII digits).
         def _seq(c):
             for name in ["__lock__", "__rlock__"]:
                 idx = c.find(name)
