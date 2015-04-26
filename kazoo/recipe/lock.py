@@ -274,7 +274,7 @@ class Lock(object):
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
 
-        # Node names are prefixed by uuids: strip the prefix first, which may
+        # Node names are prefixed by a type: strip the prefix first, which may
         # be one of multiple values in case of a read-write lock, and return
         # only the sequence number (as a string since it is padded and will sort
         # correctly anyway).
