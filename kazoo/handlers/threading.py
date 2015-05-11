@@ -89,7 +89,7 @@ class SequentialThreadingHandler(object):
         self._workers = []
 
     def _create_thread_worker(self, queue):
-        def thread_worker():  # pragma: nocover
+        def _thread_worker():  # pragma: nocover
             while True:
                 try:
                     func = queue.get()
@@ -103,13 +103,7 @@ class SequentialThreadingHandler(object):
                         queue.task_done()
                 except self.queue_empty:
                     continue
-        t = threading.Thread(target=thread_worker)
-
-        # Even though these should be joined, it's possible stop might
-        # not issue in time so we set them to daemon to let the program
-        # exit anyways
-        t.daemon = True
-        t.start()
+        t = self.spawn(_thread_worker)
         return t
 
     def start(self):
