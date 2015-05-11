@@ -1285,8 +1285,7 @@ class KazooClient(object):
 
         """
         if not isinstance(recursive, bool):
-            raise TypeError("recursive must be a bool")
-
+            raise TypeError("Invalid type for 'recursive' (bool expected)")
         if recursive:
             return self._delete_recursive(path)
         else:
