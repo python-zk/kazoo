@@ -4,6 +4,15 @@ Changelog
 2.2 (unreleased)
 ----------------
 
+Features
+********
+
+Bug Handling
+************
+
+Documentation
+*************
+
 2.1 (2015-05-11)
 ----------------
 
