@@ -10,6 +10,18 @@ Features
 Bug Handling
 ************
 
+Documentation
+*************
+
+2.1.1
+-----
+
+Features
+********
+
+Bug Handling
+************
+
 - #315: multiple acquires of a kazoo lock using the lock recipe would
   block when using `acquire` even when non-blocking is specified (only
   when the lock was/has been already acquired).
