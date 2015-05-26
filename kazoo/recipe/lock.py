@@ -164,6 +164,8 @@ class Lock(object):
 
         # wait until it's our chance to get it..
         if self.is_acquired:
+            if not blocking:
+                return False
             raise ForceRetryError()
 
         # make sure our election parent node exists

@@ -35,6 +35,8 @@ class SleepBarrier(object):
 
 
 class KazooLockTests(KazooTestCase):
+    thread_count = 20
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -274,14 +276,40 @@ class KazooLockTests(KazooTestCase):
         lock1.release()
         self.assertFalse(lock1.is_acquired)
 
+    def test_lock_same_thread_no_block(self):
+        lock = self.client.Lock(self.lockpath, "one")
+        gotten = lock.acquire(blocking=False)
+        self.assertTrue(gotten)
+        self.assertTrue(lock.is_acquired)
+        gotten = lock.acquire(blocking=False)
+        self.assertFalse(gotten)
+
+    def test_lock_many_threads_no_block(self):
+        lock = self.client.Lock(self.lockpath, "one")
+        attempts = collections.deque()
+
+        def _acquire():
+            attempts.append(int(lock.acquire(blocking=False)))
+
+        threads = []
+        for _i in range(0, self.thread_count):
+            t = self.make_thread(target=_acquire)
+            threads.append(t)
+            t.start()
+
+        while threads:
+            t = threads.pop()
+            t.join()
+
+        self.assertEqual(1, sum(list(attempts)))
+
     def test_lock_many_threads(self):
         sleep_func = self.client.handler.sleep_func
         lock = self.client.Lock(self.lockpath, "one")
         acquires = collections.deque()
         chain = collections.deque()
-        thread_count = 20
         differences = collections.deque()
-        barrier = SleepBarrier(thread_count, sleep_func)
+        barrier = SleepBarrier(self.thread_count, sleep_func)
 
         def _acquire():
             # Wait until all threads are ready to go...
@@ -298,7 +326,7 @@ class KazooLockTests(KazooTestCase):
                     differences.append(end_count - starting_count)
 
         threads = []
-        for _i in range(0, thread_count):
+        for _i in range(0, self.thread_count):
             t = self.make_thread(target=_acquire)
             threads.append(t)
             t.start()
@@ -307,8 +335,8 @@ class KazooLockTests(KazooTestCase):
             t = threads.pop()
             t.join()
 
-        self.assertEqual(thread_count, len(acquires))
-        self.assertEqual([1] * thread_count, list(differences))
+        self.assertEqual(self.thread_count, len(acquires))
+        self.assertEqual([1] * self.thread_count, list(differences))
 
     def test_lock_reacquire(self):
         lock = self.client.Lock(self.lockpath, "one")
