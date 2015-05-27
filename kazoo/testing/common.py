@@ -21,6 +21,7 @@
 
 
 import code
+import logging
 import os
 import os.path
 import shutil
@@ -32,6 +33,9 @@ import traceback
 from itertools import chain
 from collections import namedtuple
 from glob import glob
+
+
+log = logging.getLogger(__name__)
 
 
 def debug(sig, frame):
@@ -226,6 +230,11 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             return
         self.process.terminate()
         self.process.wait()
+        if self.process.returncode != 0:
+            log.warn("Zookeeper process %s failed top terminate with"
+                     " non-zero return code (it terminated with %s return"
+                     " code instead)", self.process.pid,
+                     self.process.returncode)
         self._running = False
 
     def destroy(self):
