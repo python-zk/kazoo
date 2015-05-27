@@ -132,6 +132,7 @@ class KazooTestHarness(unittest.TestCase):
                     except KazooException:
                         log.exception("Unable to delete / during"
                                       " attempt %s/%s", tries + 1, max_tries)
+                    tries += 1
 
         if self.client and self.client.connected:
             try_delete_root(self.client)
