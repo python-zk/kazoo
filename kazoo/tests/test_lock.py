@@ -6,6 +6,7 @@ import uuid
 from nose.tools import eq_, ok_
 
 from kazoo.exceptions import CancelledError
+from kazoo.exceptions import KazooException
 from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util
@@ -535,12 +536,15 @@ class TestSemaphore(KazooTestCase):
 
         def sema_one():
             started.set()
-            with expire_semaphore:
-                event.set()
-                event2.wait()
+            try:
+                with expire_semaphore:
+                    event.set()
+                    event2.wait()
+            except KazooException:
+                pass
 
-        thread = self.make_thread(target=sema_one, args=())
-        thread.start()
+        thread1 = self.make_thread(target=sema_one, args=())
+        thread1.start()
 
         started.wait()
         eq_(lh_semaphore.lease_holders(), ['george'])
@@ -552,8 +556,8 @@ class TestSemaphore(KazooTestCase):
             self.expire_session(self.make_event)
             expired.set()
 
-        thread = self.make_thread(target=expire, args=())
-        thread.start()
+        thread2 = self.make_thread(target=expire, args=())
+        thread2.start()
         expire_semaphore.wake_event.wait()
         expired.wait()
 
@@ -563,7 +567,9 @@ class TestSemaphore(KazooTestCase):
         event.wait(15)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
-        thread.join()
+
+        for t in (thread1, thread2):
+            t.join()
 
     def test_inconsistent_max_leases(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
