@@ -471,7 +471,7 @@ class Semaphore(object):
                 else:
                     # If not blocking, register another watch that will trigger
                     # self._get_lease() as soon as the children change again.
-                    self.client.get_children(self.path, self._get_lease)
+                    # self.client.get_children(self.path, self._get_lease)
                     return False
         finally:
             lock.release()
@@ -528,7 +528,6 @@ class Semaphore(object):
     def _inner_release(self):
         if not self.is_acquired:
             return False
-
         try:
             self.client.delete(self.create_path)
         except NoNodeError:  # pragma: nocover
