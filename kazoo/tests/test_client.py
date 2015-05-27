@@ -140,6 +140,7 @@ class TestAuthentication(KazooTestCase):
         client.default_acl = (acl,)
 
         client.create("/1")
+        eve = None
         try:
             client.create("/1/2")
             client.ensure_path("/1/2/3")
@@ -154,8 +155,9 @@ class TestAuthentication(KazooTestCase):
 
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
-            eve.stop()
-            eve.close()
+            if eve:
+                eve.stop()
+                eve.close()
             # Ensure we remove the ACL protected nodes
             client.delete("/1", recursive=True)
 
@@ -190,6 +192,7 @@ class TestAuthentication(KazooTestCase):
         client.default_acl = (acl,)
 
         client.create("/1")
+        eve = None
         try:
             client.ensure_path("/1/2/3")
 
@@ -203,8 +206,9 @@ class TestAuthentication(KazooTestCase):
 
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
-            eve.stop()
-            eve.close()
+            if eve:
+                eve.stop()
+                eve.close()
             # Ensure we remove the ACL protected nodes
             client.delete("/1", recursive=True)
 
