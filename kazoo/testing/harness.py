@@ -6,7 +6,7 @@ import uuid
 import unittest
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NotEmptyError
+from kazoo.exceptions import NotEmptyError, KazooException
 from kazoo.protocol.states import (
     KazooState
 )
@@ -121,13 +121,17 @@ class KazooTestHarness(unittest.TestCase):
             self.cluster.start()
 
         tries = 0
+        max_tries = 3
         if self.client and self.client.connected:
-            while tries < 3:
+            while tries < max_tries:
                 try:
                     self.client.retry(self.client.delete, '/', recursive=True)
                     break
                 except NotEmptyError:
                     pass
+                except KazooException:
+                    log.exception("Unable to delete / during"
+                                  " attempt %s/%s", tries + 1, max_tries)
                 tries += 1
             self.client.stop()
             self.client.close()
@@ -135,7 +139,10 @@ class KazooTestHarness(unittest.TestCase):
         else:
             client = self._get_client()
             client.start()
-            client.retry(client.delete, '/', recursive=True)
+            try:
+                client.retry(client.delete, '/', recursive=True)
+            except KazooException:
+                log.exception("Unable to delete /")
             client.stop()
             client.close()
             del client
