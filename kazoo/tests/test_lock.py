@@ -38,6 +38,16 @@ class SleepBarrier(object):
 class KazooLockTests(KazooTestCase):
     thread_count = 20
 
+    def setUp(self):
+        super(KazooLockTests, self).setUp()
+        self.threads_made = []
+
+    def tearDown(self):
+        super(KazooLockTests, self).tearDown()
+        while self.threads_made:
+            t = self.threads_made.pop()
+            t.join()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -46,9 +56,11 @@ class KazooLockTests(KazooTestCase):
     def make_event():
         return threading.Event()
 
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
+    def make_thread(self, *args, **kwargs):
+        t = threading.Thread(*args, **kwargs)
+        t.daemon = True
+        self.threads_made.append(t)
+        return t
 
     @staticmethod
     def make_wait():
