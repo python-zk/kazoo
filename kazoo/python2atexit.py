@@ -45,7 +45,7 @@ def register(func, *targs, **kargs):
     func is returned to facilitate usage as a decorator.
     """
     if hasattr(atexit, "unregister"):
-        atexit.register(func, targs, kargs)
+        atexit.register(func, *targs, **kargs)
     else:
         _exithandlers.append((func, targs, kargs))
     return func
