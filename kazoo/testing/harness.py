@@ -120,36 +120,37 @@ class KazooTestHarness(unittest.TestCase):
         if not self.cluster[0].running:
             self.cluster.start()
 
-        tries = 0
-        max_tries = 3
+        def try_delete_root(client, max_tries=3):
+            if client and client.connected:
+                tries = 0
+                while tries < max_tries:
+                    try:
+                        client.retry(client.delete, '/', recursive=True)
+                        break
+                    except NotEmptyError:
+                        pass
+                    except KazooException:
+                        log.exception("Unable to delete / during"
+                                      " attempt %s/%s", tries + 1, max_tries)
+
         if self.client and self.client.connected:
-            while tries < max_tries:
-                try:
-                    self.client.retry(self.client.delete, '/', recursive=True)
-                    break
-                except NotEmptyError:
-                    pass
-                except KazooException:
-                    log.exception("Unable to delete / during"
-                                  " attempt %s/%s", tries + 1, max_tries)
-                tries += 1
+            try_delete_root(self.client)
             self.client.stop()
             self.client.close()
             del self.client
         else:
             client = self._get_client()
             client.start()
-            try:
-                client.retry(client.delete, '/', recursive=True)
-            except KazooException:
-                log.exception("Unable to delete /")
+            try_delete_root(client)
             client.stop()
             client.close()
             del client
 
         for client in self._clients:
+            try_delete_root(client)
             client.stop()
             del client
+
         self._clients = None
 
     def __break_connection(self, break_event, expected_state, event_factory):
