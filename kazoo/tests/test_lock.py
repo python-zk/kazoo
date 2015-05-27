@@ -402,6 +402,16 @@ class KazooLockTests(KazooTestCase):
 
 class TestSemaphore(KazooTestCase):
 
+    def __init__(self, *args, **kw):
+        super(TestSemaphore, self).__init__(*args, **kw)
+        self.threads_made = []
+
+    def tearDown(self):
+        super(KazooLockTests, self).tearDown()
+        while self.threads_made:
+            t = self.threads_made.pop()
+            t.join()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -410,9 +420,11 @@ class TestSemaphore(KazooTestCase):
     def make_event():
         return threading.Event()
 
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
+    def make_thread(self, *args, **kwargs):
+        t = threading.Thread(*args, **kwargs)
+        t.daemon = True
+        self.threads_made.append(t)
+        return t
 
     def setUp(self):
         super(TestSemaphore, self).setUp()
