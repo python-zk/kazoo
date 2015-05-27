@@ -154,10 +154,10 @@ class TestAuthentication(KazooTestCase):
 
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
-            # Ensure we remove the ACL protected nodes
-            client.delete("/1", recursive=True)
             eve.stop()
             eve.close()
+            # Ensure we remove the ACL protected nodes
+            client.delete("/1", recursive=True)
 
     def test_connect_auth(self):
         username = uuid.uuid4().hex
@@ -203,10 +203,10 @@ class TestAuthentication(KazooTestCase):
 
             self.assertRaises(NoAuthError, eve.get, "/1/2")
         finally:
-            # Ensure we remove the ACL protected nodes
-            client.delete("/1", recursive=True)
             eve.stop()
             eve.close()
+            # Ensure we remove the ACL protected nodes
+            client.delete("/1", recursive=True)
 
     def test_invalid_auth(self):
         client = self._get_client()
