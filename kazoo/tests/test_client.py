@@ -139,8 +139,8 @@ class TestAuthentication(KazooTestCase):
         client.add_auth("digest", digest_auth)
         client.default_acl = (acl,)
 
+        client.create("/1")
         try:
-            client.create("/1")
             client.create("/1/2")
             client.ensure_path("/1/2/3")
 
@@ -168,8 +168,8 @@ class TestAuthentication(KazooTestCase):
 
         client = self._get_client(auth_data=[('digest', digest_auth)])
         client.start()
+        client.create('/1', acl=(acl,))
         try:
-            client.create('/1', acl=(acl,))
             # give ZK a chance to copy data to other node
             time.sleep(0.1)
             self.assertRaises(NoAuthError, self.client.get, "/1")
@@ -189,8 +189,8 @@ class TestAuthentication(KazooTestCase):
         client.add_auth("digest", digest_auth)
         client.default_acl = (acl,)
 
+        client.create("/1")
         try:
-            client.create("/1")
             client.ensure_path("/1/2/3")
 
             eve = self._get_client()
