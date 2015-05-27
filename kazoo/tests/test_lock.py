@@ -407,7 +407,7 @@ class TestSemaphore(KazooTestCase):
         self.threads_made = []
 
     def tearDown(self):
-        super(KazooLockTests, self).tearDown()
+        super(TestSemaphore, self).tearDown()
         while self.threads_made:
             t = self.threads_made.pop()
             t.join()
