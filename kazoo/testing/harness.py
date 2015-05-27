@@ -6,7 +6,7 @@ import uuid
 import unittest
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NotEmptyError
+from kazoo.exceptions import KazooException, NotEmptyError
 from kazoo.protocol.states import (
     KazooState
 )
@@ -79,14 +79,13 @@ class KazooTestHarness(unittest.TestCase):
         return ",".join([s.address for s in self.cluster])
 
     def _get_nonchroot_client(self):
-        return KazooClient(self.servers)
+        c = KazooClient(self.servers)
+        self._clients.append(c)
+        return c
 
     def _get_client(self, **kwargs):
         c = KazooClient(self.hosts, **kwargs)
-        try:
-            self._clients.append(c)
-        except AttributeError:
-            self._client = [c]
+        self._clients.append(c)
         return c
 
     def lose_connection(self, event_factory):
@@ -103,11 +102,14 @@ class KazooTestHarness(unittest.TestCase):
         The cluster will only be created on the first invocation and won't be
         fully torn down until exit.
         """
-        if not self.cluster[0].running:
+        do_start = False
+        for s in self.cluster:
+            if not s.running:
+                do_start = True
+        if do_start:
             self.cluster.start()
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
-
         if 'timeout' not in client_options:
             client_options['timeout'] = 0.8
         self.client = self._get_client(**client_options)
@@ -115,35 +117,16 @@ class KazooTestHarness(unittest.TestCase):
         self.client.ensure_path("/")
 
     def teardown_zookeeper(self):
-        """Clean up any ZNodes created during the test
-        """
-        if not self.cluster[0].running:
-            self.cluster.start()
-
-        tries = 0
-        if self.client and self.client.connected:
-            while tries < 3:
-                try:
-                    self.client.retry(self.client.delete, '/', recursive=True)
-                    break
-                except NotEmptyError:
-                    pass
-                tries += 1
-            self.client.stop()
-            self.client.close()
-            del self.client
-        else:
-            client = self._get_client()
-            client.start()
-            client.retry(client.delete, '/', recursive=True)
-            client.stop()
-            client.close()
-            del client
-
-        for client in self._clients:
-            client.stop()
-            del client
-        self._clients = None
+        """Reset and cleanup the zookeeper cluster that was started."""
+        while self._clients:
+            c = self._clients.pop()
+            try:
+                c.stop()
+            except KazooException:
+                log.exception("Failed stopping client %s", c)
+            finally:
+                c.close()
+        self.client = None
 
     def __break_connection(self, break_event, expected_state, event_factory):
         """Break ZooKeeper connection using the specified event."""

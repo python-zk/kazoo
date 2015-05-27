@@ -21,6 +21,7 @@
 
 
 import code
+import logging
 import os
 import os.path
 import shutil
@@ -32,6 +33,9 @@ import traceback
 from itertools import chain
 from collections import namedtuple
 from glob import glob
+
+
+log = logging.getLogger(__name__)
 
 
 def debug(sig, frame):
@@ -145,22 +149,26 @@ log4j.appender.ROLLINGFILE.Threshold=DEBUG
 log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
                 self.working_path + os.sep + "zookeeper.log\n"))
 
-        self.process = subprocess.Popen(
-            args=["java",
-                  "-cp", self.classpath,
+        args = [
+            "java",
+            "-cp", self.classpath,
 
-                  # "-Dlog4j.debug",
-                  "-Dreadonlymode.enabled=true",
-                  "-Dzookeeper.log.dir=%s" % log_path,
-                  "-Dzookeeper.root.logger=INFO,CONSOLE",
-                  "-Dlog4j.configuration=file:%s" % log4j_path,
+            # "-Dlog4j.debug",
+            "-Dreadonlymode.enabled=true",
+            "-Dzookeeper.log.dir=%s" % log_path,
+            "-Dzookeeper.root.logger=INFO,CONSOLE",
+            "-Dlog4j.configuration=file:%s" % log4j_path,
 
-                  # OS X: Prevent java from appearing in menu bar, process dock
-                  # and from activation of the main workspace on run.
-                  "-Djava.awt.headless=true",
+            # OS X: Prevent java from appearing in menu bar, process dock
+            # and from activation of the main workspace on run.
+            "-Djava.awt.headless=true",
 
-                  "org.apache.zookeeper.server.quorum.QuorumPeerMain",
-                  config_path])
+            "org.apache.zookeeper.server.quorum.QuorumPeerMain",
+            config_path,
+        ]
+        self.process = subprocess.Popen(args=args)
+        log.info("Started zookeeper process %s using args %s",
+                 self.process.pid, args)
         self._running = True
 
     @property
@@ -226,6 +234,11 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             return
         self.process.terminate()
         self.process.wait()
+        if self.process.returncode != 0:
+            log.warn("Zookeeper process %s failed to terminate with"
+                     " non-zero return code (it terminated with %s return"
+                     " code instead)", self.process.pid,
+                     self.process.returncode)
         self._running = False
 
     def destroy(self):
