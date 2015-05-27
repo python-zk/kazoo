@@ -448,7 +448,11 @@ class Semaphore(object):
         if self.client.exists(self.create_path):
             return True
 
-        with self.client.Lock(self.lock_path, self.data):
+        lock = self.client.Lock(self.lock_path, self.data)
+        gotten = lock.acquire(blocking=blocking, timeout=timeout)
+        if not gotten:
+            return False
+        try:
             while True:
                 self.wake_event.clear()
 
@@ -465,10 +469,9 @@ class Semaphore(object):
                             "Failed to acquire semaphore on %s "
                             "after %s seconds" % (self.path, timeout))
                 else:
-                    # If not blocking, register another watch that will trigger
-                    # self._get_lease() as soon as the children change again.
-                    self.client.get_children(self.path, self._get_lease)
                     return False
+        finally:
+            lock.release()
 
     def _watch_lease_change(self, event):
         self.wake_event.set()
