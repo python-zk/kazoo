@@ -38,8 +38,8 @@ class SleepBarrier(object):
 class KazooLockTests(KazooTestCase):
     thread_count = 20
 
-    def setUp(self):
-        super(KazooLockTests, self).setUp()
+    def __init__(self, *args, **kw):
+        super(KazooLockTests, self).__init__(*args, **kw)
         self.threads_made = []
 
     def tearDown(self):
