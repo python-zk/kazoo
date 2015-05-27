@@ -149,22 +149,26 @@ log4j.appender.ROLLINGFILE.Threshold=DEBUG
 log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
                 self.working_path + os.sep + "zookeeper.log\n"))
 
-        self.process = subprocess.Popen(
-            args=["java",
-                  "-cp", self.classpath,
+        args = [
+            "java",
+            "-cp", self.classpath,
 
-                  # "-Dlog4j.debug",
-                  "-Dreadonlymode.enabled=true",
-                  "-Dzookeeper.log.dir=%s" % log_path,
-                  "-Dzookeeper.root.logger=INFO,CONSOLE",
-                  "-Dlog4j.configuration=file:%s" % log4j_path,
+            # "-Dlog4j.debug",
+            "-Dreadonlymode.enabled=true",
+            "-Dzookeeper.log.dir=%s" % log_path,
+            "-Dzookeeper.root.logger=INFO,CONSOLE",
+            "-Dlog4j.configuration=file:%s" % log4j_path,
 
-                  # OS X: Prevent java from appearing in menu bar, process dock
-                  # and from activation of the main workspace on run.
-                  "-Djava.awt.headless=true",
+            # OS X: Prevent java from appearing in menu bar, process dock
+            # and from activation of the main workspace on run.
+            "-Djava.awt.headless=true",
 
-                  "org.apache.zookeeper.server.quorum.QuorumPeerMain",
-                  config_path])
+            "org.apache.zookeeper.server.quorum.QuorumPeerMain",
+            config_path,
+        ]
+        self.process = subprocess.Popen(args=args)
+        log.info("Started zookeeper process %s using args %s",
+                 self.process.pid, args)
         self._running = True
 
     @property
