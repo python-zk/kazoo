@@ -231,7 +231,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
         self.process.terminate()
         self.process.wait()
         if self.process.returncode != 0:
-            log.warn("Zookeeper process %s failed top terminate with"
+            log.warn("Zookeeper process %s failed to terminate with"
                      " non-zero return code (it terminated with %s return"
                      " code instead)", self.process.pid,
                      self.process.returncode)
