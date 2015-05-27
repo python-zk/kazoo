@@ -469,9 +469,6 @@ class Semaphore(object):
                             "Failed to acquire semaphore on %s "
                             "after %s seconds" % (self.path, timeout))
                 else:
-                    # If not blocking, register another watch that will trigger
-                    # self._get_lease() as soon as the children change again.
-                    # self.client.get_children(self.path, self._get_lease)
                     return False
         finally:
             lock.release()
