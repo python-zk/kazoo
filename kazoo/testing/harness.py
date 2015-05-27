@@ -6,7 +6,7 @@ import uuid
 import unittest
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import NotEmptyError
+from kazoo.exceptions import KazooException, NotEmptyError
 from kazoo.protocol.states import (
     KazooState
 )
@@ -100,9 +100,14 @@ class KazooTestHarness(unittest.TestCase):
         """Create a ZK cluster and chrooted :class:`KazooClient`
 
         The cluster will only be created on the first invocation and won't be
-        fully torn down until teardown_zookeeper is called.
+        fully torn down until exit.
         """
-        self.cluster.start()
+        do_start = False
+        for s in self.cluster:
+            if not s.running:
+                do_start = True
+        if do_start:
+            self.cluster.start()
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
         if 'timeout' not in client_options:
@@ -115,10 +120,13 @@ class KazooTestHarness(unittest.TestCase):
         """Reset and cleanup the zookeeper cluster that was started."""
         while self._clients:
             c = self._clients.pop()
-            c.stop()
-            c.close()
+            try:
+                c.stop()
+            except KazooException:
+                log.exception("Failed stopping client %s", c)
+            finally:
+                c.close()
         self.client = None
-        self.cluster.reset()
 
     def __break_connection(self, break_event, expected_state, event_factory):
         """Break ZooKeeper connection using the specified event."""
