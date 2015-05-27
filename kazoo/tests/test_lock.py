@@ -536,12 +536,9 @@ class TestSemaphore(KazooTestCase):
 
         def sema_one():
             started.set()
-            try:
-                with expire_semaphore:
-                    event.set()
-                    event2.wait()
-            except KazooException:
-                pass
+            with expire_semaphore:
+                event.set()
+                event2.wait()
 
         thread1 = self.make_thread(target=sema_one, args=())
         thread1.start()
