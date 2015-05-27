@@ -1,9 +1,11 @@
 """Kazoo testing harnesses"""
-import atexit
+
 import logging
 import os
 import uuid
 import unittest
+
+from kazoo import python2atexit as atexit
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NotEmptyError
