@@ -105,11 +105,9 @@ class KazooTestHarness(unittest.TestCase):
         The cluster will only be created on the first invocation and won't be
         fully torn down until exit.
         """
-        if not self.cluster[0].running:
-            self.cluster.start()
+        self.cluster.start()
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
-
         if 'timeout' not in client_options:
             client_options['timeout'] = 0.8
         self.client = self._get_client(**client_options)
@@ -119,33 +117,11 @@ class KazooTestHarness(unittest.TestCase):
     def teardown_zookeeper(self):
         """Clean up any ZNodes created during the test
         """
-        if not self.cluster[0].running:
-            self.cluster.start()
-
-        tries = 0
-        if self.client and self.client.connected:
-            while tries < 3:
-                try:
-                    self.client.retry(self.client.delete, '/', recursive=True)
-                    break
-                except NotEmptyError:
-                    pass
-                tries += 1
-            self.client.stop()
-            self.client.close()
-            del self.client
-        else:
-            client = self._get_client()
-            client.start()
-            client.retry(client.delete, '/', recursive=True)
-            client.stop()
-            client.close()
-            del client
-
         for client in self._clients:
             client.stop()
             del client
         self._clients = None
+        self.cluster.reset()
 
     def __break_connection(self, break_event, expected_state, event_factory):
         """Break ZooKeeper connection using the specified event."""
