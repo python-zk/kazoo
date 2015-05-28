@@ -24,6 +24,7 @@ man/
 parts/
 share/
 site-packages/
+zookeeper/
 .coverage
 .idea
 .pip_cache

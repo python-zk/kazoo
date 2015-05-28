@@ -1,3 +1,10 @@
+sudo: false
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - zookeeper
+
 language: python
 python:
     - "2.7"
@@ -38,9 +45,6 @@ matrix:
 
 notifications:
   email: false
-
-before_install:
-    - sudo apt-get install libevent-dev
 
 install:
     - pip install tox
