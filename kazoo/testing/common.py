@@ -23,6 +23,7 @@
 import code
 import os
 import os.path
+import random
 import shutil
 import signal
 import subprocess
@@ -32,6 +33,23 @@ import traceback
 from itertools import chain
 from collections import namedtuple
 from glob import glob
+
+
+def gen_ports(size, port_offset=20000, per_server=10):
+    max_port = 2**16
+    max_port = max_port - 1 - per_server
+    seen = set()
+    made = 0
+    while made < size:
+        start = random.randint(port_offset, max_port)
+        selected = []
+        for i in range(0, per_server):
+            selected.append(start + i)
+        if any(i in seen for i in selected):
+            continue
+        yield selected
+        seen.update(selected)
+        made += 1
 
 
 def debug(sig, frame):
@@ -246,13 +264,13 @@ class ZookeeperCluster(object):
         self._servers = []
 
         # Calculate ports and peer group
-        port = port_offset
         peers = []
-
-        for i in range(size):
-            info = ServerInfo(i + 1, port, port + 1, port + 2, port + 3)
+        port_iter = gen_ports(size, port_offset=port_offset)
+        for i, port_range in enumerate(port_iter):
+            info = ServerInfo(i + 1, port_range[0],
+                              port_range[1], port_range[2],
+                              port_range[3])
             peers.append(info)
-            port += 10
 
         # Instantiate Managed ZK Servers
         for i in range(size):

@@ -189,8 +189,9 @@ class TestAuthentication(KazooTestCase):
         client.add_auth("digest", digest_auth)
         client.default_acl = (acl,)
 
+        client.create("/1")
+        eve = None
         try:
-            client.create("/1")
             client.ensure_path("/1/2/3")
 
             eve = self._get_client()
@@ -205,8 +206,9 @@ class TestAuthentication(KazooTestCase):
         finally:
             # Ensure we remove the ACL protected nodes
             client.delete("/1", recursive=True)
-            eve.stop()
-            eve.close()
+            if eve:
+                eve.stop()
+                eve.close()
 
     def test_invalid_auth(self):
         client = self._get_client()
