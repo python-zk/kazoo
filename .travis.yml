@@ -10,27 +10,27 @@ matrix:
         - python: "2.6"
           env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26
         - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-gevent-0.13.8
+          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-gevent
         - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-gevent-0.13.8
+          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-gevent
         - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-gevent-1.0.1
+          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-eventlet
         - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-gevent-1.0.1
+          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-eventlet
         - python: "2.7"
           env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27
         - python: "2.7"
           env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent-0.13.8
+          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-gevent-0.13.8
+          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-gevent
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent-1.0.1
+          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-eventlet
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-gevent-1.0.1
+          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-eventlet
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.5.0-alpha TOX_VENV=py27-gevent-1.0.1
+          env: ZOOKEEPER_VERSION=3.5.0-alpha TOX_VENV=py27-gevent
         - python: "3.3"
           env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py33
         - python: "3.3"
