@@ -37,6 +37,16 @@ class SleepBarrier(object):
 class KazooLockTests(KazooTestCase):
     thread_count = 20
 
+    def __init__(self, *args, **kw):
+        super(KazooLockTests, self).__init__(*args, **kw)
+        self.threads_made = []
+
+    def tearDown(self):
+        super(KazooLockTests, self).tearDown()
+        while self.threads_made:
+            t = self.threads_made.pop()
+            t.join()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -45,9 +55,11 @@ class KazooLockTests(KazooTestCase):
     def make_event():
         return threading.Event()
 
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
+    def make_thread(self, *args, **kwargs):
+        t = threading.Thread(*args, **kwargs)
+        t.daemon = True
+        self.threads_made.append(t)
+        return t
 
     @staticmethod
     def make_wait():
@@ -389,6 +401,16 @@ class KazooLockTests(KazooTestCase):
 
 class TestSemaphore(KazooTestCase):
 
+    def __init__(self, *args, **kw):
+        super(TestSemaphore, self).__init__(*args, **kw)
+        self.threads_made = []
+
+    def tearDown(self):
+        super(TestSemaphore, self).tearDown()
+        while self.threads_made:
+            t = self.threads_made.pop()
+            t.join()
+
     @staticmethod
     def make_condition():
         return threading.Condition()
@@ -397,9 +419,11 @@ class TestSemaphore(KazooTestCase):
     def make_event():
         return threading.Event()
 
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
+    def make_thread(self, *args, **kwargs):
+        t = threading.Thread(*args, **kwargs)
+        t.daemon = True
+        self.threads_made.append(t)
+        return t
 
     def setUp(self):
         super(TestSemaphore, self).setUp()
@@ -539,8 +563,8 @@ class TestSemaphore(KazooTestCase):
                 event.set()
                 event2.wait()
 
-        thread = self.make_thread(target=sema_one, args=())
-        thread.start()
+        thread1 = self.make_thread(target=sema_one, args=())
+        thread1.start()
 
         started.wait()
         eq_(lh_semaphore.lease_holders(), ['george'])
@@ -552,8 +576,8 @@ class TestSemaphore(KazooTestCase):
             self.expire_session(self.make_event)
             expired.set()
 
-        thread = self.make_thread(target=expire, args=())
-        thread.start()
+        thread2 = self.make_thread(target=expire, args=())
+        thread2.start()
         expire_semaphore.wake_event.wait()
         expired.wait()
 
@@ -563,7 +587,9 @@ class TestSemaphore(KazooTestCase):
         event.wait(15)
         eq_(expire_semaphore.lease_holders(), ['fred'])
         event2.set()
-        thread.join()
+
+        for t in (thread1, thread2):
+            t.join()
 
     def test_inconsistent_max_leases(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)

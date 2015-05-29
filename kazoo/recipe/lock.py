@@ -547,7 +547,6 @@ class Semaphore(object):
     def _inner_release(self):
         if not self.is_acquired:
             return False
-
         try:
             self.client.delete(self.create_path)
         except NoNodeError:  # pragma: nocover
