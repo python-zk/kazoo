@@ -316,7 +316,7 @@ class Lock(object):
         if self.cleanup_path:
             try:
                 self.client.delete(self.path)
-            except NotEmptyError:
+            except (NoNodeError, NotEmptyError):
                 pass
 
         self.is_acquired = False
