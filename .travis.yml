@@ -30,7 +30,7 @@ matrix:
         - python: "2.7"
           env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-eventlet
         - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.5.0-alpha TOX_VENV=py27-gevent
+          env: ZOOKEEPER_VERSION=3.5.0-alpha TOX_VENV=py27
         - python: "3.3"
           env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py33
         - python: "3.3"
