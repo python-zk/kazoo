@@ -33,6 +33,7 @@ from kazoo.exceptions import CancelledError
 from kazoo.exceptions import KazooException
 from kazoo.exceptions import LockTimeout
 from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NotEmptyError
 from kazoo.protocol.states import KazooState
 
 
@@ -70,7 +71,7 @@ class Lock(object):
     """
     _NODE_NAME = '__lock__'
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(self, client, path, identifier=None, cleanup_path=False):
         """Create a Kazoo lock.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -78,10 +79,13 @@ class Lock(object):
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
-
+        :param cleanup_path: Try to delete the lock path after
+                             release. With many different lock's this
+                             will keep zookeeper clean.
         """
         self.client = client
         self.path = path
+        self.cleanup_path = cleanup_path
 
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
@@ -188,10 +192,6 @@ class Lock(object):
                 return False
             raise ForceRetryError()
 
-        # make sure our election parent node exists
-        if not self.assured_path:
-            self._ensure_path()
-
         node = None
         if self.create_tried:
             node = self._find_node()
@@ -199,8 +199,22 @@ class Lock(object):
             self.create_tried = True
 
         if not node:
-            node = self.client.create(self.create_path, self.data,
-                                      ephemeral=True, sequence=True)
+            while not self.cancelled:
+                # make sure our election parent node exists
+                if not self.assured_path:
+                    self._ensure_path()
+
+                try:
+                    node = self.client.create(self.create_path, self.data,
+                                              ephemeral=True, sequence=True)
+                except NoNodeError:
+                    # when cleanup_path is not set this is a serious exception
+                    if not self.cleanup_path:
+                        raise
+                    self.assured_path = False
+                else:
+                    break
+
             # strip off path to node
             node = node[len(self.path) + 1:]
 
@@ -248,7 +262,10 @@ class Lock(object):
         self.wake_event.set()
 
     def _get_sorted_children(self):
-        children = self.client.get_children(self.path)
+        try:
+            children = self.client.get_children(self.path)
+        except NoNodeError:
+            return []
 
         # can't just sort directly: the node names are prefixed by uuids
         lockname = self._NODE_NAME
@@ -256,7 +273,10 @@ class Lock(object):
         return children
 
     def _find_node(self):
-        children = self.client.get_children(self.path)
+        try:
+            children = self.client.get_children(self.path)
+        except NoNodeError:
+            return None
         for child in children:
             if child.startswith(self.prefix):
                 return child
@@ -267,9 +287,17 @@ class Lock(object):
 
     def _best_effort_cleanup(self):
         try:
-            node = self._find_node()
-            if node:
-                self._delete_node(node)
+            try:
+                children = self.client.get_children(self.path)
+            except NoNodeError:
+                return
+            for child in children:
+                if child.startswith(self.prefix):
+                    self._delete_node(child)
+                    children.remove(child)
+                    break
+            if self.cleanup_path and not children:
+                self.client.delete(self.path)
         except KazooException:  # pragma: nocover
             pass
 
@@ -285,6 +313,11 @@ class Lock(object):
             self._delete_node(self.node)
         except NoNodeError:  # pragma: nocover
             pass
+        if self.cleanup_path:
+            try:
+                self.client.delete(self.path)
+            except NotEmptyError:
+                pass
 
         self.is_acquired = False
         self.node = None
