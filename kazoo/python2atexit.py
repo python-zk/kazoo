@@ -27,7 +27,7 @@ def _run_exitfuncs():
             exc_info = sys.exc_info()
         except:
             import traceback
-            sys.stderr("Error in atexit._run_exitfuncs:\n")
+            sys.stderr.write("Error in atexit._run_exitfuncs:\n")
             traceback.print_exc()
             exc_info = sys.exc_info()
 
