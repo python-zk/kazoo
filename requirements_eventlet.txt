@@ -1,1 +1,1 @@
-eventlet>=0.16.1
+eventlet>=0.17.1
