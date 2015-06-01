@@ -25,6 +25,7 @@ from kazoo.protocol.serialization import (
     GetChildren,
     Ping,
     PingInstance,
+    RemoveWatches,
     ReplyHeader,
     Transaction,
     Watch,
@@ -34,6 +35,7 @@ from kazoo.protocol.states import (
     Callback,
     KeeperState,
     WatchedEvent,
+    WatcherType,
     EVENT_TYPE_MAP,
 )
 from kazoo.retry import (
@@ -375,13 +377,23 @@ class ConnectionHandler(object):
 
                 async_object.set(response)
 
-            # Determine if watchers should be registered
+            # Determine if watchers should be registered/unregistered
             watcher = getattr(request, 'watcher', None)
             if not client._stopped.is_set() and watcher:
                 if isinstance(request, GetChildren):
                     client._child_watchers[request.path].add(watcher)
                 else:
                     client._data_watchers[request.path].add(watcher)
+            elif isinstance(request, RemoveWatches):
+                print header
+                print "Removing watches for %s" % (request.path)
+                if request.wtype == WatcherType.CHILDREN:
+                    client._child_watchers[request.path].clear()
+                elif request.wtype == WatcherType.DATA:
+                    client._data_watchers[request.path].clear()
+                elif request.wtype == WatcherType.ANY:
+                    client._child_watchers[request.path].clear()
+                    client._data_watchers[request.path].clear()
 
         if isinstance(request, Close):
             self.logger.log(BLATHER, 'Read close response')
