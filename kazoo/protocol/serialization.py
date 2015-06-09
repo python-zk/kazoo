@@ -10,6 +10,7 @@ from kazoo.security import Id
 # Struct objects with formats compiled
 bool_struct = struct.Struct('B')
 int_struct = struct.Struct('!i')
+long_struct = struct.Struct('!q')
 int_int_struct = struct.Struct('!ii')
 int_int_long_struct = struct.Struct('!iiq')
 
@@ -350,6 +351,24 @@ class Transaction(namedtuple('Transaction', 'operations')):
             else:
                 resp.append(result)
         return resp
+
+
+class Reconfig(namedtuple('Reconfig', 'joining leaving new_members config_id')):
+    type = 16
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.joining))
+        b.extend(write_string(self.leaving))
+        b.extend(write_string(self.new_members))
+        b.extend(long_struct.pack(self.config_id))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        data, offset = read_buffer(bytes, offset)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return data, stat
 
 
 class Auth(namedtuple('Auth', 'auth_type scheme auth')):
