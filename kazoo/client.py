@@ -1405,13 +1405,14 @@ class KazooClient(object):
 
         """
         if joining and not isinstance(joining, basestring):
-            raise TypeError("joining must be a string")
+            raise TypeError("Invalid type for 'joining' (string expected)")
         if leaving and not isinstance(leaving, basestring):
-            raise TypeError("leaving must be a string")
+            raise TypeError("Invalid type for 'leaving' (string expected)")
         if new_members and not isinstance(new_members, basestring):
-            raise TypeError("new_members must be a string")
+            raise TypeError("Invalid type for 'new_members' (string "
+                            "expected)")
         if not isinstance(from_config, int):
-            raise TypeError("from_config must be an int")
+            raise TypeError("Invalid type for 'from_config' (int expected)")
 
         async_result = self.handler.async_result()
         reconfig = Reconfig(joining, leaving, new_members, from_config)
