@@ -6,11 +6,11 @@ Kazoo
     :target: https://travis-ci.org/python-zk/kazoo
     :alt: Travis Build
 
-.. image:: https://pypip.in/version/kazoo/badge.svg
+.. image:: https://img.shields.io/pypi/v/kazoo.svg
     :target: https://pypi.python.org/pypi/kazoo/
     :alt: Latest Version
 
-.. image:: https://pypip.in/download/kazoo/badge.svg?period=month
+.. image:: https://img.shields.io/pypi/dm/kazoo.svg
     :target: https://pypi.python.org/pypi/kazoo/
     :alt: Downloads
 
