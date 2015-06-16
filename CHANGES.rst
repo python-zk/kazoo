@@ -1,8 +1,11 @@
 Changelog
 =========
 
-2.2 (unreleased)
-----------------
+2.2
+---
+
+Documentation
+*************
 
 Features
 ********
@@ -12,21 +15,10 @@ Features
 Bug Handling
 ************
 
-Documentation
-*************
-
-2.1.1
------
-
-Features
-********
-
-Bug Handling
-************
-
 - #315: multiple acquires of a kazoo lock using the lock recipe would
   block when using `acquire` even when non-blocking is specified (only
   when the lock was/has been already acquired).
+- #318: At exit register takes *args and **kwargs not args and kargs
 
 Documentation
 *************
