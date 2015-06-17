@@ -1404,11 +1404,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if joining and not isinstance(joining, basestring):
+        if joining and not isinstance(joining, string_types):
             raise TypeError("Invalid type for 'joining' (string expected)")
-        if leaving and not isinstance(leaving, basestring):
+        if leaving and not isinstance(leaving, string_types):
             raise TypeError("Invalid type for 'leaving' (string expected)")
-        if new_members and not isinstance(new_members, basestring):
+        if new_members and not isinstance(new_members, string_types):
             raise TypeError("Invalid type for 'new_members' (string "
                             "expected)")
         if not isinstance(from_config, int):

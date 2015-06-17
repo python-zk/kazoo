@@ -1,6 +1,19 @@
 Changelog
 =========
 
+2.2.1 (2015-XX-XX)
+-----
+
+Features
+********
+
+Bug Handling
+************
+- handle NameError with basestring on py3k.
+
+Documentation
+*************
+
 2.2 (2015-06-15)
 ----------------
 
