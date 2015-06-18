@@ -116,8 +116,8 @@ class TestClientConstructor(unittest.TestCase):
         from kazoo.retry import KazooRetry
         client = self._makeOne(command_retry=dict(max_tries=99),
                                connection_retry=dict(delay=99))
-        self.assertTrue(type(client._conn_retry) is KazooRetry)
-        self.assertTrue(type(client._retry) is KazooRetry)
+        self.assertIsInstance(client._conn_retry, KazooRetry)
+        self.assertIsInstance(client._retry, KazooRetry)
         eq_(client._retry.max_tries, 99)
         eq_(client._conn_retry.delay, 99)
 
