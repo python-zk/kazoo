@@ -83,6 +83,7 @@ class SequentialEventletHandler(object):
         self.completion_queue = green_queue.LightQueue()
         self._workers = []
         self._started = False
+        self._spawned = []
 
     @staticmethod
     def sleep_func(wait):
@@ -135,6 +136,9 @@ class SequentialEventletHandler(object):
             w, q = self._workers.pop()
             q.put(_STOP)
             w.wait()
+        while self._spawned:
+            t = self._spawned.pop()
+            t.join()
         self._started = False
         python2atexit.unregister(self.stop)
 
@@ -166,6 +170,7 @@ class SequentialEventletHandler(object):
     def spawn(self, func, *args, **kwargs):
         t = green_threading.Thread(target=func, args=args, kwargs=kwargs)
         t.daemon = True
+        self._spawned.append(t)
         t.start()
         return t
 

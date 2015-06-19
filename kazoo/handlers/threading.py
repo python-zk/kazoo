@@ -87,6 +87,7 @@ class SequentialThreadingHandler(object):
         self._running = False
         self._state_change = threading.Lock()
         self._workers = []
+        self._spawned = []
 
     def _create_thread_worker(self, queue):
         def _thread_worker():  # pragma: nocover
@@ -132,10 +133,12 @@ class SequentialThreadingHandler(object):
             for queue in (self.completion_queue, self.callback_queue):
                 queue.put(_STOP)
 
-            self._workers.reverse()
             while self._workers:
                 worker = self._workers.pop()
                 worker.join()
+            while self._spawned:
+                t = self._spawned.pop()
+                t.join()
 
             # Clear the queues
             self.callback_queue = self.queue_impl()
@@ -183,6 +186,7 @@ class SequentialThreadingHandler(object):
     def spawn(self, func, *args, **kwargs):
         t = threading.Thread(target=func, args=args, kwargs=kwargs)
         t.daemon = True
+        self._spawned.append(t)
         t.start()
         return t
 
