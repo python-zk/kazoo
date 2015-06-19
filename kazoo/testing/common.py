@@ -223,7 +223,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
     def reset(self):
         """Stop the zookeeper instance, cleaning out its on disk-data."""
         self.stop()
-        shutil.rmtree(os.path.join(self.working_path, "data"))
+        shutil.rmtree(os.path.join(self.working_path, "data"), True)
         os.mkdir(os.path.join(self.working_path, "data"))
         with open(os.path.join(self.working_path, "data", "myid"), "w") as fh:
             fh.write(str(self.server_info.server_id))
@@ -247,7 +247,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
         import shutil
         self.stop()
 
-        shutil.rmtree(self.working_path)
+        shutil.rmtree(self.working_path, True)
 
 
 class ZookeeperCluster(object):
