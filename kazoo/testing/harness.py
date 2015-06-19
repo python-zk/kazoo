@@ -3,7 +3,8 @@
 import logging
 import os
 import uuid
-import unittest
+
+import testtools
 
 from kazoo import python2atexit as atexit
 
@@ -41,7 +42,7 @@ def get_global_cluster():
     return CLUSTER
 
 
-class KazooTestHarness(unittest.TestCase):
+class KazooTestHarness(testtools.TestCase):
     """Harness for testing code that uses Kazoo
 
     This object can be used directly or as a mixin. It supports starting
