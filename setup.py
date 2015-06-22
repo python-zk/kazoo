@@ -11,7 +11,7 @@ with open(os.path.join(here, 'README.rst')) as f:
 with open(os.path.join(here, 'CHANGES.rst')) as f:
     CHANGES = f.read()
 version = ''
-with open(os.path.join(here, 'kazoo', '__init__.py')) as f:
+with open(os.path.join(here, 'kazoo', 'version.py')) as f:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         f.read(), re.MULTILINE).group(1)
 
