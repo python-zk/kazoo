@@ -1,7 +1,7 @@
-__version__ = '2.2.1'
 
 import os
 import sys
+import re
 
 from setuptools import setup, find_packages
 
@@ -10,6 +10,10 @@ with open(os.path.join(here, 'README.rst')) as f:
     README = f.read()
 with open(os.path.join(here, 'CHANGES.rst')) as f:
     CHANGES = f.read()
+version = ''
+with open(os.path.join(here, 'kazoo', 'version.py')) as f:
+    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
+                        f.read(), re.MULTILINE).group(1)
 
 PYTHON3 = sys.version_info > (3, )
 PYPY = getattr(sys, 'pypy_version_info', False) and True or False
@@ -38,7 +42,7 @@ if on_rtd:
 
 setup(
     name='kazoo',
-    version=__version__,
+    version=version,
     description='Higher Level Zookeeper Client',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
