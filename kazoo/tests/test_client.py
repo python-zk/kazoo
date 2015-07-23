@@ -38,6 +38,18 @@ else:  # pragma: nocover
     def u(s):
         return unicode(s, "unicode_escape")
 
+if sys.version_info[0:2] == (2, 6):
+    # TODO(harlowja): fix this soon, using unittest2 or other...
+    class TestCase(unittest.TestCase):
+        def assertIsInstance(self, obj, cls, msg=None):
+            # Ripped/taken from python 3.4 and adjusted...
+            if not isinstance(obj, cls):
+                if not msg:
+                    msg = '%r is not an instance of %r' % (obj, cls)
+                self.fail(msg)
+else:
+    TestCase = unittest.TestCase
+
 
 class TestClientTransitions(KazooTestCase):
     @staticmethod
@@ -70,7 +82,7 @@ class TestClientTransitions(KazooTestCase):
         eq_(states, req_states)
 
 
-class TestClientConstructor(unittest.TestCase):
+class TestClientConstructor(TestCase):
 
     def _makeOne(self, *args, **kw):
         from kazoo.client import KazooClient
@@ -1101,7 +1113,7 @@ class TestClientTransactions(KazooTestCase):
         eq_(self.client.get('/smith')[0], b'32')
 
 
-class TestCallbacks(unittest.TestCase):
+class TestCallbacks(TestCase):
     def test_session_callback_states(self):
         from kazoo.protocol.states import KazooState, KeeperState
         from kazoo.client import KazooClient
