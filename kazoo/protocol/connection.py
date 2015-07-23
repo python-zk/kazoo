@@ -9,6 +9,11 @@ import time
 from binascii import hexlify
 from contextlib import contextmanager
 
+try:
+    from time import monotonic as now
+except ImportError:
+    from time import time as now
+
 from kazoo.exceptions import (
     AuthFailedError,
     ConnectionDropped,
@@ -515,6 +520,7 @@ class ConnectionHandler(object):
             read_timeout, connect_timeout = self._connect(host, port)
             read_timeout = read_timeout / 1000.0
             connect_timeout = connect_timeout / 1000.0
+            last_ping_sent = None
             retry.reset()
             self._xid = 0
             self.ping_outstanding.clear()
@@ -527,18 +533,26 @@ class ConnectionHandler(object):
                                    jitter_time])
                     s = self.handler.select([self._socket, self._read_sock],
                                             [], [], timeout)[0]
-
                     if not s:
                         if self.ping_outstanding.is_set():
                             self.ping_outstanding.clear()
                             raise ConnectionDropped(
                                 "outstanding heartbeat ping not received")
                         self._send_ping(connect_timeout)
+                        last_ping_sent = now()
                     elif s[0] == self._socket:
                         response = self._read_socket(read_timeout)
                         close_connection = response == CLOSE_RESPONSE
                     else:
                         self._send_request(read_timeout, connect_timeout)
+                    send_ping = False
+                    if not self.ping_outstanding.is_set():
+                        if last_ping_sent is None or \
+                           now() - last_ping_sent >= read_timeout:
+                            send_ping = True
+                    if send_ping:
+                        self._send_ping(connect_timeout)
+                        last_ping_sent = now()
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
