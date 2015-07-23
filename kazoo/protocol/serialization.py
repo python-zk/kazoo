@@ -7,6 +7,8 @@ from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL
 from kazoo.security import Id
 
+import six
+
 # Struct objects with formats compiled
 bool_struct = struct.Struct('B')
 int_struct = struct.Struct('!i')
@@ -18,11 +20,6 @@ int_long_int_long_struct = struct.Struct('!iqiq')
 multiheader_struct = struct.Struct('!iBi')
 reply_header_struct = struct.Struct('!iqi')
 stat_struct = struct.Struct('!qqqqiiiqiiq')
-
-try:  # pragma: nocover
-    basestring
-except NameError:
-    basestring = str
 
 
 def read_string(buffer, offset):
@@ -346,7 +343,7 @@ class Transaction(namedtuple('Transaction', 'operations')):
     def unchroot(client, response):
         resp = []
         for result in response:
-            if isinstance(result, basestring):
+            if isinstance(result, six.string_types):
                 resp.append(client.unchroot(result))
             else:
                 resp.append(result)
