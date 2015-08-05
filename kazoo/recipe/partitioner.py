@@ -80,6 +80,7 @@ class SetPartitioner(object):
 
         from kazoo.client import KazooClient
         client = KazooClient()
+        client.start()
 
         qp = client.SetPartitioner(
             path='/work_queues', set=('queue-1', 'queue-2', 'queue-3'))

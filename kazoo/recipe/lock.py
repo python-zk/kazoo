@@ -60,6 +60,7 @@ class Lock(object):
     .. code-block:: python
 
         zk = KazooClient()
+        zk.start()
         lock = zk.Lock("/lockpath", "my-identifier")
         with lock:  # blocks waiting for lock acquisition
             # do something with the lock
