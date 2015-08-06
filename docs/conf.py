@@ -11,7 +11,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 import os
-import re
 import sys
 
 
@@ -65,11 +64,8 @@ copyright = u'2011-2014, Kazoo team'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = ''
-here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, '..', 'kazoo', 'version.py')) as f:
-    release = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-                        f.read(), re.MULTILINE).group(1)
+from kazoo import version
+release = version.__version__
 
 # The short X.Y version.
 version = '.'.join(release.split('.')[:-1])
