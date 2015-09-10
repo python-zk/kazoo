@@ -86,6 +86,7 @@ class Lock(object):
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "").encode('utf-8')
+        self.node = None
 
         self.wake_event = client.handler.event_object()
 
@@ -159,8 +160,7 @@ class Lock(object):
                 gotten = retry(self._inner_acquire,
                                blocking=blocking, timeout=timeout)
             except RetryFailedError:
-                if not already_acquired:
-                    self._best_effort_cleanup()
+                pass
             except KazooException:
                 # if we did ultimately fail, attempt to clean up
                 exc_info = sys.exc_info()
@@ -171,7 +171,7 @@ class Lock(object):
             if gotten:
                 self.is_acquired = gotten
             if not gotten and not already_acquired:
-                self._delete_node(self.node)
+                self._best_effort_cleanup()
             return gotten
         finally:
             self._lock.release()
@@ -267,7 +267,7 @@ class Lock(object):
 
     def _best_effort_cleanup(self):
         try:
-            node = self._find_node()
+            node = self.node or self._find_node()
             if node:
                 self._delete_node(node)
         except KazooException:  # pragma: nocover
