@@ -29,6 +29,7 @@ class Counter(object):
     .. code-block:: python
 
         zk = KazooClient()
+        zk.start()
         counter = zk.Counter("/int")
         counter += 2
         counter -= 1

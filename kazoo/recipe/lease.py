@@ -29,6 +29,7 @@ class NonBlockingLease(object):
     Example usage: with a :class:`~kazoo.client.KazooClient` instance::
 
         zk = KazooClient()
+        zk.start()
         # Hold lease over an hour in order to keep job on same machine, with failover if it dies.
         lease = zk.NonBlockingLease("/db_leases/hourly_cleanup", datetime.timedelta(minutes = 70),
           identifier = "DB hourly cleanup on " + socket.gethostname())
