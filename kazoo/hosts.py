@@ -21,7 +21,7 @@ def collect_hosts(hosts, randomize=True):
 
         # Resolve the hosts in case we are dealing with a round robin set
         for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
-            result.append(rhost[4])
+            result.append((rhost[4][0], rhost[4][1]))
 
     if randomize:
         random.shuffle(result)
