@@ -20,3 +20,9 @@ class ExceptionsTestCase(TestCase):
     def test_invalid_code(self):
         module = self._get()
         self.assertRaises(RuntimeError, module.EXCEPTIONS.__getitem__, 666)
+
+    def test_exceptions_construction(self):
+        module = self._get()
+        exc = module.EXCEPTIONS[-101]()
+        assert type(exc) is module.NoNodeError
+        assert exc.args == ()
