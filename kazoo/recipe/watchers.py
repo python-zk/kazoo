@@ -333,6 +333,7 @@ class ChildrenWatch(object):
                     result = self._func(children)
                 if result is False:
                     self._stopped = True
+                    self._client.remove_listener(self._session_watcher)
             except Exception as exc:
                 log.exception(exc)
                 raise
