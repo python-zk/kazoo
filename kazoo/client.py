@@ -217,11 +217,17 @@ class KazooClient(object):
             self._conn_retry = KazooRetry(**connection_retry)
         elif type(connection_retry) is KazooRetry:
             self._conn_retry = connection_retry
+        elif connection_retry is not None:
+            raise ConfigurationError("Unexpected connection_retry type %r"
+                                     % connection_retry)
 
         if type(command_retry) is dict:
             self.retry = KazooRetry(**command_retry)
         elif type(command_retry) is KazooRetry:
             self.retry = command_retry
+        elif command_retry is not None:
+            raise ConfigurationError("Unexpected command_retry type %r"
+                                     % command_retry)
 
         if type(self._conn_retry) is KazooRetry:
             if self.handler.sleep_func != self._conn_retry.sleep_func:
