@@ -42,7 +42,7 @@ class KazooRetry(object):
     )
 
     def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
-                 max_delay=3600, ignore_expire=True, sleep_func=time.sleep,
+                 max_delay=60, ignore_expire=True, sleep_func=time.sleep,
                  deadline=None, interrupt=None):
         """Create a :class:`KazooRetry` instance for retrying function
         calls
@@ -55,7 +55,7 @@ class KazooRetry(object):
         :param max_jitter: Additional max jitter period to wait between
                            retry attempts to avoid slamming the server.
         :param max_delay: Maximum delay in seconds, regardless of other
-                          backoff settings. Defaults to one hour.
+                          backoff settings. Defaults to one minute.
         :param ignore_expire:
             Whether a session expiration should be ignored and treated
             as a retry-able command.
