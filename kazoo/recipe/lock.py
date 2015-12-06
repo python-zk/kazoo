@@ -245,6 +245,17 @@ class Lock(object):
     def acquired_lock(self, children, index):
         return index == 0
 
+    def break_lock(self):
+        children = self._get_sorted_children()
+        # remove the first one
+        if not len(children):
+            return False
+        try:
+            self._delete_node(children[0])
+        except NoNodeError:
+            return False
+        return True
+
     def _watch_predecessor(self, event):
         self.wake_event.set()
 
@@ -554,6 +565,10 @@ class Semaphore(object):
             pass
         self.is_acquired = False
         return True
+
+    def break_lock(self):
+        lock = self.client.Lock(self.path, self.data)
+        return lock.break_lock()
 
     def lease_holders(self):
         """Return an unordered list of the current lease holders.
