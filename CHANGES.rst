@@ -1,6 +1,19 @@
 Changelog
 =========
 
+2.X.Y (TBD)
+-----------
+
+Features
+********
+
+Bug Handling
+************
+- #372: fully resolve multiple records for hosts in the zookeeper connection string
+
+Documentation
+*************
+
 2.2.1 (2015-06-17)
 ------------------
 
