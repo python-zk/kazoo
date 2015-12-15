@@ -4,9 +4,9 @@ set -e
 
 HERE=`pwd`
 ZOO_BASE_DIR="$HERE/zookeeper"
-ZOOKEEPER_VERSION=${ZOOKEEPER_VERSION:-3.4.7}
+ZOOKEEPER_VERSION=${ZOOKEEPER_VERSION:-3.4.6}
 ZOOKEEPER_PATH="$ZOO_BASE_DIR/$ZOOKEEPER_VERSION"
-ZOO_MIRROR_URL="http://apache.osuosl.org/"
+ZOO_MIRROR_URL="http://archive.apache.org/dist"
 
 
 function download_zookeeper(){
