@@ -483,7 +483,7 @@ class ConnectionHandler(object):
         host_ports = []
         for host, port in self.client.hosts:
             for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
-                host_ports.append(rhost[4][0], rhost[4][1])
+                host_ports.append((rhost[4][0], rhost[4][1]))
         if self.client.randomize_hosts:
             random.shuffle(host_ports)
 
