@@ -503,7 +503,7 @@ class ConnectionHandler(object):
         if len(host_ports) == 0:
             return STOP_CONNECTING
 
-        for host, port in host_ports
+        for host, port in host_ports:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break
