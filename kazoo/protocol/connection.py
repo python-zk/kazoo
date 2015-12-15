@@ -482,8 +482,12 @@ class ConnectionHandler(object):
         # Expand the entire list in advance so we can randomize it if needed
         host_ports = []
         for host, port in self.client.hosts:
-            for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
-                host_ports.append((rhost[4][0], rhost[4][1]))
+            try:
+                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
+                    host_ports.append((rhost[4][0], rhost[4][1]))
+            except socket.gaierror:
+                # Skip hosts that don't resolve
+                pass
         if self.client.randomize_hosts:
             random.shuffle(host_ports)
 
@@ -493,7 +497,13 @@ class ConnectionHandler(object):
     def _connect_loop(self, retry):
         # Iterate through the hosts a full cycle before starting over
         status = None
-        for host, port in self._expand_client_hosts():
+        host_ports = self._expand_client_hosts()
+
+        # Check for an empty hostlist, indicating none resolved
+        if len(host_ports) == 0:
+            return STOP_CONNECTING
+
+        for host, port in host_ports
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break

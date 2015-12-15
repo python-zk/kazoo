@@ -104,7 +104,8 @@ class TestClientConstructor(unittest.TestCase):
 
     def test_invalid_hostname(self):
         client = self._makeOne(hosts='nosuchhost/a')
-        self.assertRaises(socket.gaierror, client.start)
+        timeout = client.handler.timeout_exception
+        self.assertRaises(timeout, client.start, 0.1)
 
     def test_another_invalid_hostname(self):
         self.assertRaises(
