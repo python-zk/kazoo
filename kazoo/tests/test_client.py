@@ -103,7 +103,8 @@ class TestClientConstructor(unittest.TestCase):
         eq_(hosts, [('127.0.0.1', 9), ('127.0.0.2', 9)])
 
     def test_invalid_hostname(self):
-        self.assertRaises(socket.gaierror, self._makeOne, hosts='nosuchhost/a')
+        client = self._makeOne(hosts='nosuchhost/a')
+        self.assertRaises(socket.gaierror, client.start)
 
     def test_another_invalid_hostname(self):
         self.assertRaises(
