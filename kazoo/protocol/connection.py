@@ -490,9 +490,7 @@ class ConnectionHandler(object):
                 pass
         if self.client.randomize_hosts:
             random.shuffle(host_ports)
-
-        for host, port in host_ports:
-            yield (host, port)
+        return host_ports
 
     def _connect_loop(self, retry):
         # Iterate through the hosts a full cycle before starting over
