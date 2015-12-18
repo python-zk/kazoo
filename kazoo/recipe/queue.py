@@ -321,10 +321,17 @@ class LockingQueue(BaseQueue):
                     id=id_),
                 self.id,
                 ephemeral=True)
+        except NodeExistsError:
+            return None
+
+        try:
             value, stat = self.client.retry(
                 self.client.get,
                 "{path}/{id}".format(path=self._entries_path, id=id_))
-        except (NoNodeError, NodeExistsError):
+        except NoNodeError:
             # Item is already consumed or locked
+            self.client.retry(self.client.get, lock_path)(
+            self.client.delete,
+            "{path}/{id}".format(path=self._lock_path,id=id_))
             return None
         return (id_, value)
