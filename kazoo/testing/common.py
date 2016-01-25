@@ -244,7 +244,6 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
     def destroy(self):
         """Stop the ZooKeeper instance and destroy its on disk-state"""
         # called by at exit handler, reimport to avoid cleanup race.
-        import shutil
         self.stop()
 
         shutil.rmtree(self.working_path, True)
