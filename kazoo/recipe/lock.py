@@ -253,6 +253,8 @@ class Lock(object):
 
         # can't just sort directly: the node names are prefixed by uuids
         lockname = self._NODE_NAME
+        
+        children = filter(lambda c: lockname in c, children)
         children.sort(key=lambda c: c[c.find(lockname) + len(lockname):])
         return children
 
