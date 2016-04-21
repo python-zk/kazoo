@@ -338,7 +338,8 @@ class ChildrenWatch(object):
                 raise
 
     def _watcher(self, event):
-        self._get_children(event)
+        if event.type != "NONE":
+            self._get_children(event)
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):

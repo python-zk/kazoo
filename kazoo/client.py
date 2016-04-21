@@ -193,7 +193,8 @@ class KazooClient(object):
         self._state = KeeperState.CLOSED
         self.state = KazooState.LOST
         self.state_listeners = set()
-
+        self._child_watchers = defaultdict(set)
+        self._data_watchers = defaultdict(set)
         self._reset()
         self.read_only = read_only
 
