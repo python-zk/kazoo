@@ -485,8 +485,9 @@ class ConnectionHandler(object):
             try:
                 for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
                     host_ports.append((rhost[4][0], rhost[4][1]))
-            except socket.gaierror:
+            except socket.gaierror as e:
                 # Skip hosts that don't resolve
+                self.logger.warning("Cannot resolve %s: %s", host.strip(), e)
                 pass
         if self.client.randomize_hosts:
             random.shuffle(host_ports)
