@@ -24,11 +24,11 @@ your new repository and run the build scripts::
     git clone git@github.com:<username>/kazoo.git
     cd kazoo
     make
-    make zookeeper
 
 You need to have some supported version of Python installed and have
 it available as ``python`` in your shell. To run Zookeeper you also
-need a Java runtime (JRE or JDK) version 6 or 7.
+need a Java runtime (JRE or JDK) version 6 or 7. To run tests, you
+need to have the tox, Python testing tool, to be installed in your shell.
 
 You can run all the tests by calling::
 
