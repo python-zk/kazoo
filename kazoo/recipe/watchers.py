@@ -315,8 +315,13 @@ class ChildrenWatch(object):
             if self._stopped:
                 return
 
-            children = self._client.retry(self._client.get_children,
-                                          self._path, self._watcher)
+            try:
+                children = self._client.retry(self._client.get_children,
+                                              self._path, self._watcher)
+            except NoNodeError:
+                self._stopped = True
+                return
+
             if not self._watch_established:
                 self._watch_established = True
 
