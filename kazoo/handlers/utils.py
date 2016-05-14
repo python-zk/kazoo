@@ -3,6 +3,7 @@
 import errno
 import functools
 import select
+import time
 
 HAS_FNCTL = True
 try:
@@ -182,12 +183,31 @@ def create_tcp_socket(module):
 
 
 def create_tcp_connection(module, address, timeout=None):
+    end = None
     if timeout is None:
         # thanks to create_connection() developers for
         # this ugliness...
-        timeout = module._GLOBAL_DEFAULT_TIMEOUT
+        timeout = module.getdefaulttimeout()
+    if timeout is not None:
+        end = time.time() + timeout
+    sock = None
 
-    sock = module.create_connection(address, timeout)
+    while end is None or time.time() < end:
+        try:
+            # if we got a timeout, lets ensure that we decrement the time
+            # otherwise there is no timeout set and we'll call it as such
+            timeout_at = end if end is None else end - time.time()
+            sock = module.create_connection(address, timeout_at)
+            break
+        except Exception as ex:
+            errnum = ex.errno if isinstance(ex, OSError) else ex[0]
+            if errnum == errno.EINTR:
+                continue
+            raise
+
+    if sock is None:
+        raise module.error
+
     _set_default_tcpsock_options(module, sock)
     return sock
 

@@ -147,8 +147,8 @@ class SequentialThreadingHandler(object):
         timeout = args[3] if len(args) == 4 else None
         # either the time to give up, or None
         end = (time.time() + timeout) if timeout else None
-        while timeout is None or time.time() < end:
-            if timeout:
+        while end is None or time.time() < end:
+            if end is not None:
                 args = list(args)  # make a list, since tuples aren't mutable
                 args[3] = end - time.time()  # set the timeout to the remaining time
             try:
@@ -161,6 +161,8 @@ class SequentialThreadingHandler(object):
                 if errnum == errno.EINTR:
                     continue
                 raise
+        # if we hit our timeout, lets return as a timeout
+        return ([], [], [])
 
     def socket(self):
         return utils.create_tcp_socket(socket)
