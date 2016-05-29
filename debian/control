@@ -7,7 +7,7 @@ Build-Depends: python-setuptools (>= 0.6b3),
                debhelper (>= 8.0.0),
                python-sphinx (>= 1.0.7+dfsg) | python3-sphinx,
 Standards-Version: 3.9.3
-Homepage: https://kazoo.readthedocs.org
+Homepage: https://kazoo.readthedocs.io
 X-Python-Version: >= 2.6
 
 Package: python-kazoo

@@ -66,7 +66,7 @@ setup(
     keywords='zookeeper lock leader configuration',
     author="Kazoo team",
     author_email="python-zk@googlegroups.com",
-    url="https://kazoo.readthedocs.org",
+    url="https://kazoo.readthedocs.io",
     license="Apache 2.0",
     packages=find_packages(),
     test_suite="kazoo.tests",
