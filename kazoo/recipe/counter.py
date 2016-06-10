@@ -34,10 +34,14 @@ class Counter(object):
         counter += 2
         counter -= 1
         counter.value == 1
+        counter.pre_value == 2
+        counter.post_value == 1
 
         counter = zk.Counter("/float", default=1.0)
         counter += 2.0
         counter.value == 3.0
+        counter.pre_value == 1.0
+        counter.post_value == 3.0
 
     """
     def __init__(self, client, path, default=0):
@@ -53,6 +57,8 @@ class Counter(object):
         self.default = default
         self.default_type = type(default)
         self._ensured_path = False
+        self.pre_value = None
+        self.post_value = None
 
     def _ensure_node(self):
         if not self._ensured_path:
@@ -79,12 +85,15 @@ class Counter(object):
         return self
 
     def _inner_change(self, value):
-        data, version = self._value()
-        data = repr(data + value).encode('ascii')
+        self.pre_value, version = self._value()
+        post_value = self.pre_value + value
+        data = repr(post_value).encode('ascii')
         try:
             self.client.set(self.path, data, version=version)
         except BadVersionError:  # pragma: nocover
+            self.post_value = None
             raise ForceRetryError()
+        self.post_value = post_value
 
     def __add__(self, value):
         """Add value to counter."""
