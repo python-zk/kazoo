@@ -207,7 +207,15 @@ class KazooDataWatcherTests(KazooTestCase):
 
         # delete watching
         self.client.delete(path)
-        time.sleep(1)
+
+        # a hack for waiting the watcher stop
+        for retry in range(5):
+            if children_watch._stopped:
+                break
+            children_watch._run_lock.acquire()
+            children_watch._run_lock.release()
+            time.sleep(retry / 10.0)
+
         eq_(update.is_set(), False)
         eq_(children_watch._stopped, True)
 
