@@ -171,6 +171,54 @@ class KazooDataWatcherTests(KazooTestCase):
 
         eq_(args, [None, None])
 
+    def test_no_such_node_for_children_watch(self):
+        args = []
+        path = self.path + '/test_no_such_node_for_children_watch'
+        update = threading.Event()
+
+        def changed(children):
+            args.append(children)
+            update.set()
+
+        # watch a node which does not exist
+        children_watch = self.client.ChildrenWatch(path, changed)
+        eq_(update.is_set(), False)
+        eq_(children_watch._stopped, True)
+        eq_(args, [])
+
+        # watch a node which exists
+        self.client.create(path, b'')
+        children_watch = self.client.ChildrenWatch(path, changed)
+        update.wait(3)
+        eq_(args, [[]])
+        update.clear()
+
+        # watch changes
+        self.client.create(path + '/fred', b'')
+        update.wait(3)
+        eq_(args, [[], ['fred']])
+        update.clear()
+
+        # delete children
+        self.client.delete(path + '/fred')
+        update.wait(3)
+        eq_(args, [[], ['fred'], []])
+        update.clear()
+
+        # delete watching
+        self.client.delete(path)
+
+        # a hack for waiting the watcher stop
+        for retry in range(5):
+            if children_watch._stopped:
+                break
+            children_watch._run_lock.acquire()
+            children_watch._run_lock.release()
+            time.sleep(retry / 10.0)
+
+        eq_(update.is_set(), False)
+        eq_(children_watch._stopped, True)
+
     def test_bad_watch_func2(self):
         counter = 0
 
