@@ -338,8 +338,10 @@ class ConnectionHandler(object):
         if header.zxid and header.zxid > 0:
             client.last_zxid = header.zxid
         if header.xid != xid:
-            raise RuntimeError('xids do not match, expected %r '
+            exc = RuntimeError('xids do not match, expected %r '
                                'received %r', xid, header.xid)
+            async_object.set_exception(exc)
+            raise exc
 
         # Determine if its an exists request and a no node error
         exists_error = (header.err == NoNodeError.code and
