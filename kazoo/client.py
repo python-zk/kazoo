@@ -366,10 +366,12 @@ class KazooClient(object):
 
         """
 
-        if randomize_hosts is None:
-            randomize_hosts = self.randomize_hosts
+        # Change the client setting for randomization if specified
+        if randomize_hosts is not None:
+            self.randomize_hosts = randomize_hosts
 
-        self.hosts, chroot = collect_hosts(hosts, randomize_hosts)
+        # Randomizing the list will be done at connect time
+        self.hosts, chroot = collect_hosts(hosts)
 
         if chroot:
             new_chroot = normpath(chroot)

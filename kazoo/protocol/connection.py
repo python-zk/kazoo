@@ -478,10 +478,31 @@ class ConnectionHandler(object):
             self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, 'Connection stopped')
 
+    def _expand_client_hosts(self):
+        # Expand the entire list in advance so we can randomize it if needed
+        host_ports = []
+        for host, port in self.client.hosts:
+            try:
+                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
+                    host_ports.append((rhost[4][0], rhost[4][1]))
+            except socket.gaierror as e:
+                # Skip hosts that don't resolve
+                self.logger.warning("Cannot resolve %s: %s", host.strip(), e)
+                pass
+        if self.client.randomize_hosts:
+            random.shuffle(host_ports)
+        return host_ports
+
     def _connect_loop(self, retry):
         # Iterate through the hosts a full cycle before starting over
         status = None
-        for host, port in self.client.hosts:
+        host_ports = self._expand_client_hosts()
+
+        # Check for an empty hostlist, indicating none resolved
+        if len(host_ports) == 0:
+            return STOP_CONNECTING
+
+        for host, port in host_ports:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break

@@ -1,9 +1,7 @@
-import random
-
 from six.moves import urllib_parse
 
 
-def collect_hosts(hosts, randomize=True):
+def collect_hosts(hosts):
     """Collect a set of hosts and an optional chroot from a string."""
     host_ports, chroot = hosts.partition("/")[::2]
     chroot = "/" + chroot if chroot else None
@@ -18,8 +16,5 @@ def collect_hosts(hosts, randomize=True):
             raise ValueError("bad hostname")
         port = int(res.port) if res.port else 2181
         result.append((host.strip(), port))
-
-    if randomize:
-        random.shuffle(result)
 
     return result, chroot
