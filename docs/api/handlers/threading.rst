@@ -17,4 +17,4 @@ Private API
   .. autoclass:: AsyncResult
      :members:
 
-  .. autoexception:: TimeoutError
+  .. autoexception:: KazooTimeoutError

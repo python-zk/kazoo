@@ -13,6 +13,7 @@ from eventlet.green import time as green_time
 from eventlet.green import threading as green_threading
 from eventlet import queue as green_queue
 
+from kazoo.exceptions import KazooTimeoutError, TimeoutError
 from kazoo.handlers import utils
 
 LOG = logging.getLogger(__name__)
@@ -35,16 +36,12 @@ def _yield_before_after():
         eventlet.sleep(0)
 
 
-class TimeoutError(Exception):
-    pass
-
-
 class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
     def __init__(self, handler):
         super(AsyncResult, self).__init__(handler,
                                           green_threading.Condition,
-                                          TimeoutError)
+                                          KazooTimeoutError)
 
 
 class SequentialEventletHandler(object):
@@ -92,7 +89,7 @@ class SequentialEventletHandler(object):
     def running(self):
         return self._started
 
-    timeout_exception = TimeoutError
+    timeout_exception = KazooTimeoutError
 
     def _process_completion_queue(self):
         while True:

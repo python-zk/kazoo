@@ -43,7 +43,11 @@ class WriterNotClosedException(KazooException):
     """
 
 
-class KazooTimeoutError(Exception):
+class TimeoutError(Exception):
+    pass
+
+
+class KazooTimeoutError(Exception, TimeoutError):
     pass
 
 
