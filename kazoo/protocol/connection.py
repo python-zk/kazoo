@@ -13,6 +13,8 @@ from kazoo.exceptions import (
     AuthFailedError,
     ConnectionDropped,
     EXCEPTIONS,
+    ForceRetryError,
+    RetryFailedError,
     SessionExpiredError,
     NoNodeError
 )
@@ -36,10 +38,7 @@ from kazoo.protocol.states import (
     WatchedEvent,
     EVENT_TYPE_MAP,
 )
-from kazoo.retry import (
-    ForceRetryError,
-    RetryFailedError
-)
+
 
 log = logging.getLogger(__name__)
 
