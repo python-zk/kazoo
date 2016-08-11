@@ -19,6 +19,7 @@ import socket
 import threading
 import time
 
+from kazoo.exceptions import KazooTimeoutError
 import kazoo.python2atexit as python2atexit
 
 try:
@@ -32,10 +33,6 @@ from kazoo.handlers import utils
 _STOP = object()
 
 log = logging.getLogger(__name__)
-
-
-class KazooTimeoutError(Exception):
-    pass
 
 
 class AsyncResult(utils.AsyncResult):

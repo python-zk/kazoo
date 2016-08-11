@@ -43,6 +43,10 @@ class WriterNotClosedException(KazooException):
     """
 
 
+class KazooTimeoutError(Exception):
+    pass
+
+
 def _invalid_error_code():
     raise RuntimeError('Invalid error code')
 
