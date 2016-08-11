@@ -47,11 +47,11 @@ class TimeoutError(Exception):
     pass
 
 
-class KazooTimeoutError(Exception, TimeoutError):
+class KazooTimeoutError(KazooException, TimeoutError):
     pass
 
 
-class ForceRetryError(Exception):
+class ForceRetryError(KazooException):
     """Raised when some recipe logic wants to force a retry."""
 
 
