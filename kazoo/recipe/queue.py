@@ -11,8 +11,11 @@
 """
 
 import uuid
-from kazoo.exceptions import NoNodeError, NodeExistsError
-from kazoo.retry import ForceRetryError
+from kazoo.exceptions import (
+    NoNodeError,
+    NodeExistsError,
+    ForceRetryError
+)
 from kazoo.protocol.states import EventType
 
 

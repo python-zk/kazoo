@@ -43,6 +43,29 @@ class WriterNotClosedException(KazooException):
     """
 
 
+class TimeoutError(Exception):
+    pass
+
+
+class KazooTimeoutError(KazooException, TimeoutError):
+    pass
+
+
+class ForceRetryError(KazooException):
+    """Raised when some recipe logic wants to force a retry."""
+
+
+class RetryFailedError(KazooException):
+    """Raised when retrying an operation ultimately failed, after
+    retrying the maximum number of attempts.
+    """
+
+
+class InterruptedError(RetryFailedError):
+    """Raised when the retry is forcibly interrupted by the interrupt
+    function"""
+
+
 def _invalid_error_code():
     raise RuntimeError('Invalid error code')
 
