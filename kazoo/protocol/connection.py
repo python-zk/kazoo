@@ -439,7 +439,7 @@ class ConnectionHandler(object):
         if request.type == Auth.type:
             xid = AUTH_XID
         else:
-            self._xid += 1
+            self._xid = (self._xid % 2147483647) + 1
             xid = self._xid
 
         self._submit(request, connect_timeout, xid)
