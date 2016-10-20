@@ -1000,6 +1000,25 @@ class TestClient(KazooTestCase):
         watch_event.wait(1)
         self.assertTrue(watch_event.is_set())
 
+    def test_keep_session(self):
+        from kazoo.client import KazooClient
+        hosts = self.cluster[0].address
+        client = KazooClient(hosts=hosts, keep_session=True)
+        client.start()
+
+        first_client_id = client.client_id
+
+        client.stop()
+        client.close()
+
+        new_client = KazooClient(
+            hosts=hosts,
+            client_id=first_client_id,
+        )
+        new_client.start()
+
+        self.assertTrue(first_client_id[0] == new_client.client_id[0])
+
 
 dummy_dict = {
     'aversion': 1, 'ctime': 0, 'cversion': 1,

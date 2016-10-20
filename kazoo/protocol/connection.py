@@ -63,6 +63,8 @@ AUTH_XID = -4
 SET_WATCHES_XID = -8
 
 CLOSE_RESPONSE = Close.type
+KEEP_SESSION = object()
+SESSION_KEPT = object()
 
 if sys.version_info > (3, ):  # pragma: nocover
     def buffer(obj, offset=0):
@@ -441,6 +443,12 @@ class ConnectionHandler(object):
         if request is _CONNECTION_DROP:
             raise ConnectionDropped("Connection dropped: Testing")
 
+        # Special case when keeping the session after closing
+        if request is KEEP_SESSION:
+            client._queue.popleft()
+            self._read_sock.recv(1)
+            return SESSION_KEPT
+
         # Special case for auth packets
         if request.type == Auth.type:
             xid = AUTH_XID
@@ -567,7 +575,10 @@ class ConnectionHandler(object):
                         response = self._read_socket(read_timeout)
                         close_connection = response == CLOSE_RESPONSE
                     else:
-                        self._send_request(read_timeout, connect_timeout)
+                        close_connection = self._send_request(
+                            read_timeout,
+                            connect_timeout,
+                        ) == SESSION_KEPT
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
