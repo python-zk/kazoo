@@ -29,8 +29,8 @@ Authors
 
 ``kazoo`` started under the `Nimbus Project`_ and through collaboration with
 the open-source community has been merged with code from `Mozilla`_ and the
-`Zope Corporation`_. It has since gathered an active community of over two
-dozen contributors.
+`Zope Corporation`_. It has since gathered an active community of over fifty
+contributors.
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
 .. _the full docs: http://kazoo.rtfd.org/
