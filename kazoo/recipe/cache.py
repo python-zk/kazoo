@@ -58,7 +58,7 @@ class TreeCache(object):
 
         .. note::
 
-            This method is not thread safety.
+            This method is not thread safe.
         """
         if self._state == self.STATE_LATENT:
             self._state = self.STATE_STARTED
@@ -79,7 +79,7 @@ class TreeCache(object):
 
         .. note::
 
-            This method is not thread safety.
+            This method is not thread safe.
         """
         if self._state == self.STATE_STARTED:
             self._state = self.STATE_CLOSED
@@ -155,7 +155,7 @@ class TreeCache(object):
     def _publish_event(self, event_type, event_data=None):
         event = TreeEvent.make(event_type, event_data)
         if self._state != self.STATE_CLOSED:
-            logger.debug('public event: {0!r}'.format(event))
+            logger.debug('public event: %r', event)
             self._in_background(self._do_publish_event, event)
 
     def _do_publish_event(self, event):
@@ -260,7 +260,7 @@ class TreeNode(object):
         method(path, *args, **kwargs).rawlink(callback)
 
     def _process_watch(self, watched_event):
-        logger.debug('process_watch: {0!r}'.format(watched_event))
+        logger.debug('process_watch: %r', watched_event)
         with handle_exception(self._tree._error_listeners):
             if watched_event.type == EventType.CREATED:
                 assert self._parent is None, 'unexpected CREATED on non-root'
@@ -273,7 +273,7 @@ class TreeNode(object):
                 self._refresh_children()
 
     def _process_result(self, method_name, path, result):
-        logger.debug('process_result: {0} {1}'.format(method_name, path))
+        logger.debug('process_result: %s %s', method_name, path)
         if method_name == 'exists':
             assert self._parent is None, 'unexpected EXISTS on non-root'
             if result.successful():
@@ -308,7 +308,7 @@ class TreeNode(object):
                 else:
                     self._publish_event(TreeEvent.NODE_ADDED, self._data)
         else:  # pragma: no cover
-            logger.warning('unknown operation %s' % method_name)
+            logger.warning('unknown operation %s', method_name)
             self._tree._outstanding_ops -= 1
             return
 
@@ -374,9 +374,11 @@ def handle_exception(listeners):
     try:
         yield
     except Exception as e:
-        logger.debug('processing error: {0!r}'.format(e))
+        logger.debug('processing error: %r', e)
         for listener in listeners:
             try:
                 listener(e)
             except:  # pragma: no cover
                 logger.exception('Exception handling exception')  # oops
+        else:
+            logger.exception('No listener to process %r', e)
