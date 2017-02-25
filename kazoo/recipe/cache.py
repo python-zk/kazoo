@@ -69,7 +69,7 @@ class TreeCache(object):
         self._client.ensure_path(self._root._path)
 
         if self._client.connected:
-            self._root.was_created()
+            self._root.on_created()
 
     def close(self):
         """Closes the cache.
@@ -85,7 +85,7 @@ class TreeCache(object):
             self._state = self.STATE_CLOSED
             self._client.remove_listener(self._session_watcher)
             with handle_exception(self._error_listeners):
-                self._root.was_deleted()
+                self._root.on_deleted()
 
     def listen(self, listener):
         """Registers a function to listen the cache events.
@@ -171,7 +171,7 @@ class TreeCache(object):
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)
         elif state == KazooState.CONNECTED:
             with handle_exception(self._error_listeners):
-                self._root.was_reconnected()
+                self._root.on_reconnected()
                 self._publish_event(TreeEvent.CONNECTION_RECONNECTED)
         elif state == KazooState.LOST:
             self._is_initialized = False
@@ -206,20 +206,20 @@ class TreeNode(object):
     def make_root(cls, tree, path):
         return cls(tree, path, None)
 
-    def was_reconnected(self):
+    def on_reconnected(self):
         self._refresh()
         for child in self._children.values():
-            child.was_reconnected()
+            child.on_reconnected()
 
-    def was_created(self):
+    def on_created(self):
         self._refresh()
 
-    def was_deleted(self):
+    def on_deleted(self):
         old_children, self._children = self._children, {}
         old_data, self._data = self._data, None
 
         for old_child in old_children.values():
-            old_child.was_deleted()
+            old_child.on_deleted()
 
         if self._tree._state == self._tree.STATE_CLOSED:
             return
@@ -264,9 +264,9 @@ class TreeNode(object):
         with handle_exception(self._tree._error_listeners):
             if watched_event.type == EventType.CREATED:
                 assert self._parent is None, 'unexpected CREATED on non-root'
-                self.was_created()
+                self.on_created()
             elif watched_event.type == EventType.DELETED:
-                self.was_deleted()
+                self.on_deleted()
             elif watched_event.type == EventType.CHANGED:
                 self._refresh_data()
             elif watched_event.type == EventType.CHILD:
@@ -279,24 +279,24 @@ class TreeNode(object):
             if result.successful():
                 if self._state == self.STATE_DEAD:
                     self._state = self.STATE_PENDING
-                self.was_created()
+                self.on_created()
         elif method_name == 'get_children':
             try:
                 children = result.get()
             except NoNodeError:
-                self.was_deleted()
+                self.on_deleted()
             else:
                 for child in sorted(children):
                     full_path = os.path.join(path, child)
                     if child not in self._children:
                         node = TreeNode(self._tree, full_path, self)
                         self._children[child] = node
-                        node.was_created()
+                        node.on_created()
         elif method_name == 'get':
             try:
                 data, stat = result.get()
             except NoNodeError:
-                self.was_deleted()
+                self.on_deleted()
             else:
                 old_data, self._data = (
                     self._data, NodeData.make(path, data, stat))

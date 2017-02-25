@@ -253,8 +253,8 @@ class KazooTreeCacheTests(KazooTestCase):
         error_value = FakeException()
         error_handler = Mock()
 
-        with patch.object(TreeNode, 'was_deleted') as was_deleted:
-            was_deleted.side_effect = [error_value]
+        with patch.object(TreeNode, 'on_deleted') as on_deleted:
+            on_deleted.side_effect = [error_value]
 
             self.make_cache()
             self.cache.listen_fault(error_handler)
