@@ -4,6 +4,7 @@ from mock import patch, call, Mock
 from nose.tools import eq_, ok_, assert_not_equal, raises
 
 from kazoo.testing import KazooTestCase
+from kazoo.exceptions import KazooException
 from kazoo.recipe.cache import TreeCache, TreeNode, TreeEvent
 
 
@@ -60,7 +61,7 @@ class KazooTreeCacheTests(KazooTestCase):
         eq_(self.cache._state, TreeCache.STATE_STARTED)
         eq_(self.cache._root._state, TreeNode.STATE_LIVE)
 
-    @raises(RuntimeError)
+    @raises(KazooException)
     def test_start_twice(self):
         self.make_cache()
         self.cache.start()

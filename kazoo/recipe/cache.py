@@ -19,7 +19,7 @@ import contextlib
 import functools
 import operator
 
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoNodeError, KazooException
 from kazoo.protocol.states import KazooState, EventType
 
 
@@ -63,7 +63,7 @@ class TreeCache(object):
         if self._state == self.STATE_LATENT:
             self._state = self.STATE_STARTED
         else:
-            raise RuntimeError('already started')
+            raise KazooException('already started')
 
         self._client.add_listener(self._session_watcher)
         self._client.ensure_path(self._root._path)
