@@ -75,11 +75,11 @@ class Lock(object):
 
     # Node name, after the contender UUID, before the sequence
     # number. Involved in read/write locks.
-    node_name = "__lock__"
+    _NODE_NAME = "__lock__"
 
     # Node names which exclude this contender when present at a lower
     # sequence number. Involved in read/write locks.
-    exclude_names = None
+    _EXCLUDE_NAMES = ["__lock__"]
 
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo lock.
@@ -89,6 +89,7 @@ class Lock(object):
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
+
         """
         self.client = client
         self.path = path
@@ -104,7 +105,7 @@ class Lock(object):
         # create request to succeed on the server, but for a failure to
         # prevent us from getting back the full path name. We prefix our
         # lock name with a uuid and can check for its presence on retry.
-        self.prefix = uuid.uuid4().hex + self.node_name
+        self.prefix = uuid.uuid4().hex + self._NODE_NAME
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
@@ -254,7 +255,7 @@ class Lock(object):
 
     def predecessor(self, children, index):
         for c in children[:index]:
-            if any(n in c for n in self.exclude_names):
+            if any(n in c for n in self._EXCLUDE_NAMES):
                 return c
         return None
 
@@ -374,8 +375,8 @@ class WriteLock(Lock):
     shared lock.
 
     """
-    node_name = "__lock__"
-    exclude_names = ["__lock__", "__rlock__"]
+    _NODE_NAME = "__lock__"
+    _EXCLUDE_NAMES = ["__lock__", "__rlock__"]
 
 
 class ReadLock(Lock):
@@ -403,8 +404,8 @@ class ReadLock(Lock):
     shared lock.
 
     """
-    node_name = "__lock__"
-    exclude_names = ["__lock__"]
+    _NODE_NAME = "__rlock__"
+    _EXCLUDE_NAMES = ["__lock__"]
 
 
 class Semaphore(object):
