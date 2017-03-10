@@ -58,6 +58,8 @@ from kazoo.recipe.election import Election
 from kazoo.recipe.lease import NonBlockingLease
 from kazoo.recipe.lease import MultiNonBlockingLease
 from kazoo.recipe.lock import Lock
+from kazoo.recipe.lock import ReadLock
+from kazoo.recipe.lock import WriteLock
 from kazoo.recipe.lock import Semaphore
 from kazoo.recipe.partitioner import SetPartitioner
 from kazoo.recipe.party import Party
@@ -282,6 +284,8 @@ class KazooClient(object):
         self.NonBlockingLease = partial(NonBlockingLease, self)
         self.MultiNonBlockingLease = partial(MultiNonBlockingLease, self)
         self.Lock = partial(Lock, self)
+        self.ReadLock = partial(ReadLock, self)
+        self.WriteLock = partial(WriteLock, self)
         self.Party = partial(Party, self)
         self.Queue = partial(Queue, self)
         self.LockingQueue = partial(LockingQueue, self)

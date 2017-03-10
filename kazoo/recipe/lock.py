@@ -68,31 +68,27 @@ class Lock(object):
     Note: This lock is not *re-entrant*. Repeated calls after already
     acquired will block.
 
-    This is an exclusive lock. For a read/write lock, see :method:`WLock` and
-    :method:`RLock`.
+    This is an exclusive lock. For a read/write lock, see :class:`WriteLock` and
+    :class:`ReadLock`.
 
     """
 
-    def __init__(self, client, path, identifier=None, node_name="__lock__",
-                 exclude_names=None):
-        """Create a Kazoo lock.
+    # Node name, after the contender UUID, before the sequence
+    # number. Involved in read/write locks.
+    node_name = "__lock__"
 
-        node_name and exclude_names are typically only used internally to
-        implement read/write locks. They should be left unset for exclusive
-        locks.
+    # Node names which exclude this contender when present at a lower
+    # sequence number. Involved in read/write locks.
+    exclude_names = None
+
+    def __init__(self, client, path, identifier=None):
+        """Create a Kazoo lock.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The lock path to use.
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
-        :param node_name: Node name, after the contender UUID, before the
-                          sequence number. Involved in read/write locks. For a
-                          normal (exclusive) lock, leave unset.
-        :param exclude_names: Node names which exclude this contender when
-                              present at a lower sequence number. Involved in
-                              read/write locks. For a normal (exclusive) lock,
-                              leave unset.
         """
         self.client = client
         self.path = path
@@ -103,12 +99,6 @@ class Lock(object):
         self.node = None
 
         self.wake_event = client.handler.event_object()
-
-        self.node_name = node_name
-
-        if exclude_names is None:
-            exclude_names = [self.node_name]
-        self.exclude_names = exclude_names
 
         # props to Netflix Curator for this trick. It is possible for our
         # create request to succeed on the server, but for a failure to
@@ -359,54 +349,62 @@ class Lock(object):
         self.release()
 
 
-def WLock(*args, **kwargs):
-    """Kazoo read-write lock (writer side).
+class WriteLock(Lock):
+    """Kazoo Write Lock
 
-    Example usage:
-
-    .. code-block:: python
-
-        zk = KazooClient()
-        lock = WLock(zk, "/lockpath", "my-identifier")
-        with lock:  # blocks waiting for any outstanding readers and writers
-            # do something with the lock
-
-    This is an implementation of the ZooKeeper "Shared Locks" recipe:
-    http://zookeeper.apache.org/doc/trunk/recipes.html#Shared+Locks
-
-    This is a writer-preference shared lock.
-
-    The lock path passed to WLock and RLock must match for them to communicate.
-    """
-    kwargs["node_name"] = "__lock__"
-    # Both write and read locks exclude new writers.
-    kwargs["exclude_names"] = ["__lock__", "__rlock__"]
-    return Lock(*args, **kwargs)
-
-
-def RLock(*args, **kwargs):
-    """Kazoo read-write lock (reader side).
-
-    Example usage:
+    Example usage with a :class:`~kazoo.client.KazooClient` instance:
 
     .. code-block:: python
 
         zk = KazooClient()
-        lock = RLock(zk, "/lockpath", "my-identifier")
-        with lock:  # blocks waiting for any outstanding writers
+        zk.start()
+        lock = zk.WriteLock("/lockpath", "my-identifier")
+        with lock:  # blocks waiting for lock acquisition
             # do something with the lock
 
-    This is an implementation of the ZooKeeper "Shared Locks" recipe:
-    http://zookeeper.apache.org/doc/trunk/recipes.html#Shared+Locks
+    The lock path passed to WriteLock and ReadLock must match for them to
+    communicate.  The write lock can not be acquired if it is held by
+    any readers or writers.
 
-    This is a writer-preference shared lock.
+    Note: This lock is not *re-entrant*. Repeated calls after already
+    acquired will block.
 
-    The lock path passed to WLock and RLock must match for them to communicate.
+    This is the write-side of a shared lock.  See :class:`Lock` for a
+    standard exclusive lock and :class:`ReadLock` for the read-side of a
+    shared lock.
+
     """
-    kwargs["node_name"] = "__rlock__"
-    # Only write locks exclude new readers.
-    kwargs["exclude_names"] = ["__lock__"]
-    return Lock(*args, **kwargs)
+    node_name = "__lock__"
+    exclude_names = ["__lock__", "__rlock__"]
+
+
+class ReadLock(Lock):
+    """Kazoo Read Lock
+
+    Example usage with a :class:`~kazoo.client.KazooClient` instance:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        zk.start()
+        lock = zk.WriteLock("/lockpath", "my-identifier")
+        with lock:  # blocks waiting for outstanding writers
+            # do something with the lock
+
+    The lock path passed to WriteLock and ReadLock must match for them to
+    communicate.  The read lock blocks if it is held by any writers,
+    but multiple readers may hold the lock.
+
+    Note: This lock is not *re-entrant*. Repeated calls after already
+    acquired will block.
+
+    This is the read-side of a shared lock.  See :class:`Lock` for a
+    standard exclusive lock and :class:`WriteLock` for the write-side of a
+    shared lock.
+
+    """
+    node_name = "__lock__"
+    exclude_names = ["__lock__"]
 
 
 class Semaphore(object):

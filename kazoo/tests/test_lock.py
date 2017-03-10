@@ -398,6 +398,50 @@ class KazooLockTests(KazooTestCase):
             t.join()
             client2.stop()
 
+    def test_read_lock(self):
+        # Test that we can obtain a read lock
+        lock = self.client.ReadLock(self.lockpath, "reader one")
+        gotten = lock.acquire(blocking=False)
+        self.assertTrue(gotten)
+        self.assertTrue(lock.is_acquired)
+        # and that it's still not reentrant.
+        gotten = lock.acquire(blocking=False)
+        self.assertFalse(gotten)
+
+        # Test that a second client we can share the same read lock
+        client2 = self._get_client()
+        client2.start()
+        lock2 = client2.ReadLock(self.lockpath, "reader two")
+        gotten = lock2.acquire(blocking=False)
+        self.assertTrue(gotten)
+        self.assertTrue(lock2.is_acquired)
+        gotten = lock2.acquire(blocking=False)
+        self.assertFalse(gotten)
+
+        # Test that a writer is unable to share it
+        client3 = self._get_client()
+        client3.start()
+        lock3 = client3.WriteLock(self.lockpath, "writer")
+        gotten = lock3.acquire(blocking=False)
+        self.assertFalse(gotten)
+
+    def test_write_lock(self):
+        # Test that we can obtain a write lock
+        lock = self.client.WriteLock(self.lockpath, "writer")
+        gotten = lock.acquire(blocking=False)
+        self.assertTrue(gotten)
+        self.assertTrue(lock.is_acquired)
+        gotten = lock.acquire(blocking=False)
+        self.assertFalse(gotten)
+
+        # Test that we are unable to obtain a read lock while the
+        # write lock is held.
+        client2 = self._get_client()
+        client2.start()
+        lock2 = client2.ReadLock(self.lockpath, "reader")
+        gotten = lock2.acquire(blocking=False)
+        self.assertFalse(gotten)
+
 
 class TestSemaphore(KazooTestCase):
 
