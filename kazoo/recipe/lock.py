@@ -388,7 +388,7 @@ class ReadLock(Lock):
 
         zk = KazooClient()
         zk.start()
-        lock = zk.WriteLock("/lockpath", "my-identifier")
+        lock = zk.ReadLock("/lockpath", "my-identifier")
         with lock:  # blocks waiting for outstanding writers
             # do something with the lock
 
