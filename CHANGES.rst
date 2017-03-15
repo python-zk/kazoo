@@ -72,6 +72,8 @@ Features
 - Add a NonBlockingLease recipe.  The recipe allows e.g. cron jobs scheduled
   on multiple machines to ensure that at most N instances will run a particular
   job, with lease timeout for graceful handover in case of node failures.
+- Add ``sasl_server_principal`` to ``kazoo.client.Client``, which enables kazoo
+	to authenticate against a kerberized Zookeeper.
 
 
 Bug Handling
