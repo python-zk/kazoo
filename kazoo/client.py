@@ -634,7 +634,7 @@ class KazooClient(object):
 
         peer = self._connection._socket.getpeername()[:2]
         sock = self.handler.create_connection(
-            peer, timeout=self._session_timeout / 1000.0)
+            peer[:2], timeout=self._session_timeout / 1000.0)
         sock.sendall(cmd)
         result = sock.recv(8192)
         sock.close()
