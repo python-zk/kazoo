@@ -294,6 +294,13 @@ class KazooClient(object):
             raise TypeError('__init__() got unexpected keyword arguments: %s'
                             % (kwargs.keys(),))
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.stop()
+        self.close()
+
     def _reset(self):
         """Resets a variety of client states for a new connection."""
         self._queue = deque()
