@@ -297,7 +297,7 @@ class KazooClient(object):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
         self.close()
 
