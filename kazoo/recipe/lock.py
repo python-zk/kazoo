@@ -254,7 +254,7 @@ class Lock(object):
                 self.client.remove_listener(self._watch_session)
 
     def predecessor(self, children, index):
-        for c in children[:index]:
+        for c in reversed(children[:index]):
             if any(n in c for n in self._EXCLUDE_NAMES):
                 return c
         return None
