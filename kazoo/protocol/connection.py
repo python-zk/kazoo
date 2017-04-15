@@ -51,10 +51,16 @@ _CONNECTION_DROP = object()
 
 STOP_CONNECTING = object()
 
+NONE_EVENT = -1
 CREATED_EVENT = 1
 DELETED_EVENT = 2
 CHANGED_EVENT = 3
 CHILD_EVENT = 4
+
+KEEPER_STATES_MAP = {
+    3: KeeperState.CONNECTED,
+    5: KeeperState.CONNECTED_RO,
+}
 
 WATCH_XID = -1
 PING_XID = -2
@@ -316,6 +322,9 @@ class ConnectionHandler(object):
             watchers.extend(client._child_watchers.pop(path, []))
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
+        elif watch.type == NONE_EVENT and watch.state in KEEPER_STATES_MAP:
+            client._session_callback(KEEPER_STATES_MAP[watch.state])
+            return
         else:
             self.logger.warn('Received unknown event %r', watch.type)
             return
