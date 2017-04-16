@@ -252,7 +252,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
 class ZookeeperCluster(object):
 
     def __init__(self, install_path=None, classpath=None,
-                 size=3, port_offset=20000):
+                 size=1, port_offset=20000):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
