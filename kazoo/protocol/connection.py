@@ -555,7 +555,7 @@ class ConnectionHandler(object):
                             raise ConnectionDropped(
                                 "outstanding heartbeat ping not received")
                         self._send_ping(connect_timeout)
-                    elif s[0] == self._socket:
+                    elif self._socket in s:
                         response = self._read_socket(read_timeout)
                         close_connection = response == CLOSE_RESPONSE
                     else:
