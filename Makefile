@@ -40,6 +40,7 @@ ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
 endif
 	$(INSTALL) -U -r requirements.txt
+	$(INSTALL) -U tox
 	$(PYTHON) setup.py develop
 	$(INSTALL) kazoo[test]
 
@@ -47,7 +48,7 @@ clean:
 	rm -rf $(BUILD_DIRS)
 
 test:
-	tox -e$(TOX_VENV)
+	$(BIN)/tox -e$(TOX_VENV)
 
 html:
 	cd docs && \
