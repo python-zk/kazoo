@@ -62,6 +62,8 @@ class TreeCache(object):
         """
         if self._state == self.STATE_LATENT:
             self._state = self.STATE_STARTED
+        elif self._state == self.STATE_CLOSED:
+            raise KazooException('already closed')
         else:
             raise KazooException('already started')
 
@@ -76,6 +78,9 @@ class TreeCache(object):
 
         A closed cache was detached from ZooKeeper's changes. And all nodes
         will be invalidated.
+
+        Once a tree cache was closed, it could not be started again. You should
+        only close a tree cache while you want to recycle it.
 
         .. note::
 

@@ -62,8 +62,15 @@ class KazooTreeCacheTests(KazooTestCase):
         eq_(self.cache._root._state, TreeNode.STATE_LIVE)
 
     @raises(KazooException)
-    def test_start_twice(self):
+    def test_start_started(self):
         self.make_cache()
+        self.cache.start()
+
+    @raises(KazooException)
+    def test_start_closed(self):
+        self.make_cache()
+        self.cache.start()
+        self.cache.close()
         self.cache.start()
 
     def test_close(self):
