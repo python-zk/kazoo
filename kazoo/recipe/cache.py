@@ -248,15 +248,14 @@ class TreeNode(object):
         self._refresh_children()
 
     def _refresh_data(self):
-        self._tree._outstanding_ops += 1
         self._call_client('get', self._path)
 
     def _refresh_children(self):
         # TODO max-depth checking support
-        self._tree._outstanding_ops += 1
         self._call_client('get_children', self._path)
 
     def _call_client(self, method_name, path, *args):
+        self._tree._outstanding_ops += 1
         callback = functools.partial(
             self._tree._in_background, self._process_result,
             method_name, path)
@@ -281,7 +280,8 @@ class TreeNode(object):
         logger.debug('process_result: %s %s', method_name, path)
         if method_name == 'exists':
             assert self._parent is None, 'unexpected EXISTS on non-root'
-            if result.successful():
+            # the value of result will be set with `None` if node not exists.
+            if result.get() is not None:
                 if self._state == self.STATE_DEAD:
                     self._state = self.STATE_PENDING
                 self.on_created()

@@ -256,6 +256,10 @@ class KazooTreeCacheTests(KazooTestCase):
         eq_(event.event_data.path, self.path)
         eq_(event.event_data.stat.version, 0)
 
+        self.assertTrue(
+            self.cache._outstanding_ops >= 0,
+            'unexpected outstanding ops %r' % self.cache._outstanding_ops)
+
     def test_exception_handler(self):
         error_value = FakeException()
         error_handler = Mock()
