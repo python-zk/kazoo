@@ -13,6 +13,18 @@ Public API
 
         .. automethod:: __init__
 
+    .. autoclass:: ReadLock
+        :members:
+        :inherited-members:
+
+        .. automethod:: __init__
+
+    .. autoclass:: WriteLock
+        :members:
+        :inherited-members:
+
+        .. automethod:: __init__
+
     .. autoclass:: Semaphore
         :members:
 
