@@ -441,6 +441,12 @@ class ConnectionHandler(object):
         if request is _CONNECTION_DROP:
             raise ConnectionDropped("Connection dropped: Testing")
 
+        # Special case when keeping the session after closing
+        if request is None:
+            client._queue.popleft()
+            self._read_sock.recv(1)
+            return CLOSE_RESPONSE
+
         # Special case for auth packets
         if request.type == Auth.type:
             xid = AUTH_XID
@@ -567,7 +573,11 @@ class ConnectionHandler(object):
                         response = self._read_socket(read_timeout)
                         close_connection = response == CLOSE_RESPONSE
                     else:
-                        self._send_request(read_timeout, connect_timeout)
+                        response = self._send_request(
+                            read_timeout,
+                            connect_timeout,
+                        )
+                        close_connection = response == CLOSE_RESPONSE
             self.logger.info('Closing connection to %s:%s', host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
