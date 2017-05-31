@@ -19,6 +19,7 @@ Documentation
 
 Features
 ********
+- allow having observers and different sized clusters
 
 Bug Handling
 ************

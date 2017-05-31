@@ -26,6 +26,8 @@ def get_global_cluster():
         ZK_HOME = os.environ.get("ZOOKEEPER_PATH")
         ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
         ZK_PORT_OFFSET = int(os.environ.get("ZOOKEEPER_PORT_OFFSET", 20000))
+        ZK_CLUSTER_SIZE = int(os.environ.get("ZOOKEEPER_CLUSTER_SIZE", 3))
+        ZK_OBSERVER_START_ID = int(os.environ.get("ZOOKEEPER_OBSERVER_START_ID", -1))
 
         assert ZK_HOME or ZK_CLASSPATH, (
             "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment "
@@ -36,6 +38,8 @@ def get_global_cluster():
             install_path=ZK_HOME,
             classpath=ZK_CLASSPATH,
             port_offset=ZK_PORT_OFFSET,
+            size=ZK_CLUSTER_SIZE,
+            observer_start_id=ZK_OBSERVER_START_ID
         )
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
