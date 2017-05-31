@@ -557,10 +557,10 @@ class Semaphore(object):
         w = _Watch(duration=timeout)
         w.start()
         lock = self.client.Lock(self.lock_path, self.data)
-        gotten = lock.acquire(blocking=blocking, timeout=w.leftover())
-        if not gotten:
-            return False
         try:
+            gotten = lock.acquire(blocking=blocking, timeout=w.leftover())
+            if not gotten:
+                return False
             while True:
                 self.wake_event.clear()
 
