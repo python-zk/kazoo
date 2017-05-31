@@ -16,7 +16,6 @@ organized alphabetically by module name.
    api/interfaces
    api/protocol/states
    api/recipe/barrier
-   api/recipe/cache
    api/recipe/counter
    api/recipe/election
    api/recipe/lease
