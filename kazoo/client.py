@@ -615,8 +615,10 @@ class KazooClient(object):
 
         self._stopped.set()
         self._queue.append((CloseInstance, None))
-        self._connection._write_sock.send(b'\0')
-        self._safe_close()
+        try:
+            self._connection._write_sock.send(b'\0')
+        finally:
+            self._safe_close()
 
     def restart(self):
         """Stop and restart the Zookeeper session."""
