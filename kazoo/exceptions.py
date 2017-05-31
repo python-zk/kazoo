@@ -52,10 +52,7 @@ EXCEPTIONS = defaultdict(_invalid_error_code)
 
 def _zookeeper_exception(code):
     def decorator(klass):
-        def create(*args, **kwargs):
-            return klass(args, kwargs)
-
-        EXCEPTIONS[code] = create
+        EXCEPTIONS[code] = klass
         klass.code = code
         return klass
 
