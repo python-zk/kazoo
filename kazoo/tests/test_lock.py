@@ -398,6 +398,16 @@ class KazooLockTests(KazooTestCase):
             t.join()
             client2.stop()
 
+    def test_lock_no_retry(self):
+        client = self._get_client()
+        client.start()
+        # Try to get a lock on a path without a leading slash.
+        lock = client.Lock(self.lockpath[1:], "one")
+        try:
+            lock.acquire(timeout=0)
+        finally:
+            # Cleanup
+            client.stop()
 
 class TestSemaphore(KazooTestCase):
 

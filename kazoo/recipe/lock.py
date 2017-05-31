@@ -203,7 +203,7 @@ class Lock(object):
             node = self.client.create(self.create_path, self.data,
                                       ephemeral=True, sequence=True)
             # strip off path to node
-            node = node[len(self.path) + 1:]
+            node = node.rpartition("/")[-1]
 
         self.node = node
 
