@@ -49,6 +49,7 @@ from kazoo.protocol.states import KeeperState
 from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
+from kazoo.utils import bind
 
 # convenience API
 from kazoo.recipe.barrier import Barrier
@@ -94,6 +95,7 @@ _RETRY_COMPAT_MAPPING = dict(
 )
 
 
+@bind.on_demand
 class KazooClient(object):
     """An Apache Zookeeper Python client supporting alternate callback
     handlers and high-level functionality.
@@ -104,6 +106,23 @@ class KazooClient(object):
     :class:`~kazoo.protocol.states.WatchedEvent` instance.
 
     """
+
+    Barrier = bind(Barrier)
+    Counter = bind(Counter)
+    DoubleBarrier = bind(DoubleBarrier)
+    ChildrenWatch = bind(ChildrenWatch)
+    DataWatch = bind(DataWatch)
+    Election = bind(Election)
+    NonBlockingLease = bind(NonBlockingLease)
+    MultiNonBlockingLease = bind(MultiNonBlockingLease)
+    Lock = bind(Lock)
+    Party = bind(Party)
+    Queue = bind(Queue)
+    LockingQueue = bind(LockingQueue)
+    SetPartitioner = bind(SetPartitioner)
+    Semaphore = bind(Semaphore)
+    ShallowParty = bind(ShallowParty)
+
     def __init__(self, hosts='127.0.0.1:2181',
                  timeout=10.0, client_id=None, handler=None,
                  default_acl=None, auth_data=None, read_only=None,
@@ -272,22 +291,6 @@ class KazooClient(object):
         def _retry(*args, **kwargs):
             return self._retry.copy()(*args, **kwargs)
         self.retry = _retry
-
-        self.Barrier = partial(Barrier, self)
-        self.Counter = partial(Counter, self)
-        self.DoubleBarrier = partial(DoubleBarrier, self)
-        self.ChildrenWatch = partial(ChildrenWatch, self)
-        self.DataWatch = partial(DataWatch, self)
-        self.Election = partial(Election, self)
-        self.NonBlockingLease = partial(NonBlockingLease, self)
-        self.MultiNonBlockingLease = partial(MultiNonBlockingLease, self)
-        self.Lock = partial(Lock, self)
-        self.Party = partial(Party, self)
-        self.Queue = partial(Queue, self)
-        self.LockingQueue = partial(LockingQueue, self)
-        self.SetPartitioner = partial(SetPartitioner, self)
-        self.Semaphore = partial(Semaphore, self)
-        self.ShallowParty = partial(ShallowParty, self)
 
         # If we got any unhandled keywords, complain like Python would
         if kwargs:
