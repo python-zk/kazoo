@@ -68,18 +68,31 @@ class Lock(object):
     Note: This lock is not *re-entrant*. Repeated calls after already
     acquired will block.
 
-    """
-    _NODE_NAME = '__lock__'
+    This is an exclusive lock. For a read/write lock, see :method:`WLock` and
+    :method:`RLock`.
 
-    def __init__(self, client, path, identifier=None):
+    """
+
+    def __init__(self, client, path, identifier=None, node_name="__lock__",
+                 exclude_names=None):
         """Create a Kazoo lock.
+
+        node_name and exclude_names are typically only used internally to
+        implement read/write locks. They should be left unset for exclusive
+        locks.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The lock path to use.
         :param identifier: Name to use for this lock contender. This
                            can be useful for querying to see who the
                            current lock contenders are.
-
+        :param node_name: Node name, after the contender UUID, before the
+                          sequence number. Involved in read/write locks. For a
+                          normal (exclusive) lock, leave unset.
+        :param exclude_names: Node names which exclude this contender when
+                              present at a lower sequence number. Involved in
+                              read/write locks. For a normal (exclusive) lock,
+                              leave unset.
         """
         self.client = client
         self.path = path
@@ -91,11 +104,17 @@ class Lock(object):
 
         self.wake_event = client.handler.event_object()
 
+        self.node_name = node_name
+
+        if exclude_names is None:
+            exclude_names = [self.node_name]
+        self.exclude_names = exclude_names
+
         # props to Netflix Curator for this trick. It is possible for our
         # create request to succeed on the server, but for a failure to
         # prevent us from getting back the full path name. We prefix our
         # lock name with a uuid and can check for its presence on retry.
-        self.prefix = uuid.uuid4().hex + self._NODE_NAME
+        self.prefix = uuid.uuid4().hex + self.node_name
         self.create_path = self.path + "/" + self.prefix
 
         self.create_tried = False
@@ -224,14 +243,15 @@ class Lock(object):
                 # node was removed
                 raise ForceRetryError()
 
-            if self.acquired_lock(children, our_index):
+            predecessor = self.predecessor(children, our_index)
+            if not predecessor:
                 return True
 
             if not blocking:
                 return False
 
             # otherwise we are in the mix. watch predecessor and bide our time
-            predecessor = self.path + "/" + children[our_index - 1]
+            predecessor = self.path + "/" + predecessor
             self.client.add_listener(self._watch_session)
             try:
                 if self.client.exists(predecessor, self._watch_predecessor):
@@ -242,8 +262,11 @@ class Lock(object):
             finally:
                 self.client.remove_listener(self._watch_session)
 
-    def acquired_lock(self, children, index):
-        return index == 0
+    def predecessor(self, children, index):
+        for c in children[:index]:
+            if any(n in c for n in self.exclude_names):
+                return c
+        return None
 
     def _watch_predecessor(self, event):
         self.wake_event.set()
@@ -251,9 +274,22 @@ class Lock(object):
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
 
-        # can't just sort directly: the node names are prefixed by uuids
-        lockname = self._NODE_NAME
-        children.sort(key=lambda c: c[c.find(lockname) + len(lockname):])
+        # Node names are prefixed by a type: strip the prefix first, which may
+        # be one of multiple values in case of a read-write lock, and return
+        # only the sequence number (as a string since it is padded and will sort
+        # correctly anyway).
+        #
+        # In some cases, the lock path may contain nodes with other prefixes
+        # (eg. in case of a lease), just sort them last ('~' sorts after all
+        # ASCII digits).
+        def _seq(c):
+            for name in ["__lock__", "__rlock__"]:
+                idx = c.find(name)
+                if idx != -1:
+                    return c[idx + len(name):]
+            # Sort unknown node names eg. "lease_holder" last.
+            return '~'
+        children.sort(key=_seq)
         return children
 
     def _find_node(self):
@@ -321,6 +357,56 @@ class Lock(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
+
+
+def WLock(*args, **kwargs):
+    """Kazoo read-write lock (writer side).
+
+    Example usage:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        lock = WLock(zk, "/lockpath", "my-identifier")
+        with lock:  # blocks waiting for any outstanding readers and writers
+            # do something with the lock
+
+    This is an implementation of the ZooKeeper "Shared Locks" recipe:
+    http://zookeeper.apache.org/doc/trunk/recipes.html#Shared+Locks
+
+    This is a writer-preference shared lock.
+
+    The lock path passed to WLock and RLock must match for them to communicate.
+    """
+    kwargs["node_name"] = "__lock__"
+    # Both write and read locks exclude new writers.
+    kwargs["exclude_names"] = ["__lock__", "__rlock__"]
+    return Lock(*args, **kwargs)
+
+
+def RLock(*args, **kwargs):
+    """Kazoo read-write lock (reader side).
+
+    Example usage:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        lock = RLock(zk, "/lockpath", "my-identifier")
+        with lock:  # blocks waiting for any outstanding writers
+            # do something with the lock
+
+    This is an implementation of the ZooKeeper "Shared Locks" recipe:
+    http://zookeeper.apache.org/doc/trunk/recipes.html#Shared+Locks
+
+    This is a writer-preference shared lock.
+
+    The lock path passed to WLock and RLock must match for them to communicate.
+    """
+    kwargs["node_name"] = "__rlock__"
+    # Only write locks exclude new readers.
+    kwargs["exclude_names"] = ["__lock__"]
+    return Lock(*args, **kwargs)
 
 
 class Semaphore(object):
