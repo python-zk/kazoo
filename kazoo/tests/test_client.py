@@ -414,6 +414,22 @@ class TestConnection(KazooTestCase):
             client._state = oldstate
             client._connection._write_sock = None
 
+    def test_watch_trigger_expire(self):
+        client = self.client
+        cv = self.make_event()
+
+        client.create("/test", b"")
+
+        def test_watch(event):
+            cv.set()
+
+        client.get("/test/", watch=test_watch)
+        self.expire_session(self.make_event)
+
+
+        cv.wait(3)
+        assert cv.is_set()
+
 
 class TestClient(KazooTestCase):
     def _makeOne(self, *args):

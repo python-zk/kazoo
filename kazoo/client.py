@@ -44,8 +44,11 @@ from kazoo.protocol.serialization import (
     Sync,
     Transaction
 )
+from kazoo.protocol.states import Callback
+from kazoo.protocol.states import EventType
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
+from kazoo.protocol.states import WatchedEvent
 from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
@@ -192,7 +195,8 @@ class KazooClient(object):
         self._state = KeeperState.CLOSED
         self.state = KazooState.LOST
         self.state_listeners = set()
-
+        self._child_watchers = defaultdict(set)
+        self._data_watchers = defaultdict(set)
         self._reset()
         self.read_only = read_only
 
@@ -309,8 +313,19 @@ class KazooClient(object):
         self._protocol_version = None
 
     def _reset_watchers(self):
+        watchers = []
+        for child_watchers in six.itervalues(self._child_watchers):
+            watchers.extend(child_watchers)
+
+        for data_watchers in six.itervalues(self._data_watchers):
+            watchers.extend(data_watchers)
+
         self._child_watchers = defaultdict(set)
         self._data_watchers = defaultdict(set)
+
+        ev = WatchedEvent(EventType.NONE, self._state, None)
+        for watch in watchers:
+            self.handler.dispatch_callback(Callback("watch", watch, (ev,)))
 
     def _reset_session(self):
         self._session_id = None
