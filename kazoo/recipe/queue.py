@@ -241,7 +241,10 @@ class LockingQueue(BaseQueue):
         lock_id, _ = self.processing_element
         lock_path = "{path}/{id}".format(path=self._lock_path, id=lock_id)
         self.client.sync(lock_path)
-        value, stat = self.client.retry(self.client.get, lock_path)
+        try:
+            value, stat = self.client.retry(self.client.get, lock_path)
+        except NoNodeError:
+            return False
         return value == self.id
 
     def consume(self):
@@ -250,7 +253,10 @@ class LockingQueue(BaseQueue):
         :returns: True if element was removed successfully, False otherwise.
         :rtype: bool
         """
-        if self.processing_element is not None and self.holds_lock():
+        if not self.holds_lock():
+            self.processing_element=None
+            return False
+        if self.processing_element is not None:
             id_, value = self.processing_element
             with self.client.transaction() as transaction:
                 transaction.delete("{path}/{id}".format(
@@ -335,10 +341,17 @@ class LockingQueue(BaseQueue):
                     id=id_),
                 self.id,
                 ephemeral=True)
+        except NodeExistsError:
+            return None
+
+        try:
             value, stat = self.client.retry(
                 self.client.get,
                 "{path}/{id}".format(path=self._entries_path, id=id_))
-        except (NoNodeError, NodeExistsError):
+        except NoNodeError:
             # Item is already consumed or locked
+            self.client.retry(
+            self.client.delete,
+            "{path}/{id}".format(path=self._lock_path,id=id_))
             return None
         return (id_, value)
