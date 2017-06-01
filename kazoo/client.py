@@ -1470,6 +1470,7 @@ class TransactionRequest(object):
         self.client = client
         self.operations = []
         self.committed = False
+        self.fired = False
 
     def create(self, path, value=b"", acl=None, ephemeral=False,
                sequence=False):
@@ -1552,9 +1553,19 @@ class TransactionRequest(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
+        def on_finish(result):
+            self.fired = False
+            if not result.successful():
+                return
+            results = result.get()
+            if any(isinstance(r, KazooException) for r in results):
+                return
+            self.committed = True
+
         self._check_tx_state()
-        self.committed = True
         async_object = self.client.handler.async_result()
+        async_object.rawlink(on_finish)
+        self.fired = True
         self.client._call(Transaction(self.operations), async_object)
         return async_object
 
@@ -1576,6 +1587,8 @@ class TransactionRequest(object):
             self.commit()
 
     def _check_tx_state(self):
+        if self.fired:
+            raise ValueError('Transaction commit already underway')
         if self.committed:
             raise ValueError('Transaction already committed')
 
