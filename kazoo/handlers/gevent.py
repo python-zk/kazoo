@@ -59,6 +59,7 @@ class SequentialGeventHandler(object):
         self._async = None
         self._state_change = Semaphore()
         self._workers = []
+        self._spawned = []
 
     class timeout_exception(gevent.event.Timeout):
         def __init__(self, msg):
@@ -77,7 +78,7 @@ class SequentialGeventHandler(object):
                 except Exception as exc:
                     log.warning("Exception in worker greenlet")
                     log.exception(exc)
-        return gevent.spawn(greenlet_worker)
+        return self.spawn(greenlet_worker)
 
     def start(self):
         """Start the greenlet workers."""
@@ -108,6 +109,9 @@ class SequentialGeventHandler(object):
             while self._workers:
                 worker = self._workers.pop()
                 worker.join()
+            while self._spawned:
+                t = self._spawned.pop()
+                t.join()
 
             # Clear the queues
             self.callback_queue = Queue()  # pragma: nocover
@@ -151,7 +155,9 @@ class SequentialGeventHandler(object):
 
     def spawn(self, func, *args, **kwargs):
         """Spawn a function to run asynchronously"""
-        return gevent.spawn(func, *args, **kwargs)
+        t = gevent.spawn(func, *args, **kwargs)
+        self._spawned.append(t)
+        return t
 
     def dispatch_callback(self, callback):
         """Dispatch to the callback object
