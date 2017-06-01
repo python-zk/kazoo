@@ -219,22 +219,19 @@ class KazooClient(object):
 
         self.retry = self._conn_retry = None
 
-        if type(connection_retry) is dict:
+        if isinstance(connection_retry, dict):
             self._conn_retry = KazooRetry(**connection_retry)
-        elif type(connection_retry) is KazooRetry:
+        elif isinstance(connection_retry, KazooRetry):
             self._conn_retry = connection_retry
-
-        if type(command_retry) is dict:
+        if isinstance(command_retry, dict):
             self.retry = KazooRetry(**command_retry)
-        elif type(command_retry) is KazooRetry:
+        elif isinstance(command_retry, KazooRetry):
             self.retry = command_retry
-
-        if type(self._conn_retry) is KazooRetry:
+        if isinstance(self._conn_retry, KazooRetry):
             if self.handler.sleep_func != self._conn_retry.sleep_func:
                 raise ConfigurationError("Retry handler and event handler "
                                          " must use the same sleep func")
-
-        if type(self.retry) is KazooRetry:
+        if isinstance(self.retry, KazooRetry):
             if self.handler.sleep_func != self.retry.sleep_func:
                 raise ConfigurationError(
                     "Command retry handler and event handler "
