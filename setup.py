@@ -25,6 +25,7 @@ tests_require = install_requires + [
     'mock',
     'nose',
     'flake8',
+    'testtools',
 ]
 
 if not (PYTHON3 or PYPY):

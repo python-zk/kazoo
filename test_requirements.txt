@@ -1,0 +1,5 @@
+testtools
+flake8
+mock
+coverage
+nose
