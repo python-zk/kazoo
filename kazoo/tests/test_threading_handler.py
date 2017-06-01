@@ -46,6 +46,31 @@ class TestThreadingHandler(unittest.TestCase):
         h.stop()
         self.assertFalse(h._running)
 
+    def test_huge_file_descriptor(self):
+        from kazoo.handlers.threading import _HAS_EPOLL
+        if not _HAS_EPOLL:
+            self.skipTest('only run on systems with epoll()')
+        import resource
+        import socket
+        from kazoo.handlers.utils import create_tcp_socket
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
+        except (ValueError, resource.error):
+            self.skipTest('couldnt raise fd limit high enough')
+        fd = 0
+        socks = []
+        while fd < 4000:
+            sock = create_tcp_socket(socket)
+            fd = sock.fileno()
+            socks.append(sock)
+        h = self._makeOne()
+        h.start()
+        h.select(socks, [], [])
+        with self.assertRaises(ValueError):
+            h._select(socks, [], [])
+        h._epoll_select(socks, [], [])
+        h.stop()
+
 
 class TestThreadingAsync(unittest.TestCase):
     def _makeOne(self, *args):
