@@ -14,18 +14,6 @@ matrix:
   exclude:
   - python: '2.7'
   include:
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py26
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-gevent
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py26-gevent
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-eventlet
-  - python: '2.6'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py26-eventlet
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27
   - python: '2.7'
@@ -40,14 +28,18 @@ matrix:
     env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27-eventlet
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.5.2-alpha TOX_VENV=py27
-  - python: '3.3'
-    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py33
-  - python: '3.3'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py33
   - python: '3.4'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py34
   - python: '3.4'
     env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py34
+  - python: '3.5'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py35
+  - python: '3.5'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py35
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py36
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py36
   - python: pypy
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=pypy
   - python: pypy
