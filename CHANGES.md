@@ -7,8 +7,6 @@
 *   update MANIFEST.in to reflect changes to filenames ([c9a38c5d](https://github.com/python-zk/kazoo/commit/c9a38c5d650d6d92ff30fd3c1c792fc71db9ce02))
 *   add travis deployment and update ZK versions ([7d5d59cb](https://github.com/python-zk/kazoo/commit/7d5d59cb049244b89625d621c9d91d9a44c4b051), closes [#436](https://github.com/python-zk/kazoo/issues/436))
 
-
-
 2.3.0 (2017-05-31)
 ------------------
 
