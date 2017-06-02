@@ -491,7 +491,8 @@ class ConnectionHandler(object):
         host_ports = []
         for host, port in self.client.hosts:
             try:
-                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
+                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0,
+                                                socket.IPPROTO_TCP):
                     host_ports.append((rhost[4][0], rhost[4][1]))
             except socket.gaierror as e:
                 # Skip hosts that don't resolve
@@ -618,7 +619,8 @@ class ConnectionHandler(object):
                           client._session_id or 0, client._session_passwd,
                           client.read_only)
 
-        # save the client's last_zxid before it gets overwritten by the server's.
+        # save the client's last_zxid before it gets overwritten by the
+        # server's.
         # we'll need this to reset watches via SetWatches further below.
         last_zxid = client.last_zxid
 
@@ -667,7 +669,8 @@ class ConnectionHandler(object):
                             client._data_watchers.keys(),
                             client._data_watchers.keys(),
                             client._child_watchers.keys())
-            zxid = self._invoke(connect_timeout / 1000.0, sw, xid=SET_WATCHES_XID)
+            zxid = self._invoke(connect_timeout / 1000.0, sw,
+                                xid=SET_WATCHES_XID)
             if zxid:
                 client.last_zxid = zxid
 

@@ -149,8 +149,11 @@ class SequentialThreadingHandler(object):
         end = (time.time() + timeout) if timeout else None
         while end is None or time.time() < end:
             if end is not None:
-                args = list(args)  # make a list, since tuples aren't mutable
-                args[3] = end - time.time()  # set the timeout to the remaining time
+                # make a list, since tuples aren't mutable
+                args = list(args)
+
+                # set the timeout to the remaining time
+                args[3] = end - time.time()
             try:
                 return select.select(*args, **kwargs)
             except select.error as ex:

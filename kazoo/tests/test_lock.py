@@ -1,6 +1,5 @@
 import collections
 import threading
-import time
 import uuid
 
 from nose.tools import eq_, ok_
@@ -319,7 +318,6 @@ class KazooLockTests(KazooTestCase):
         sleep_func = self.client.handler.sleep_func
         lock = self.client.Lock(self.lockpath, "one")
         acquires = collections.deque()
-        chain = collections.deque()
         differences = collections.deque()
         barrier = SleepBarrier(self.thread_count, sleep_func)
 
