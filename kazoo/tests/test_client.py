@@ -426,7 +426,6 @@ class TestConnection(KazooTestCase):
         client.get("/test/", watch=test_watch)
         self.expire_session(self.make_event)
 
-
         cv.wait(3)
         assert cv.is_set()
 
@@ -980,6 +979,7 @@ class TestClient(KazooTestCase):
         # force a reconnect
         states = []
         rc = client.handler.event_object()
+
         @client.add_listener
         def listener(state):
             if state == KazooState.CONNECTED:

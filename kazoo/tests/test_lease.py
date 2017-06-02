@@ -39,9 +39,11 @@ class KazooLeaseTests(KazooTestCase):
 
 class NonBlockingLeaseTests(KazooLeaseTests):
     def test_renew(self):
-        # Use client convenience method here to test it at least once.  Use class directly in
+        # Use client convenience method here to test it at least once.  Use
+        # class directly in
         # other tests in order to get better IDE support.
-        lease = self.client.NonBlockingLease(self.path, datetime.timedelta(seconds=3),
+        lease = self.client.NonBlockingLease(self.path,
+                                             datetime.timedelta(seconds=3),
                                              utcnow=self.clock)
         self.assertTrue(lease)
         self.assertTrue(lease.obtained)
@@ -52,7 +54,8 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         self.assertTrue(renewed_lease)
 
     def test_busy(self):
-        lease = NonBlockingLease(self.client, self.path, datetime.timedelta(seconds=3),
+        lease = NonBlockingLease(self.client, self.path,
+                                 datetime.timedelta(seconds=3),
                                  utcnow=self.clock)
         self.assertTrue(lease)
 
@@ -64,7 +67,8 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         self.assertFalse(foreigner_lease.obtained)
 
     def test_overtake(self):
-        lease = NonBlockingLease(self.client, self.path, datetime.timedelta(seconds=3),
+        lease = NonBlockingLease(self.client, self.path,
+                                 datetime.timedelta(seconds=3),
                                  utcnow=self.clock)
         self.assertTrue(lease)
 
@@ -75,7 +79,8 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         self.assertTrue(foreigner_lease)
 
     def test_renew_no_overtake(self):
-        lease = self.client.NonBlockingLease(self.path, datetime.timedelta(seconds=3),
+        lease = self.client.NonBlockingLease(self.path,
+                                             datetime.timedelta(seconds=3),
                                              utcnow=self.clock)
         self.assertTrue(lease)
         self.assertTrue(lease.obtained)
@@ -92,7 +97,8 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         self.assertFalse(foreigner_lease)
 
     def test_overtaker_renews(self):
-        lease = NonBlockingLease(self.client, self.path, datetime.timedelta(seconds=3),
+        lease = NonBlockingLease(self.client, self.path,
+                                 datetime.timedelta(seconds=3),
                                  utcnow=self.clock)
         self.assertTrue(lease)
 
@@ -109,7 +115,8 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         self.assertTrue(foreigner_renew)
 
     def test_overtake_refuse_first(self):
-        lease = NonBlockingLease(self.client, self.path, datetime.timedelta(seconds=3),
+        lease = NonBlockingLease(self.client, self.path,
+                                 datetime.timedelta(seconds=3),
                                  utcnow=self.clock)
         self.assertTrue(lease)
 
@@ -121,13 +128,15 @@ class NonBlockingLeaseTests(KazooLeaseTests):
 
         self.clock.forward(2)
         first_again_lease = NonBlockingLease(
-            self.client, self.path, datetime.timedelta(seconds=3), utcnow=self.clock)
+            self.client, self.path, datetime.timedelta(seconds=3),
+            utcnow=self.clock)
         self.assertFalse(first_again_lease)
 
     def test_old_version(self):
         # Skip to a future version
         NonBlockingLease._version += 1
-        lease = NonBlockingLease(self.client, self.path, datetime.timedelta(seconds=3),
+        lease = NonBlockingLease(self.client, self.path,
+                                 datetime.timedelta(seconds=3),
                                  utcnow=self.clock)
         self.assertTrue(lease)
 
@@ -143,56 +152,82 @@ class NonBlockingLeaseTests(KazooLeaseTests):
 
 class MultiNonBlockingLeaseTest(KazooLeaseTests):
     def test_1_renew(self):
-        ls = self.client.MultiNonBlockingLease(1, self.path, datetime.timedelta(seconds=4), utcnow=self.clock)
+        ls = self.client.MultiNonBlockingLease(1, self.path,
+                                               datetime.timedelta(seconds=4),
+                                               utcnow=self.clock)
         self.assertTrue(ls)
         self.clock.forward(2)
-        ls2 = MultiNonBlockingLease(self.client, 1, self.path, datetime.timedelta(seconds=4), utcnow=self.clock)
+        ls2 = MultiNonBlockingLease(self.client, 1, self.path,
+                                    datetime.timedelta(seconds=4),
+                                    utcnow=self.clock)
         self.assertTrue(ls2)
 
     def test_1_reject(self):
-        ls = MultiNonBlockingLease(self.client, 1, self.path, datetime.timedelta(seconds=4), utcnow=self.clock)
+        ls = MultiNonBlockingLease(self.client, 1, self.path,
+                                   datetime.timedelta(seconds=4),
+                                   utcnow=self.clock)
         self.assertTrue(ls)
         self.clock.forward(2)
-        ls2 = MultiNonBlockingLease(self.client2, 1, self.path, datetime.timedelta(seconds=4),
-                                     identifier="some.other.host", utcnow=self.clock)
+        ls2 = MultiNonBlockingLease(self.client2, 1, self.path,
+                                    datetime.timedelta(seconds=4),
+                                    identifier="some.other.host",
+                                    utcnow=self.clock)
         self.assertFalse(ls2)
 
     def test_2_renew(self):
-        ls = MultiNonBlockingLease(self.client, 2, self.path, datetime.timedelta(seconds=7), utcnow=self.clock)
+        ls = MultiNonBlockingLease(self.client, 2, self.path,
+                                   datetime.timedelta(seconds=7),
+                                   utcnow=self.clock)
         self.assertTrue(ls)
         self.clock.forward(2)
-        ls2 = MultiNonBlockingLease(self.client2, 2, self.path, datetime.timedelta(seconds=7), identifier="host2", utcnow=self.clock)
+        ls2 = MultiNonBlockingLease(self.client2, 2, self.path,
+                                    datetime.timedelta(seconds=7),
+                                    identifier="host2", utcnow=self.clock)
         self.assertTrue(ls2)
         self.clock.forward(2)
-        ls3 = MultiNonBlockingLease(self.client, 2, self.path, datetime.timedelta(seconds=7), utcnow=self.clock)
+        ls3 = MultiNonBlockingLease(self.client, 2, self.path,
+                                    datetime.timedelta(seconds=7),
+                                    utcnow=self.clock)
         self.assertTrue(ls3)
         self.clock.forward(2)
-        ls4 = MultiNonBlockingLease(self.client2, 2, self.path, datetime.timedelta(seconds=7), identifier="host2", utcnow=self.clock)
+        ls4 = MultiNonBlockingLease(self.client2, 2, self.path,
+                                    datetime.timedelta(seconds=7),
+                                    identifier="host2", utcnow=self.clock)
         self.assertTrue(ls4)
 
     def test_2_reject(self):
-        ls = MultiNonBlockingLease(self.client, 2, self.path, datetime.timedelta(seconds=7), utcnow=self.clock)
+        ls = MultiNonBlockingLease(self.client, 2, self.path,
+                                   datetime.timedelta(seconds=7),
+                                   utcnow=self.clock)
         self.assertTrue(ls)
         self.clock.forward(2)
-        ls2 = MultiNonBlockingLease(self.client2, 2, self.path, datetime.timedelta(seconds=7),
-                                     identifier="host2", utcnow=self.clock)
+        ls2 = MultiNonBlockingLease(self.client2, 2, self.path,
+                                    datetime.timedelta(seconds=7),
+                                    identifier="host2", utcnow=self.clock)
         self.assertTrue(ls2)
         self.clock.forward(2)
-        ls3 = MultiNonBlockingLease(self.client3, 2, self.path, datetime.timedelta(seconds=7),
-                                     identifier="host3", utcnow=self.clock)
+        ls3 = MultiNonBlockingLease(self.client3, 2, self.path,
+                                    datetime.timedelta(seconds=7),
+                                    identifier="host3", utcnow=self.clock)
         self.assertFalse(ls3)
 
     def test_2_handover(self):
-        ls = MultiNonBlockingLease(self.client, 2, self.path, datetime.timedelta(seconds=4), utcnow=self.clock)
+        ls = MultiNonBlockingLease(self.client, 2, self.path,
+                                   datetime.timedelta(seconds=4),
+                                   utcnow=self.clock)
         self.assertTrue(ls)
         self.clock.forward(2)
-        ls2 = MultiNonBlockingLease(self.client2, 2, self.path, datetime.timedelta(seconds=4),
-                                     identifier="host2", utcnow=self.clock)
+        ls2 = MultiNonBlockingLease(self.client2, 2, self.path,
+                                    datetime.timedelta(seconds=4),
+                                    identifier="host2", utcnow=self.clock)
         self.assertTrue(ls2)
         self.clock.forward(3)
-        ls3 = MultiNonBlockingLease(self.client3, 2, self.path, datetime.timedelta(seconds=4),
-                                     identifier="host3", utcnow=self.clock)
+        ls3 = MultiNonBlockingLease(self.client3, 2, self.path,
+                                    datetime.timedelta(seconds=4),
+                                    identifier="host3", utcnow=self.clock)
         self.assertTrue(ls3)
         self.clock.forward(2)
-        ls4 = MultiNonBlockingLease(self.client, 2, self.path, datetime.timedelta(seconds=4), utcnow=self.clock)
+        ls4 = MultiNonBlockingLease(self.client, 2, self.path,
+                                    datetime.timedelta(seconds=4),
+                                    utcnow=self.clock)
         self.assertTrue(ls4)

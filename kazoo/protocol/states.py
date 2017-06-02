@@ -105,7 +105,7 @@ class EventType(object):
     NONE = 'NONE'
 
 EVENT_TYPE_MAP = {
-    -1:EventType.NONE,
+    -1: EventType.NONE,
     1: EventType.CREATED,
     2: EventType.DELETED,
     3: EventType.CHANGED,

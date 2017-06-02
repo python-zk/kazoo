@@ -1384,7 +1384,8 @@ class KazooClient(object):
               joining=joining, leaving=None, new_members=None)
 
             # wait and then remove it (just by using its id) (incremental)
-            data, _ = zk.reconfig(joining=None, leaving='100', new_members=None)
+            data, _ = zk.reconfig(joining=None, leaving='100',
+                                  new_members=None)
 
             # now do a full change of the cluster (non-incremental)
             new = [
@@ -1418,7 +1419,8 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        result = self.reconfig_async(joining, leaving, new_members, from_config)
+        result = self.reconfig_async(joining, leaving, new_members,
+                                     from_config)
         return result.get()
 
     def reconfig_async(self, joining, leaving, new_members, from_config):

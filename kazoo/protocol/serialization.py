@@ -359,7 +359,8 @@ class Transaction(namedtuple('Transaction', 'operations')):
         return resp
 
 
-class Reconfig(namedtuple('Reconfig', 'joining leaving new_members config_id')):
+class Reconfig(namedtuple('Reconfig',
+                          'joining leaving new_members config_id')):
     type = 16
 
     def serialize(self):

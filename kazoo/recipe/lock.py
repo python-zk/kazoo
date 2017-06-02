@@ -68,8 +68,8 @@ class Lock(object):
     Note: This lock is not *re-entrant*. Repeated calls after already
     acquired will block.
 
-    This is an exclusive lock. For a read/write lock, see :class:`WriteLock` and
-    :class:`ReadLock`.
+    This is an exclusive lock. For a read/write lock, see :class:`WriteLock`
+    and :class:`ReadLock`.
 
     """
 
@@ -267,8 +267,8 @@ class Lock(object):
 
         # Node names are prefixed by a type: strip the prefix first, which may
         # be one of multiple values in case of a read-write lock, and return
-        # only the sequence number (as a string since it is padded and will sort
-        # correctly anyway).
+        # only the sequence number (as a string since it is padded and will
+        # sort correctly anyway).
         #
         # In some cases, the lock path may contain nodes with other prefixes
         # (eg. in case of a lease), just sort them last ('~' sorts after all
