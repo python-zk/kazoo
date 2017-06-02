@@ -7,6 +7,8 @@ from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL
 from kazoo.security import Id
 
+import six
+
 # Struct objects with formats compiled
 bool_struct = struct.Struct('B')
 int_struct = struct.Struct('!i')
@@ -15,14 +17,10 @@ int_int_struct = struct.Struct('!ii')
 int_int_long_struct = struct.Struct('!iiq')
 
 int_long_int_long_struct = struct.Struct('!iqiq')
+long_struct = struct.Struct('!q')
 multiheader_struct = struct.Struct('!iBi')
 reply_header_struct = struct.Struct('!iqi')
 stat_struct = struct.Struct('!qqqqiiiqiiq')
-
-try:  # pragma: nocover
-    basestring
-except NameError:
-    basestring = str
 
 
 def read_string(buffer, offset):
@@ -52,6 +50,14 @@ def write_string(bytes):
     else:
         utf8_str = bytes.encode('utf-8')
         return int_struct.pack(len(utf8_str)) + utf8_str
+
+
+def write_string_vector(v):
+    b = bytearray()
+    b.extend(int_struct.pack(len(v)))
+    for s in v:
+        b.extend(write_string(s))
+    return b
 
 
 def write_buffer(bytes):
@@ -346,14 +352,15 @@ class Transaction(namedtuple('Transaction', 'operations')):
     def unchroot(client, response):
         resp = []
         for result in response:
-            if isinstance(result, basestring):
+            if isinstance(result, six.string_types):
                 resp.append(client.unchroot(result))
             else:
                 resp.append(result)
         return resp
 
 
-class Reconfig(namedtuple('Reconfig', 'joining leaving new_members config_id')):
+class Reconfig(namedtuple('Reconfig',
+                          'joining leaving new_members config_id')):
     type = 16
 
     def serialize(self):
@@ -377,6 +384,20 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
     def serialize(self):
         return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
                 write_string(self.auth))
+
+
+class SetWatches(
+        namedtuple('SetWatches',
+                   'relativeZxid, dataWatches, existWatches, childWatches')):
+    type = 101
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(long_struct.pack(self.relativeZxid))
+        b.extend(write_string_vector(self.dataWatches))
+        b.extend(write_string_vector(self.existWatches))
+        b.extend(write_string_vector(self.childWatches))
+        return b
 
 
 class Watch(namedtuple('Watch', 'type state path')):

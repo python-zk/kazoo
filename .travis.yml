@@ -1,66 +1,62 @@
 sudo: false
-
 addons:
   apt:
     packages:
     - libevent-dev
-
 cache:
   directories:
-    - $HOME/.cache/pip
-    - zookeeper
-
+  - "$HOME/.cache/pip"
+  - zookeeper
 language: python
 python:
-    - "2.7"
+- '2.7'
 matrix:
-    exclude:
-        - python: "2.7"
-    include:
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-gevent
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-gevent
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py26-eventlet
-        - python: "2.6"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py26-eventlet
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-gevent
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-eventlet
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py27-eventlet
-        - python: "2.7"
-          env: ZOOKEEPER_VERSION=3.5.0-alpha TOX_VENV=py27
-        - python: "3.3"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py33
-        - python: "3.3"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py33
-        - python: "3.4"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py34
-        - python: "3.4"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=py34
-        - python: "pypy"
-          env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=pypy
-        - python: "pypy"
-          env: ZOOKEEPER_VERSION=3.4.6 TOX_VENV=pypy
-
+  exclude:
+  - python: '2.7'
+  include:
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27-gevent
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-eventlet
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27-eventlet
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.5.2-alpha TOX_VENV=py27
+  - python: '3.4'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py34
+  - python: '3.4'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py34
+  - python: '3.5'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py35
+  - python: '3.5'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py35
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py36
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py36
+  - python: pypy
+    env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=pypy
+  - python: pypy
+    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=pypy
 notifications:
   email: false
-
 install:
-    - pip install tox
-
+- pip install tox
 script:
-    - make test
+- make test
+deploy:
+  provider: pypi
+  user: bbangert
+  password:
+    secure: L9yXZ2PhQ2wJKQkgigIzW3f/a3ajzUamMdThVelcp/NZeTJfzlC/t89lfSRwLh95o9Z/aIxC4T8yZvNrRzzyMEP0O6s1F69pVm5Px+KBuv82lmI7p5sKTYPp35CE9jH+K/52Fy0+Az5F502xLrkaO4VLLA+zhLffw/qyvNbZui0=
+  on:
+    tags: true
+    python: 3.4
+  distributions: release
+  skip_upload_docs: true

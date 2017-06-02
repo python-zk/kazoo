@@ -163,6 +163,7 @@ class DataWatch(object):
                 result = self._func(data, stat)
             if result is False:
                 self._stopped = True
+                self._func = None
                 self._client.remove_listener(self._session_watcher)
         except Exception as exc:
             log.exception(exc)
@@ -338,12 +339,14 @@ class ChildrenWatch(object):
                     result = self._func(children)
                 if result is False:
                     self._stopped = True
+                    self._func = None
             except Exception as exc:
                 log.exception(exc)
                 raise
 
     def _watcher(self, event):
-        self._get_children(event)
+        if event.type != "NONE":
+            self._get_children(event)
 
     def _session_watcher(self, state):
         if state in (KazooState.LOST, KazooState.SUSPENDED):

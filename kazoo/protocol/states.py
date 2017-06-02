@@ -93,13 +93,19 @@ class EventType(object):
         removed). This event does not indicate the data for a child
         node has changed, which must have its own watch established.
 
+    .. attribute:: NONE
+
+        The connection state has been altered.
+
     """
     CREATED = 'CREATED'
     DELETED = 'DELETED'
     CHANGED = 'CHANGED'
     CHILD = 'CHILD'
+    NONE = 'NONE'
 
 EVENT_TYPE_MAP = {
+    -1: EventType.NONE,
     1: EventType.CREATED,
     2: EventType.DELETED,
     3: EventType.CHANGED,

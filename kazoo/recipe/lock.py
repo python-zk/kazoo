@@ -68,8 +68,18 @@ class Lock(object):
     Note: This lock is not *re-entrant*. Repeated calls after already
     acquired will block.
 
+    This is an exclusive lock. For a read/write lock, see :class:`WriteLock`
+    and :class:`ReadLock`.
+
     """
-    _NODE_NAME = '__lock__'
+
+    # Node name, after the contender UUID, before the sequence
+    # number. Involved in read/write locks.
+    _NODE_NAME = "__lock__"
+
+    # Node names which exclude this contender when present at a lower
+    # sequence number. Involved in read/write locks.
+    _EXCLUDE_NAMES = ["__lock__"]
 
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo lock.
@@ -224,14 +234,15 @@ class Lock(object):
                 # node was removed
                 raise ForceRetryError()
 
-            if self.acquired_lock(children, our_index):
+            predecessor = self.predecessor(children, our_index)
+            if not predecessor:
                 return True
 
             if not blocking:
                 return False
 
             # otherwise we are in the mix. watch predecessor and bide our time
-            predecessor = self.path + "/" + children[our_index - 1]
+            predecessor = self.path + "/" + predecessor
             self.client.add_listener(self._watch_session)
             try:
                 if self.client.exists(predecessor, self._watch_predecessor):
@@ -242,8 +253,11 @@ class Lock(object):
             finally:
                 self.client.remove_listener(self._watch_session)
 
-    def acquired_lock(self, children, index):
-        return index == 0
+    def predecessor(self, children, index):
+        for c in reversed(children[:index]):
+            if any(n in c for n in self._EXCLUDE_NAMES):
+                return c
+        return None
 
     def _watch_predecessor(self, event):
         self.wake_event.set()
@@ -251,9 +265,22 @@ class Lock(object):
     def _get_sorted_children(self):
         children = self.client.get_children(self.path)
 
-        # can't just sort directly: the node names are prefixed by uuids
-        lockname = self._NODE_NAME
-        children.sort(key=lambda c: c[c.find(lockname) + len(lockname):])
+        # Node names are prefixed by a type: strip the prefix first, which may
+        # be one of multiple values in case of a read-write lock, and return
+        # only the sequence number (as a string since it is padded and will
+        # sort correctly anyway).
+        #
+        # In some cases, the lock path may contain nodes with other prefixes
+        # (eg. in case of a lease), just sort them last ('~' sorts after all
+        # ASCII digits).
+        def _seq(c):
+            for name in ["__lock__", "__rlock__"]:
+                idx = c.find(name)
+                if idx != -1:
+                    return c[idx + len(name):]
+            # Sort unknown node names eg. "lease_holder" last.
+            return '~'
+        children.sort(key=_seq)
         return children
 
     def _find_node(self):
@@ -321,6 +348,64 @@ class Lock(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
+
+
+class WriteLock(Lock):
+    """Kazoo Write Lock
+
+    Example usage with a :class:`~kazoo.client.KazooClient` instance:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        zk.start()
+        lock = zk.WriteLock("/lockpath", "my-identifier")
+        with lock:  # blocks waiting for lock acquisition
+            # do something with the lock
+
+    The lock path passed to WriteLock and ReadLock must match for them to
+    communicate.  The write lock can not be acquired if it is held by
+    any readers or writers.
+
+    Note: This lock is not *re-entrant*. Repeated calls after already
+    acquired will block.
+
+    This is the write-side of a shared lock.  See :class:`Lock` for a
+    standard exclusive lock and :class:`ReadLock` for the read-side of a
+    shared lock.
+
+    """
+    _NODE_NAME = "__lock__"
+    _EXCLUDE_NAMES = ["__lock__", "__rlock__"]
+
+
+class ReadLock(Lock):
+    """Kazoo Read Lock
+
+    Example usage with a :class:`~kazoo.client.KazooClient` instance:
+
+    .. code-block:: python
+
+        zk = KazooClient()
+        zk.start()
+        lock = zk.ReadLock("/lockpath", "my-identifier")
+        with lock:  # blocks waiting for outstanding writers
+            # do something with the lock
+
+    The lock path passed to WriteLock and ReadLock must match for them to
+    communicate.  The read lock blocks if it is held by any writers,
+    but multiple readers may hold the lock.
+
+    Note: This lock is not *re-entrant*. Repeated calls after already
+    acquired will block.
+
+    This is the read-side of a shared lock.  See :class:`Lock` for a
+    standard exclusive lock and :class:`WriteLock` for the write-side of a
+    shared lock.
+
+    """
+    _NODE_NAME = "__rlock__"
+    _EXCLUDE_NAMES = ["__lock__"]
 
 
 class Semaphore(object):
@@ -472,10 +557,10 @@ class Semaphore(object):
         w = _Watch(duration=timeout)
         w.start()
         lock = self.client.Lock(self.lock_path, self.data)
-        gotten = lock.acquire(blocking=blocking, timeout=w.leftover())
-        if not gotten:
-            return False
         try:
+            gotten = lock.acquire(blocking=blocking, timeout=w.leftover())
+            if not gotten:
+                return False
             while True:
                 self.wake_event.clear()
 

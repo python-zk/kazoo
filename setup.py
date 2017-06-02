@@ -6,9 +6,9 @@ import re
 from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'README.rst')) as f:
+with open(os.path.join(here, 'README.md')) as f:
     README = f.read()
-with open(os.path.join(here, 'CHANGES.rst')) as f:
+with open(os.path.join(here, 'CHANGES.md')) as f:
     CHANGES = f.read()
 version = ''
 with open(os.path.join(here, 'kazoo', 'version.py')) as f:
@@ -52,11 +52,11 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Communications",
@@ -66,7 +66,7 @@ setup(
     keywords='zookeeper lock leader configuration',
     author="Kazoo team",
     author_email="python-zk@googlegroups.com",
-    url="https://kazoo.readthedocs.org",
+    url="https://kazoo.readthedocs.io",
     license="Apache 2.0",
     packages=find_packages(),
     test_suite="kazoo.tests",

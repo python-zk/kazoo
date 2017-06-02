@@ -44,8 +44,11 @@ from kazoo.protocol.serialization import (
     Sync,
     Transaction
 )
+from kazoo.protocol.states import Callback
+from kazoo.protocol.states import EventType
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.states import KeeperState
+from kazoo.protocol.states import WatchedEvent
 from kazoo.retry import KazooRetry
 from kazoo.security import ACL
 from kazoo.security import OPEN_ACL_UNSAFE
@@ -58,6 +61,8 @@ from kazoo.recipe.election import Election
 from kazoo.recipe.lease import NonBlockingLease
 from kazoo.recipe.lease import MultiNonBlockingLease
 from kazoo.recipe.lock import Lock
+from kazoo.recipe.lock import ReadLock
+from kazoo.recipe.lock import WriteLock
 from kazoo.recipe.lock import Semaphore
 from kazoo.recipe.partitioner import SetPartitioner
 from kazoo.recipe.party import Party
@@ -190,7 +195,8 @@ class KazooClient(object):
         self._state = KeeperState.CLOSED
         self.state = KazooState.LOST
         self.state_listeners = set()
-
+        self._child_watchers = defaultdict(set)
+        self._data_watchers = defaultdict(set)
         self._reset()
         self.read_only = read_only
 
@@ -282,6 +288,8 @@ class KazooClient(object):
         self.NonBlockingLease = partial(NonBlockingLease, self)
         self.MultiNonBlockingLease = partial(MultiNonBlockingLease, self)
         self.Lock = partial(Lock, self)
+        self.ReadLock = partial(ReadLock, self)
+        self.WriteLock = partial(WriteLock, self)
         self.Party = partial(Party, self)
         self.Queue = partial(Queue, self)
         self.LockingQueue = partial(LockingQueue, self)
@@ -305,8 +313,19 @@ class KazooClient(object):
         self._protocol_version = None
 
     def _reset_watchers(self):
+        watchers = []
+        for child_watchers in six.itervalues(self._child_watchers):
+            watchers.extend(child_watchers)
+
+        for data_watchers in six.itervalues(self._data_watchers):
+            watchers.extend(data_watchers)
+
         self._child_watchers = defaultdict(set)
         self._data_watchers = defaultdict(set)
+
+        ev = WatchedEvent(EventType.NONE, self._state, None)
+        for watch in watchers:
+            self.handler.dispatch_callback(Callback("watch", watch, (ev,)))
 
     def _reset_session(self):
         self._session_id = None
@@ -458,7 +477,8 @@ class KazooClient(object):
             self._live.clear()
             self._notify_pending(state)
             self._make_state_change(KazooState.SUSPENDED)
-            self._reset_watchers()
+            if state != KeeperState.CONNECTING:
+                self._reset_watchers()
 
     def _notify_pending(self, state):
         """Used to clear a pending response queue and request queue
@@ -595,8 +615,10 @@ class KazooClient(object):
 
         self._stopped.set()
         self._queue.append((CloseInstance, None))
-        self._connection._write_sock.send(b'\0')
-        self._safe_close()
+        try:
+            self._connection._write_sock.send(b'\0')
+        finally:
+            self._safe_close()
 
     def restart(self):
         """Stop and restart the Zookeeper session."""
@@ -1362,7 +1384,8 @@ class KazooClient(object):
               joining=joining, leaving=None, new_members=None)
 
             # wait and then remove it (just by using its id) (incremental)
-            data, _ = zk.reconfig(joining=None, leaving='100', new_members=None)
+            data, _ = zk.reconfig(joining=None, leaving='100',
+                                  new_members=None)
 
             # now do a full change of the cluster (non-incremental)
             new = [
@@ -1396,7 +1419,8 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        result = self.reconfig_async(joining, leaving, new_members, from_config)
+        result = self.reconfig_async(joining, leaving, new_members,
+                                     from_config)
         return result.get()
 
     def reconfig_async(self, joining, leaving, new_members, from_config):

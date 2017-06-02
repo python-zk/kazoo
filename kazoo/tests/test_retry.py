@@ -48,7 +48,9 @@ class TestRetrySleeper(unittest.TestCase):
         eq_(type(retry._cur_delay), float)
 
     def test_copy(self):
-        _sleep = lambda t: None
+        def _sleep(t):
+            return None
+
         retry = self._makeOne(sleep_func=_sleep)
         rcopy = retry.copy()
         self.assertTrue(rcopy.sleep_func is _sleep)

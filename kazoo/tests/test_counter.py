@@ -33,3 +33,15 @@ class KazooCounterTests(KazooTestCase):
         counter = self._makeOne()
         self.assertRaises(TypeError, counter.__add__, 2.1)
         self.assertRaises(TypeError, counter.__add__, b"a")
+
+    def test_pre_post_values(self):
+        counter = self._makeOne()
+        eq_(counter.value, 0)
+        eq_(counter.pre_value, None)
+        eq_(counter.post_value, None)
+        counter += 2
+        eq_(counter.pre_value, 0)
+        eq_(counter.post_value, 2)
+        counter -= 3
+        eq_(counter.pre_value, 2)
+        eq_(counter.post_value, -1)

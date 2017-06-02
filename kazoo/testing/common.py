@@ -64,7 +64,7 @@ def to_java_compatible_path(path):
 
 ServerInfo = namedtuple(
     "ServerInfo",
-    "server_id client_port election_port leader_port admin_port")
+    "server_id client_port election_port leader_port admin_port peer_type")
 
 
 class ManagedZooKeeper(object):
@@ -124,15 +124,16 @@ admin.serverPort=%s
         if self.peers:
             servers_cfg = []
             for p in chain((self.server_info,), self.peers):
-                servers_cfg.append("server.%s=localhost:%s:%s" % (
-                    p.server_id, p.leader_port, p.election_port))
+                servers_cfg.append("server.%s=localhost:%s:%s:%s" % (
+                    p.server_id, p.leader_port, p.election_port, p.peer_type))
 
             with open(config_path, "a") as config:
                 config.write("""
 initLimit=4
 syncLimit=2
 %s
-""" % ("\n".join(servers_cfg)))
+peerType=%s
+""" % ("\n".join(servers_cfg), self.server_info.peer_type))
 
         # Write server ids into datadir
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
@@ -252,7 +253,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
 class ZookeeperCluster(object):
 
     def __init__(self, install_path=None, classpath=None,
-                 size=3, port_offset=20000):
+                 size=3, port_offset=20000, observer_start_id=-1):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
@@ -262,7 +263,13 @@ class ZookeeperCluster(object):
         peers = []
 
         for i in range(size):
-            info = ServerInfo(i + 1, port, port + 1, port + 2, port + 3)
+            server_id = i + 1
+            if observer_start_id != -1 and server_id >= observer_start_id:
+                peer_type = 'observer'
+            else:
+                peer_type = 'participant'
+            info = ServerInfo(server_id, port, port + 1, port + 2, port + 3,
+                              peer_type)
             peers.append(info)
             port += 10
 

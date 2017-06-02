@@ -97,17 +97,13 @@ class Queue(BaseQueue):
         name = self._children[0]
         try:
             data, stat = self.client.get(self.path + "/" + name)
+            self.client.delete(self.path + "/" + name)
         except NoNodeError:  # pragma: nocover
             # the first node has vanished in the meantime, try to
             # get another one
+            self._children = []
             raise ForceRetryError()
-        try:
-            self.client.delete(self.path + "/" + name)
-        except NoNodeError:  # pragma: nocover
-            # we were able to get the data but someone else has removed
-            # the node in the meantime. consider the item as processed
-            # by the other process
-            raise ForceRetryError()
+
         self._children.pop(0)
         return data
 
@@ -263,6 +259,24 @@ class LockingQueue(BaseQueue):
                 transaction.delete("{path}/{id}".format(
                     path=self._entries_path,
                     id=id_))
+                transaction.delete("{path}/{id}".format(
+                    path=self._lock_path,
+                    id=id_))
+            self.processing_element = None
+            return True
+        else:
+            return False
+
+    def release(self):
+        """Removes the lock from currently processed item without consuming it.
+
+        :returns: True if the lock was removed successfully, False otherwise.
+        :rtype: bool
+
+        """
+        if self.processing_element is not None and self.holds_lock:
+            id_, value = self.processing_element
+            with self.client.transaction() as transaction:
                 transaction.delete("{path}/{id}".format(
                     path=self._lock_path,
                     id=id_))

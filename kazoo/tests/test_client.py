@@ -414,6 +414,21 @@ class TestConnection(KazooTestCase):
             client._state = oldstate
             client._connection._write_sock = None
 
+    def test_watch_trigger_expire(self):
+        client = self.client
+        cv = self.make_event()
+
+        client.create("/test", b"")
+
+        def test_watch(event):
+            cv.set()
+
+        client.get("/test/", watch=test_watch)
+        self.expire_session(self.make_event)
+
+        cv.wait(3)
+        assert cv.is_set()
+
 
 class TestClient(KazooTestCase):
     def _makeOne(self, *args):
@@ -947,6 +962,43 @@ class TestClient(KazooTestCase):
             eq_(client.client_state, KeeperState.CONNECTED)
         finally:
             self.cluster[0].run()
+
+    def test_set_watches_on_reconnect(self):
+        client = self.client
+        watch_event = client.handler.event_object()
+
+        client.create("/tacos")
+
+        # set the watch
+        def w(we):
+            eq_(we.path, "/tacos")
+            watch_event.set()
+
+        client.get_children("/tacos", watch=w)
+
+        # force a reconnect
+        states = []
+        rc = client.handler.event_object()
+
+        @client.add_listener
+        def listener(state):
+            if state == KazooState.CONNECTED:
+                states.append(state)
+                rc.set()
+
+        client._connection._socket.shutdown(socket.SHUT_RDWR)
+
+        rc.wait(10)
+        eq_(states, [KazooState.CONNECTED])
+
+        # watches should still be there
+        self.assertTrue(len(client._child_watchers) == 1)
+
+        # ... and they should fire
+        client.create("/tacos/hello_", b"", ephemeral=True, sequence=True)
+
+        watch_event.wait(1)
+        self.assertTrue(watch_event.is_set())
 
 
 dummy_dict = {
