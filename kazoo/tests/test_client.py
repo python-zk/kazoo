@@ -82,6 +82,22 @@ class TestClientConstructor(unittest.TestCase):
             ConfigurationError,
             self._makeOne, handler=SequentialThreadingHandler)
 
+    def test_invalid_connection_retry_type(self):
+        self.assertRaises(
+            ConfigurationError,
+            self._makeOne,
+            hosts='127.0.0.1:2181/',
+            connection_retry='a string',
+        )
+
+    def test_invalid_command_retry_type(self):
+        self.assertRaises(
+            ConfigurationError,
+            self._makeOne,
+            hosts='127.0.0.1:2181/',
+            command_retry='a string',
+        )
+
     def test_chroot(self):
         self.assertEqual(self._makeOne(hosts='127.0.0.1:2181/').chroot, '')
         self.assertEqual(self._makeOne(hosts='127.0.0.1:2181/a').chroot, '/a')
