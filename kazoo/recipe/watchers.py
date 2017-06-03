@@ -15,13 +15,9 @@ import time
 import warnings
 from functools import partial, wraps
 
-from kazoo.retry import KazooRetry
-from kazoo.exceptions import (
-    ConnectionClosedError,
-    NoNodeError,
-    KazooException
-)
+from kazoo.exceptions import ConnectionClosedError, KazooException, NoNodeError
 from kazoo.protocol.states import KazooState
+from kazoo.retry import KazooRetry
 
 log = logging.getLogger(__name__)
 
@@ -356,24 +352,24 @@ class ChildrenWatch(object):
             self._client.handler.spawn(self._get_children)
 
 
-class PatientChildrenWatch(object):
-    """Patient Children Watch that returns values after the children
-    of a node don't change for a period of time
+class MultiPathPatientChildrenWatch(object):
+    """Multi Path Patient Children Watch that returns values after the children
+    of each of the given nodes don't change for a period of time
 
-    A separate watcher for the children of a node, that ignores
+    A separate watcher for the children of the nodes, that ignores
     changes within a boundary time and sets the result only when the
     boundary time has elapsed with no children changes.
 
     Example::
 
-        watcher = PatientChildrenWatch(client, '/some/path',
-                                       time_boundary=5)
+        watcher = PatientMultiChildrenWatch(
+            client, ['/some/path', '/some/other/path'], time_boundary=5)
         async_object = watcher.start()
 
-        # Blocks until the children have not changed for time boundary
-        # (5 in this case) seconds, returns children list and an
-        # async_result that will be set if the children change in the
-        # future
+        # Blocks until the children of each node have not changed for time
+        # boundary (5 in this case) seconds, returns a dictionary containing
+        # the children list for each node and an async_result that will be set
+        # if the children change in the future
         children, child_async = async_object.get()
 
     .. note::
@@ -385,10 +381,10 @@ class PatientChildrenWatch(object):
         checked to see if the children have changed later.
 
     """
-    def __init__(self, client, path, time_boundary=30):
+    def __init__(self, client, paths, time_boundary=30):
         self.client = client
-        self.path = path
-        self.children = []
+        self.paths = paths
+        self.children = {}
         self.time_boundary = time_boundary
         self.children_changed = client.handler.event_object()
 
@@ -408,9 +404,11 @@ class PatientChildrenWatch(object):
         try:
             while True:
                 async_result = self.client.handler.async_result()
-                self.children = self.client.retry(
-                    self.client.get_children, self.path,
-                    partial(self._children_watcher, async_result))
+                for path in self.paths:
+                    self.children[path] = self.client.retry(
+                        self.client.get_children, path,
+                        partial(self._children_watcher, async_result))
+
                 self.client.handler.sleep_func(self.time_boundary)
 
                 if self.children_changed.is_set():
@@ -418,10 +416,41 @@ class PatientChildrenWatch(object):
                 else:
                     break
 
-            self.asy.set((self.children, async_result))
+            self._set_async_result(self.children, async_result)
         except Exception as exc:
             self.asy.set_exception(exc)
 
     def _children_watcher(self, async, event):
         self.children_changed.set()
         async.set(time.time())
+
+    def _set_async_result(self, children, async_result):
+        self.asy.set((children, async_result))
+
+
+class PatientChildrenWatch(MultiPathPatientChildrenWatch):
+    """Patient Children Watch that returns values after the children
+    of a node don't change for a period of time
+
+    A special case of the Patient Multi Children Watch that considers only
+    a single path.
+
+    Example::
+
+        watcher = PatientChildrenWatch(client, '/some/path',
+                                       time_boundary=5)
+        async_object = watcher.start()
+
+        # Blocks until the children have not changed for time boundary
+        # (5 in this case) seconds, returns children list and an
+        # async_result that will be set if the children change in the
+        # future
+        children, child_async = async_object.get()
+
+    """
+    def __init__(self, client, path, time_boundary=30):
+        super(PatientChildrenWatch, self).__init__(client, [path],
+                                                   time_boundary=time_boundary)
+
+    def _set_async_result(self, children, async_result):
+        self.asy.set((children.values()[0], async_result))
