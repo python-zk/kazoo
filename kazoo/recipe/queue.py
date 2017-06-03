@@ -271,7 +271,7 @@ class LockingQueue(BaseQueue):
         :rtype: bool
 
         """
-        if self.processing_element is not None and self.holds_lock:
+        if self.processing_element is not None and self.holds_lock():
             id_, value = self.processing_element
             with self.client.transaction() as transaction:
                 transaction.delete("{path}/{id}".format(
