@@ -666,6 +666,23 @@ class TestSemaphore(KazooTestCase):
         self.assertTrue(lock.cancelled)
         self.assertTrue(lock.acquire())
 
+    def test_break_lock(self):
+        lock = self.client.Semaphore(self.lockpath)
+        client2 = self._get_client()
+        client2.start()
+        client2.ensure_path("/")
+        lock2 = client2.Semaphore(self.lockpath)
+        self.assertTrue(lock.acquire(blocking=False))
+        self.assertTrue(lock2.break_lock())
+        self.assertTrue(lock2.acquire(blocking=False))
+        self.assertTrue(lock.release())
+        # Ensure lock2 is still the holder
+        client3 = self._get_client()
+        client3.start()
+        client3.ensure_path("/")
+        lock3 = client3.Semaphore(self.lockpath)
+        self.assertFalse(lock3.acquire(blocking=False))
+
     def test_timeout(self):
         timeout = 3
         e = self.make_event()
