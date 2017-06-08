@@ -9,7 +9,7 @@ class TestRetrySleeper(unittest.TestCase):
         pass
 
     def _fail(self, times=1):
-        from kazoo.retry import ForceRetryError
+        from kazoo.exceptions import ForceRetryError
         scope = dict(times=0)
 
         def inner():

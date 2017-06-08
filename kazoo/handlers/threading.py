@@ -23,6 +23,7 @@ import six
 from collections import defaultdict
 from itertools import chain
 
+from kazoo.exceptions import KazooTimeoutError
 import kazoo.python2atexit as python2atexit
 
 try:
@@ -57,10 +58,6 @@ def _to_fileno(obj):
         )
 
     return fd
-
-
-class KazooTimeoutError(Exception):
-    pass
 
 
 class AsyncResult(utils.AsyncResult):

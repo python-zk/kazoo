@@ -91,7 +91,7 @@ class TestClientConstructor(unittest.TestCase):
             hosts='127.0.0.1:2181,127.0.0.1:2182/a/b').chroot, '/a/b')
 
     def test_connection_timeout(self):
-        from kazoo.handlers.threading import KazooTimeoutError
+        from kazoo.exceptions import KazooTimeoutError
         client = self._makeOne(hosts='127.0.0.1:9')
         self.assertTrue(client.handler.timeout_exception is KazooTimeoutError)
         self.assertRaises(KazooTimeoutError, client.start, 0.1)
