@@ -609,6 +609,10 @@ class ConnectionHandler(object):
                         client._session_id,
                         hexlify(client._session_passwd))
 
+        if client._session_expiration is not None:
+            if client._session_expiration < time.clock():
+                raise SessionExpiredError("Session has expired")
+
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
                 (host, port), client._session_timeout / 1000.0)
@@ -640,6 +644,7 @@ class ConnectionHandler(object):
         connect_timeout = negotiated_session_timeout / len(client.hosts)
         read_timeout = negotiated_session_timeout * 2.0 / 3.0
         client._session_passwd = connect_result.passwd
+        client._session_expiration = time.clock() + negotiated_session_timeout
 
         self.logger.log(BLATHER,
                         'Session created, session_id: %r session_passwd: %s\n'

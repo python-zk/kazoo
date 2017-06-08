@@ -201,6 +201,7 @@ class KazooClient(object):
         self.read_only = read_only
 
         if client_id:
+            self._session_expiration = None
             self._session_id = client_id[0]
             self._session_passwd = client_id[1]
         else:
@@ -328,6 +329,7 @@ class KazooClient(object):
             self.handler.dispatch_callback(Callback("watch", watch, (ev,)))
 
     def _reset_session(self):
+        self._session_expiration = None
         self._session_id = None
         self._session_passwd = b'\x00' * 16
 
