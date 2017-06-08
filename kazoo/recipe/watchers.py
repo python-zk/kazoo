@@ -89,7 +89,8 @@ class DataWatch(object):
         passed to it and warns that they are no longer respected.
 
     """
-    def __init__(self, client, path, func=None, *args, **kwargs):
+    def __init__(self, client, path, func=None, send_path=False,
+                 *args, **kwargs):
         """Create a data watcher for a path
 
         :param client: A zookeeper client.
@@ -101,11 +102,17 @@ class DataWatch(object):
                      tuple, the value of the node and a
                      :class:`~kazoo.client.ZnodeStat` instance.
         :type func: callable
+        :type send_path: bool
+        :param send_path: Whether the function should be passed the
+                           node path which children has been changed
+                           or None upon initialization (see class
+                           documentation)
 
         """
         self._client = client
         self._path = path
         self._func = func
+        self._send_path = send_path
         self._stopped = False
         self._run_lock = client.handler.lock_object()
         self._version = None
@@ -158,9 +165,15 @@ class DataWatch(object):
             if not self._ever_called:
                 self._ever_called = True
             try:
-                result = self._func(data, stat, event)
+                if self._send_path:
+                    result = self._func(data, stat, event, self._path)
+                else:
+                    result = self._func(data, stat, event)
             except TypeError:
-                result = self._func(data, stat)
+                if self._send_path:
+                    result = self._func(data, stat, self._path)
+                else:
+                    result = self._func(data, stat)
             if result is False:
                 self._stopped = True
                 self._func = None
@@ -227,11 +240,15 @@ class ChildrenWatch(object):
     children change calls. If the client connection is closed (using
     the close command), the ChildrenWatch will no longer get updates.
 
-    if send_event=True in __init__, then the function will always be
+    If send_event=True in __init__, then the function will always be
     called with second parameter, ``event``. Upon initial call or when
     recovering a lost session the ``event`` is always ``None``.
     Otherwise it's a :class:`~kazoo.prototype.state.WatchedEvent`
     instance.
+
+    If send_path=True in __init__, then the function will send path of
+    node, which children has been changed. It will be second parameter if
+    send_event=False and third if send_event=True
 
     Example with client:
 
@@ -245,7 +262,8 @@ class ChildrenWatch(object):
 
     """
     def __init__(self, client, path, func=None,
-                 allow_session_lost=True, send_event=False):
+                 allow_session_lost=True, send_event=False,
+                 send_path=False):
         """Create a children watcher for a path
 
         :param client: A zookeeper client.
@@ -264,6 +282,11 @@ class ChildrenWatch(object):
         :param send_event: Whether the function should be passed the
                            event sent by ZooKeeper or None upon
                            initialization (see class documentation)
+        :type send_path: bool
+        :param send_path: Whether the function should be passed the
+                           node path  ch children has been changed
+                           or None upon initialization (see class
+                           documentation)
 
         The path must already exist for the children watcher to
         run.
@@ -273,6 +296,7 @@ class ChildrenWatch(object):
         self._path = path
         self._func = func
         self._send_event = send_event
+        self._send_path = send_path
         self._stopped = False
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
@@ -334,9 +358,15 @@ class ChildrenWatch(object):
 
             try:
                 if self._send_event:
-                    result = self._func(children, event)
+                    if self._send_path:
+                        result = self._func(children, event, self._path)
+                    else:
+                        result = self._func(children, event)
                 else:
-                    result = self._func(children)
+                    if self._send_path:
+                        result = self._func(children, self._path)
+                    else:
+                        result = self._func(children)
                 if result is False:
                     self._stopped = True
                     self._func = None
