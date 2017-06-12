@@ -12,7 +12,6 @@ import six
 # Struct objects with formats compiled
 bool_struct = struct.Struct('B')
 int_struct = struct.Struct('!i')
-long_struct = struct.Struct('!q')
 int_int_struct = struct.Struct('!ii')
 int_int_long_struct = struct.Struct('!iiq')
 
@@ -50,14 +49,6 @@ def write_string(bytes):
     else:
         utf8_str = bytes.encode('utf-8')
         return int_struct.pack(len(utf8_str)) + utf8_str
-
-
-def write_string_vector(v):
-    b = bytearray()
-    b.extend(int_struct.pack(len(v)))
-    for s in v:
-        b.extend(write_string(s))
-    return b
 
 
 def write_buffer(bytes):
@@ -384,20 +375,6 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
     def serialize(self):
         return (int_struct.pack(self.auth_type) + write_string(self.scheme) +
                 write_string(self.auth))
-
-
-class SetWatches(
-        namedtuple('SetWatches',
-                   'relativeZxid, dataWatches, existWatches, childWatches')):
-    type = 101
-
-    def serialize(self):
-        b = bytearray()
-        b.extend(long_struct.pack(self.relativeZxid))
-        b.extend(write_string_vector(self.dataWatches))
-        b.extend(write_string_vector(self.existWatches))
-        b.extend(write_string_vector(self.childWatches))
-        return b
 
 
 class Watch(namedtuple('Watch', 'type state path')):
