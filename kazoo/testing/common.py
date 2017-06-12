@@ -268,7 +268,8 @@ class ZookeeperCluster(object):
                 peer_type = 'observer'
             else:
                 peer_type = 'participant'
-            info = ServerInfo(server_id, port, port + 1, port + 2, port + 3, peer_type)
+            info = ServerInfo(server_id, port, port + 1, port + 2, port + 3,
+                              peer_type)
             peers.append(info)
             port += 10
 

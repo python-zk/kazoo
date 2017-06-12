@@ -26,7 +26,6 @@ from kazoo.protocol.serialization import (
     Ping,
     PingInstance,
     ReplyHeader,
-    SetWatches,
     Transaction,
     Watch,
     int_struct
@@ -60,7 +59,6 @@ CHILD_EVENT = 4
 WATCH_XID = -1
 PING_XID = -2
 AUTH_XID = -4
-SET_WATCHES_XID = -8
 
 CLOSE_RESPONSE = Close.type
 KEEP_SESSION = object()
@@ -412,8 +410,6 @@ class ConnectionHandler(object):
                 async_object.set(True)
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
-        elif header.xid == SET_WATCHES_XID:
-            self.logger.log(BLATHER, 'Received SetWatches reply')
         else:
             self.logger.log(BLATHER, 'Reading for header %r', header)
 
@@ -452,8 +448,6 @@ class ConnectionHandler(object):
         # Special case for auth packets
         if request.type == Auth.type:
             xid = AUTH_XID
-        elif request.type == SetWatches.type:
-            xid = SET_WATCHES_XID
         else:
             self._xid = (self._xid % 2147483647) + 1
             xid = self._xid
@@ -499,7 +493,8 @@ class ConnectionHandler(object):
         host_ports = []
         for host, port in self.client.hosts:
             try:
-                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0, socket.IPPROTO_TCP):
+                for rhost in socket.getaddrinfo(host.strip(), port, 0, 0,
+                                                socket.IPPROTO_TCP):
                     host_ports.append((rhost[4][0], rhost[4][1]))
             except socket.gaierror as e:
                 # Skip hosts that don't resolve
@@ -629,10 +624,6 @@ class ConnectionHandler(object):
                           client._session_id or 0, client._session_passwd,
                           client.read_only)
 
-        # save the client's last_zxid before it gets overwritten by the server's.
-        # we'll need this to reset watches via SetWatches further below.
-        last_zxid = client.last_zxid
-
         connect_result, zxid = self._invoke(
             client._session_timeout / 1000.0, connect)
 
@@ -669,16 +660,6 @@ class ConnectionHandler(object):
         for scheme, auth in client.auth_data:
             ap = Auth(0, scheme, auth)
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
-            if zxid:
-                client.last_zxid = zxid
-
-        # TODO: separate exist from data watches
-        if client._data_watchers or client._child_watchers.keys():
-            sw = SetWatches(last_zxid,
-                            client._data_watchers.keys(),
-                            client._data_watchers.keys(),
-                            client._child_watchers.keys())
-            zxid = self._invoke(connect_timeout / 1000.0, sw, xid=SET_WATCHES_XID)
             if zxid:
                 client.last_zxid = zxid
 

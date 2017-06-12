@@ -8,7 +8,7 @@ import unittest
 from kazoo import python2atexit as atexit
 
 from kazoo.client import KazooClient
-from kazoo.exceptions import KazooException, NotEmptyError
+from kazoo.exceptions import KazooException
 from kazoo.protocol.states import (
     KazooState
 )
@@ -27,7 +27,8 @@ def get_global_cluster():
         ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
         ZK_PORT_OFFSET = int(os.environ.get("ZOOKEEPER_PORT_OFFSET", 20000))
         ZK_CLUSTER_SIZE = int(os.environ.get("ZOOKEEPER_CLUSTER_SIZE", 3))
-        ZK_OBSERVER_START_ID = int(os.environ.get("ZOOKEEPER_OBSERVER_START_ID", -1))
+        ZK_OBSERVER_START_ID = int(
+            os.environ.get("ZOOKEEPER_OBSERVER_START_ID", -1))
 
         assert ZK_HOME or ZK_CLASSPATH, (
             "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment "
@@ -96,11 +97,13 @@ class KazooTestHarness(unittest.TestCase):
 
     def lose_connection(self, event_factory):
         """Force client to lose connection with server"""
-        self.__break_connection(_CONNECTION_DROP, KazooState.SUSPENDED, event_factory)
+        self.__break_connection(_CONNECTION_DROP, KazooState.SUSPENDED,
+                                event_factory)
 
     def expire_session(self, event_factory):
         """Force ZK to expire a client session"""
-        self.__break_connection(_SESSION_EXPIRED, KazooState.LOST, event_factory)
+        self.__break_connection(_SESSION_EXPIRED, KazooState.LOST,
+                                event_factory)
 
     def setup_zookeeper(self, **client_options):
         """Create a ZK cluster and chrooted :class:`KazooClient`

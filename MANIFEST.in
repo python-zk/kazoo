@@ -1,6 +1,6 @@
-include CHANGES.rst
-include CONTRIBUTING.rst
-include README.rst
+include CHANGES.md
+include CONTRIBUTING.md
+include README.md
 include LICENSE
 include MANIFEST.in
 exclude .gitignore

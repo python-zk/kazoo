@@ -147,12 +147,14 @@ class KazooPartitionerTests(KazooTestCase):
 
     def test_race_condition_new_partitioner_during_the_lock(self):
         locks = {}
+
         def get_lock(path):
             lock = locks.setdefault(path, self.client.handler.lock_object())
             return SlowLockMock(self.client, lock)
 
         with mock.patch.object(self.client, "Lock", side_effect=get_lock):
-            # Create first partitioner. It will start to acquire the set members.
+            # Create first partitioner. It will start to acquire the set
+            # members.
             self.__create_partitioner(identifier="0", size=2)
 
             # Wait until the first partitioner has acquired first lock and
@@ -189,7 +191,8 @@ class KazooPartitionerTests(KazooTestCase):
             return SlowLockMock(self.client, lock, delay_time=delay_time)
 
         with mock.patch.object(self.client, "Lock", side_effect=get_lock):
-            # Create first partitioner. It will start to acquire the set members.
+            # Create first partitioner. It will start to acquire the set
+            # members.
             self.__create_partitioner(identifier="0", size=2)
 
             # Wait until the first partitioner has acquired first lock and
@@ -212,7 +215,8 @@ class KazooPartitionerTests(KazooTestCase):
 
     def __create_partitioner(self, size, identifier=None):
         partitioner = self.client.SetPartitioner(
-            self.path, set=range(size), time_boundary=0.2, identifier=identifier)
+            self.path, set=range(size), time_boundary=0.2,
+            identifier=identifier)
         self.__partitioners.append(partitioner)
         return partitioner
 
@@ -229,7 +233,8 @@ class KazooPartitionerTests(KazooTestCase):
 
     def __assert_partitions(self, *partitions):
         eq_(len(partitions), len(self.__partitioners))
-        for partitioner, own_partitions in zip(self.__partitioners, partitions):
+        for partitioner, own_partitions in zip(self.__partitioners,
+                                               partitions):
             eq_(list(partitioner), own_partitions)
 
     def __wait(self):
