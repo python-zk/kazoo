@@ -24,7 +24,7 @@ from kazoo.handlers.threading import SequentialThreadingHandler
 from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
 from kazoo.loggingsupport import BLATHER
-from kazoo.protocol.connection import ConnectionHandler
+from kazoo.protocol.connection import ConnectionHandler, KEEP_SESSION
 from kazoo.protocol.paths import normpath
 from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.serialization import (
@@ -113,7 +113,7 @@ class KazooClient(object):
                  timeout=10.0, client_id=None, handler=None,
                  default_acl=None, auth_data=None, read_only=None,
                  randomize_hosts=True, connection_retry=None,
-                 command_retry=None, logger=None, **kwargs):
+                 command_retry=None, logger=None, keep_session=False, **kwargs):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -142,6 +142,8 @@ class KazooClient(object):
             options which will be used for creating one.
         :param logger: A custom logger to use instead of the module
             global `log` instance.
+        :param keep_session: A boolean to decide if the session should
+            be closed or not when closing the connection.
 
         Basic Example:
 
@@ -205,6 +207,8 @@ class KazooClient(object):
             self._session_passwd = client_id[1]
         else:
             self._reset_session()
+
+        self._keep_session = keep_session
 
         # ZK uses milliseconds
         self._session_timeout = int(timeout * 1000)
@@ -308,7 +312,6 @@ class KazooClient(object):
         self._pending = deque()
 
         self._reset_watchers()
-        self._reset_session()
         self.last_zxid = 0
         self._protocol_version = None
 
@@ -613,7 +616,12 @@ class KazooClient(object):
             return
 
         self._stopped.set()
-        self._queue.append((CloseInstance, None))
+
+        if self._keep_session:
+            self._queue.append((KEEP_SESSION, None))
+        else:
+            self._queue.append((CloseInstance, None))
+
         try:
             self._connection._write_sock.send(b'\0')
         finally:
