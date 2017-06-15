@@ -24,16 +24,16 @@ import uuid
 
 import six
 
-from kazoo.retry import (
-    KazooRetry,
-    RetryFailedError,
-    ForceRetryError
-)
-from kazoo.exceptions import CancelledError
-from kazoo.exceptions import KazooException
-from kazoo.exceptions import LockTimeout
-from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import KazooState
+from kazoo.exceptions import (
+    CancelledError,
+    ForceRetryError,
+    KazooException,
+    LockTimeout,
+    NoNodeError,
+    RetryFailedError
+)
+from kazoo.retry import KazooRetry
 
 
 class _Watch(object):

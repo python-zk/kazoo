@@ -6,7 +6,7 @@
 """
 
 from kazoo.exceptions import BadVersionError
-from kazoo.retry import ForceRetryError
+from kazoo.exceptions import ForceRetryError
 
 
 class Counter(object):
