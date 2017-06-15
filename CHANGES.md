@@ -1,3 +1,26 @@
+<a name="2.4.0"></a>
+## 2.4.0 (2017-06-14)
+
+**PYTHON SUPPORTED VERSIONS CHANGE**: Please note that Kazoo no longer tests
+on Python 2.6 or 3.3. Tested versions are 2.7, 3.4, 3.5, 3.6, and PyPy. The
+multiple endpoint support for KazooClient may not work correctly on 2.6.
+
+#### Bug Fixes
+
+*   add missed parens to LockingQueue function call. ([88cf4aa7](https://github.com/python-zk/kazoo/commit/88cf4aa7bcd1437a44f6d3aeec34989c467fcf9d))
+* **core:**  revert PR #305 SetWatches which caused RuntimeError ([a7b45390](https://github.com/python-zk/kazoo/commit/a7b45390f3720a33c9ad3896a8a185bfb2628839))
+
+#### Features
+
+*   pep8 all the things ([92880342](https://github.com/python-zk/kazoo/commit/928803420721b81962e50d425610e62b0c12e438), closes [#445](https://github.com/python-zk/kazoo/issues/445))
+*   drop Python 2.6/3.3 official support, add 3.5/3.6 testing ([2faba9ff](https://github.com/python-zk/kazoo/commit/2faba9ff3bdeff151ac6c922bf65b2dcf9c7bd7b), closes [#441](https://github.com/python-zk/kazoo/issues/441))
+* **core:**
+  *  allow multiple endpoints in KazooClient hosts arg ([72a8d96c](https://github.com/python-zk/kazoo/commit/72a8d96ca188c3c2e93bd0243283539ebd6c16f1), closes [#411](https://github.com/python-zk/kazoo/issues/411))
+  *  use epoll when available to support fds > 1023 ([267e61b4](https://github.com/python-zk/kazoo/commit/267e61b4323bc13505e8933fa9b89d0591af3a69), closes [#171](https://github.com/python-zk/kazoo/issues/171))
+* **recipe:**  Add TreeCache recipe ([ec8b337e](https://github.com/python-zk/kazoo/commit/ec8b337e6f1a4ff12e669f4b96ca98fb37ee5d8a))
+
+
+
 <a name="2.3.1"></a>
 ## 2.3.1 (2017-06-01)
 
