@@ -1,11 +1,7 @@
 HERE = $(shell pwd)
 BIN = $(HERE)/bin
 PYTHON = $(BIN)/python
-PIP_DOWNLOAD_CACHE ?= $(HERE)/.pip_cache
 INSTALL = $(BIN)/pip install
-ifneq ($(TRAVIS), true)
-    INSTALL += --download-cache $(PIP_DOWNLOAD_CACHE)
-endif
 TOX_VENV ?= py27
 BUILD_DIRS = bin build include lib lib64 man share
 

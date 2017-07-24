@@ -4,8 +4,8 @@ addons:
     packages:
     - libevent-dev
 cache:
+  pip: true
   directories:
-  - "$HOME/.cache/pip"
   - zookeeper
 language: python
 python:
