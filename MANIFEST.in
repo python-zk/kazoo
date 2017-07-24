@@ -8,6 +8,5 @@ exclude .travis.yml
 exclude Makefile
 exclude run_failure.py
 recursive-include kazoo *
-recursive-exclude sw *
 recursive-include docs *
 global-exclude *pyc *pyo
