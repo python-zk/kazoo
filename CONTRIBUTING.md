@@ -14,7 +14,7 @@ IRC in the
 
 ## Development
 
-If you want to work on the code and sent us a
+If you want to work on the code and send us a
 [pull request](https://help.github.com/articles/using-pull-requests),
 first fork the repository on github to your own account. Then clone
 your new repository and run the build scripts:
@@ -25,10 +25,11 @@ your new repository and run the build scripts:
     make
 ```
 
-You need to have some supported version of Python installed and have
-it available as `python` in your shell. To run Zookeeper you also
-need a Java runtime (JRE or JDK) version 6 or 7. To run tests, you
-need to have the tox, Python testing tool, to be installed in your shell.
+You need a supported version of Python installed and available as `python`
+in your shell. To run Zookeeper you also need a Java runtime (JRE or JDK).
+Please refer to the Zookeeper documentation for compatible Java versions for
+each Zookeeper version. To run tests, you need to have `tox`, the Python
+testing tool, installed in your shell.
 
 You can run all the tests by calling:
 
@@ -64,7 +65,7 @@ you can and under what conditions you saw the issue.
 ## Adding Recipes
 
 New recipes are welcome, however they should include the status/maintainer
-RST information so its clear who is maintaining the recipe. This does mean
+RST information so its clear who is maintaining the recipe. This means
 that if you submit a recipe for inclusion with Kazoo, you should be ready
 to support/maintain it, and address bugs that may be found.
 
@@ -113,7 +114,7 @@ of `<type>(scope): <subject>` where `type` must be one of:
 * **test**: Adding missing tests
 * **chore**: Changes to the build process or auxiliary tools and libraries such as documentation
   generation
-  
+
 Scope may be left off if none of these components are applicable:
 
 * **core**: Core client/connection handling
@@ -133,9 +134,9 @@ In order to maintain a reference to the context of the commit, add
 `closes #<issue_number>` if it closes a related issue or `issue #<issue_number>`
 if it's a partial fix.
 
-You can also write a detailed description of the commit: Just as in the
+You can also write a detailed description of the commit. Just as in the
 **subject**, use the imperative, present tense: "change" not "changed" nor
-"changes" It should include the motivation for the change and contrast this with
+"changes". Please include the motivation for the change and contrast this with
 previous behavior.
 
 ### Footer
