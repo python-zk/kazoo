@@ -17,14 +17,15 @@ Example Use-Case
   so that no two workers own the same queue.
 
 """
+from functools import partial
 import logging
 import os
 import socket
-from functools import partial
 
 from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
 from kazoo.recipe.watchers import PatientChildrenWatch
+
 
 log = logging.getLogger(__name__)
 

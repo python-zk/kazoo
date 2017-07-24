@@ -8,10 +8,8 @@ import os
 import socket
 import uuid
 
+from kazoo.exceptions import KazooException, NoNodeError, NodeExistsError
 from kazoo.protocol.states import EventType
-from kazoo.exceptions import KazooException
-from kazoo.exceptions import NoNodeError
-from kazoo.exceptions import NodeExistsError
 
 
 class Barrier(object):

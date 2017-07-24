@@ -1,11 +1,11 @@
 """Kazoo Zookeeper Client"""
-import inspect
-import logging
-import re
-import warnings
 from collections import defaultdict, deque
 from functools import partial
+import inspect
+import logging
 from os.path import split
+import re
+import warnings
 
 import six
 
@@ -25,8 +25,7 @@ from kazoo.handlers.utils import capture_exceptions, wrap
 from kazoo.hosts import collect_hosts
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.connection import ConnectionHandler
-from kazoo.protocol.paths import normpath
-from kazoo.protocol.paths import _prefix_root
+from kazoo.protocol.paths import _prefix_root, normpath
 from kazoo.protocol.serialization import (
     Auth,
     CheckVersion,
@@ -44,33 +43,27 @@ from kazoo.protocol.serialization import (
     Sync,
     Transaction
 )
-from kazoo.protocol.states import Callback
-from kazoo.protocol.states import EventType
-from kazoo.protocol.states import KazooState
-from kazoo.protocol.states import KeeperState
-from kazoo.protocol.states import WatchedEvent
+from kazoo.protocol.states import (
+    Callback,
+    EventType,
+    KazooState,
+    KeeperState,
+    WatchedEvent
+)
 from kazoo.retry import KazooRetry
-from kazoo.security import ACL
-from kazoo.security import OPEN_ACL_UNSAFE
+from kazoo.security import ACL, OPEN_ACL_UNSAFE
 
 # convenience API
-from kazoo.recipe.barrier import Barrier
-from kazoo.recipe.barrier import DoubleBarrier
+from kazoo.recipe.barrier import Barrier, DoubleBarrier
 from kazoo.recipe.counter import Counter
 from kazoo.recipe.election import Election
-from kazoo.recipe.lease import NonBlockingLease
-from kazoo.recipe.lease import MultiNonBlockingLease
-from kazoo.recipe.lock import Lock
-from kazoo.recipe.lock import ReadLock
-from kazoo.recipe.lock import WriteLock
-from kazoo.recipe.lock import Semaphore
+from kazoo.recipe.lease import NonBlockingLease, MultiNonBlockingLease
+from kazoo.recipe.lock import Lock, ReadLock, WriteLock, Semaphore
 from kazoo.recipe.partitioner import SetPartitioner
-from kazoo.recipe.party import Party
-from kazoo.recipe.party import ShallowParty
-from kazoo.recipe.queue import Queue
-from kazoo.recipe.queue import LockingQueue
-from kazoo.recipe.watchers import ChildrenWatch
-from kazoo.recipe.watchers import DataWatch
+from kazoo.recipe.party import Party, ShallowParty
+from kazoo.recipe.queue import Queue, LockingQueue
+from kazoo.recipe.watchers import ChildrenWatch, DataWatch
+
 
 string_types = six.string_types
 bytes_types = (six.binary_type,)

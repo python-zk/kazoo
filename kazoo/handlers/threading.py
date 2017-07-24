@@ -12,25 +12,25 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
+from collections import defaultdict
 import errno
+from itertools import chain
 import logging
 import select
 import socket
 import threading
 import time
+
 import six
 
-from collections import defaultdict
-from itertools import chain
-
 import kazoo.python2atexit as python2atexit
+from kazoo.handlers import utils
 
 try:
     import Queue
 except ImportError:  # pragma: nocover
     import queue as Queue
 
-from kazoo.handlers import utils
 
 # sentinel objects
 _STOP = object()

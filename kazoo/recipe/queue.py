@@ -9,11 +9,11 @@
     See: https://github.com/python-zk/kazoo/issues/175
 
 """
-
 import uuid
+
 from kazoo.exceptions import NoNodeError, NodeExistsError
-from kazoo.retry import ForceRetryError
 from kazoo.protocol.states import EventType
+from kazoo.retry import ForceRetryError
 
 
 class BaseQueue(object):

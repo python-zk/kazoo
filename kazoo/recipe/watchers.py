@@ -10,18 +10,19 @@
     will result in an exception being thrown.
 
 """
+from functools import partial, wraps
 import logging
 import time
 import warnings
-from functools import partial, wraps
 
-from kazoo.retry import KazooRetry
 from kazoo.exceptions import (
     ConnectionClosedError,
     NoNodeError,
     KazooException
 )
 from kazoo.protocol.states import KazooState
+from kazoo.retry import KazooRetry
+
 
 log = logging.getLogger(__name__)
 

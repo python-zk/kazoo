@@ -5,10 +5,10 @@
 :Status: Beta
 
 """
-
+import datetime
 import json
 import socket
-import datetime
+
 from kazoo.exceptions import CancelledError
 
 

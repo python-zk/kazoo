@@ -10,14 +10,13 @@ of a subtree in ZooKeeper and keeps it up-to-date.
 
 See also: http://curator.apache.org/curator-recipes/tree-cache.html
 """
-
 from __future__ import absolute_import
 
-import os
-import logging
 import contextlib
 import functools
+import logging
 import operator
+import os
 
 from kazoo.exceptions import NoNodeError, KazooException
 from kazoo.protocol.states import KazooState, EventType
