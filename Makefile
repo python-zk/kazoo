@@ -5,7 +5,6 @@ INSTALL = $(BIN)/pip install
 TOX_VENV ?= py27
 BUILD_DIRS = bin build include lib lib64 man share
 
-GEVENT_VERSION ?= 1.0.1
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
 PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
 TRAVIS ?= false
@@ -33,7 +32,6 @@ build: $(PYTHON)
 ifeq ($(GREENLET_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_eventlet.txt
 	$(INSTALL) -U -r requirements_gevent.txt
-	$(INSTALL) -f https://github.com/surfly/gevent/releases gevent==$(GEVENT_VERSION)
 endif
 ifneq ($(TRAVIS), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
