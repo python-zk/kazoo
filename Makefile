@@ -18,6 +18,9 @@ TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([s
 GREENLET_SUPPORTED = yes
 ifeq ($(findstring 3.,$(TRAVIS_PYTHON_VERSION)), 3.)
 	GREENLET_SUPPORTED = no
+	VENV_CMD = python -m venv .
+else
+	VENV_CMD = python -m virtualenv .
 endif
 ifeq ($(PYPY),yes)
 	GREENLET_SUPPORTED = no
@@ -28,7 +31,7 @@ endif
 all: build
 
 $(PYTHON):
-	python sw/virtualenv.py .
+	$(VENV_CMD)
 
 build: $(PYTHON)
 ifeq ($(GREENLET_SUPPORTED),yes)
