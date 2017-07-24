@@ -1,19 +1,18 @@
 """Kazoo testing harnesses"""
-
 import logging
 import os
 import uuid
 import unittest
 
 from kazoo import python2atexit as atexit
-
 from kazoo.client import KazooClient
 from kazoo.exceptions import KazooException
+from kazoo.protocol.connection import _CONNECTION_DROP, _SESSION_EXPIRED
 from kazoo.protocol.states import (
     KazooState
 )
 from kazoo.testing.common import ZookeeperCluster
-from kazoo.protocol.connection import _CONNECTION_DROP, _SESSION_EXPIRED
+
 
 log = logging.getLogger(__name__)
 

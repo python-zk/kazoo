@@ -4,14 +4,13 @@ from __future__ import absolute_import
 import logging
 
 import gevent
+from gevent import socket
 import gevent.event
 import gevent.queue
-import gevent.select
-import gevent.thread
-
 from gevent.queue import Empty
 from gevent.queue import Queue
-from gevent import socket
+import gevent.select
+import gevent.thread
 try:
     from gevent.lock import Semaphore, RLock
 except ImportError:
@@ -19,6 +18,7 @@ except ImportError:
 
 from kazoo.handlers import utils
 from kazoo import python2atexit
+
 
 _using_libevent = gevent.__version__.startswith('0.')
 

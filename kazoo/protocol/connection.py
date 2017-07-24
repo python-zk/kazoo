@@ -1,13 +1,12 @@
 """Zookeeper Protocol Connection Handler"""
+from binascii import hexlify
+from contextlib import contextmanager
 import logging
 import random
 import select
 import socket
-
 import sys
 import time
-from binascii import hexlify
-from contextlib import contextmanager
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -40,6 +39,7 @@ from kazoo.retry import (
     ForceRetryError,
     RetryFailedError
 )
+
 
 log = logging.getLogger(__name__)
 

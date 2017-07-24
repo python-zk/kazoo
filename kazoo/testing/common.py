@@ -21,6 +21,9 @@
 
 
 import code
+from collections import namedtuple
+from glob import glob
+from itertools import chain
 import logging
 import os
 import os.path
@@ -29,10 +32,6 @@ import signal
 import subprocess
 import tempfile
 import traceback
-
-from itertools import chain
-from collections import namedtuple
-from glob import glob
 
 
 log = logging.getLogger(__name__)

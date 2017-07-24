@@ -15,7 +15,6 @@ class ACL(namedtuple('ACL', 'perms id')):
     a :class:`Permissions` setting. For convenience,
     :meth:`make_digest_acl` should be used to create an ACL object with
     the desired scheme, id, and permissions.
-
     """
     @property
     def acl_list(self):

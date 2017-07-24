@@ -2,12 +2,13 @@
 from collections import namedtuple
 import struct
 
+import six
+
 from kazoo.exceptions import EXCEPTIONS
 from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL
 from kazoo.security import Id
 
-import six
 
 # Struct objects with formats compiled
 bool_struct = struct.Struct('B')

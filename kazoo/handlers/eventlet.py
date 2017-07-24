@@ -4,8 +4,6 @@ from __future__ import absolute_import
 import contextlib
 import logging
 
-import kazoo.python2atexit as python2atexit
-
 import eventlet
 from eventlet.green import select as green_select
 from eventlet.green import socket as green_socket
@@ -14,6 +12,8 @@ from eventlet.green import threading as green_threading
 from eventlet import queue as green_queue
 
 from kazoo.handlers import utils
+import kazoo.python2atexit as python2atexit
+
 
 LOG = logging.getLogger(__name__)
 

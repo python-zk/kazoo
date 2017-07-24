@@ -1,5 +1,4 @@
-from kazoo.testing.harness import KazooTestCase
-from kazoo.testing.harness import KazooTestHarness
+from kazoo.testing.harness import KazooTestCase, KazooTestHarness
 
 
 __all__ = ('KazooTestHarness', 'KazooTestCase', )

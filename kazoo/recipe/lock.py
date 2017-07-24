@@ -14,7 +14,6 @@ changes and re-act appropriately. In the event that a
 and/or the lease has been lost.
 
 """
-
 import sys
 try:
     from time import monotonic as now
@@ -24,16 +23,18 @@ import uuid
 
 import six
 
-from kazoo.retry import (
-    KazooRetry,
-    RetryFailedError,
-    ForceRetryError
+from kazoo.exceptions import (
+    CancelledError,
+    KazooException,
+    LockTimeout,
+    NoNodeError
 )
-from kazoo.exceptions import CancelledError
-from kazoo.exceptions import KazooException
-from kazoo.exceptions import LockTimeout
-from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import KazooState
+from kazoo.retry import (
+    ForceRetryError,
+    KazooRetry,
+    RetryFailedError
+)
 
 
 class _Watch(object):

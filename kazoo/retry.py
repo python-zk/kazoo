@@ -10,6 +10,7 @@ from kazoo.exceptions import (
     SessionExpiredError,
 )
 
+
 log = logging.getLogger(__name__)
 
 

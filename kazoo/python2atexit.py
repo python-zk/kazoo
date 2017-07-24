@@ -1,9 +1,9 @@
 """Uses the old atexit with added unregister for python 2.x
 and the new atexit for python 3.x
 """
-
-import sys
 import atexit
+import sys
+
 
 __all__ = ["register", "unregister"]
 
