@@ -4,7 +4,7 @@
 Installing
 ==========
 
-kazoo can be installed via ``pip`` or ``easy_install``:
+kazoo can be installed via ``pip``:
 
 .. code-block:: bash
 
