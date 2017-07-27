@@ -1,2 +1,1 @@
-gevent>1.1; python_version>='2.7'
-gevent<=1.1; python_version=='2.6'
+gevent>1.1
