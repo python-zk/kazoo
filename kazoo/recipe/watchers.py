@@ -423,6 +423,6 @@ class PatientChildrenWatch(object):
         except Exception as exc:
             self.asy.set_exception(exc)
 
-    def _children_watcher(self, async, event):
+    def _children_watcher(self, async_result, event):
         self.children_changed.set()
-        async.set(time.time())
+        async_result.set(time.time())
