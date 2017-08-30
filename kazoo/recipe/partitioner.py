@@ -192,7 +192,7 @@ class SetPartitioner(object):
 
         # Now watch the party and set the callback on the async result
         # so we know when we're ready
-        self._child_watching(self._allocate_transition, async=True)
+        self._child_watching(self._allocate_transition, client_handler=True)
 
     def __iter__(self):
         """Return the partitions in this partition set"""
@@ -247,7 +247,7 @@ class SetPartitioner(object):
                 if self.failed:
                     return
                 self._set_state(PartitionState.ALLOCATING)
-        self._child_watching(self._allocate_transition, async=True)
+        self._child_watching(self._allocate_transition, client_handler=True)
 
     def finish(self):
         """Call to release the set and leave the party"""
@@ -374,15 +374,17 @@ class SetPartitioner(object):
             self._fail_out()
             return
 
-        self._child_watching(self._allocate_transition, async=True)
+        self._child_watching(self._allocate_transition, client_handler=True)
 
-    def _child_watching(self, func=None, async=False):
+    def _child_watching(self, func=None, client_handler=False):
         """Called when children are being watched to stabilize
 
         This actually returns immediately, child watcher spins up a
         new thread/greenlet and waits for it to stabilize before
         any callbacks might run.
 
+        :param client_handler: If True, deliver the result using the
+                               client's event handler.
         """
         watcher = PatientChildrenWatch(self._client, self._party_path,
                                        self._time_boundary)
@@ -391,7 +393,7 @@ class SetPartitioner(object):
             # We spin up the function in a separate thread/greenlet
             # to ensure that the rawlink's it might use won't be
             # blocked
-            if async:
+            if client_handler:
                 func = partial(self._client.handler.spawn, func)
             asy.rawlink(func)
         return asy

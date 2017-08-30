@@ -39,8 +39,8 @@ class TestGeventHandler(unittest.TestCase):
     def test_matching_async(self):
         h = self._makeOne()
         h.start()
-        async = self._getAsync()
-        assert isinstance(h.async_result(), async)
+        async_handler = self._getAsync()
+        assert isinstance(h.async_result(), async_handler)
 
     def test_exception_raising(self):
         h = self._makeOne()

@@ -26,8 +26,8 @@ class TestThreadingHandler(unittest.TestCase):
     def test_matching_async(self):
         h = self._makeOne()
         h.start()
-        async = self._getAsync()
-        assert isinstance(h.async_result(), async)
+        async_result = self._getAsync()
+        assert isinstance(h.async_result(), async_result)
 
     def test_exception_raising(self):
         h = self._makeOne()
@@ -83,37 +83,37 @@ class TestThreadingAsync(unittest.TestCase):
 
     def test_ready(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
-        eq_(async.ready(), False)
-        async.set('val')
-        eq_(async.ready(), True)
-        eq_(async.successful(), True)
-        eq_(async.exception, None)
+        eq_(async_result.ready(), False)
+        async_result.set('val')
+        eq_(async_result.ready(), True)
+        eq_(async_result.successful(), True)
+        eq_(async_result.exception, None)
 
     def test_callback_queued(self):
         mock_handler = mock.Mock()
         mock_handler.completion_queue = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
-        async.rawlink(lambda a: a)
-        async.set('val')
+        async_result.rawlink(lambda a: a)
+        async_result.set('val')
 
         assert mock_handler.completion_queue.put.called
 
     def test_set_exception(self):
         mock_handler = mock.Mock()
         mock_handler.completion_queue = mock.Mock()
-        async = self._makeOne(mock_handler)
-        async.rawlink(lambda a: a)
-        async.set_exception(ImportError('Error occured'))
+        async_result = self._makeOne(mock_handler)
+        async_result.rawlink(lambda a: a)
+        async_result.set_exception(ImportError('Error occured'))
 
-        assert isinstance(async.exception, ImportError)
+        assert isinstance(async_result.exception, ImportError)
         assert mock_handler.completion_queue.put.called
 
     def test_get_wait_while_setting(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
         bv = threading.Event()
@@ -121,36 +121,36 @@ class TestThreadingAsync(unittest.TestCase):
 
         def wait_for_val():
             bv.set()
-            val = async.get()
+            val = async_result.get()
             lst.append(val)
             cv.set()
         th = threading.Thread(target=wait_for_val)
         th.start()
         bv.wait()
 
-        async.set('fred')
+        async_result.set('fred')
         cv.wait()
         eq_(lst, ['fred'])
         th.join()
 
     def test_get_with_nowait(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
         timeout = self._makeHandler().timeout_exception
 
         @raises(timeout)
         def test_it():
-            async.get(block=False)
+            async_result.get(block=False)
         test_it()
 
         @raises(timeout)
         def test_nowait():
-            async.get_nowait()
+            async_result.get_nowait()
         test_nowait()
 
     def test_get_with_exception(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
         bv = threading.Event()
@@ -159,7 +159,7 @@ class TestThreadingAsync(unittest.TestCase):
         def wait_for_val():
             bv.set()
             try:
-                val = async.get()
+                val = async_result.get()
             except ImportError:
                 lst.append('oops')
             else:
@@ -169,14 +169,14 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         bv.wait()
 
-        async.set_exception(ImportError)
+        async_result.set_exception(ImportError)
         cv.wait()
         eq_(lst, ['oops'])
         th.join()
 
     def test_wait(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
         bv = threading.Event()
@@ -185,7 +185,7 @@ class TestThreadingAsync(unittest.TestCase):
         def wait_for_val():
             bv.set()
             try:
-                val = async.wait(10)
+                val = async_result.wait(10)
             except ImportError:
                 lst.append('oops')
             else:
@@ -195,21 +195,21 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         bv.wait(10)
 
-        async.set("fred")
+        async_result.set("fred")
         cv.wait(15)
         eq_(lst, [True])
         th.join()
 
     def test_set_before_wait(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
         cv = threading.Event()
-        async.set('fred')
+        async_result.set('fred')
 
         def wait_for_val():
-            val = async.get()
+            val = async_result.get()
             lst.append(val)
             cv.set()
         th = threading.Thread(target=wait_for_val)
@@ -220,15 +220,15 @@ class TestThreadingAsync(unittest.TestCase):
 
     def test_set_exc_before_wait(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
         cv = threading.Event()
-        async.set_exception(ImportError)
+        async_result.set_exception(ImportError)
 
         def wait_for_val():
             try:
-                val = async.get()
+                val = async_result.get()
             except ImportError:
                 lst.append('ooops')
             else:
@@ -242,7 +242,7 @@ class TestThreadingAsync(unittest.TestCase):
 
     def test_linkage(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
         cv = threading.Event()
 
         lst = []
@@ -251,77 +251,77 @@ class TestThreadingAsync(unittest.TestCase):
             lst.append(True)
 
         def wait_for_val():
-            async.get()
+            async_result.get()
             cv.set()
 
         th = threading.Thread(target=wait_for_val)
         th.start()
 
-        async.rawlink(add_on)
-        async.set('fred')
+        async_result.rawlink(add_on)
+        async_result.set('fred')
         assert mock_handler.completion_queue.put.called
-        async.unlink(add_on)
+        async_result.unlink(add_on)
         cv.wait()
-        eq_(async.value, 'fred')
+        eq_(async_result.value, 'fred')
         th.join()
 
     def test_linkage_not_ready(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
 
         def add_on():
             lst.append(True)
 
-        async.set('fred')
+        async_result.set('fred')
         assert not mock_handler.completion_queue.called
-        async.rawlink(add_on)
+        async_result.rawlink(add_on)
         assert mock_handler.completion_queue.put.called
 
     def test_link_and_unlink(self):
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
 
         def add_on():
             lst.append(True)
 
-        async.rawlink(add_on)
+        async_result.rawlink(add_on)
         assert not mock_handler.completion_queue.put.called
-        async.unlink(add_on)
-        async.set('fred')
+        async_result.unlink(add_on)
+        async_result.set('fred')
         assert not mock_handler.completion_queue.put.called
 
     def test_captured_exception(self):
         from kazoo.handlers.utils import capture_exceptions
 
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
-        @capture_exceptions(async)
+        @capture_exceptions(async_result)
         def exceptional_function():
             return 1/0
 
         exceptional_function()
 
-        assert_raises(ZeroDivisionError, async.get)
+        assert_raises(ZeroDivisionError, async_result.get)
 
     def test_no_capture_exceptions(self):
         from kazoo.handlers.utils import capture_exceptions
 
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
 
         def add_on():
             lst.append(True)
 
-        async.rawlink(add_on)
+        async_result.rawlink(add_on)
 
-        @capture_exceptions(async)
+        @capture_exceptions(async_result)
         def regular_function():
             return True
 
@@ -333,19 +333,19 @@ class TestThreadingAsync(unittest.TestCase):
         from kazoo.handlers.utils import wrap
 
         mock_handler = mock.Mock()
-        async = self._makeOne(mock_handler)
+        async_result = self._makeOne(mock_handler)
 
         lst = []
 
         def add_on(result):
             lst.append(result.get())
 
-        async.rawlink(add_on)
+        async_result.rawlink(add_on)
 
-        @wrap(async)
+        @wrap(async_result)
         def regular_function():
             return 'hello'
 
         assert regular_function() == 'hello'
         assert mock_handler.completion_queue.put.called
-        assert async.get() == 'hello'
+        assert async_result.get() == 'hello'
