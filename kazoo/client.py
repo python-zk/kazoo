@@ -106,7 +106,8 @@ class KazooClient(object):
                  timeout=10.0, client_id=None, handler=None,
                  default_acl=None, auth_data=None, read_only=None,
                  randomize_hosts=True, connection_retry=None,
-                 command_retry=None, logger=None, **kwargs):
+                 command_retry=None, logger=None, keyfile=None,
+                 certfile=None, ca=None, use_ssl=False, **kwargs):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -135,6 +136,10 @@ class KazooClient(object):
             options which will be used for creating one.
         :param logger: A custom logger to use instead of the module
             global `log` instance.
+        :param keyfile: SSL keyfile to use for authentication
+        :param certfile: SSL certfile to use for authentication
+        :param ca: SSL CA file to use for authentication
+        :param use_ssl: argument to control whether SSL is used or not
 
         Basic Example:
 
@@ -183,6 +188,10 @@ class KazooClient(object):
         self.chroot = None
         self.set_hosts(hosts)
 
+        self.use_ssl = use_ssl
+        self.certfile = certfile
+        self.keyfile = keyfile
+        self.ca = ca
         # Curator like simplified state tracking, and listeners for
         # state transitions
         self._state = KeeperState.CLOSED
@@ -648,7 +657,12 @@ class KazooClient(object):
 
         peer = self._connection._socket.getpeername()[:2]
         sock = self.handler.create_connection(
-            peer, timeout=self._session_timeout / 1000.0)
+            peer, timeout=self._session_timeout / 1000.0,
+            use_ssl=self.use_ssl,
+            ca=self.ca,
+            certfile=self.certfile,
+            keyfile=self.keyfile,
+        )
         sock.sendall(cmd)
         result = sock.recv(8192)
         sock.close()
