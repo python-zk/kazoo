@@ -216,13 +216,19 @@ class ConnectionHandler(object):
         remaining = length
         with self._socket_error_handling():
             while remaining > 0:
-                s = self.handler.select([self._socket], [], [], timeout)[0]
-                if not s:  # pragma: nocover
-                    # If the read list is empty, we got a timeout. We don't
-                    # have to check wlist and xlist as we don't set any
-                    raise self.handler.timeout_exception("socket time-out"
-                                                         " during read")
-
+                # Because of SSL framing, a select may not return when using an SSL
+                # socket because the underlying physical socket may not have anything
+                # to select, but the wrapped object may still have something to read as
+                # it has previously gotten enough data from the underlying socket.
+                if hasattr(self._socket, "pending") and self._socket.pending() > 0:
+                    pass
+                else:
+                    s = self.handler.select([self._socket], [], [], timeout)[0]
+                    if not s:  # pragma: nocover
+                      # If the read list is empty, we got a timeout. We don't
+                      # have to check wlist and xlist as we don't set any
+                      raise self.handler.timeout_exception("socket time-out"
+                                                           " during read")
                 chunk = self._socket.recv(remaining)
                 if chunk == b'':
                     raise ConnectionDropped('socket connection broken')
@@ -596,7 +602,7 @@ class ConnectionHandler(object):
 
     def _connect(self, host, port):
         client = self.client
-        self.logger.info('Connecting to %s:%s', host, port)
+        self.logger.info('Connecting to %s:%s, use_ssl: %r', host, port, self.client.use_ssl)
 
         self.logger.log(BLATHER,
                         '    Using session_id: %r session_passwd: %s',
@@ -605,7 +611,13 @@ class ConnectionHandler(object):
 
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
-                (host, port), client._session_timeout / 1000.0)
+                address=(host, port),
+                timeout=client._session_timeout / 1000.0,
+                use_ssl=self.client.use_ssl,
+                keyfile=self.client.keyfile,
+                certfile=self.client.certfile,
+                ca=self.client.ca,
+            )
 
         self._socket.setblocking(0)
 
