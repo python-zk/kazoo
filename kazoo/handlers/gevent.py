@@ -7,8 +7,6 @@ import gevent
 from gevent import socket
 import gevent.event
 import gevent.queue
-from gevent.queue import Empty
-from gevent.queue import Queue
 import gevent.select
 import gevent.thread
 try:
@@ -50,11 +48,13 @@ class SequentialGeventHandler(object):
 
     """
     name = "sequential_gevent_handler"
+    queue_impl = gevent.queue.Queue
+    queue_empty = gevent.queue.Empty
     sleep_func = staticmethod(gevent.sleep)
 
     def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.callback_queue = Queue()
+        self.callback_queue = self.queue_impl()
         self._running = False
         self._async = None
         self._state_change = Semaphore()
@@ -72,7 +72,7 @@ class SequentialGeventHandler(object):
                     if func is _STOP:
                         break
                     func()
-                except Empty:
+                except self.queue_empty:
                     continue
                 except Exception as exc:
                     log.warning("Exception in worker greenlet")
@@ -110,7 +110,7 @@ class SequentialGeventHandler(object):
                 worker.join()
 
             # Clear the queues
-            self.callback_queue = Queue()  # pragma: nocover
+            self.callback_queue = self.queue_impl()  # pragma: nocover
 
             python2atexit.unregister(self.stop)
 
