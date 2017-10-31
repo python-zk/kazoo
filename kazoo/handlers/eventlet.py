@@ -76,11 +76,13 @@ class SequentialEventletHandler(object):
 
     """
     name = "sequential_eventlet_handler"
+    queue_impl = green_queue.LightQueue
+    queue_empty = green_queue.Empty
 
     def __init__(self):
         """Create a :class:`SequentialEventletHandler` instance"""
-        self.callback_queue = green_queue.LightQueue()
-        self.completion_queue = green_queue.LightQueue()
+        self.callback_queue = self.queue_impl()
+        self.completion_queue = self.queue_impl()
         self._workers = []
         self._started = False
 
