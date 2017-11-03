@@ -11,9 +11,9 @@ Kazoo features:
 * Data and Children Watchers
 * Simplified Zookeeper connection state tracking
 * Unified asynchronous API for use with greenlets or threads
-* Support for `gevent`_ 0.13 and `gevent`_ 1.0
+* Support for `gevent`_ >= 1.2
 * Support for `eventlet`_
-* Support for Zookeeper 3.3 and 3.4 servers
+* Support for Zookeeper 3.3, 3.4, and 3.5 servers
 * Integrated testing helpers for Zookeeper clusters
 * Pure-Python based implementation of the wire protocol, avoiding all the
   memory leaks, lacking features, and debugging madness of the C library
