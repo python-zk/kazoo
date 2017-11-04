@@ -28,16 +28,16 @@ tests_require = install_requires + [
 
 if not (PYTHON3 or PYPY):
     tests_require += [
-        'gevent',
-        'eventlet',
+        'gevent>=1.2',
+        'eventlet>=0.17.1',
     ]
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
-    install_requires.extend([
-        'gevent',
-        'eventlet',
-    ])
+    install_requires += [
+        'gevent>=1.2',
+        'eventlet>=0.17.1',
+    ]
 
 setup(
     name='kazoo',
