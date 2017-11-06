@@ -201,6 +201,11 @@ class TestThreadingAsync(unittest.TestCase):
         th.join()
 
     def test_wait_race(self):
+        """Test that there is no race condition in `IAsyncResult.wait()`.
+
+        Guards against the reappearance of:
+            https://github.com/python-zk/kazoo/issues/485
+        """
         mock_handler = mock.Mock()
         async_result = self._makeOne(mock_handler)
         async_result.set("immediate")
@@ -208,12 +213,9 @@ class TestThreadingAsync(unittest.TestCase):
         cv = threading.Event()
 
         def wait_for_val():
-            try:
-                # NB: should not sleep
-                async_result.wait(10)
-                cv.set()
-            except ImportError:
-                pass
+            # NB: should not sleep
+            async_result.wait(10)
+            cv.set()
         th = threading.Thread(target=wait_for_val)
         th.start()
         cv.wait(1)
