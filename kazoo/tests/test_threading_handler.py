@@ -200,6 +200,28 @@ class TestThreadingAsync(unittest.TestCase):
         eq_(lst, [True])
         th.join()
 
+    def test_wait_race(self):
+        mock_handler = mock.Mock()
+        async_result = self._makeOne(mock_handler)
+        async_result.set("immediate")
+
+        cv = threading.Event()
+
+        def wait_for_val():
+            try:
+                # NB: should not sleep
+                val = async_result.wait(10)
+                cv.set()
+            except ImportError:
+                pass
+        th = threading.Thread(target=wait_for_val)
+        th.start()
+        cv.wait(1)
+        eq_(cv.is_set(), True)
+        if not cv.is_set():
+            async_result.set("kick")
+        th.join()
+
     def test_set_before_wait(self):
         mock_handler = mock.Mock()
         async_result = self._makeOne(mock_handler)
