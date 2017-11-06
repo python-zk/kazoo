@@ -210,7 +210,7 @@ class TestThreadingAsync(unittest.TestCase):
         def wait_for_val():
             try:
                 # NB: should not sleep
-                val = async_result.wait(10)
+                async_result.wait(10)
                 cv.set()
             except ImportError:
                 pass
