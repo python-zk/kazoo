@@ -220,8 +220,6 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         cv.wait(1)
         eq_(cv.is_set(), True)
-        if not cv.is_set():
-            async_result.set("kick")
         th.join()
 
     def test_set_before_wait(self):
