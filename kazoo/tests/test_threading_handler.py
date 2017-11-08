@@ -208,6 +208,7 @@ class TestThreadingAsync(unittest.TestCase):
         """
         mock_handler = mock.Mock()
         async_result = self._makeOne(mock_handler)
+
         async_result.set("immediate")
 
         cv = threading.Event()
@@ -217,9 +218,16 @@ class TestThreadingAsync(unittest.TestCase):
             async_result.wait(10)
             cv.set()
         th = threading.Thread(target=wait_for_val)
+        th.daemon = True
         th.start()
-        cv.wait(1)
+
+        # if the wait() didn't sleep (correctly), cv will be set quickly;
+        # if it did sleep, cv will not be set yet and this will timeout
+        cv.wait(5)
         eq_(cv.is_set(), True)
+        # ensure the waiter is awakened no matter what
+        if not cv.is_set():
+            async_result.set("extra-kick")
         th.join()
 
     def test_set_before_wait(self):
