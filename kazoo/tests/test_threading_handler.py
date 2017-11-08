@@ -225,9 +225,6 @@ class TestThreadingAsync(unittest.TestCase):
         # if it did sleep, cv will not be set yet and this will timeout
         cv.wait(5)
         eq_(cv.is_set(), True)
-        # ensure the waiter is awakened no matter what
-        if not cv.is_set():
-            async_result.set("extra-kick")
         th.join()
 
     def test_set_before_wait(self):
