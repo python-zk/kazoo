@@ -221,8 +221,8 @@ class TestThreadingAsync(unittest.TestCase):
         th.daemon = True
         th.start()
 
-        # if the wait() didn't sleep (correctly), cv will be set quickly;
-        # if it did sleep, cv will not be set yet and this will timeout
+        # if the wait() didn't sleep (correctly), cv will be set quickly
+        # if it did sleep, the cv will not be set yet and this will timeout
         cv.wait(10)
         eq_(cv.is_set(), True)
         th.join()
