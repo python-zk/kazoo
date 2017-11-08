@@ -215,7 +215,7 @@ class TestThreadingAsync(unittest.TestCase):
 
         def wait_for_val():
             # NB: should not sleep
-            async_result.wait(10)
+            async_result.wait(20)
             cv.set()
         th = threading.Thread(target=wait_for_val)
         th.daemon = True
@@ -223,7 +223,7 @@ class TestThreadingAsync(unittest.TestCase):
 
         # if the wait() didn't sleep (correctly), cv will be set quickly;
         # if it did sleep, cv will not be set yet and this will timeout
-        cv.wait(5)
+        cv.wait(10)
         eq_(cv.is_set(), True)
         th.join()
 
