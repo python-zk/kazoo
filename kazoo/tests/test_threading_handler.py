@@ -200,6 +200,33 @@ class TestThreadingAsync(unittest.TestCase):
         eq_(lst, [True])
         th.join()
 
+    def test_wait_race(self):
+        """Test that there is no race condition in `IAsyncResult.wait()`.
+
+        Guards against the reappearance of:
+            https://github.com/python-zk/kazoo/issues/485
+        """
+        mock_handler = mock.Mock()
+        async_result = self._makeOne(mock_handler)
+
+        async_result.set("immediate")
+
+        cv = threading.Event()
+
+        def wait_for_val():
+            # NB: should not sleep
+            async_result.wait(20)
+            cv.set()
+        th = threading.Thread(target=wait_for_val)
+        th.daemon = True
+        th.start()
+
+        # if the wait() didn't sleep (correctly), cv will be set quickly
+        # if it did sleep, the cv will not be set yet and this will timeout
+        cv.wait(10)
+        eq_(cv.is_set(), True)
+        th.join()
+
     def test_set_before_wait(self):
         mock_handler = mock.Mock()
         async_result = self._makeOne(mock_handler)

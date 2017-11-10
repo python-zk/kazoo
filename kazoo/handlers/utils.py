@@ -92,7 +92,8 @@ class AsyncResult(object):
     def wait(self, timeout=None):
         """Block until the instance is ready."""
         with self._condition:
-            self._condition.wait(timeout)
+            if not self.ready():
+                self._condition.wait(timeout)
         return self._exception is not _NONE
 
     def rawlink(self, callback):
