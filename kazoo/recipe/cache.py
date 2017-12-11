@@ -189,9 +189,9 @@ class TreeCache(object):
         if state == KazooState.SUSPENDED:
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)
         elif state == KazooState.CONNECTED:
-            with handle_exception(self._error_listeners):
-                self._root.on_reconnected()
-                self._publish_event(TreeEvent.CONNECTION_RECONNECTED)
+            # The session watcher should not be blocked
+            self._in_background(self._root.on_reconnected)
+            self._publish_event(TreeEvent.CONNECTION_RECONNECTED)
         elif state == KazooState.LOST:
             self._is_initialized = False
             self._publish_event(TreeEvent.CONNECTION_LOST)
