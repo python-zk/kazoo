@@ -273,6 +273,25 @@ class KazooTreeCacheTests(KazooTestCase):
             self.cache.close()
             error_handler.assert_called_once_with(error_value)
 
+    def test_exception_suppressed(self):
+        self.make_cache()
+        self.wait_cache(since=TreeEvent.INITIALIZED)
+
+        # stoke up ConnectionClosedError
+        self.client.stop()
+        self.client.close()
+        self.client.handler.start()  # keep the async completion
+        self.wait_cache(since=TreeEvent.CONNECTION_LOST)
+
+        with patch.object(TreeNode, 'on_created') as on_created:
+            self.cache._root._call_client('exists', '/')
+            self.cache._root._call_client('get', '/')
+            self.cache._root._call_client('get_children', '/')
+
+            self.wait_cache(since=TreeEvent.INITIALIZED)
+            on_created.assert_not_called()
+            eq_(self.cache._outstanding_ops, 0)
+
 
 class FakeException(Exception):
     pass
