@@ -246,11 +246,14 @@ class Lock(object):
             predecessor = self.path + "/" + predecessor
             self.client.add_listener(self._watch_session)
             try:
-                if self.client.exists(predecessor, self._watch_predecessor):
-                    self.wake_event.wait(timeout)
-                    if not self.wake_event.isSet():
-                        raise LockTimeout("Failed to acquire lock on %s after "
-                                          "%s seconds" % (self.path, timeout))
+                self.client.get(predecessor, self._watch_predecessor)
+            except NoNodeError:
+                pass  # predecessor has already been deleted
+            else:
+                self.wake_event.wait(timeout)
+                if not self.wake_event.isSet():
+                    raise LockTimeout("Failed to acquire lock on %s after "
+                                      "%s seconds" % (self.path, timeout))
             finally:
                 self.client.remove_listener(self._watch_session)
 
