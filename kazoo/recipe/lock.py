@@ -126,7 +126,7 @@ class Lock(object):
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True, timeout=None):
+    def acquire(self, blocking=True, timeout=None, ephemeral=True):
         """
         Acquire the lock. By defaults blocks and waits forever.
 
@@ -134,6 +134,8 @@ class Lock(object):
         :type blocking: bool
         :param timeout: Don't wait forever to acquire the lock.
         :type timeout: float or None
+        :param ephemeral: Don't use ephemeral znode for the lock.
+        :type ephemeral: bool
 
         :returns: Was the lock acquired?
         :rtype: bool
@@ -141,8 +143,16 @@ class Lock(object):
         :raises: :exc:`~kazoo.exceptions.LockTimeout` if the lock
                  wasn't acquired within `timeout` seconds.
 
+        .. warning::
+
+            When :attr:`ephemeral` is set to False session expiration
+            will not release the lock and must be handled separately.
+
         .. versionadded:: 1.1
             The timeout option.
+
+        .. versionadded:: 2.4.1
+            The ephemeral option.
         """
 
         def _acquire_lock():
@@ -170,7 +180,8 @@ class Lock(object):
             gotten = False
             try:
                 gotten = retry(self._inner_acquire,
-                               blocking=blocking, timeout=timeout)
+                               blocking=blocking, timeout=timeout,
+                               ephemeral=ephemeral)
             except RetryFailedError:
                 pass
             except KazooException:
@@ -192,7 +203,7 @@ class Lock(object):
         self.wake_event.set()
         return True
 
-    def _inner_acquire(self, blocking, timeout):
+    def _inner_acquire(self, blocking, timeout, ephemeral=True):
 
         # wait until it's our chance to get it..
         if self.is_acquired:
@@ -212,7 +223,7 @@ class Lock(object):
 
         if not node:
             node = self.client.create(self.create_path, self.data,
-                                      ephemeral=True, sequence=True)
+                                      ephemeral=ephemeral, sequence=True)
             # strip off path to node
             node = node[len(self.path) + 1:]
 

@@ -6,6 +6,7 @@ from nose.tools import eq_, ok_
 
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import LockTimeout
+from kazoo.exceptions import NoNodeError
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util
 
@@ -354,6 +355,18 @@ class KazooLockTests(KazooTestCase):
         lock.release()
         lock.acquire()
         lock.release()
+
+    def test_lock_ephemeral(self):
+        client1 = self._get_client()
+        client1.start()
+        lock = client1.Lock(self.lockpath, "ephemeral")
+        lock.acquire(ephemeral=False)
+        znode = self.lockpath + '/' + lock.node
+        client1.stop()
+        try:
+            self.client.get(znode)
+        except NoNodeError:
+            self.fail("NoNodeError raised unexpectedly!")
 
     def test_lock_timeout(self):
         timeout = 3
