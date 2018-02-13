@@ -997,7 +997,7 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        return self.exists_async(path, watch).get()
+        return self.exists_async(path, watch=watch).get()
 
     def exists_async(self, path, watch=None):
         """Asynchronously check if a node exists. Takes the same
@@ -1039,7 +1039,7 @@ class KazooClient(object):
             returns a non-zero error code
 
         """
-        return self.get_async(path, watch).get()
+        return self.get_async(path, watch=watch).get()
 
     def get_async(self, path, watch=None):
         """Asynchronously get the value of a node. Takes the same
@@ -1092,7 +1092,8 @@ class KazooClient(object):
             The `include_data` option.
 
         """
-        return self.get_children_async(path, watch, include_data).get()
+        return self.get_children_async(path, watch=watch,
+                                       include_data=include_data).get()
 
     def get_children_async(self, path, watch=None, include_data=False):
         """Asynchronously get a list of child nodes of a path. Takes
