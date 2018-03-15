@@ -376,3 +376,19 @@ class TestThreadingAsync(unittest.TestCase):
         assert regular_function() == 'hello'
         assert mock_handler.completion_queue.put.called
         assert async_result.get() == 'hello'
+
+    def test_multiple_callbacks(self):
+        mockback1 = mock.Mock(name='mockback1')
+        mockback2 = mock.Mock(name='mockback2')
+        handler = self._makeHandler()
+        handler.start()
+
+        async_result = self._makeOne(handler)
+        async_result.rawlink(mockback1)
+        async_result.rawlink(mockback2)
+        async_result.set('howdy')
+        async_result.wait()
+        handler.stop()
+
+        mockback2.assert_called_once_with(async_result)
+        mockback1.assert_called_once_with(async_result)

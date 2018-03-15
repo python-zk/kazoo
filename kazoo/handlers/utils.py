@@ -46,7 +46,7 @@ class AsyncResult(object):
             self._exception = None
             for callback in self._callbacks:
                 self._handler.completion_queue.put(
-                    lambda: callback(self)
+                    functools.partial(callback, self)
                 )
             self._condition.notify_all()
 
@@ -56,7 +56,7 @@ class AsyncResult(object):
             self._exception = exception
             for callback in self._callbacks:
                 self._handler.completion_queue.put(
-                    lambda: callback(self)
+                    functools.partial(callback, self)
                 )
             self._condition.notify_all()
 
@@ -103,7 +103,7 @@ class AsyncResult(object):
             # Are we already set? Dispatch it now
             if self.ready():
                 self._handler.completion_queue.put(
-                    lambda: callback(self)
+                    functools.partial(callback, self)
                 )
                 return
 
