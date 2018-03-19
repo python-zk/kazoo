@@ -152,8 +152,8 @@ class ZnodeStat(namedtuple('ZnodeStat', 'czxid mzxid ctime mtime version'
                            ' numChildren pzxid')):
     """A ZnodeStat structure with convenience properties
 
-    When getting the value of a node from Zookeeper, the properties for
-    the node known as a "Stat structure" will be retrieved. The
+    When getting the value of a znode from Zookeeper, the properties for
+    the znode known as a "Stat structure" will be retrieved. The
     :class:`ZnodeStat` object provides access to the standard Stat
     properties and additional properties that are more readable and use
     Python time semantics (seconds since epoch instead of ms).
@@ -175,7 +175,7 @@ class ZnodeStat(namedtuple('ZnodeStat', 'czxid mzxid ctime mtime version'
 
     .. attribute:: created (ctime)
 
-        The time in seconds from epoch when this node was created.
+        The time in seconds from epoch when this znode was created.
         (ctime is in milliseconds)
 
     .. attribute:: last_modified (mtime)
