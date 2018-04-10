@@ -239,7 +239,7 @@ class LockingQueue(BaseQueue):
         if self.processing_element is None:
             return False
         lock_id, _ = self.processing_element
-        lock_path = "{path}/{id}".format(path=self._lock_path, id=lock_id)
+        lock_path = self._make_lock_path(lock_id)
         self.client.sync(lock_path)
         value, stat = self.client.retry(self.client.get, lock_path)
         return value == self.id
@@ -253,12 +253,8 @@ class LockingQueue(BaseQueue):
         if self.processing_element is not None and self.holds_lock():
             id_, value = self.processing_element
             with self.client.transaction() as transaction:
-                transaction.delete("{path}/{id}".format(
-                    path=self._entries_path,
-                    id=id_))
-                transaction.delete("{path}/{id}".format(
-                    path=self._lock_path,
-                    id=id_))
+                transaction.delete(self._make_entry_path(id_))
+                transaction.delete(self._make_lock_path(id_))
             self.processing_element = None
             return True
         else:
@@ -274,9 +270,7 @@ class LockingQueue(BaseQueue):
         if self.processing_element is not None and self.holds_lock():
             id_, value = self.processing_element
             with self.client.transaction() as transaction:
-                transaction.delete("{path}/{id}".format(
-                    path=self._lock_path,
-                    id=id_))
+                transaction.delete(self._make_lock_path(id_))
             self.processing_element = None
             return True
         else:
@@ -302,13 +296,17 @@ class LockingQueue(BaseQueue):
                     self.client.get_children,
                     self._lock_path,
                     check_for_updates)
-                available = self._filter_locked(values, taken)
-                if len(available) > 0:
-                    ret = self._take(available[0])
-                    if ret is not None:
-                        # By this time, no one took the task
-                        value.append(ret)
-                        flag.set()
+                available = sorted(values)
+                taken_set = set(taken)
+                for entry in available:
+                    if entry in taken_set:
+                        continue
+                    ret = self._take(entry)
+                    if ret is None:
+                        continue
+                    value.append(ret)
+                    flag.set()
+                    break
 
         check_for_updates(None)
         retVal = None
@@ -316,29 +314,30 @@ class LockingQueue(BaseQueue):
         with lock:
             canceled = True
             if len(value) > 0:
-                # We successfully locked an entry
                 self.processing_element = value[0]
                 retVal = value[0][1]
         return retVal
 
-    def _filter_locked(self, values, taken):
-        taken = set(taken)
-        available = sorted(values)
-        return (available if len(taken) == 0 else
-                [x for x in available if x not in taken])
-
     def _take(self, id_):
+        lock_path = self._make_lock_path(id_)
         try:
-            self.client.create(
-                "{path}/{id}".format(
-                    path=self._lock_path,
-                    id=id_),
-                self.id,
-                ephemeral=True)
+            self.client.create(lock_path, self.id, ephemeral=True)
+        except NodeExistsError:
+            return None
+
+        try:
             value, stat = self.client.retry(
                 self.client.get,
-                "{path}/{id}".format(path=self._entries_path, id=id_))
-        except (NoNodeError, NodeExistsError):
-            # Item is already consumed or locked
+                self._make_entry_path(id_))
+        except NoNodeError:
+            self.client.retry(
+                self.client.delete,
+                lock_path)
             return None
         return (id_, value)
+
+    def _make_entry_path(self, id_):
+        return "{path}/{id}".format(path=self._entries_path, id=id_)
+
+    def _make_lock_path(self, id_):
+        return "{path}/{id}".format(path=self._lock_path, id=id_)
