@@ -60,9 +60,9 @@ class SequentialGeventHandler(object):
         self._state_change = Semaphore()
         self._workers = []
 
-    class timeout_exception(gevent.event.Timeout):
+    class timeout_exception(gevent.Timeout):
         def __init__(self, msg):
-            gevent.event.Timeout.__init__(self, exception=msg)
+            gevent.Timeout.__init__(self, exception=msg)
 
     def _create_greenlet_worker(self, queue):
         def greenlet_worker():
