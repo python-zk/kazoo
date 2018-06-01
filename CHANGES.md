@@ -1,3 +1,48 @@
+<a name="2.5.0"></a>
+## 2.5.0 (2018-06-01)
+
+
+#### Performance
+
+* **recipe:**  Give TreeCache standalone queue ([4456f180](https://github.com/python-zk/kazoo/commit/4456f180735a0f8520bfc42474de9d27fa01bb2c))
+
+#### Doc
+
+*   Correctly document supported versions ([f860de52](https://github.com/python-zk/kazoo/commit/f860de5284e8ba7d0ed4171d9e5c5bef41f6b64d))
+*   Add license to Wheel ([43d156de](https://github.com/python-zk/kazoo/commit/43d156de3d41173d7baf6e8edb4efa377b3732fc))
+*   minor tweaks to contributing.md (#464) ([5837d11b](https://github.com/python-zk/kazoo/commit/5837d11bb541be1296e1b3c1842b11ceb7e743d4))
+
+#### Features
+
+* **recipe:**  allow non ephemeral locking ([6f7a603d](https://github.com/python-zk/kazoo/commit/6f7a603de9f04ec46d9946c6f5b1cb6e2b913b63))
+
+#### Chore
+
+*   drop python 2.6 compatible gevent ([2e8dcd38](https://github.com/python-zk/kazoo/commit/2e8dcd3836d01640f07e8de911cdfb3639f97d20))
+*   remove debian packaging (#468) ([a28423aa](https://github.com/python-zk/kazoo/commit/a28423aac7f33111388372dec50653a3091b9045))
+*   stop bundling virtualenv ([af9b4cab](https://github.com/python-zk/kazoo/commit/af9b4cab39982d961647afca8119816ffe7bf5e6))
+*   remove python 3.3 from tox ([cf66474b](https://github.com/python-zk/kazoo/commit/cf66474b27b4efc9f65e292434c2fcffb697d34d))
+*   remove `easy_install` instructions ([6e6627d5](https://github.com/python-zk/kazoo/commit/6e6627d58628dec11d127fc5508f9a1d16e9c317))
+
+#### Bug Fixes
+
+*   Pass watch as keyword arg instead of positional arg (#495) ([23850792](https://github.com/python-zk/kazoo/commit/2385079267db0bea6793c4f20588644381803a98))
+*   need gevent >= 1.2, not > 1.1 ([18f3531b](https://github.com/python-zk/kazoo/commit/18f3531b605119a547cfc4d5a4223b4b3f185405))
+*   Remove use of "async" as a variable ([225d3369](https://github.com/python-zk/kazoo/commit/225d3369c7a0736125a9375951a079f70fbe9e79), closes [#455](https://github.com/python-zk/kazoo/issues/455))
+* **core:**
+  *  Fix gevent 1.3b1+ timeout import ([257b5896](https://github.com/python-zk/kazoo/commit/257b58961f7ddd9db04d6efa070739a1b0404487))
+  *  Correctly fire multiple callbacks ([0905c47b](https://github.com/python-zk/kazoo/commit/0905c47bff3cfc42382daff0d5ac81189c8ba46d))
+  *  resolve race in IAsyncResult.wait() (#487) ([4d268adf](https://github.com/python-zk/kazoo/commit/4d268adf9837836f05dde5ec81be0d7bbd759e78))
+* **recipe:**
+  *  conn hangs when TreeCache refreshing ([11194137](https://github.com/python-zk/kazoo/commit/111941371daec00a2ecb5d8c29b9b1d35d6aa4ff))
+  *  Unexpected exceptions break TreeCache ([db0c2d4f](https://github.com/python-zk/kazoo/commit/db0c2d4f8ab5ecfb367b7b2accfd9c52c1c91fcd))
+
+#### Refactor
+
+*   Unify queue factory in various handlers ([cbd02f5c](https://github.com/python-zk/kazoo/commit/cbd02f5ccc6ea9e6dd6b5da01a0397ea649143a0))
+
+
+
 <a name="2.4.0"></a>
 ## 2.4.0 (2017-06-14)
 
