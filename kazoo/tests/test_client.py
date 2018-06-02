@@ -1204,9 +1204,9 @@ class TestNonChrootClient(KazooTestCase):
 
 
 class TestReconfig(KazooTestCase):
-
     def setUp(self):
         KazooTestCase.setUp(self)
+
         if TRAVIS_ZK_VERSION:
             version = TRAVIS_ZK_VERSION
         else:
@@ -1214,11 +1214,24 @@ class TestReconfig(KazooTestCase):
         if not version or version < (3, 5):
             raise SkipTest("Must use Zookeeper 3.5 or above")
 
+    def test_no_super_auth(self):
+        self.assertRaises(NoAuthError,
+                          self.client.reconfig,
+                          joining='server.999=0.0.0.0:1234:2345:observer;3456',
+                          leaving=None,
+                          new_members=None)
+
     def test_add_remove_observer(self):
         def free_sock_port():
             s = socket.socket()
             s.bind(('', 0))
             return s, s.getsockname()[1]
+
+        username = "super"
+        password = "test"
+        digest_auth = "%s:%s" % (username, password)
+        client = self._get_client(auth_data=[('digest', digest_auth)])
+        client.start()
 
         # get ports for election, zab and client endpoints. we need to use
         # ports for which we'd immediately get a RST upon connect(); otherwise
@@ -1230,18 +1243,18 @@ class TestReconfig(KazooTestCase):
 
         joining = 'server.100=0.0.0.0:%d:%d:observer;0.0.0.0:%d' % (
             port1, port2, port3)
-        data, _ = self.client.reconfig(joining=joining,
+        data, _ = client.reconfig(joining=joining,
                                        leaving=None,
                                        new_members=None)
-        self.assertIn(joining, data)
+        self.assertIn(joining.encode('utf8'), data)
 
-        data, _ = self.client.reconfig(joining=None,
+        data, _ = client.reconfig(joining=None,
                                        leaving='100',
                                        new_members=None)
-        self.assertNotIn(joining, data)
+        self.assertNotIn(joining.encode('utf8'), data)
 
         # try to add it again, but a config number in the future
-        curver = int(data.split('\n')[-1].split('=')[1], base=16)
+        curver = int(data.decode().split('\n')[-1].split('=')[1], base=16)
         self.assertRaises(BadVersionError,
                           self.client.reconfig,
                           joining=joining,
