@@ -13,7 +13,6 @@ from kazoo.protocol.states import (
 )
 from kazoo.testing.common import ZookeeperCluster
 
-
 log = logging.getLogger(__name__)
 
 CLUSTER = None
@@ -26,20 +25,41 @@ def get_global_cluster():
         ZK_CLASSPATH = os.environ.get("ZOOKEEPER_CLASSPATH")
         ZK_PORT_OFFSET = int(os.environ.get("ZOOKEEPER_PORT_OFFSET", 20000))
         ZK_CLUSTER_SIZE = int(os.environ.get("ZOOKEEPER_CLUSTER_SIZE", 3))
+        ZK_VERSION = os.environ.get("ZOOKEEPER_VERSION")
+        if '-' in ZK_VERSION:
+            # Ignore pre-release markers like -alpha
+            ZK_VERSION = ZK_VERSION.split('-')[0]
+        ZK_VERSION = tuple([int(n) for n in ZK_VERSION.split('.')])
+
         ZK_OBSERVER_START_ID = int(
             os.environ.get("ZOOKEEPER_OBSERVER_START_ID", -1))
 
-        assert ZK_HOME or ZK_CLASSPATH, (
-            "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment "
-            "variable must be defined.\n"
+        assert ZK_HOME or ZK_CLASSPATH or ZK_VERSION, (
+            "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH or "
+            "ZOOKEEPER_VERSION environment variable must be defined.\n"
             "For deb package installations this is /usr/share/java")
 
+        if ZK_VERSION >= (3, 5):
+            additional_configuration_entries = [
+                "4lw.commands.whitelist=*",
+                "reconfigEnabled=true"
+            ]
+            # If defines, this sets the superuser password to "test"
+            additional_java_system_properties = [
+                "-Dzookeeper.DigestAuthenticationProvider.superDigest="
+                "super:D/InIHSb7yEEbrWz8b9l71RjZJU="
+            ]
+        else:
+            additional_configuration_entries = []
+            additional_java_system_properties = []
         CLUSTER = ZookeeperCluster(
             install_path=ZK_HOME,
             classpath=ZK_CLASSPATH,
             port_offset=ZK_PORT_OFFSET,
             size=ZK_CLUSTER_SIZE,
-            observer_start_id=ZK_OBSERVER_START_ID
+            observer_start_id=ZK_OBSERVER_START_ID,
+            configuration_entries=additional_configuration_entries,
+            java_system_properties=additional_java_system_properties
         )
         atexit.register(lambda cluster: cluster.terminate(), CLUSTER)
     return CLUSTER
