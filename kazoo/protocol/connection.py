@@ -1,6 +1,7 @@
 """Zookeeper Protocol Connection Handler"""
 from binascii import hexlify
 from contextlib import contextmanager
+import copy
 import logging
 import random
 import select
@@ -663,7 +664,10 @@ class ConnectionHandler(object):
             client._session_callback(KeeperState.CONNECTED)
             self._ro_mode = None
 
-        for scheme, auth in client.auth_data:
+        # Get a copy of the auth data before iterating, in case it is
+        # changed.
+        auth_data_copy = copy.copy(client.auth_data)
+        for scheme, auth in auth_data_copy:
             ap = Auth(0, scheme, auth)
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
