@@ -179,6 +179,34 @@ class TestAuthentication(KazooTestCase):
             client.stop()
             client.close()
 
+    def test_connect_sasl_auth(self):
+        from kazoo.security import make_acl
+
+        if TRAVIS_ZK_VERSION:
+            version = TRAVIS_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 4):
+            raise SkipTest("Must use Zookeeper 3.4 or above")
+
+        username = "jaasuser"
+        password = "jaas_password"
+        sasl_auth = "%s:%s" % (username, password)
+
+        acl = make_acl('sasl', credential=username, all=True)
+
+        client = self._get_client(auth_data=[('sasl', sasl_auth)])
+        client.start()
+        try:
+            client.create('/1', acl=(acl,))
+            # give ZK a chance to copy data to other node
+            time.sleep(0.1)
+            self.assertRaises(NoAuthError, self.client.get, "/1")
+        finally:
+            client.delete('/1')
+            client.stop()
+            client.close()
+
     def test_unicode_auth(self):
         username = u("xe4/\hm")
         password = u("/\xe4hm")
@@ -216,6 +244,16 @@ class TestAuthentication(KazooTestCase):
                           'digest', ('user', 'pass'))
         self.assertRaises(TypeError, client.add_auth,
                           None, ('user', 'pass'))
+
+    def test_invalid_sasl_auth(self):
+        if TRAVIS_ZK_VERSION:
+            version = TRAVIS_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 4):
+            raise SkipTest("Must use Zookeeper 3.4 or above")
+        client = self._get_client(auth_data=[('sasl', 'baduser:badpassword')])
+        self.assertRaises(ConnectionLoss, client.start)
 
     def test_async_auth(self):
         client = self._get_client()
