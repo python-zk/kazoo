@@ -142,7 +142,8 @@ class KazooClient(object):
         :param certfile: SSL certfile to use for authentication
         :param ca: SSL CA file to use for authentication
         :param use_ssl: argument to control whether SSL is used or not
-        :param verify_certs: when using SSL, argument to bypass certs verification
+        :param verify_certs: when using SSL, argument to bypass
+            certs verification
 
         Basic Example:
 
@@ -192,7 +193,7 @@ class KazooClient(object):
         self.set_hosts(hosts)
 
         self.use_ssl = use_ssl
-        self.verify_certs= verify_certs
+        self.verify_certs = verify_certs
         self.certfile = certfile
         self.keyfile = keyfile
         self.keyfile_password = keyfile_password

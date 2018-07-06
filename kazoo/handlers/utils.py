@@ -199,6 +199,7 @@ def create_tcp_connection(module, address, timeout=None,
     sock = None
 
     while end is None or time.time() < end:
+        timeout_at = end if end is None else end - time.time()
         if use_ssl:
             # Disallow use of SSLv2 and V3 (meaning we require TLSv1.0+)
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -206,11 +207,15 @@ def create_tcp_connection(module, address, timeout=None,
             context.options |= ssl.OP_NO_SSLv3
             # Load default CA certs
             context.load_default_certs(ssl.Purpose.SERVER_AUTH)
-            context.verify_mode = ssl.CERT_OPTIONAL if verify_certs else ssl.CERT_NONE
+            context.verify_mode = (
+                ssl.CERT_OPTIONAL if verify_certs else ssl.CERT_NONE
+            )
             if ca:
                 context.load_verify_locations(ca)
             if certfile and keyfile:
-                context.verify_mode = ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
+                context.verify_mode = (
+                    ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
+                )
                 context.load_cert_chain(certfile=certfile,
                                         keyfile=keyfile,
                                         password=keyfile_password)
@@ -219,6 +224,7 @@ def create_tcp_connection(module, address, timeout=None,
                 addrs = socket.getaddrinfo(address[0], address[1], 0,
                                            socket.SOCK_STREAM)
                 conn = context.wrap_socket(module.socket(addrs[0][0]))
+                conn.settimeout(timeout_at)
                 conn.connect(address)
                 sock = conn
                 break
@@ -228,7 +234,6 @@ def create_tcp_connection(module, address, timeout=None,
             try:
                 # if we got a timeout, lets ensure that we decrement the time
                 # otherwise there is no timeout set and we'll call it as such
-                timeout_at = end if end is None else end - time.time()
                 sock = module.create_connection(address, timeout_at)
                 break
             except Exception as ex:
