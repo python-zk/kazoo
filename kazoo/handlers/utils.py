@@ -187,7 +187,8 @@ def create_tcp_socket(module):
 
 def create_tcp_connection(module, address, timeout=None,
                           use_ssl=False, ca=None, certfile=None,
-                          keyfile=None, keyfile_password=None):
+                          keyfile=None, keyfile_password=None,
+                          verify_certs=True):
     end = None
     if timeout is None:
         # thanks to create_connection() developers for
@@ -203,11 +204,13 @@ def create_tcp_connection(module, address, timeout=None,
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             context.options |= ssl.OP_NO_SSLv2
             context.options |= ssl.OP_NO_SSLv3
-            context.verify_mode = ssl.CERT_OPTIONAL
+            # Load default CA certs
+            context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+            context.verify_mode = ssl.CERT_OPTIONAL if verify_certs else ssl.CERT_NONE
             if ca:
                 context.load_verify_locations(ca)
             if certfile and keyfile:
-                context.verify_mode = ssl.CERT_REQUIRED
+                context.verify_mode = ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
                 context.load_cert_chain(certfile=certfile,
                                         keyfile=keyfile,
                                         password=keyfile_password)

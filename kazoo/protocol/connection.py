@@ -621,6 +621,7 @@ class ConnectionHandler(object):
                 certfile=self.client.certfile,
                 ca=self.client.ca,
                 keyfile_password=self.client.keyfile_password,
+                verify_certs=self.client.verify_certs,
             )
 
         self._socket.setblocking(0)
