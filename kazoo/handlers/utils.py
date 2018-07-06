@@ -186,7 +186,8 @@ def create_tcp_socket(module):
 
 
 def create_tcp_connection(module, address, timeout=None,
-                          use_ssl=False, ca=None, certfile=None, keyfile=None):
+                          use_ssl=False, ca=None, certfile=None,
+                          keyfile=None, keyfile_password=None):
     end = None
     if timeout is None:
         # thanks to create_connection() developers for
@@ -207,7 +208,9 @@ def create_tcp_connection(module, address, timeout=None,
                 context.load_verify_locations(ca)
             if certfile and keyfile:
                 context.verify_mode = ssl.CERT_REQUIRED
-                context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+                context.load_cert_chain(certfile=certfile,
+                                        keyfile=keyfile,
+                                        password=keyfile_password)
             try:
                 # Query the address to get back it's address family
                 addrs = socket.getaddrinfo(address[0], address[1], 0,
@@ -220,8 +223,6 @@ def create_tcp_connection(module, address, timeout=None,
                 raise
         else:
             try:
-                sock = module.create_connection(address, timeout)
-
                 # if we got a timeout, lets ensure that we decrement the time
                 # otherwise there is no timeout set and we'll call it as such
                 timeout_at = end if end is None else end - time.time()

@@ -620,6 +620,7 @@ class ConnectionHandler(object):
                 keyfile=self.client.keyfile,
                 certfile=self.client.certfile,
                 ca=self.client.ca,
+                keyfile_password=self.client.keyfile_password,
             )
 
         self._socket.setblocking(0)

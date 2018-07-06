@@ -107,7 +107,8 @@ class KazooClient(object):
                  default_acl=None, auth_data=None, read_only=None,
                  randomize_hosts=True, connection_retry=None,
                  command_retry=None, logger=None, keyfile=None,
-                 certfile=None, ca=None, use_ssl=False, **kwargs):
+                 keyfile_password=None, certfile=None, ca=None,
+                 use_ssl=False, **kwargs):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -137,6 +138,7 @@ class KazooClient(object):
         :param logger: A custom logger to use instead of the module
             global `log` instance.
         :param keyfile: SSL keyfile to use for authentication
+        :param keyfile_password: SSL keyfile password
         :param certfile: SSL certfile to use for authentication
         :param ca: SSL CA file to use for authentication
         :param use_ssl: argument to control whether SSL is used or not
@@ -191,6 +193,7 @@ class KazooClient(object):
         self.use_ssl = use_ssl
         self.certfile = certfile
         self.keyfile = keyfile
+        self.keyfile_password = keyfile_password
         self.ca = ca
         # Curator like simplified state tracking, and listeners for
         # state transitions
@@ -662,6 +665,7 @@ class KazooClient(object):
             ca=self.ca,
             certfile=self.certfile,
             keyfile=self.keyfile,
+            keyfile_password=self.keyfile_password,
         )
         sock.sendall(cmd)
         result = sock.recv(8192)
