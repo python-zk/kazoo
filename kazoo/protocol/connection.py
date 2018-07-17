@@ -23,6 +23,7 @@ from kazoo.protocol.serialization import (
     Connect,
     Exists,
     GetChildren,
+    GetChildren2,
     Ping,
     PingInstance,
     ReplyHeader,
@@ -398,7 +399,7 @@ class ConnectionHandler(object):
             # Determine if watchers should be registered
             watcher = getattr(request, 'watcher', None)
             if not client._stopped.is_set() and watcher:
-                if isinstance(request, GetChildren):
+                if isinstance(request, (GetChildren, GetChildren2)):
                     client._child_watchers[request.path].add(watcher)
                 else:
                     client._data_watchers[request.path].add(watcher)
