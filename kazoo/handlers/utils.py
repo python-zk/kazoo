@@ -199,7 +199,11 @@ def create_tcp_connection(module, address, timeout=None,
     sock = None
 
     while end is None or time.time() < end:
-        timeout_at = end if end is None else end - time.time()
+        # max() is used to handle a weird edge case where timeout_at
+        # was being set to a negative number. 0.0001 was arbitrarily
+        # picked as a small non-zero number. more info here:
+        # https://github.com/python-zk/kazoo/pull/518
+        timeout_at = end if end is None else max(end - time.time(), 0.0001)
         if use_ssl:
             # Disallow use of SSLv2 and V3 (meaning we require TLSv1.0+)
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
