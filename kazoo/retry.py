@@ -42,19 +42,17 @@ class KazooRetry(object):
         SessionExpiredError,
     )
 
-    def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.8,
+    def __init__(self, max_tries=1, delay=0.1, backoff=2,
                  max_delay=60, ignore_expire=True, sleep_func=time.sleep,
                  deadline=None, interrupt=None):
         """Create a :class:`KazooRetry` instance for retrying function
-        calls
+        calls with uniform jitter
 
         :param max_tries: How many times to retry the command. -1 means
                           infinite tries.
         :param delay: Initial delay between retry attempts.
         :param backoff: Backoff multiplier between retry attempts.
                         Defaults to 2 for exponential backoff.
-        :param max_jitter: Additional max jitter period to wait between
-                           retry attempts to avoid slamming the server.
         :param max_delay: Maximum delay in seconds, regardless of other
                           backoff settings. Defaults to one minute.
         :param ignore_expire:
@@ -70,7 +68,6 @@ class KazooRetry(object):
         self.max_tries = max_tries
         self.delay = delay
         self.backoff = backoff
-        self.max_jitter = int(max_jitter * 100)
         self.max_delay = float(max_delay)
         self._attempts = 0
         self._cur_delay = delay
@@ -93,7 +90,6 @@ class KazooRetry(object):
         obj = KazooRetry(max_tries=self.max_tries,
                          delay=self.delay,
                          backoff=self.backoff,
-                         max_jitter=self.max_jitter / 100.0,
                          max_delay=self.max_delay,
                          sleep_func=self.sleep_func,
                          deadline=self.deadline,
@@ -129,8 +125,7 @@ class KazooRetry(object):
                 if self._attempts == self.max_tries:
                     raise RetryFailedError("Too many retry attempts")
                 self._attempts += 1
-                sleeptime = self._cur_delay + (
-                    random.randint(0, self.max_jitter) / 100.0)
+                sleeptime = random.randint(0, 1 + int(self._cur_delay))
 
                 if self._cur_stoptime is not None and \
                    time.time() + sleeptime >= self._cur_stoptime:
