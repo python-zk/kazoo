@@ -347,6 +347,6 @@ class LockingQueue(BaseQueue):
             # Item is already consumed
             value, stat = self.client.retry(
                 self.client.delete,
-                "{path}/{id}".format(path=self._lock_path,id=id_))
+                "{path}/{id}".format(path=self._lock_path, id=id_))
             return None
         return (id_, value)
