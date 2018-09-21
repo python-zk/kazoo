@@ -345,7 +345,7 @@ class LockingQueue(BaseQueue):
                 "{path}/{id}".format(path=self._entries_path, id=id_))
         except NoNodeError:
             # Item is already consumed
-            value, stat = self.client.retry(
+            self.client.retry(
                 self.client.delete,
                 "{path}/{id}".format(path=self._lock_path, id=id_))
             return None
