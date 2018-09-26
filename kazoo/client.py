@@ -79,7 +79,6 @@ _RETRY_COMPAT_DEFAULTS = dict(
     max_retries=None,
     retry_delay=0.1,
     retry_backoff=2,
-    retry_jitter=0.8,
     retry_max_delay=3600,
 )
 
@@ -87,7 +86,6 @@ _RETRY_COMPAT_MAPPING = dict(
     max_retries='max_tries',
     retry_delay='delay',
     retry_backoff='backoff',
-    retry_jitter='max_jitter',
     retry_max_delay='max_delay',
 )
 
