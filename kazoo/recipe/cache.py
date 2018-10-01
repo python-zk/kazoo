@@ -58,6 +58,12 @@ class TreeCache(object):
         After a cache started, all changes of subtree will be synchronized
         from the ZooKeeper server. Events will be fired for those activity.
 
+        Don't forget to call :meth:`close` if a tree was started and you don't
+        need it anymore, or you will leak the memory of cached nodes, even if
+        you have released all references to the :class:`TreeCache` instance.
+        Because there are so many callbacks that have been registered to the
+        Kazoo client.
+
         See also :meth:`~TreeCache.listen`.
 
         .. note::
