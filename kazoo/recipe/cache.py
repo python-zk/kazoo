@@ -76,7 +76,10 @@ class TreeCache(object):
         self._client.ensure_path(self._root._path)
 
         if self._client.connected:
-            self._root.on_created()
+            # The on_created and other on_* methods must not be invoked outside
+            # the background task. This is the key to keep concurrency safe
+            # without lock.
+            self._in_background(self._root.on_created)
 
     def close(self):
         """Closes the cache.
@@ -96,6 +99,10 @@ class TreeCache(object):
             self._task_queue.put(self._STOP)
             self._client.remove_listener(self._session_watcher)
             with handle_exception(self._error_listeners):
+                # We must invoke on_deleted outside background queue because:
+                # 1. The background task has been stopped.
+                # 2. The on_deleted on closed tree does not communicate with
+                #    ZooKeeper actually.
                 self._root.on_deleted()
 
     def listen(self, listener):
