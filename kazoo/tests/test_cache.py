@@ -1,7 +1,9 @@
+import gc
 import uuid
 
 from mock import patch, call, Mock
 from nose.tools import eq_, ok_, assert_not_equal, raises
+from objgraph import count as count_refs_by_type
 
 from kazoo.testing import KazooTestCase
 from kazoo.exceptions import KazooException
@@ -24,6 +26,9 @@ class KazooTreeCacheTests(KazooTestCase):
                 raise self._error_queue.get()
             except FakeException:
                 pass
+        if self.cache is not None:
+            self.cache.close()
+            self.cache = None
 
     def make_cache(self):
         if self.cache is None:
@@ -51,6 +56,23 @@ class KazooTreeCacheTests(KazooTestCase):
         method = getattr(self.client, method_name)
         return patch.object(self.client, method_name, wraps=method)
 
+    def _gc_wait(self):
+        while not self.client.handler.completion_queue.empty():
+            self.client.handler.sleep_func(0.1)
+        for gen in range(3):
+            gc.collect(gen)
+
+    def count_tree_node(self):
+        # inspect GC and count tree nodes for checking memory leak
+        for retry in range(10):
+            result = set()
+            for _ in range(5):
+                self._gc_wait()
+                result.add(count_refs_by_type('TreeNode'))
+            if len(result) == 1:
+                return list(result)[0]
+        raise RuntimeError('could not count refs exactly')
+
     def test_start(self):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
@@ -74,6 +96,8 @@ class KazooTreeCacheTests(KazooTestCase):
         self.cache.start()
 
     def test_close(self):
+        eq_(self.count_tree_node(), 0)
+
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
         self.client.create(self.path + '/foo/bar/baz', makepath=True)
@@ -121,6 +145,39 @@ class KazooTreeCacheTests(KazooTestCase):
             stub_data_watcher)
         eq_(list(self.client._child_watchers[root_path + '/foo'])[0],
             stub_child_watcher)
+
+        # should not be any leaked memory (tree node) here
+        self.cache = None
+        eq_(self.count_tree_node(), 0)
+
+    def test_delete_operation(self):
+        self.make_cache()
+        self.wait_cache(since=TreeEvent.INITIALIZED)
+
+        eq_(self.count_tree_node(), 1)
+
+        self.client.create(self.path + '/foo/bar/baz', makepath=True)
+        for _ in range(3):
+            self.wait_cache(TreeEvent.NODE_ADDED)
+
+        self.client.delete(self.path + '/foo', recursive=True)
+        for _ in range(3):
+            self.wait_cache(TreeEvent.NODE_REMOVED)
+
+        # tree should be empty
+        eq_(self.cache._root._children, {})
+
+        # watchers should be reset
+        root_path = self.client.chroot + self.path
+        eq_(self.client._data_watchers[root_path + '/foo'], set())
+        eq_(self.client._data_watchers[root_path + '/foo/bar'], set())
+        eq_(self.client._data_watchers[root_path + '/foo/bar/baz'], set())
+        eq_(self.client._child_watchers[root_path + '/foo'], set())
+        eq_(self.client._child_watchers[root_path + '/foo/bar'], set())
+        eq_(self.client._child_watchers[root_path + '/foo/bar/baz'], set())
+
+        # should not be any leaked memory (tree node) here
+        eq_(self.count_tree_node(), 1)
 
     def test_children_operation(self):
         self.make_cache()

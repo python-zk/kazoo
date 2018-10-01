@@ -186,6 +186,9 @@ class TreeCache(object):
                 func, args, kwargs = cb
                 func(*args, **kwargs)
 
+                # release before possible idle
+                del cb, func, args, kwargs
+
     def _session_watcher(self, state):
         if state == KazooState.SUSPENDED:
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)

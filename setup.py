@@ -25,6 +25,7 @@ tests_require = install_requires + [
     'nose',
     'flake8',
     'pure-sasl',
+    'objgraph',
 ]
 
 if not (PYTHON3 or PYPY):
