@@ -404,10 +404,11 @@ def handle_exception(listeners):
         yield
     except Exception as e:
         logger.debug('processing error: %r', e)
-        for listener in listeners:
-            try:
-                listener(e)
-            except BaseException:  # pragma: no cover
-                logger.exception('Exception handling exception')  # oops
+        if listeners:
+            for listener in listeners:
+                try:
+                    listener(e)
+                except BaseException:  # pragma: no cover
+                    logger.exception('Exception handling exception')  # oops
         else:
             logger.exception('No listener to process %r', e)
