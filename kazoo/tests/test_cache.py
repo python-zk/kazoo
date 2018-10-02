@@ -80,6 +80,21 @@ class KazooTreeCacheTests(KazooTestCase):
         for _ in range(3):
             self.wait_cache(TreeEvent.NODE_ADDED)
 
+        # setup stub watchers which are outside of tree cache
+        stub_data_watcher = Mock(spec=lambda event: None)
+        stub_child_watcher = Mock(spec=lambda event: None)
+        self.client.get(self.path + '/foo', stub_data_watcher)
+        self.client.get_children(self.path + '/foo', stub_child_watcher)
+
+        # watchers inside tree cache should be here
+        root_path = self.client.chroot + self.path
+        eq_(len(self.client._data_watchers[root_path + '/foo']), 2)
+        eq_(len(self.client._data_watchers[root_path + '/foo/bar']), 1)
+        eq_(len(self.client._data_watchers[root_path + '/foo/bar/baz']), 1)
+        eq_(len(self.client._child_watchers[root_path + '/foo']), 2)
+        eq_(len(self.client._child_watchers[root_path + '/foo/bar']), 1)
+        eq_(len(self.client._child_watchers[root_path + '/foo/bar/baz']), 1)
+
         self.cache.close()
 
         # nothing should be published since tree closed
@@ -92,6 +107,20 @@ class KazooTreeCacheTests(KazooTestCase):
 
         # node state should not be changed
         assert_not_equal(self.cache._root._state, TreeNode.STATE_DEAD)
+
+        # watchers should be reset
+        eq_(len(self.client._data_watchers[root_path + '/foo']), 1)
+        eq_(len(self.client._data_watchers[root_path + '/foo/bar']), 0)
+        eq_(len(self.client._data_watchers[root_path + '/foo/bar/baz']), 0)
+        eq_(len(self.client._child_watchers[root_path + '/foo']), 1)
+        eq_(len(self.client._child_watchers[root_path + '/foo/bar']), 0)
+        eq_(len(self.client._child_watchers[root_path + '/foo/bar/baz']), 0)
+
+        # outside watchers should not be deleted
+        eq_(list(self.client._data_watchers[root_path + '/foo'])[0],
+            stub_data_watcher)
+        eq_(list(self.client._child_watchers[root_path + '/foo'])[0],
+            stub_child_watcher)
 
     def test_children_operation(self):
         self.make_cache()

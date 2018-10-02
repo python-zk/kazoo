@@ -19,6 +19,7 @@ import operator
 import os
 
 from kazoo.exceptions import NoNodeError, KazooException
+from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.states import KazooState, EventType
 
 
@@ -241,6 +242,7 @@ class TreeNode(object):
             old_child.on_deleted()
 
         if self._tree._state == self._tree.STATE_CLOSED:
+            self._reset_watchers()
             return
 
         old_state, self._state = self._state, self.STATE_DEAD
@@ -253,9 +255,17 @@ class TreeNode(object):
             child = self._path[len(self._parent._path) + 1:]
             if self._parent._children.get(child) is self:
                 del self._parent._children[child]
+                self._reset_watchers()
 
     def _publish_event(self, *args, **kwargs):
         return self._tree._publish_event(*args, **kwargs)
+
+    def _reset_watchers(self):
+        client = self._tree._client
+        for _watchers in (client._data_watchers, client._child_watchers):
+            _path = _prefix_root(client.chroot, self._path)
+            _watcher = _watchers.get(_path, set())
+            _watcher.discard(self._process_watch)
 
     def _refresh(self):
         self._refresh_data()
@@ -394,7 +404,7 @@ def handle_exception(listeners):
         for listener in listeners:
             try:
                 listener(e)
-            except:  # pragma: no cover
+            except BaseException:  # pragma: no cover
                 logger.exception('Exception handling exception')  # oops
         else:
             logger.exception('No listener to process %r', e)
