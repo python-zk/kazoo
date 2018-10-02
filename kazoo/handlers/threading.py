@@ -126,6 +126,7 @@ class SequentialThreadingHandler(object):
                         log.exception("Exception in worker queue thread")
                     finally:
                         queue.task_done()
+                        del func  # release before possible idle
                 except self.queue_empty:
                     continue
         t = self.spawn(_thread_worker)
