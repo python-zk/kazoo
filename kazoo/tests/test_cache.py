@@ -1,17 +1,44 @@
 import gc
+import importlib
 import uuid
 
 from mock import patch, call, Mock
 from nose.tools import eq_, ok_, assert_not_equal, raises
 from objgraph import count as count_refs_by_type
 
-from kazoo.testing import KazooTestCase
+from kazoo.testing import KazooTestHarness
 from kazoo.exceptions import KazooException
 from kazoo.recipe.cache import TreeCache, TreeNode, TreeEvent
 
 
-class KazooTreeCacheTests(KazooTestCase):
+class KazooAdaptiveHandlerTestCase(KazooTestHarness):
+    HANDLERS = (
+        ('kazoo.handlers.gevent', 'SequentialGeventHandler'),
+        ('kazoo.handlers.eventlet', 'SequentialEventletHandler'),
+        ('kazoo.handlers.threading', 'SequentialThreadingHandler'),
+    )
 
+    def setUp(self):
+        self.handler = self.choose_an_installed_handler()
+        self.setup_zookeeper(handler=self.handler)
+
+    def tearDown(self):
+        self.handler = None
+        self.teardown_zookeeper()
+
+    def choose_an_installed_handler(self):
+        for handler_module, handler_class in self.HANDLERS:
+            try:
+                mod = importlib.import_module(handler_module)
+                cls = getattr(mod, handler_class)
+            except ImportError:
+                continue
+            else:
+                return cls()
+        raise ImportError('No available handler')
+
+
+class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
     def setUp(self):
         super(KazooTreeCacheTests, self).setUp()
         self._event_queue = self.client.handler.queue_impl()
@@ -20,7 +47,6 @@ class KazooTreeCacheTests(KazooTestCase):
         self.cache = None
 
     def tearDown(self):
-        super(KazooTreeCacheTests, self).tearDown()
         if not self._error_queue.empty():
             try:
                 raise self._error_queue.get()
@@ -29,6 +55,7 @@ class KazooTreeCacheTests(KazooTestCase):
         if self.cache is not None:
             self.cache.close()
             self.cache = None
+        super(KazooTreeCacheTests, self).tearDown()
 
     def make_cache(self):
         if self.cache is None:
@@ -56,9 +83,15 @@ class KazooTreeCacheTests(KazooTestCase):
         method = getattr(self.client, method_name)
         return patch.object(self.client, method_name, wraps=method)
 
-    def _gc_wait(self):
-        while not self.client.handler.completion_queue.empty():
-            self.client.handler.sleep_func(0.1)
+    def _wait_gc(self):
+        # trigger switching on some coroutine handlers
+        self.client.handler.sleep_func(0.1)
+
+        completion_queue = getattr(self.handler, 'completion_queue', None)
+        if completion_queue is not None:
+            while not self.client.handler.completion_queue.empty():
+                self.client.handler.sleep_func(0.1)
+
         for gen in range(3):
             gc.collect(gen)
 
@@ -67,7 +100,7 @@ class KazooTreeCacheTests(KazooTestCase):
         for retry in range(10):
             result = set()
             for _ in range(5):
-                self._gc_wait()
+                self._wait_gc()
                 result.add(count_refs_by_type('TreeNode'))
             if len(result) == 1:
                 return list(result)[0]
