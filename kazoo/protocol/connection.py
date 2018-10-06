@@ -26,6 +26,7 @@ from kazoo.protocol.serialization import (
     Ping,
     PingInstance,
     ReplyHeader,
+    SASL,
     Transaction,
     Watch,
     int_struct
@@ -40,6 +41,11 @@ from kazoo.retry import (
     ForceRetryError,
     RetryFailedError
 )
+try:
+    from puresasl.client import SASLClient
+    PURESASL_AVAILABLE = True
+except ImportError:
+    PURESASL_AVAILABLE = False
 
 
 log = logging.getLogger(__name__)
@@ -154,6 +160,8 @@ class ConnectionHandler(object):
         self._ro_mode = False
 
         self._connection_routine = None
+
+        self.sasl_cli = None
 
     # This is instance specific to avoid odd thread bug issues in Python
     # during shutdown global cleanup
@@ -417,6 +425,24 @@ class ConnectionHandler(object):
                 async_object.set(True)
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
+        elif self.sasl_cli and not self.sasl_cli.complete:
+            # SASL authentication is not yet finished, this can only
+            # be a SASL packet
+            self.logger.log(BLATHER, 'Received SASL')
+            try:
+                challenge, _ = SASL.deserialize(buffer, offset)
+            except Exception:
+                raise ConnectionDropped('error while SASL authentication.')
+            response = self.sasl_cli.process(challenge)
+            if response:
+                # authentication not yet finished, answering the challenge
+                self._send_sasl_request(challenge=response,
+                                        timeout=client._session_timeout)
+            else:
+                # authentication is ok, state is CONNECTED
+                # remove sensible information from the object
+                client._session_callback(KeeperState.CONNECTED)
+                self.sasl_cli.dispose()
         else:
             self.logger.log(BLATHER, 'Reading for header %r', header)
 
@@ -545,11 +571,11 @@ class ConnectionHandler(object):
             client._session_callback(KeeperState.CONNECTING)
 
         try:
+            self._xid = 0
             read_timeout, connect_timeout = self._connect(host, port)
             read_timeout = read_timeout / 1000.0
             connect_timeout = connect_timeout / 1000.0
             retry.reset()
-            self._xid = 0
             self.ping_outstanding.clear()
             with self._socket_error_handling():
                 while not close_connection:
@@ -661,16 +687,58 @@ class ConnectionHandler(object):
             client._session_callback(KeeperState.CONNECTED_RO)
             self._ro_mode = iter(self._server_pinger())
         else:
-            client._session_callback(KeeperState.CONNECTED)
             self._ro_mode = None
 
-        # Get a copy of the auth data before iterating, in case it is
-        # changed.
-        auth_data_copy = copy.copy(client.auth_data)
-        for scheme, auth in auth_data_copy:
-            ap = Auth(0, scheme, auth)
-            zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
-            if zxid:
-                client.last_zxid = zxid
+            # Get a copy of the auth data before iterating, in case it is
+            # changed.
+            client_auth_data_copy = copy.copy(client.auth_data)
+
+            if client.use_sasl and self.sasl_cli is None:
+                if PURESASL_AVAILABLE:
+                    for scheme, auth in client_auth_data_copy:
+                        if scheme == 'sasl':
+                            username, password = auth.split(":")
+                            self.sasl_cli = SASLClient(
+                                host=client.sasl_server_principal,
+                                service='zookeeper',
+                                mechanism='DIGEST-MD5',
+                                username=username,
+                                password=password
+                            )
+                            break
+
+                    # As described in rfc
+                    # https://tools.ietf.org/html/rfc2831#section-2.1
+                    # sending empty challenge
+                    self._send_sasl_request(challenge=b'',
+                                            timeout=connect_timeout)
+                else:
+                    self.logger.warn('Pure-sasl library is missing while sasl'
+                                     ' authentification is configured. Please'
+                                     ' install pure-sasl library to connect '
+                                     'using sasl. Now falling back '
+                                     'connecting WITHOUT any '
+                                     'authentification.')
+                    client.use_sasl = False
+                    client._session_callback(KeeperState.CONNECTED)
+            else:
+                client._session_callback(KeeperState.CONNECTED)
+                for scheme, auth in client_auth_data_copy:
+                    if scheme == "digest":
+                        ap = Auth(0, scheme, auth)
+                        zxid = self._invoke(
+                            connect_timeout / 1000.0,
+                            ap,
+                            xid=AUTH_XID
+                        )
+                        if zxid:
+                            client.last_zxid = zxid
 
         return read_timeout, connect_timeout
+
+    def _send_sasl_request(self, challenge, timeout):
+        """ Called when sending a SASL request, xid needs be to incremented """
+        sasl_request = SASL(challenge)
+        self._xid = (self._xid % 2147483647) + 1
+        xid = self._xid
+        self._submit(sasl_request, timeout / 1000.0, xid)

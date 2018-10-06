@@ -303,6 +303,15 @@ class KazooClient(object):
         self.Semaphore = partial(Semaphore, self)
         self.ShallowParty = partial(ShallowParty, self)
 
+        # Managing SASL client
+        self.use_sasl = False
+        for scheme, auth in self.auth_data:
+            if scheme == "sasl":
+                self.use_sasl = True
+                # Could be used later for GSSAPI implementation
+                self.sasl_server_principal = "zk-sasl-md5"
+                break
+
         # If we got any unhandled keywords, complain like Python would
         if kwargs:
             raise TypeError('__init__() got unexpected keyword arguments: %s'
@@ -728,8 +737,12 @@ class KazooClient(object):
         """Send credentials to server.
 
         :param scheme: authentication scheme (default supported:
-                       "digest").
+                       "digest", "sasl"). Note that "sasl" scheme is
+                       requiring "pure-sasl" library to be
+                       installed.
         :param credential: the credential -- value depends on scheme.
+                           "digest": user:password
+                           "sasl": user:password
 
         :returns: True if it was successful.
         :rtype: bool

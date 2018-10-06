@@ -96,6 +96,7 @@ class ManagedZooKeeper(object):
         if self.running:
             return
         config_path = os.path.join(self.working_path, "zoo.cfg")
+        jass_config_path = os.path.join(self.working_path, "jaas.conf")
         log_path = os.path.join(self.working_path, "log")
         log4j_path = os.path.join(self.working_path, "log4j.properties")
         data_path = os.path.join(self.working_path, "data")
@@ -115,6 +116,7 @@ dataDir=%s
 clientPort=%s
 maxClientCnxns=0
 admin.serverPort=%s
+authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
 """ % (to_java_compatible_path(data_path),
        self.server_info.client_port,
        self.server_info.admin_port))  # NOQA
@@ -137,6 +139,14 @@ peerType=%s
         # Write server ids into datadir
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
             myid_file.write(str(self.server_info.server_id))
+        # Write JAAS configuration
+        with open(jass_config_path, "w") as jaas_file:
+            jaas_file.write("""
+Server {
+    org.apache.zookeeper.server.auth.DigestLoginModule required
+    user_super="super_secret"
+    user_jaasuser="jaas_password";
+};""")
 
         with open(log4j_path, "w") as log4j:
             log4j.write("""
@@ -162,6 +172,9 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             # OS X: Prevent java from appearing in menu bar, process dock
             # and from activation of the main workspace on run.
             "-Djava.awt.headless=true",
+
+            # JAAS configuration for SASL authentication
+            "-Djava.security.auth.login.config=%s" % jass_config_path,
 
             "org.apache.zookeeper.server.quorum.QuorumPeerMain",
             config_path,
