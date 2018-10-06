@@ -1,6 +1,7 @@
 """Zookeeper Protocol Connection Handler"""
 from binascii import hexlify
 from contextlib import contextmanager
+import copy
 import logging
 import random
 import select
@@ -687,9 +688,14 @@ class ConnectionHandler(object):
             self._ro_mode = iter(self._server_pinger())
         else:
             self._ro_mode = None
+
+            # Get a copy of the auth data before iterating, in case it is
+            # changed.
+            client_auth_data_copy = copy.copy(client.auth_data)
+
             if client.use_sasl and self.sasl_cli is None:
                 if PURESASL_AVAILABLE:
-                    for scheme, auth in client.auth_data:
+                    for scheme, auth in client_auth_data_copy:
                         if scheme == 'sasl':
                             username, password = auth.split(":")
                             self.sasl_cli = SASLClient(
@@ -717,7 +723,7 @@ class ConnectionHandler(object):
                     client._session_callback(KeeperState.CONNECTED)
             else:
                 client._session_callback(KeeperState.CONNECTED)
-                for scheme, auth in client.auth_data:
+                for scheme, auth in client_auth_data_copy:
                     if scheme == "digest":
                         ap = Auth(0, scheme, auth)
                         zxid = self._invoke(
