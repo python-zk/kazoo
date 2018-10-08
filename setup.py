@@ -77,4 +77,5 @@ setup(
     extras_require={
         'test': tests_require,
     },
+    long_description_content_type="text/markdown",
 )

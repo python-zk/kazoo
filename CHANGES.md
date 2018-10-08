@@ -217,9 +217,9 @@ VERSIONS WILL REQUIRE PYTHON 2.7 AND ABOVE.
 
 -   Logging levels have been reduced.
     -   Logging previously at the `logging.DEBUG` level is now logged at
-        the `kazoo.loggingsupport.BLATHER` level (5).
+    the `kazoo.loggingsupport.BLATHER` level (5).
     -   Some low-level logging previously at the `logging.INFO` level is
-        now logged at the `logging.DEBUG` level.
+    now logged at the `logging.DEBUG` level.
 -   Issue \#133: Introduce a new environment variable
     ZOOKEEPER\_PORT\_OFFSET for the testing support, to run the testing
     cluster on a different range.
