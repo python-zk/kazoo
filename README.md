@@ -1,9 +1,9 @@
 Kazoo
 =====
 
-![Travis Build](https://travis-ci.org/python-zk/kazoo.svg?branch=master)
+[![Build Status](https://travis-ci.org/python-zk/kazoo.svg?branch=master)](https://travis-ci.org/python-zk/kazoo)
 
-![Latest Version](https://img.shields.io/pypi/v/kazoo.svg)
+[![PyPI version](https://badge.fury.io/py/kazoo.svg)](https://badge.fury.io/py/kazoo)
 
 `kazoo` implements a higher level API to [Apache
 Zookeeper](http://zookeeper.apache.org/) for Python clients.
