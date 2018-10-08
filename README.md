@@ -5,8 +5,6 @@ Kazoo
 
 ![Latest Version](https://img.shields.io/pypi/v/kazoo.svg)
 
-![Downloads](https://img.shields.io/pypi/dm/kazoo.svg)
-
 `kazoo` implements a higher level API to [Apache
 Zookeeper](http://zookeeper.apache.org/) for Python clients.
 
