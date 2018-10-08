@@ -158,6 +158,7 @@ class ConnectionHandler(object):
         self._xid = None
         self._rw_server = None
         self._ro_mode = False
+        self._ro = False
 
         self._connection_routine = None
 
@@ -439,9 +440,9 @@ class ConnectionHandler(object):
                 self._send_sasl_request(challenge=response,
                                         timeout=client._session_timeout)
             else:
-                # authentication is ok, state is CONNECTED
+                # authentication is ok, state is CONNECTED or CONNECTED_RO
                 # remove sensible information from the object
-                client._session_callback(KeeperState.CONNECTED)
+                self._set_connected_ro_or_rw(client)
                 self.sasl_cli.dispose()
         else:
             self.logger.log(BLATHER, 'Reading for header %r', header)
@@ -684,55 +685,52 @@ class ConnectionHandler(object):
                         read_timeout)
 
         if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            self._ro_mode = None
+            self._ro = True
 
-            # Get a copy of the auth data before iterating, in case it is
-            # changed.
-            client_auth_data_copy = copy.copy(client.auth_data)
+        # Get a copy of the auth data before iterating, in case it is
+        # changed.
+        client_auth_data_copy = copy.copy(client.auth_data)
 
-            if client.use_sasl and self.sasl_cli is None:
-                if PURESASL_AVAILABLE:
-                    for scheme, auth in client_auth_data_copy:
-                        if scheme == 'sasl':
-                            username, password = auth.split(":")
-                            self.sasl_cli = SASLClient(
-                                host=client.sasl_server_principal,
-                                service='zookeeper',
-                                mechanism='DIGEST-MD5',
-                                username=username,
-                                password=password
-                            )
-                            break
-
-                    # As described in rfc
-                    # https://tools.ietf.org/html/rfc2831#section-2.1
-                    # sending empty challenge
-                    self._send_sasl_request(challenge=b'',
-                                            timeout=connect_timeout)
-                else:
-                    self.logger.warn('Pure-sasl library is missing while sasl'
-                                     ' authentification is configured. Please'
-                                     ' install pure-sasl library to connect '
-                                     'using sasl. Now falling back '
-                                     'connecting WITHOUT any '
-                                     'authentification.')
-                    client.use_sasl = False
-                    client._session_callback(KeeperState.CONNECTED)
-            else:
-                client._session_callback(KeeperState.CONNECTED)
+        if client.use_sasl and self.sasl_cli is None:
+            if PURESASL_AVAILABLE:
                 for scheme, auth in client_auth_data_copy:
-                    if scheme == "digest":
-                        ap = Auth(0, scheme, auth)
-                        zxid = self._invoke(
-                            connect_timeout / 1000.0,
-                            ap,
-                            xid=AUTH_XID
+                    if scheme == 'sasl':
+                        username, password = auth.split(":")
+                        self.sasl_cli = SASLClient(
+                            host=client.sasl_server_principal,
+                            service='zookeeper',
+                            mechanism='DIGEST-MD5',
+                            username=username,
+                            password=password
                         )
-                        if zxid:
-                            client.last_zxid = zxid
+                        break
+
+                # As described in rfc
+                # https://tools.ietf.org/html/rfc2831#section-2.1
+                # sending empty challenge
+                self._send_sasl_request(challenge=b'',
+                                        timeout=connect_timeout)
+            else:
+                self.logger.warn('Pure-sasl library is missing while sasl'
+                                 ' authentification is configured. Please'
+                                 ' install pure-sasl library to connect '
+                                 'using sasl. Now falling back '
+                                 'connecting WITHOUT any '
+                                 'authentification.')
+                client.use_sasl = False
+                self._set_connected_ro_or_rw(client)
+        else:
+            self._set_connected_ro_or_rw(client)
+            for scheme, auth in client_auth_data_copy:
+                if scheme == "digest":
+                    ap = Auth(0, scheme, auth)
+                    zxid = self._invoke(
+                        connect_timeout / 1000.0,
+                        ap,
+                        xid=AUTH_XID
+                    )
+                    if zxid:
+                        client.last_zxid = zxid
 
         return read_timeout, connect_timeout
 
@@ -742,3 +740,13 @@ class ConnectionHandler(object):
         self._xid = (self._xid % 2147483647) + 1
         xid = self._xid
         self._submit(sasl_request, timeout / 1000.0, xid)
+
+    def _set_connected_ro_or_rw(self, client):
+        """ Called to decide whether to set the KeeperState to CONNECTED_RO
+            or CONNECTED"""
+        if self._ro:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
