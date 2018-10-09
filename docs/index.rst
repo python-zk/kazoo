@@ -99,7 +99,7 @@ dozen contributors from a variety of companies (twitter, mozilla, yahoo! and
 others).
 
 .. _Apache Zookeeper: http://zookeeper.apache.org/
-.. _Zookeeper Programmers Guide: http://zookeeper.apache.org/doc/trunk/zookeeperProgrammers.html
+.. _Zookeeper Programmers Guide: https://zookeeper.apache.org/doc/current/zookeeperProgrammers.html
 .. _Zookeeper Recipes: http://zookeeper.apache.org/doc/current/recipes.html#sc_recoverableSharedLocks
 .. _Nimbus Project: http://www.nimbusproject.org/
 .. _Zope Corporation: http://zope.com/
