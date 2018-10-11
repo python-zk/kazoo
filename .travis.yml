@@ -17,33 +17,45 @@ matrix:
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27
   - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py27
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py27
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-gevent
   - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27-gevent
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py27-gevent
+  - python: '2.7'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py27-gevent
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py27-eventlet
   - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py27-eventlet
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py27-eventlet
   - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.5.2-alpha TOX_VENV=py27
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py27-eventlet
   - python: '3.4'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py34
   - python: '3.4'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py34
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py34
+  - python: '3.4'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py34
   - python: '3.5'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py35
   - python: '3.5'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py35
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py35
+  - python: '3.5'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py35
   - python: '3.6'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py36
   - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=py36
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py36
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py36
   - python: pypy
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=pypy
   - python: pypy
-    env: ZOOKEEPER_VERSION=3.4.10 TOX_VENV=pypy
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=pypy
+  - python: 'pypy'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=pypy
 notifications:
   email: false
 install:

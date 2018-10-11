@@ -378,6 +378,19 @@ class Auth(namedtuple('Auth', 'auth_type scheme auth')):
                 write_string(self.auth))
 
 
+class SASL(namedtuple('SASL', 'challenge')):
+    type = 102
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_buffer(self.challenge))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        challenge, offset = read_buffer(bytes, offset)
+        return challenge, offset
+
 class Watch(namedtuple('Watch', 'type state path')):
     @classmethod
     def deserialize(cls, bytes, offset):
