@@ -106,7 +106,8 @@ class KazooClient(object):
                  randomize_hosts=True, connection_retry=None,
                  command_retry=None, logger=None, keyfile=None,
                  keyfile_password=None, certfile=None, ca=None,
-                 use_ssl=False, verify_certs=True, **kwargs):
+                 use_ssl=False, verify_certs=True,
+                 kerberos_server_principal=None, **kwargs):
         """Create a :class:`KazooClient` instance. All time arguments
         are in seconds.
 
@@ -142,6 +143,8 @@ class KazooClient(object):
         :param use_ssl: argument to control whether SSL is used or not
         :param verify_certs: when using SSL, argument to bypass
             certs verification
+        :param kerberos_server_principal: if using 'gssapi' schema,
+            KDC host to connect to.
 
         Basic Example:
 
@@ -306,10 +309,12 @@ class KazooClient(object):
         # Managing SASL client
         self.use_sasl = False
         for scheme, auth in self.auth_data:
-            if scheme == "sasl":
+            if scheme in ("sasl", "gssapi"):
                 self.use_sasl = True
-                # Could be used later for GSSAPI implementation
-                self.sasl_server_principal = "zk-sasl-md5"
+                if scheme == "sasl":
+                    self.sasl_server_principal = "zk-sasl-md5"
+                else:
+                    self.sasl_server_principal = kerberos_server_principal
                 break
 
         # If we got any unhandled keywords, complain like Python would
@@ -736,13 +741,18 @@ class KazooClient(object):
     def add_auth(self, scheme, credential):
         """Send credentials to server.
 
+        Since authentification is done when initiliazing the connection
+        for "sasl" and "gssapi" schemes, this method can not be used
+        with this schemes after the connection has been initialized.
+
         :param scheme: authentication scheme (default supported:
-                       "digest", "sasl"). Note that "sasl" scheme is
-                       requiring "pure-sasl" library to be
-                       installed.
+                       "digest", "sasl", "gssapi"). Note that "sasl" and
+                       "gssapi" schemes are requiring "pure-sasl" library
+                       to be installed.
         :param credential: the credential -- value depends on scheme.
                            "digest": user:password
                            "sasl": user:password
+                           "gssapi": principal or None
 
         :returns: True if it was successful.
         :rtype: bool

@@ -427,24 +427,35 @@ class ConnectionHandler(object):
                 async_object.set(True)
         elif header.xid == WATCH_XID:
             self._read_watch_event(buffer, offset)
-        elif self.sasl_cli and not self.sasl_cli.complete:
-            # SASL authentication is not yet finished, this can only
-            # be a SASL packet
+        elif self.sasl_cli:
+            # sasl_cli object still exists so SASL authentication is not yet
+            # finished, this can only be a SASL packet
+            end_authentication = False
             self.logger.log(BLATHER, 'Received SASL')
             try:
                 challenge, _ = SASL.deserialize(buffer, offset)
             except Exception:
                 raise ConnectionDropped('error while SASL authentication.')
-            response = self.sasl_cli.process(challenge)
-            if response:
-                # authentication not yet finished, answering the challenge
-                self._send_sasl_request(challenge=response,
+            if challenge is not None:
+                # got a challenge in SASL packet, processing the challenge
+                response = self.sasl_cli.process(challenge)
+                if response is not None:
+                    # got something to send... so sending it
+                    self._send_sasl_request(challenge=response,
                                         timeout=client._session_timeout)
+                else:
+                    # no response means authentication is ok (digest-md5)
+                    end_authentication = True
             else:
-                # authentication is ok, state is CONNECTED or CONNECTED_RO
-                # remove sensible information from the object
+                # no challenge means authentication is ok (gssapi)
+                end_authentication = True
+
+            if end_authentication:
+                # state is CONNECTED or CONNECTED_RO
+                # remove the object to allow reconnect
                 self._set_connected_ro_or_rw(client)
-                self.sasl_cli.dispose()
+                self.sasl_cli = None
+
         else:
             self.logger.log(BLATHER, 'Reading for header %r', header)
 
@@ -704,19 +715,28 @@ class ConnectionHandler(object):
                             username=username,
                             password=password
                         )
+                        # As described in rfc
+                        # https://tools.ietf.org/html/rfc2831#section-2.1
+                        # sending empty challenge
+                        challenge = b''
                         break
-
-                # As described in rfc
-                # https://tools.ietf.org/html/rfc2831#section-2.1
-                # sending empty challenge
-                self._send_sasl_request(challenge=b'',
+                    if scheme == 'gssapi':
+                        self.sasl_cli = SASLClient(
+                            host=client.sasl_server_principal,
+                            service='zookeeper',
+                            mechanism='GSSAPI',
+                            principal=auth
+                        )
+                        challenge = self.sasl_cli.process()
+                        break
+                self._send_sasl_request(challenge=challenge,
                                         timeout=connect_timeout)
             else:
                 self.logger.warn('Pure-sasl library is missing while sasl'
-                                 ' authentification is configured. Please'
-                                 ' install pure-sasl library to connect '
-                                 'using sasl. Now falling back '
-                                 'connecting WITHOUT any '
+                                 'or gssapi authentification is configured.'
+                                 ' Please install pure-sasl library to '
+                                 'connect using sasl or gssapi. Now falling '
+                                 'back connecting WITHOUT any '
                                  'authentification.')
                 client.use_sasl = False
                 self._set_connected_ro_or_rw(client)
