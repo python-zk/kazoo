@@ -198,8 +198,13 @@ def create_tcp_connection(module, address, timeout=None,
         end = time.time() + timeout
     sock = None
 
-    while end is None or time.time() < end:
+    while True:
         timeout_at = end if end is None else end - time.time()
+        # The condition is not '< 0' here because socket.settimeout treats 0 as
+        # a special case to put the socket in non-blocking mode.
+        if timeout_at is not None and timeout_at <= 0:
+            break
+
         if use_ssl:
             # Disallow use of SSLv2 and V3 (meaning we require TLSv1.0+)
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
