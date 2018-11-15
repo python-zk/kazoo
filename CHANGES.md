@@ -1,3 +1,35 @@
+<a name="2.6.0"></a>
+## 2.6.0 (2018-11-14)
+
+
+#### Features
+
+* **core:**
+  *  add SASL DIGEST-MD5 support ([aa2664b8](https://github.com/python-zk/kazoo/commit/aa2664b880d1456c3ccf6515c6ca42653047e272))
+  *  Added SSL support (#513) ([35ce1066](https://github.com/python-zk/kazoo/commit/35ce10669ace9d0d7e787793f0d4937d5d389f69))
+* **tests:**
+  *  update Zookeeper 3.5.2-alpha to 3.5.4-beta ([30330915](https://github.com/python-zk/kazoo/commit/3033091530b8f0aba13a1b8d031a7297e54006c2), closes [#477](https://github.com/python-zk/kazoo/issues/477))
+  *  update Zookeeper version from 3.4.10 to 3.4.13 ([287749b4](https://github.com/python-zk/kazoo/commit/287749b422c886f69e46d108d2ddbb5ad064773e))
+
+#### Bug Fixes
+
+* **core:**
+  *  ensure timeout argument is positive (#534) ([8c5ce118](https://github.com/python-zk/kazoo/commit/8c5ce11883a86b15bc6497706cf36abf1b36145f))
+  *  get_children with include_data=True uses GetChildren2 types (#514) ([901cba7a](https://github.com/python-zk/kazoo/commit/901cba7a40d67ec96c06abe109e3cf51a992b24d))
+  *  allow authentification in RO and RW modes ([2320ab39](https://github.com/python-zk/kazoo/commit/2320ab391f3804a9ddea9c5c86eb86467bb1dbf8))
+  *  Use a copy of auth data when reconnecting (#509) ([de20be91](https://github.com/python-zk/kazoo/commit/de20be917855713169863b65a7aa0634fb78b698))
+  *  change KazooRetry to uniformly jitter over the whole backoff interval (#521) ([60366d2c](https://github.com/python-zk/kazoo/commit/60366d2c7910fc833991fad8e04bbe33817c0544))
+* **recipe:**  Delete lock node in queue recipe if entry already consumed ([7a8167de](https://github.com/python-zk/kazoo/commit/7a8167dea381b3a2015c869a443c96b9d5179411))
+
+#### Doc
+
+*   make badges link to travis and pypi (#528) ([367a1df3](https://github.com/python-zk/kazoo/commit/367a1df35b3b168580327e9f52a4cb9c000ea750))
+*   specify description type for pypi to render correctly ([cc4006e6](https://github.com/python-zk/kazoo/commit/cc4006e6a8ea9441b01a631f3350357a8a2e4088))
+*   remove broken downloads badge ([47e07a96](https://github.com/python-zk/kazoo/commit/47e07a9674713b0756bce0811545c4442d40b60b))
+* **core:**  fix broken zookeeper programmers guide link ([8ecf8a50](https://github.com/python-zk/kazoo/commit/8ecf8a50c746ab7cc588ce9ac10a91ad1d1e5f34))
+
+
+
 <a name="2.5.0"></a>
 ## 2.5.0 (2018-06-01)
 
