@@ -598,6 +598,7 @@ class KazooClient(object):
             return self._live
 
         # Make sure we're safely closed
+        self._stopped.set()
         self._safe_close()
 
         # We've been asked to connect, clear the stop and our writer
