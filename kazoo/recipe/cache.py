@@ -19,6 +19,7 @@ import operator
 import os
 
 from kazoo.exceptions import NoNodeError, KazooException
+from kazoo.protocol.paths import _prefix_root
 from kazoo.protocol.states import KazooState, EventType
 
 
@@ -57,6 +58,12 @@ class TreeCache(object):
         After a cache started, all changes of subtree will be synchronized
         from the ZooKeeper server. Events will be fired for those activity.
 
+        Don't forget to call :meth:`close` if a tree was started and you don't
+        need it anymore, or you will leak the memory of cached nodes, even if
+        you have released all references to the :class:`TreeCache` instance.
+        Because there are so many callbacks that have been registered to the
+        Kazoo client.
+
         See also :meth:`~TreeCache.listen`.
 
         .. note::
@@ -75,7 +82,10 @@ class TreeCache(object):
         self._client.ensure_path(self._root._path)
 
         if self._client.connected:
-            self._root.on_created()
+            # The on_created and other on_* methods must not be invoked outside
+            # the background task. This is the key to keep concurrency safe
+            # without lock.
+            self._in_background(self._root.on_created)
 
     def close(self):
         """Closes the cache.
@@ -95,6 +105,10 @@ class TreeCache(object):
             self._task_queue.put(self._STOP)
             self._client.remove_listener(self._session_watcher)
             with handle_exception(self._error_listeners):
+                # We must invoke on_deleted outside background queue because:
+                # 1. The background task has been stopped.
+                # 2. The on_deleted on closed tree does not communicate with
+                #    ZooKeeper actually.
                 self._root.on_deleted()
 
     def listen(self, listener):
@@ -185,6 +199,9 @@ class TreeCache(object):
                 func, args, kwargs = cb
                 func(*args, **kwargs)
 
+                # release before possible idle
+                del cb, func, args, kwargs
+
     def _session_watcher(self, state):
         if state == KazooState.SUSPENDED:
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)
@@ -241,6 +258,7 @@ class TreeNode(object):
             old_child.on_deleted()
 
         if self._tree._state == self._tree.STATE_CLOSED:
+            self._reset_watchers()
             return
 
         old_state, self._state = self._state, self.STATE_DEAD
@@ -253,9 +271,17 @@ class TreeNode(object):
             child = self._path[len(self._parent._path) + 1:]
             if self._parent._children.get(child) is self:
                 del self._parent._children[child]
+                self._reset_watchers()
 
     def _publish_event(self, *args, **kwargs):
         return self._tree._publish_event(*args, **kwargs)
+
+    def _reset_watchers(self):
+        client = self._tree._client
+        for _watchers in (client._data_watchers, client._child_watchers):
+            _path = _prefix_root(client.chroot, self._path)
+            _watcher = _watchers.get(_path, set())
+            _watcher.discard(self._process_watch)
 
     def _refresh(self):
         self._refresh_data()
@@ -391,10 +417,11 @@ def handle_exception(listeners):
         yield
     except Exception as e:
         logger.debug('processing error: %r', e)
-        for listener in listeners:
-            try:
-                listener(e)
-            except:  # pragma: no cover
-                logger.exception('Exception handling exception')  # oops
+        if listeners:
+            for listener in listeners:
+                try:
+                    listener(e)
+                except BaseException:  # pragma: no cover
+                    logger.exception('Exception handling exception')  # oops
         else:
             logger.exception('No listener to process %r', e)

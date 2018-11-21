@@ -107,6 +107,8 @@ class SequentialEventletHandler(object):
             except Exception:
                 LOG.warning("Exception in worker completion queue greenlet",
                             exc_info=True)
+            finally:
+                del cb  # release before possible idle
 
     def _process_callback_queue(self):
         while True:
@@ -119,6 +121,8 @@ class SequentialEventletHandler(object):
             except Exception:
                 LOG.warning("Exception in worker callback queue greenlet",
                             exc_info=True)
+            finally:
+                del cb  # release before possible idle
 
     def start(self):
         if not self._started:
