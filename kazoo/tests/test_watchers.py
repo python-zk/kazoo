@@ -432,7 +432,8 @@ class KazooChildrenWatcherTests(KazooTestCase):
             if fail_through:
                 return False
 
-        session_watcher = self.client.ChildrenWatch(self.path, changed)._session_watcher
+        childrenWatch = self.client.ChildrenWatch(self.path, changed)
+        session_watcher = childrenWatch._session_watcher
 
         update.wait(10)
         eq_(session_watcher in self.client.state_listeners, True)
