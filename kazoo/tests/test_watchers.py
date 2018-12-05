@@ -418,7 +418,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.wait(0.5)
         eq_(all_children, ['smith'])
 
-    def test_remove_session_watcher_on_func_stops(self):
+    def test_child_watcher_remove_session_watcher(self):
         update = threading.Event()
         all_children = ['fred']
 
@@ -432,8 +432,8 @@ class KazooChildrenWatcherTests(KazooTestCase):
             if fail_through:
                 return False
 
-        childrenWatch = self.client.ChildrenWatch(self.path, changed)
-        session_watcher = childrenWatch._session_watcher
+        children_watch = self.client.ChildrenWatch(self.path, changed)
+        session_watcher = children_watch._session_watcher
 
         update.wait(10)
         eq_(session_watcher in self.client.state_listeners, True)
@@ -448,7 +448,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
-        update.wait(0.5)
+        update.wait(10)
         eq_(session_watcher not in self.client.state_listeners, True)
         eq_(all_children, ['smith'])
 
