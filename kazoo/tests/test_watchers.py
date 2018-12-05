@@ -418,6 +418,39 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.wait(0.5)
         eq_(all_children, ['smith'])
 
+    def test_remove_session_watcher_on_func_stops(self):
+        update = threading.Event()
+        all_children = ['fred']
+
+        fail_through = []
+
+        def changed(children):
+            while all_children:
+                all_children.pop()
+            all_children.extend(children)
+            update.set()
+            if fail_through:
+                return False
+
+        session_watcher = self.client.ChildrenWatch(self.path, changed)._session_watcher
+
+        update.wait(10)
+        eq_(session_watcher in self.client.state_listeners, True)
+        eq_(all_children, [])
+        update.clear()
+
+        fail_through.append(True)
+        self.client.create(self.path + '/' + 'smith')
+        update.wait(10)
+        eq_(session_watcher not in self.client.state_listeners, True)
+        eq_(all_children, ['smith'])
+        update.clear()
+
+        self.client.create(self.path + '/' + 'george')
+        update.wait(0.5)
+        eq_(session_watcher not in self.client.state_listeners, True)
+        eq_(all_children, ['smith'])
+
     def test_child_watch_session_loss(self):
         update = threading.Event()
         all_children = ['fred']
