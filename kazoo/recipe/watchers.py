@@ -341,6 +341,8 @@ class ChildrenWatch(object):
                 if result is False:
                     self._stopped = True
                     self._func = None
+                    if self._allow_session_lost:
+                        self._client.remove_listener(self._session_watcher)
             except Exception as exc:
                 log.exception(exc)
                 raise
