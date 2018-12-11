@@ -29,5 +29,4 @@ cd $HERE
 
 # Yield execution to venv command
 
-$*
-
+exec $*

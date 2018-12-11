@@ -70,7 +70,7 @@ bytes_types = (six.binary_type,)
 
 LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
                KeeperState.CLOSED)
-ENVI_VERSION = re.compile('([\d\.]*).*', re.DOTALL)
+ENVI_VERSION = re.compile(r'([\d\.]*).*', re.DOTALL)
 ENVI_VERSION_KEY = 'zookeeper.version'
 log = logging.getLogger(__name__)
 
@@ -102,8 +102,8 @@ class KazooClient(object):
     """
     def __init__(self, hosts='127.0.0.1:2181',
                  timeout=10.0, client_id=None, handler=None,
-                 default_acl=None, auth_data=None, read_only=None,
-                 randomize_hosts=True, connection_retry=None,
+                 default_acl=None, auth_data=None, sasl_options=None,
+                 read_only=None, randomize_hosts=True, connection_retry=None,
                  command_retry=None, logger=None, keyfile=None,
                  keyfile_password=None, certfile=None, ca=None,
                  use_ssl=False, verify_certs=True, **kwargs):
@@ -123,6 +123,31 @@ class KazooClient(object):
             A list of authentication credentials to use for the
             connection. Should be a list of (scheme, credential)
             tuples as :meth:`add_auth` takes.
+        :param sasl_options:
+            SASL options for the connection, if SASL support is to be used.
+            Should be a dict of SASL options passed to the underlying
+            `pure-sasl <https://pypi.org/project/pure-sasl>`_ library.
+
+            For example using the DIGEST-MD5 mechnism:
+
+            .. code-block:: python
+
+                sasl_options = {
+                    'mechanism': 'DIGEST-MD5',
+                    'username': 'myusername',
+                    'password': 'mypassword'
+                }
+
+            For GSSAPI, using the running process' ticket cache:
+
+            .. code-block:: python
+
+                sasl_options = {
+                    'mechanism': 'GSSAPI',
+                    'service': 'myzk',                  # optional
+                    'principal': 'client@EXAMPLE.COM'   # optional
+                }
+
         :param read_only: Allow connections to read only servers.
         :param randomize_hosts: By default randomize host selection.
         :param connection_retry:
@@ -173,6 +198,9 @@ class KazooClient(object):
 
         .. versionadded:: 1.2
             The connection_retry, command_retry and logger options.
+
+        .. versionadded:: 2.7
+            The sasl_options option.
 
         """
         self.logger = logger or log
@@ -273,9 +301,39 @@ class KazooClient(object):
                     sleep_func=self.handler.sleep_func,
                     **retry_keys)
 
+        # Managing legacy SASL options
+        for scheme, auth in self.auth_data:
+            if scheme != 'sasl':
+                continue
+            if sasl_options:
+                raise ConfigurationError(
+                    'Multiple SASL configurations provided'
+                )
+            warnings.warn(
+                'Passing SASL configuration as part of the auth_data is '
+                'deprecated, please use the sasl_options configuration '
+                'instead', DeprecationWarning, stacklevel=2
+            )
+            username, password = auth.split(':')
+            # Generate an equivalent SASL configuration
+            sasl_options = {
+                'username': username,
+                'password': password,
+                'mechanism': 'DIGEST-MD5',
+                'service': 'zookeeper',
+                'principal': 'zk-sasl-md5',
+            }
+        # Cleanup
+        self.auth_data = set([
+            (scheme, auth)
+            for scheme, auth in self.auth_data
+            if scheme != 'sasl'
+        ])
+
         self._conn_retry.interrupt = lambda: self._stopped.is_set()
         self._connection = ConnectionHandler(
-            self, self._conn_retry.copy(), logger=self.logger)
+            self, self._conn_retry.copy(), logger=self.logger,
+            sasl_options=sasl_options)
 
         # Every retry call should have its own copy of the retry helper
         # to avoid shared retry counts
@@ -302,15 +360,6 @@ class KazooClient(object):
         self.SetPartitioner = partial(SetPartitioner, self)
         self.Semaphore = partial(Semaphore, self)
         self.ShallowParty = partial(ShallowParty, self)
-
-        # Managing SASL client
-        self.use_sasl = False
-        for scheme, auth in self.auth_data:
-            if scheme == "sasl":
-                self.use_sasl = True
-                # Could be used later for GSSAPI implementation
-                self.sasl_server_principal = "zk-sasl-md5"
-                break
 
         # If we got any unhandled keywords, complain like Python would
         if kwargs:
@@ -560,7 +609,7 @@ class KazooClient(object):
                 "Connection has been closed"))
         try:
             write_sock.send(b'\0')
-        except:
+        except:  # NOQA
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
 
@@ -737,12 +786,8 @@ class KazooClient(object):
         """Send credentials to server.
 
         :param scheme: authentication scheme (default supported:
-                       "digest", "sasl"). Note that "sasl" scheme is
-                       requiring "pure-sasl" library to be
-                       installed.
+                       "digest").
         :param credential: the credential -- value depends on scheme.
-                           "digest": user:password
-                           "sasl": user:password
 
         :returns: True if it was successful.
         :rtype: bool

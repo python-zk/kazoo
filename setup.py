@@ -24,7 +24,6 @@ tests_require = install_requires + [
     'mock',
     'nose',
     'flake8',
-    'pure-sasl',
     'objgraph',
 ]
 
@@ -39,6 +38,7 @@ if on_rtd:
     install_requires += [
         'gevent>=1.2',
         'eventlet>=0.17.1',
+        'pure-sasl',
     ]
 
 setup(
@@ -77,6 +77,7 @@ setup(
     tests_require=tests_require,
     extras_require={
         'test': tests_require,
+        'sasl': ['pure-sasl'],
     },
     long_description_content_type="text/markdown",
 )

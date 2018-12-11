@@ -49,7 +49,11 @@ matrix:
   - python: '3.6'
     env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py36 DEPLOY=true
   - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py36-sasl
+  - python: '3.6'
     env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py36
+  - python: '3.6'
+    env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py36-sasl
   - python: pypy
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=pypy
   - python: pypy
