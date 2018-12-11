@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import warnings
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -42,7 +43,7 @@ class KazooRetry(object):
         SessionExpiredError,
     )
 
-    def __init__(self, max_tries=1, delay=0.1, backoff=2,
+    def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=None,
                  max_delay=60, ignore_expire=True, sleep_func=time.sleep,
                  deadline=None, interrupt=None):
         """Create a :class:`KazooRetry` instance for retrying function
@@ -53,6 +54,8 @@ class KazooRetry(object):
         :param delay: Initial delay between retry attempts.
         :param backoff: Backoff multiplier between retry attempts.
                         Defaults to 2 for exponential backoff.
+        :param max_jitter: *Deprecated* Jitter is now uniformly distributed
+                           across retries.
         :param max_delay: Maximum delay in seconds, regardless of other
                           backoff settings. Defaults to one minute.
         :param ignore_expire:
@@ -65,6 +68,12 @@ class KazooRetry(object):
             between retries.
 
         """
+        if max_jitter is not None:
+            warnings.warn(
+                'Passing max_jitter to retry configuration is deprecated.'
+                ' Retry jitter is now automacallity uniform across retries.'
+                ' The parameter will be ignored.',
+                DeprecationWarning, stacklevel=2)
         self.max_tries = max_tries
         self.delay = delay
         self.backoff = backoff
