@@ -4,6 +4,8 @@ addons:
   apt:
     packages:
     - libevent-dev
+    - krb5-kdc
+    - krb5-admin-server
 cache:
   pip: true
   directories:

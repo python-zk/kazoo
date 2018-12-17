@@ -78,7 +78,7 @@ setup(
     tests_require=tests_require,
     extras_require={
         'test': tests_require,
-        'sasl': ['pure-sasl'],
+        'sasl': ['pure-sasl==0.5.1'],
     },
     long_description_content_type="text/markdown",
 )

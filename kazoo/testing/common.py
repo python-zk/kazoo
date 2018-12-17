@@ -75,7 +75,8 @@ class ManagedZooKeeper(object):
     Hudson/Buildbot context, to ensure more test robustness."""
 
     def __init__(self, software_path, server_info, peers=(), classpath=None,
-                 configuration_entries=[], java_system_properties=[]):
+                 configuration_entries=[], java_system_properties=[],
+                 jaas_config=None):
         """Define the ZooKeeper test instance.
 
         @param install_path: The path to the install for ZK
@@ -90,6 +91,7 @@ class ManagedZooKeeper(object):
         self._running = False
         self.configuration_entries = configuration_entries
         self.java_system_properties = java_system_properties
+        self.jaas_config = jaas_config
 
     def run(self):
         """Run the ZooKeeper instance under a temporary directory.
@@ -99,7 +101,7 @@ class ManagedZooKeeper(object):
         if self.running:
             return
         config_path = os.path.join(self.working_path, "zoo.cfg")
-        jass_config_path = os.path.join(self.working_path, "jaas.conf")
+        jaas_config_path = os.path.join(self.working_path, "jaas.conf")
         log_path = os.path.join(self.working_path, "log")
         log4j_path = os.path.join(self.working_path, "log4j.properties")
         data_path = os.path.join(self.working_path, "data")
@@ -126,7 +128,6 @@ authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
        self.server_info.admin_port,
        "\n".join(self.configuration_entries)))  # NOQA
 
-
         # setup a replicated setup if peers are specified
         if self.peers:
             servers_cfg = []
@@ -146,14 +147,8 @@ peerType=%s
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
             myid_file.write(str(self.server_info.server_id))
         # Write JAAS configuration
-        with open(jass_config_path, "w") as jaas_file:
-            jaas_file.write("""
-Server {
-    org.apache.zookeeper.server.auth.DigestLoginModule required
-    user_super="super_secret"
-    user_jaasuser="jaas_password";
-};""")
-
+        with open(jaas_config_path, "w") as jaas_file:
+            jaas_file.write(self.jaas_config or '')
         with open(log4j_path, "w") as log4j:
             log4j.write("""
 # DEFAULT: console appender only
@@ -186,7 +181,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             "-Djava.awt.headless=true",
 
             # JAAS configuration for SASL authentication
-            "-Djava.security.auth.login.config=%s" % jass_config_path,
+            "-Djava.security.auth.login.config=%s" % jaas_config_path,
         ] + self.java_system_properties + [
             "org.apache.zookeeper.server.quorum.QuorumPeerMain",
             config_path,
@@ -279,11 +274,11 @@ class ZookeeperCluster(object):
     def __init__(self, install_path=None, classpath=None,
                  size=3, port_offset=20000, observer_start_id=-1,
                  configuration_entries=[],
-                 java_system_properties=[]):
+                 java_system_properties=[],
+                 jaas_config=None):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
-
 
         # Calculate ports and peer group
         port = port_offset
@@ -309,7 +304,10 @@ class ZookeeperCluster(object):
                     self._install_path, server_info, server_peers,
                     classpath=self._classpath,
                     configuration_entries=configuration_entries,
-                    java_system_properties=java_system_properties))
+                    java_system_properties=java_system_properties,
+                    jaas_config=jaas_config
+                )
+            )
 
     def __getitem__(self, k):
         return self._servers[k]
