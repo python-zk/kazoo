@@ -46,20 +46,14 @@ class AsyncResult(object):
         with self._condition:
             self.value = value
             self._exception = None
-            for callback in self._callbacks:
-                self._handler.completion_queue.put(
-                    functools.partial(callback, self)
-                )
+            self._do_callbacks()
             self._condition.notify_all()
 
     def set_exception(self, exception):
         """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
-            for callback in self._callbacks:
-                self._handler.completion_queue.put(
-                    functools.partial(callback, self)
-                )
+            self._do_callbacks()
             self._condition.notify_all()
 
     def get(self, block=True, timeout=None):
@@ -102,15 +96,12 @@ class AsyncResult(object):
         """Register a callback to call when a value or an exception is
         set"""
         with self._condition:
-            # Are we already set? Dispatch it now
-            if self.ready():
-                self._handler.completion_queue.put(
-                    functools.partial(callback, self)
-                )
-                return
-
             if callback not in self._callbacks:
                 self._callbacks.append(callback)
+
+            # Are we already set? Dispatch it now
+            if self.ready():
+                self._do_callbacks()
 
     def unlink(self, callback):
         """Remove the callback set by :meth:`rawlink`"""
@@ -122,6 +113,18 @@ class AsyncResult(object):
             if callback in self._callbacks:
                 self._callbacks.remove(callback)
 
+    def _do_callbacks(self):
+        leftovers = set()
+
+        for callback in self._callbacks:
+            if self._handler.running:
+                self._handler.completion_queue.put(
+                    functools.partial(callback, self))
+            else:
+                leftovers.add(functools.partial(callback, self))
+
+        for cb in leftovers:
+            cb()
 
 def _set_fd_cloexec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
