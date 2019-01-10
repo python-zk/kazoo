@@ -1224,7 +1224,7 @@ class KazooClient(object):
             raise TypeError("Invalid type for 'path' (string expected)")
         if isinstance(acls, ACL) or not isinstance(acls, (tuple, list)):
             raise TypeError("Invalid type for 'acl' (acl must be a tuple/list"
-                            " of ACL's")
+                            " of ACL's)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
 
