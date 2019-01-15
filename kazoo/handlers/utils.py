@@ -114,17 +114,17 @@ class AsyncResult(object):
                 self._callbacks.remove(callback)
 
     def _do_callbacks(self):
-        leftovers = set()
+        """Execute the callbacks that were registered by :meth:`rawlink`.
+        If the handler is in running state this method only schedules
+        the calls to be performed by the handler. If it's stopped,
+        the callbacks are called right away."""
 
         for callback in self._callbacks:
             if self._handler.running:
                 self._handler.completion_queue.put(
                     functools.partial(callback, self))
             else:
-                leftovers.add(functools.partial(callback, self))
-
-        for cb in leftovers:
-            cb()
+                functools.partial(callback, self)()
 
 def _set_fd_cloexec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
