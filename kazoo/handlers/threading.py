@@ -113,6 +113,10 @@ class SequentialThreadingHandler(object):
         self._state_change = threading.Lock()
         self._workers = []
 
+    @property
+    def running(self):
+        return self._running
+
     def _create_thread_worker(self, queue):
         def _thread_worker():  # pragma: nocover
             while True:

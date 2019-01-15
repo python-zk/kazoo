@@ -1154,7 +1154,7 @@ class TestClientTransactions(KazooTestCase):
         eq_(self.client.get('/smith')[0], b'32')
 
 
-class TestCallbacks(unittest.TestCase):
+class TestSessionCallbacks(unittest.TestCase):
     def test_session_callback_states(self):
         from kazoo.protocol.states import KazooState, KeeperState
         from kazoo.client import KazooClient
@@ -1183,6 +1183,28 @@ class TestCallbacks(unittest.TestCase):
         client._handle = 1
         client._session_callback(-250)
         eq_(client.state, KazooState.SUSPENDED)
+
+
+class TestCallbacks(KazooTestCase):
+    def test_async_result_callbacks_are_always_called(self):
+        # create a callback object
+        callback_mock = mock.Mock()
+
+        # simulate waiting for a response
+        async_result = self.client.handler.async_result()
+        async_result.rawlink(callback_mock)
+
+        # begin the procedure to stop the client
+        self.client.stop()
+
+        # the response has just been received;
+        # this should be on another thread,
+        # simultaneously with the stop procedure
+        async_result.set_exception(
+            Exception("Anything that throws an exception"))
+
+        # with the fix the callback should be called
+        self.assertGreater(callback_mock.call_count, 0)
 
 
 class TestNonChrootClient(KazooTestCase):

@@ -60,6 +60,10 @@ class SequentialGeventHandler(object):
         self._state_change = Semaphore()
         self._workers = []
 
+    @property
+    def running(self):
+        return self._running
+
     class timeout_exception(gevent.Timeout):
         def __init__(self, msg):
             gevent.Timeout.__init__(self, exception=msg)
