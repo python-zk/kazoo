@@ -1,3 +1,20 @@
+<a name="2.6.1"></a>
+### 2.6.1 (2019-01-22)
+
+
+#### Bug Fixes
+
+* **client:**  add missing paren (#550) ([1452a48f](https://github.com/python-zk/kazoo/commit/1452a48f3070fe9034314476a6fdb94ca206dede))
+* **core:**
+  *  support deprecated KazooRetry argument (#545) ([4242da80](https://github.com/python-zk/kazoo/commit/4242da801e8da7b76d7e88e37c3948f97a2b5aae))
+  *  reduce timeout for the first Connect() request (#540) ([2ae392e6](https://github.com/python-zk/kazoo/commit/2ae392e69c4b2daca5d8e7f0e79b7ce90423e65c))
+* **handlers:**  make AsyncResult call all registered callbacks instantly if the handler has stopped running (#549) ([d9e0e720](https://github.com/python-zk/kazoo/commit/d9e0e7208e56c31f0abec60a3701f8d6ec1e7d32))
+* **recipe:**
+  *  No more memory leak when ChildrenWatch was stopped (#543) ([37bcda35](https://github.com/python-zk/kazoo/commit/37bcda357463155aba5f2383bc70528413a10f1b))
+  *  No more memory leak once TreeCache was closed (#524) ([c48f2733](https://github.com/python-zk/kazoo/commit/c48f2733f2a6b2c2941738e4208e8cfede676730))
+
+
+
 <a name="2.6.0"></a>
 ## 2.6.0 (2018-11-14)
 
