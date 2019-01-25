@@ -47,7 +47,7 @@ matrix:
   - python: '3.6'
     env: ZOOKEEPER_VERSION=3.3.6 TOX_VENV=py36
   - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py36
+    env: ZOOKEEPER_VERSION=3.4.13 TOX_VENV=py36 DEPLOY=true
   - python: '3.6'
     env: ZOOKEEPER_VERSION=3.5.4-beta TOX_VENV=py36
   - python: pypy
@@ -69,6 +69,6 @@ deploy:
     secure: L9yXZ2PhQ2wJKQkgigIzW3f/a3ajzUamMdThVelcp/NZeTJfzlC/t89lfSRwLh95o9Z/aIxC4T8yZvNrRzzyMEP0O6s1F69pVm5Px+KBuv82lmI7p5sKTYPp35CE9jH+K/52Fy0+Az5F502xLrkaO4VLLA+zhLffw/qyvNbZui0=
   on:
     tags: true
-    python: 3.4
+    condition: $DEPLOY = true
   distributions: release
   skip_upload_docs: true
