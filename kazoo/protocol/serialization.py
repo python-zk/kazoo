@@ -391,6 +391,7 @@ class SASL(namedtuple('SASL', 'challenge')):
         challenge, offset = read_buffer(bytes, offset)
         return challenge, offset
 
+
 class Watch(namedtuple('Watch', 'type state path')):
     @classmethod
     def deserialize(cls, bytes, offset):
