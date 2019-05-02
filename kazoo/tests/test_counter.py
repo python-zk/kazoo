@@ -21,6 +21,22 @@ class KazooCounterTests(KazooTestCase):
         counter - 1
         eq_(counter.value, -1)
 
+    def test_int_curator_counter(self):
+        counter = self._makeOne(support_curator_shared_count=True)
+        eq_(counter.value, 0)
+        counter += 2
+        counter + 1
+        eq_(counter.value, 3)
+        counter -= 3
+        counter - 1
+        eq_(counter.value, -1)
+        counter += 1
+        counter += 2147483647 
+        eq_(counter.value, 2147483647)
+        counter -= 2147483647
+        counter -= 2147483647
+        eq_(counter.value, -2147483647)
+
     def test_float_counter(self):
         counter = self._makeOne(default=0.0)
         eq_(counter.value, 0.0)
@@ -33,6 +49,8 @@ class KazooCounterTests(KazooTestCase):
         counter = self._makeOne()
         self.assertRaises(TypeError, counter.__add__, 2.1)
         self.assertRaises(TypeError, counter.__add__, b"a")
+        with self.assertRaises(TypeError):
+            counter = self._makeOne(default=0.0, support_curator_shared_count=True)
 
     def test_pre_post_values(self):
         counter = self._makeOne()
