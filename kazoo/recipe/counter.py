@@ -62,7 +62,7 @@ class Counter(object):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The counter path to use.
         :param default: The default value to use for new counter paths.
-        :param support_curator: Enable if support for curator's SharedCount 
+        :param support_curator: Enable if support for curator's SharedCount
                                 recipe is desired.
 
         """
