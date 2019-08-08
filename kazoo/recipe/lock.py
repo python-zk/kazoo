@@ -353,7 +353,8 @@ class Lock(object):
         for child in children:
             try:
                 data, stat = self.client.get(self.path + "/" + child)
-                contenders.append(data.decode('utf-8'))
+                if data is not None:
+                    contenders.append(data.decode('utf-8'))
             except NoNodeError:  # pragma: nocover
                 pass
         return contenders
