@@ -595,9 +595,11 @@ class KazooClient(object):
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
             return False
-        elif self._state in (KeeperState.EXPIRED_SESSION,
-                             KeeperState.CONNECTING):
+        elif self._state == KeeperState.EXPIRED_SESSION:
             async_object.set_exception(SessionExpiredError())
+            return False
+        elif self._state == KeeperState.CONNECTING:
+            async_object.set_exception(ConnectionLoss())
             return False
 
         self._queue.append((request, async_object))
