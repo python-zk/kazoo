@@ -593,7 +593,7 @@ class TestClient(KazooTestCase):
                           '/closedpath', b'bar')
 
         client._state = KeeperState.CONNECTING
-        self.assertRaises(SessionExpiredError, client.create,
+        self.assertRaises(ConnectionLoss, client.create,
                           '/closedpath', b'bar')
         client.stop()
         client.close()
