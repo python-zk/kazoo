@@ -68,7 +68,7 @@ from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 string_types = six.string_types
 bytes_types = (six.binary_type,)
 
-LOST_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
+CLOSED_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
                KeeperState.CLOSED)
 ENVI_VERSION = re.compile(r'([\d\.]*).*', re.DOTALL)
 ENVI_VERSION_KEY = 'zookeeper.version'
@@ -513,14 +513,14 @@ class KazooClient(object):
 
         # Note that we don't check self.state == LOST since that's also
         # the client's initial state
-        dead_state = self._state in LOST_STATES
+        closed_state = self._state in CLOSED_STATES
         self._state = state
 
         # If we were previously closed or had an expired session, and
         # are now connecting, don't bother with the rest of the
         # transitions since they only apply after
         # we've established a connection
-        if dead_state and state == KeeperState.CONNECTING:
+        if closed_state and state == KeeperState.CONNECTING:
             self.logger.log(BLATHER, "Skipping state change")
             return
 
@@ -529,8 +529,8 @@ class KazooClient(object):
                              "state: %s", state)
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
-        elif state in LOST_STATES:
-            self.logger.info("Zookeeper session lost, state: %s", state)
+        elif state in CLOSED_STATES:
+            self.logger.info("Zookeeper session closed, state: %s", state)
             self._live.clear()
             self._make_state_change(KazooState.LOST)
             self._notify_pending(state)
