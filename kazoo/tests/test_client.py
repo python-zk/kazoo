@@ -887,10 +887,13 @@ class TestClient(KazooTestCase):
 
     def test_get_acls(self):
         from kazoo.security import make_digest_acl
-        acl = make_digest_acl('user', 'pass', all=True)
+        user = 'user'
+        passw = 'pass'
+        acl = make_digest_acl(user, passw, all=True)
         client = self.client
         try:
             client.create('/a', acl=[acl])
+            client.add_auth('digest', '{}:{}'.format(user, passw))
             self.assertTrue(acl in client.get_acls('/a')[0])
         finally:
             client.delete('/a')
@@ -901,11 +904,14 @@ class TestClient(KazooTestCase):
 
     def test_set_acls(self):
         from kazoo.security import make_digest_acl
-        acl = make_digest_acl('user', 'pass', all=True)
+        user = 'user'
+        passw = 'pass'
+        acl = make_digest_acl(user, passw, all=True)
         client = self.client
         client.create('/a')
         try:
             client.set_acls('/a', [acl])
+            client.add_auth('digest', '{}:{}'.format(user, passw))
             self.assertTrue(acl in client.get_acls('/a')[0])
         finally:
             client.delete('/a')
