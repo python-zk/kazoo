@@ -78,7 +78,7 @@ cat <<EOF >${WRK_DIR}/krb5.conf
   kdc_listen = 127.0.0.1:${KDC_PORT}
   kdc_tcp_listen = 127.0.0.1:${KDC_PORT}
   kdc = 127.0.0.1:${KDC_PORT}
-  default_domain = kazootest.org
+  default_domain = KAZOOTEST.ORG
  }
 
 [domain_realm]
