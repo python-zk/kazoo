@@ -66,6 +66,8 @@ cat <<EOF >${WRK_DIR}/krb5.conf
  forwardable = true
  rdns = false
  default_realm = KAZOOTEST.ORG
+ default_tkt_enctypes=aes128-cts-hmac-sha1-96
+ default_tgs_enctypes=aes128-cts-hmac-sha1-96
  #default_ccache_name = KEYRING:persistent:%{uid}
 
 [realms]
