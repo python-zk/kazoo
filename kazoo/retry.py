@@ -1,7 +1,6 @@
 import logging
 import random
 import time
-import warnings
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -43,19 +42,20 @@ class KazooRetry(object):
         SessionExpiredError,
     )
 
-    def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=None,
-                 max_delay=60, ignore_expire=True, sleep_func=time.sleep,
+    def __init__(self, max_tries=1, delay=0.1, backoff=2, max_jitter=0.4,
+                 max_delay=60.0, ignore_expire=True, sleep_func=time.sleep,
                  deadline=None, interrupt=None):
         """Create a :class:`KazooRetry` instance for retrying function
-        calls with uniform jitter
+        calls.
 
         :param max_tries: How many times to retry the command. -1 means
                           infinite tries.
         :param delay: Initial delay between retry attempts.
         :param backoff: Backoff multiplier between retry attempts.
                         Defaults to 2 for exponential backoff.
-        :param max_jitter: *Deprecated* Jitter is now uniformly distributed
-                           across retries.
+        :param max_jitter: Percentage of jitter to apply to each retry's delay
+                           to ensure all clients to do not hammer the server
+                           at the same time. Between 0.0 and 1.0.
         :param max_delay: Maximum delay in seconds, regardless of other
                           backoff settings. Defaults to one minute.
         :param ignore_expire:
@@ -68,15 +68,11 @@ class KazooRetry(object):
             between retries.
 
         """
-        if max_jitter is not None:
-            warnings.warn(
-                'Passing max_jitter to retry configuration is deprecated.'
-                ' Retry jitter is now automacallity uniform across retries.'
-                ' The parameter will be ignored.',
-                DeprecationWarning, stacklevel=2)
         self.max_tries = max_tries
         self.delay = delay
         self.backoff = backoff
+        # Ensure max_jitter is in (0, 1)
+        self.max_jitter = max(min(max_jitter, 1.0), 0.0)
         self.max_delay = float(max_delay)
         self._attempts = 0
         self._cur_delay = delay
@@ -99,6 +95,7 @@ class KazooRetry(object):
         obj = KazooRetry(max_tries=self.max_tries,
                          delay=self.delay,
                          backoff=self.backoff,
+                         max_jitter=self.max_jitter,
                          max_delay=self.max_delay,
                          sleep_func=self.sleep_func,
                          deadline=self.deadline,
@@ -134,25 +131,24 @@ class KazooRetry(object):
                 if self._attempts == self.max_tries:
                     raise RetryFailedError("Too many retry attempts")
                 self._attempts += 1
-                sleeptime = random.randint(0, 1 + int(self._cur_delay))
+                jitter = random.uniform(1.0-self.max_jitter,
+                                        1.0+self.max_jitter)
+                sleeptime = self._cur_delay * jitter
 
                 if self._cur_stoptime is not None and \
                    time.time() + sleeptime >= self._cur_stoptime:
                     raise RetryFailedError("Exceeded retry deadline")
 
                 if self.interrupt:
-                    while sleeptime > 0:
+                    remain_time = sleeptime
+                    while remain_time > 0:
                         # Break the time period down and sleep for no
                         # longer than 0.1 before calling the interrupt
-                        if sleeptime < 0.1:
-                            self.sleep_func(sleeptime)
-                            sleeptime -= sleeptime
-                        else:
-                            self.sleep_func(0.1)
-                            sleeptime -= 0.1
+                        self.sleep_func(min(0.1, remain_time))
+                        remain_time -= 0.1
                         if self.interrupt():
                             raise InterruptedError()
                 else:
                     self.sleep_func(sleeptime)
-                self._cur_delay = min(self._cur_delay * self.backoff,
+                self._cur_delay = min(sleeptime * self.backoff,
                                       self.max_delay)
