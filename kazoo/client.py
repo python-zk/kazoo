@@ -628,6 +628,7 @@ class KazooClient(object):
         if not self.connected:
             # We time-out, ensure we are disconnected
             self.stop()
+            self.close()
             raise self.handler.timeout_exception("Connection time-out")
 
         if self.chroot and not self.exists("/"):
