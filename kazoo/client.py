@@ -584,7 +584,7 @@ class KazooClient(object):
         the queue if there is.
 
         Returns False if the call short circuits due to AUTH_FAILED,
-        CLOSED, EXPIRED_SESSION or CONNECTING state.
+        CLOSED, or EXPIRED_SESSION state.
 
         """
 
@@ -595,8 +595,7 @@ class KazooClient(object):
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
             return False
-        elif self._state in (KeeperState.EXPIRED_SESSION,
-                             KeeperState.CONNECTING):
+        elif self._state == KeeperState.EXPIRED_SESSION:
             async_object.set_exception(SessionExpiredError())
             return False
 

@@ -592,14 +592,66 @@ class TestClient(KazooTestCase):
         self.assertRaises(AuthFailedError, client.create,
                           '/closedpath', b'bar')
 
-        client._state = KeeperState.CONNECTING
-        self.assertRaises(SessionExpiredError, client.create,
-                          '/closedpath', b'bar')
         client.stop()
         client.close()
 
         self.assertRaises(ConnectionClosedError, client.create,
                           '/closedpath', b'bar')
+
+    def test_create_queued_while_connecting(self):
+        # This is a bit tricky: we are trying to show that a request
+        # can be queued while the connection is down.  So we create a
+        # client with a fairly large but stable reconnect delay, and
+        # perform a number of attempts.
+        handler = self._makeOne()
+        sleep_func = handler.sleep_func
+        client = self._get_client(
+            handler=handler,
+            connection_retry=dict(
+                max_tries=-1,
+                delay=0.5,
+                backoff=1,
+                max_jitter=0.0,
+                sleep_func=sleep_func
+            )
+        )
+        client.start()
+
+        max_attempts = 5
+        attempts = 0
+        was_queued = False
+
+        while not was_queued and attempts < max_attempts:
+            attempts += 1
+
+            try:
+                client.delete('/queued')
+            except NoNodeError:
+                pass
+
+            # Shut the socket down, and wait for the client to
+            # transition to non-connected.
+            client._connection._socket.shutdown(socket.SHUT_RDWR)
+            while client.connected:
+                sleep_func(0.001)
+
+            # Issue an async request, assuming the client hasn't had
+            # enough time to reconnect.
+            result = client.create_async('/queued', None)
+
+            # Consider the test potentially satisfactory if client
+            # still hasn't had time to reconnect.
+            was_queued = not client.connected
+
+            # Wait for expected result.
+            self.assertEqual(result.get(), '/queued')
+            self.assertEqual(client.connected, True)
+
+        # Fail if no "window" was observed despite max_attempts.
+        self.assertEqual(was_queued, True)
+
+        client.stop()
+        client.close()
 
     def test_create_null_data(self):
         client = self.client
