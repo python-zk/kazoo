@@ -584,11 +584,11 @@ class KazooClient(object):
                 "and wouldn't close after %s seconds" % timeout)
 
     def _call(self, request, async_object):
-        """Ensure there's an active connection and put the request in
-        the queue if there is.
+        """Ensure the client is in CONNECTED or SUSPENDED state and put the
+        request in the queue if it is.
 
         Returns False if the call short circuits due to AUTH_FAILED,
-        CLOSED, EXPIRED_SESSION or CONNECTING state.
+        CLOSED, or EXPIRED_SESSION state.
 
         """
 
@@ -599,8 +599,7 @@ class KazooClient(object):
             async_object.set_exception(ConnectionClosedError(
                 "Connection has been closed"))
             return False
-        elif self._state in (KeeperState.EXPIRED_SESSION,
-                             KeeperState.CONNECTING):
+        elif self._state == KeeperState.EXPIRED_SESSION:
             async_object.set_exception(SessionExpiredError())
             return False
 
