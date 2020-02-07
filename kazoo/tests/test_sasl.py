@@ -13,14 +13,13 @@ from kazoo.tests.util import TRAVIS_ZK_VERSION
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
-
     def setUp(self):
         try:
             import puresasl  # NOQA
         except ImportError:
-            raise SkipTest('PureSASL not available.')
+            raise SkipTest("PureSASL not available.")
 
-        os.environ['ZOOKEEPER_JAAS_AUTH'] = 'digest'
+        os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
 
         if TRAVIS_ZK_VERSION:
@@ -39,36 +38,35 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
         username = "jaasuser"
         password = "jaas_password"
 
-        acl = make_acl('sasl', credential=username, all=True)
+        acl = make_acl("sasl", credential=username, all=True)
 
         sasl_auth = "%s:%s" % (username, password)
-        client = self._get_client(auth_data=[('sasl', sasl_auth)])
+        client = self._get_client(auth_data=[("sasl", sasl_auth)])
 
         client.start()
         try:
-            client.create('/1', acl=(acl,))
+            client.create("/1", acl=(acl,))
             # give ZK a chance to copy data to other node
             time.sleep(0.1)
             self.assertRaises(NoAuthError, self.client.get, "/1")
         finally:
-            client.delete('/1')
+            client.delete("/1")
             client.stop()
             client.close()
 
     def test_invalid_sasl_auth(self):
-        client = self._get_client(auth_data=[('sasl', 'baduser:badpassword')])
+        client = self._get_client(auth_data=[("sasl", "baduser:badpassword")])
         self.assertRaises(AuthFailedError, client.start)
 
 
 class TestSASLDigestAuthentication(KazooTestHarness):
-
     def setUp(self):
         try:
             import puresasl  # NOQA
         except ImportError:
-            raise SkipTest('PureSASL not available.')
+            raise SkipTest("PureSASL not available.")
 
-        os.environ['ZOOKEEPER_JAAS_AUTH'] = 'digest'
+        os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
 
         if TRAVIS_ZK_VERSION:
@@ -87,48 +85,51 @@ class TestSASLDigestAuthentication(KazooTestHarness):
         username = "jaasuser"
         password = "jaas_password"
 
-        acl = make_acl('sasl', credential=username, all=True)
+        acl = make_acl("sasl", credential=username, all=True)
 
         client = self._get_client(
-            sasl_options={'mechanism': 'DIGEST-MD5',
-                          'username': username,
-                          'password': password}
+            sasl_options={
+                "mechanism": "DIGEST-MD5",
+                "username": username,
+                "password": password,
+            }
         )
         client.start()
         try:
-            client.create('/1', acl=(acl,))
+            client.create("/1", acl=(acl,))
             # give ZK a chance to copy data to other node
             time.sleep(0.1)
             self.assertRaises(NoAuthError, self.client.get, "/1")
         finally:
-            client.delete('/1')
+            client.delete("/1")
             client.stop()
             client.close()
 
     def test_invalid_sasl_auth(self):
         client = self._get_client(
-            sasl_options={'mechanism': 'DIGEST-MD5',
-                          'username': 'baduser',
-                          'password': 'badpassword'}
+            sasl_options={
+                "mechanism": "DIGEST-MD5",
+                "username": "baduser",
+                "password": "badpassword",
+            }
         )
         self.assertRaises(AuthFailedError, client.start)
 
 
 class TestSASLGSSAPIAuthentication(KazooTestHarness):
-
     def setUp(self):
         try:
             import puresasl  # NOQA
         except ImportError:
-            raise SkipTest('PureSASL not available.')
+            raise SkipTest("PureSASL not available.")
         try:
             import kerberos  # NOQA
         except ImportError:
-            raise SkipTest('Kerberos support not available.')
-        if not os.environ.get('KRB5_TEST_ENV'):
-            raise SkipTest('Test Kerberos environ not setup.')
+            raise SkipTest("Kerberos support not available.")
+        if not os.environ.get("KRB5_TEST_ENV"):
+            raise SkipTest("Test Kerberos environ not setup.")
 
-        os.environ['ZOOKEEPER_JAAS_AUTH'] = 'gssapi'
+        os.environ["ZOOKEEPER_JAAS_AUTH"] = "gssapi"
         self.setup_zookeeper()
 
         if TRAVIS_ZK_VERSION:
@@ -147,25 +148,24 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         # Ensure we have a client ticket
         subprocess.check_call(
             [
-                'kinit',
-                '-kt', os.path.expandvars('${KRB5_TEST_ENV}/client.keytab'),
-                'client'
+                "kinit",
+                "-kt",
+                os.path.expandvars("${KRB5_TEST_ENV}/client.keytab"),
+                "client",
             ]
         )
 
-        acl = make_acl('sasl', credential='client@KAZOOTEST.ORG', all=True)
+        acl = make_acl("sasl", credential="client@KAZOOTEST.ORG", all=True)
 
-        client = self._get_client(
-            sasl_options={'mechanism': 'GSSAPI'}
-        )
+        client = self._get_client(sasl_options={"mechanism": "GSSAPI"})
         client.start()
         try:
-            client.create('/1', acl=(acl,))
+            client.create("/1", acl=(acl,))
             # give ZK a chance to copy data to other node
             time.sleep(0.1)
             self.assertRaises(NoAuthError, self.client.get, "/1")
         finally:
-            client.delete('/1')
+            client.delete("/1")
             client.stop()
             client.close()
 
@@ -173,14 +173,14 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         # Request a post-datated ticket, so that it is currently invalid.
         subprocess.check_call(
             [
-                'kinit',
-                '-kt', os.path.expandvars('${KRB5_TEST_ENV}/client.keytab'),
-                '-s', '30min',
-                'client'
+                "kinit",
+                "-kt",
+                os.path.expandvars("${KRB5_TEST_ENV}/client.keytab"),
+                "-s",
+                "30min",
+                "client",
             ]
         )
 
-        client = self._get_client(
-            sasl_options={'mechanism': 'GSSAPI'}
-        )
+        client = self._get_client(sasl_options={"mechanism": "GSSAPI"})
         self.assertRaises(AuthFailedError, client.start)

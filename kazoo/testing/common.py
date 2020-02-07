@@ -75,7 +75,7 @@ class ManagedZooKeeper(object):
     Hudson/Buildbot context, to ensure more test robustness."""
 
     def __init__(self, software_path, server_info, peers=(), classpath=None,
-                 configuration_entries=[], java_system_properties=[],
+                 configuration_entries=(), java_system_properties=(),
                  jaas_config=None):
         """Define the ZooKeeper test instance.
 
@@ -182,7 +182,7 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
 
             # JAAS configuration for SASL authentication
             "-Djava.security.auth.login.config=%s" % jaas_config_path,
-        ] + self.java_system_properties + [
+        ] + list(self.java_system_properties) + [
             "org.apache.zookeeper.server.quorum.QuorumPeerMain",
             config_path,
         ]
@@ -273,8 +273,8 @@ class ZookeeperCluster(object):
 
     def __init__(self, install_path=None, classpath=None,
                  size=3, port_offset=20000, observer_start_id=-1,
-                 configuration_entries=[],
-                 java_system_properties=[],
+                 configuration_entries=(),
+                 java_system_properties=(),
                  jaas_config=None):
         self._install_path = install_path
         self._classpath = classpath
