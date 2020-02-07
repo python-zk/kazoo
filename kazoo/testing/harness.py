@@ -93,6 +93,7 @@ Server {
 Server {
   com.sun.security.auth.module.Krb5LoginModule required
   debug=true
+  isInitiator=false
   useKeyTab=true
   keyTab="%s"
   storeKey=true
