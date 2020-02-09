@@ -169,6 +169,12 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             "java",
             "-cp", self.classpath,
 
+            # make_digest_acl_credential assumes UTF-8, but ZK decodes
+            # digest auth packets using the JVM's default "charset"--which
+            # depends on the environment.  Force it to use UTF-8 to avoid
+            # test failures.
+            "-Dfile.encoding=UTF-8",
+
             # "-Dlog4j.debug",
             "-Dreadonlymode.enabled=true",
             "-Dzookeeper.log.dir=%s" % log_path,
