@@ -59,7 +59,17 @@ READ_ACL_UNSAFE = [ACL(Permissions.READ, ANYONE_ID_UNSAFE)]
 
 
 def make_digest_acl_credential(username, password):
-    """Create a SHA1 digest credential"""
+    """Create a SHA1 digest credential.
+
+    .. note::
+
+        This function uses UTF-8 to encode non-ASCII codepoints,
+        whereas ZooKeeper uses the "default locale" for decoding.  It
+        may be a good idea to start the JVM with `-Dfile.encoding=UTF-8`
+        in non-UTF-8 locales.
+        See: https://github.com/python-zk/kazoo/pull/584
+
+    """
     credential = username.encode('utf-8') + b":" + password.encode('utf-8')
     cred_hash = b64encode(hashlib.sha1(credential).digest()).strip()
     return username + ":" + cred_hash.decode('utf-8')
