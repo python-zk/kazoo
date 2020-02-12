@@ -7,11 +7,10 @@ import struct
 import sys
 
 from nose import SkipTest
-from nose.tools import eq_
-from nose.tools import raises
+from nose.tools import eq_, raises, assert_not_equal
 import mock
 
-from kazoo.exceptions import ConnectionLoss
+from kazoo.exceptions import ConnectionLoss, SessionExpiredError
 from kazoo.protocol.serialization import (
     Connect,
     int_struct,
@@ -100,53 +99,115 @@ class TestConnectionHandler(KazooTestCase):
 
     def test_connection_write_timeout(self):
         client = self.client
-        ev = threading.Event()
+        ev_suspended = threading.Event()
+        ev_connected = threading.Event()
         path = "/" + uuid.uuid4().hex
         handler = client.handler
         _select = handler.select
-        _socket = client._connection._socket
 
         def delayed_select(*args, **kwargs):
             result = _select(*args, **kwargs)
-            if _socket in args[1]:
+            if client._connection._socket in args[1]:
                 # for any socket write, simulate a timeout
                 return [], [], []
             return result
 
-        def back(state):
-            if state == KazooState.CONNECTED:
-                ev.set()
-        client.add_listener(back)
+        def listener(state):
+            if state == KazooState.SUSPENDED:
+                ev_suspended.set()
+            elif state == KazooState.CONNECTED:
+                ev_connected.set()
+        client.add_listener(listener)
 
         try:
             handler.select = delayed_select
-            self.assertRaises(ConnectionLoss, client.create, path)
+            result = client.create_async(path)
+            ev_suspended.wait(5)
+            eq_(ev_suspended.is_set(), True)
+            assert_not_equal(len(self.client._queue), 0)
         finally:
             handler.select = _select
+        # the client reconnects automatically, and the queued request
+        # is submitted.
+        ev_connected.wait(5)
+        eq_(ev_connected.is_set(), True)
+        eq_(result.get(), path)
+        assert_not_equal(client.exists(path), None)
+
+    def test_connection_lost_empties_queue(self):
+        client = self.client
+        ev_suspended = threading.Event()
+        ev_lost = threading.Event()
+        ev_connected = threading.Event()
+        path = "/" + uuid.uuid4().hex
+        handler = client.handler
+        _select = handler.select
+
+        def delayed_select(*args, **kwargs):
+            result = _select(*args, **kwargs)
+            if client._connection._socket in args[1]:
+                # for any socket write, simulate a timeout
+                return [], [], []
+            return result
+
+        def expiring_select(*args, **kwargs):
+            result = _select(*args, **kwargs)
+            if client._connection._socket in args[1]:
+                raise SessionExpiredError("Session expired: Testing")
+            return result
+
+        def listener(state):
+            if state == KazooState.SUSPENDED:
+                ev_suspended.set()
+            elif state == KazooState.LOST:
+                ev_lost.set()
+            elif state == KazooState.CONNECTED:
+                ev_connected.set()
+        client.add_listener(listener)
+
+        try:
+            handler.select = delayed_select
+            result = client.create_async(path)
+            ev_suspended.wait(5)
+            eq_(ev_suspended.is_set(), True)
+            assert_not_equal(len(self.client._queue), 0)
+
+            handler.select = expiring_select
+            # the client transitions to EXPIRED_SESSION, which is a closed
+            # state, causing the queue to be flushed.
+            ev_lost.wait(5)
+            eq_(ev_lost.is_set(), True)
+            self.assertRaises(SessionExpiredError, result.get)
+            eq_(len(self.client._queue), 0)
+        finally:
+            handler.select = _select
+
         # the client reconnects automatically
-        ev.wait(5)
-        eq_(ev.is_set(), True)
+        ev_connected.wait(5)
+        eq_(ev_connected.is_set(), True)
         eq_(client.exists(path), None)
 
     def test_connection_deserialize_fail(self):
         client = self.client
-        ev = threading.Event()
+        ev_suspended = threading.Event()
+        ev_connected = threading.Event()
         path = "/" + uuid.uuid4().hex
         handler = client.handler
         _select = handler.select
-        _socket = client._connection._socket
 
         def delayed_select(*args, **kwargs):
             result = _select(*args, **kwargs)
-            if _socket in args[1]:
+            if client._connection._socket in args[1]:
                 # for any socket write, simulate a timeout
                 return [], [], []
             return result
 
-        def back(state):
-            if state == KazooState.CONNECTED:
-                ev.set()
-        client.add_listener(back)
+        def listener(state):
+            if state == KazooState.SUSPENDED:
+                ev_suspended.set()
+            elif state == KazooState.CONNECTED:
+                ev_connected.set()
+        client.add_listener(listener)
 
         deserialize_ev = threading.Event()
 
@@ -163,7 +224,9 @@ class TestConnectionHandler(KazooTestCase):
             mock_deserialize.side_effect = bad_deserialize
             try:
                 handler.select = delayed_select
-                self.assertRaises(ConnectionLoss, client.create, path)
+                result = client.create_async(path)
+                ev_suspended.wait(5)
+                eq_(ev_suspended.is_set(), True)
             finally:
                 handler.select = _select
             # the client reconnects automatically but the first attempt will
@@ -172,9 +235,10 @@ class TestConnectionHandler(KazooTestCase):
             eq_(deserialize_ev.is_set(), True)
 
         # this time should succeed
-        ev.wait(5)
-        eq_(ev.is_set(), True)
-        eq_(client.exists(path), None)
+        ev_connected.wait(5)
+        eq_(ev_connected.is_set(), True)
+        eq_(result.get(), path)
+        assert_not_equal(client.exists(path), None)
 
     def test_connection_close(self):
         self.assertRaises(Exception, self.client.close)

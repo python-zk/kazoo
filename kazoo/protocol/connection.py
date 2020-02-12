@@ -59,8 +59,8 @@ log = logging.getLogger(__name__)
 
 # Special testing hook objects used to force a session expired error as
 # if it came from the server
-_SESSION_EXPIRED = object()
-_CONNECTION_DROP = object()
+_SESSION_EXPIRED = (SessionExpiredError, "Session expired: Testing")
+_CONNECTION_DROP = (ConnectionDropped, "Connection dropped: Testing")
 
 STOP_CONNECTING = object()
 
@@ -454,12 +454,13 @@ class ConnectionHandler(object):
                 pass
             return
 
-        # Special case for testing, if this is a _SessionExpire object
-        # then throw a SessionExpiration error as if we were dropped
-        if request is _SESSION_EXPIRED:
-            raise SessionExpiredError("Session expired: Testing")
-        if request is _CONNECTION_DROP:
-            raise ConnectionDropped("Connection dropped: Testing")
+        # Special case for testing, if this is a _SESSION_EXPIRED or
+        # _CONNECTION_DROP object, throw the corresponding error.
+        if request is _SESSION_EXPIRED or request is _CONNECTION_DROP:
+            client._queue.popleft()
+            self._read_sock.recv(1)
+            error, arg = request
+            raise error(arg)
 
         # Special case for auth packets
         if request.type == Auth.type:

@@ -561,13 +561,14 @@ class KazooClient(object):
             except IndexError:
                 break
 
-        while True:
-            try:
-                request, async_object = self._queue.popleft()
-                if async_object:
-                    async_object.set_exception(exc)
-            except IndexError:
-                break
+        if state != KeeperState.CONNECTING:
+            while True:
+                try:
+                    request, async_object = self._queue.popleft()
+                    if async_object:
+                        async_object.set_exception(exc)
+                except IndexError:
+                    break
 
     def _safe_close(self):
         self.handler.stop()
