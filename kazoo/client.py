@@ -31,6 +31,7 @@ from kazoo.protocol.serialization import (
     CheckVersion,
     CloseInstance,
     Create,
+    Create2,
     Delete,
     Exists,
     GetChildren,
@@ -68,8 +69,11 @@ from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 string_types = six.string_types
 bytes_types = (six.binary_type,)
 
-CLOSED_STATES = (KeeperState.EXPIRED_SESSION, KeeperState.AUTH_FAILED,
-               KeeperState.CLOSED)
+CLOSED_STATES = (
+    KeeperState.EXPIRED_SESSION,
+    KeeperState.AUTH_FAILED,
+    KeeperState.CLOSED
+)
 ENVI_VERSION = re.compile(r'([\d\.]*).*', re.DOTALL)
 ENVI_VERSION_KEY = 'zookeeper.version'
 log = logging.getLogger(__name__)
@@ -856,7 +860,7 @@ class KazooClient(object):
         return self.sync_async(path).get()
 
     def create(self, path, value=b"", acl=None, ephemeral=False,
-               sequence=False, makepath=False):
+               sequence=False, makepath=False, include_data=False):
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
 
@@ -904,7 +908,13 @@ class KazooClient(object):
                          with a unique index.
         :param makepath: Whether the path should be created if it
                          doesn't exist.
-        :returns: Real path of the new node.
+        :param include_data:
+            Include the :class:`~kazoo.protocol.states.ZnodeStat` of
+            the node in addition to its real path. This option changes
+            the return value to be a tuple of (path, stat).
+
+        :returns: Real path of the new node, or tuple if `include_data`
+                  is `True`
         :rtype: str
 
         :raises:
@@ -923,13 +933,19 @@ class KazooClient(object):
             :exc:`~kazoo.exceptions.ZookeeperError` if the server
             returns a non-zero error code.
 
+        .. versionadded:: 1.1
+            The `makepath` option.
+        .. versionadded:: 2.7
+            The `include_data` option.
         """
         acl = acl or self.default_acl
-        return self.create_async(path, value, acl=acl, ephemeral=ephemeral,
-                                 sequence=sequence, makepath=makepath).get()
+        return self.create_async(
+            path, value, acl=acl, ephemeral=ephemeral,
+            sequence=sequence, makepath=makepath, include_data=include_data
+        ).get()
 
     def create_async(self, path, value=b"", acl=None, ephemeral=False,
-                     sequence=False, makepath=False):
+                     sequence=False, makepath=False, include_data=False):
         """Asynchronously create a ZNode. Takes the same arguments as
         :meth:`create`.
 
@@ -937,7 +953,8 @@ class KazooClient(object):
 
         .. versionadded:: 1.1
             The makepath option.
-
+        .. versionadded:: 2.7
+            The `include_data` option.
         """
         if acl is None and self.default_acl:
             acl = self.default_acl
@@ -956,6 +973,8 @@ class KazooClient(object):
             raise TypeError("Invalid type for 'sequence' (bool expected)")
         if not isinstance(makepath, bool):
             raise TypeError("Invalid type for 'makepath' (bool expected)")
+        if not isinstance(include_data, bool):
+            raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         flags = 0
         if ephemeral:
@@ -970,7 +989,9 @@ class KazooClient(object):
         @capture_exceptions(async_result)
         def do_create():
             result = self._create_async_inner(
-                path, value, acl, flags, trailing=sequence)
+                path, value, acl, flags,
+                trailing=sequence, include_data=include_data
+            )
             result.rawlink(create_completion)
 
         @capture_exceptions(async_result)
@@ -981,7 +1002,11 @@ class KazooClient(object):
         @wrap(async_result)
         def create_completion(result):
             try:
-                return self.unchroot(result.get())
+                if include_data:
+                    new_path, stat = result.get()
+                    return self.unchroot(new_path), stat
+                else:
+                    return self.unchroot(result.get())
             except NoNodeError:
                 if not makepath:
                     raise
@@ -994,10 +1019,16 @@ class KazooClient(object):
         do_create()
         return async_result
 
-    def _create_async_inner(self, path, value, acl, flags, trailing=False):
+    def _create_async_inner(self, path, value, acl, flags,
+                            trailing=False, include_data=False):
         async_result = self.handler.async_result()
+        if include_data:
+            opcode = Create2
+        else:
+            opcode = Create
+
         call_result = self._call(
-            Create(_prefix_root(self.chroot, path, trailing=trailing),
+            opcode(_prefix_root(self.chroot, path, trailing=trailing),
                    value, acl, flags), async_result)
         if call_result is False:
             # We hit a short-circuit exit on the _call. Because we are
