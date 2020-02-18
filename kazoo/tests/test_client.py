@@ -775,6 +775,19 @@ class TestClient(KazooTestCase):
         path = client.create("/1")
         self.assertRaises(NodeExistsError, client.create, path)
 
+    def test_create_stat(self):
+        if TRAVIS_ZK_VERSION:
+            version = TRAVIS_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 5):
+            raise SkipTest("Must use Zookeeper 3.5 or above")
+        client = self.client
+        path, stat1 = client.create("/1", b"bytes", include_data=True)
+        data, stat2 = client.get("/1")
+        eq_(data, b"bytes")
+        eq_(stat1, stat2)
+
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
 
@@ -1099,8 +1112,8 @@ class TestClientTransactions(KazooTestCase):
         t.create('/fred', ephemeral=True)
         t.create('/smith', sequence=True)
         results = t.commit()
-        eq_(results[0], '/freddy')
         eq_(len(results), 3)
+        eq_(results[0], '/freddy')
         self.assertTrue(results[2].startswith('/smith0'))
 
     def test_bad_creates(self):
