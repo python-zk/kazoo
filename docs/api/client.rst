@@ -30,6 +30,27 @@ Public API
             A :class:`~kazoo.protocol.states.KazooState` attribute indicating
             the current higher-level connection state.
 
+            .. note::
+
+                Up to version 2.6.1, requests could only be submitted
+                in the CONNECTED state.  Requests submitted while
+                SUSPENDED would immediately raise a
+                :exc:`~kazoo.exceptions.SessionExpiredError`.  This
+                was problematic, as sessions are usually recovered on
+                reconnect.
+
+                Kazoo now simply queues requests submitted in the
+                SUSPENDED state, expecting a recovery.  This matches
+                the behavior of the Java and C clients.
+
+                Requests submitted in a LOST state still fail
+                immediately with the corresponding exception.
+
+                See:
+
+                  * https://github.com/python-zk/kazoo/issues/374 and
+                  * https://github.com/python-zk/kazoo/pull/570
+
     .. autoclass:: TransactionRequest
         :members:
         :member-order: bysource
