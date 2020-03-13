@@ -1,3 +1,68 @@
+<a name="2.8.0"></a>
+## 2.8.0 (2020-07-11)
+
+
+#### Features
+
+* **chore:**  using Github templates for issues and PRs (#610) ([eddc0976](https://github.com/python-zk/kazoo/commit/eddc0976bf1ef9d9fb97990cebbc3f9b1abe9d7d))
+* **core:**
+  *  Use strict regex to identify lock contenders. ([cc8ce892](https://github.com/python-zk/kazoo/commit/cc8ce8929116a1f0a2f0d088afa82ac9576395dc))
+  *  Support additionaal lock contenter patterns ([225eeecb](https://github.com/python-zk/kazoo/commit/225eeecbe66c10d46dc7928681783d17f389f13a))
+* **tests:**
+  *  Disable problematic hound-flake8-black integration. ([75f62a0d](https://github.com/python-zk/kazoo/commit/75f62a0dd40a9f9bdefcb04cea5ee5fcd3438c0e))
+  *  Move to pytest ([de97d74b](https://github.com/python-zk/kazoo/commit/de97d74b50b62cd2f0cddc2a04e150575d9c6bc7))
+  *  add Python 3.8 and remove Python 3.6 from the testing suite (#611) ([e4f808f7](https://github.com/python-zk/kazoo/commit/e4f808f7f0fe17e7e01468a2c54684f048e12b52))
+
+#### Performance
+
+* **core:**  Use chain.from_iterable in threading.py (#614) ([13c73ec5](https://github.com/python-zk/kazoo/commit/13c73ec5f4d4f2215deb987a059051bb821674ca))
+
+#### Bug Fixes
+
+* **core:**
+  *  handle SSL_WANT_READ/WRITE errors (#619) ([cbdc4749](https://github.com/python-zk/kazoo/commit/cbdc4749edb5879099c1f9b832c055d9eeb52dea), closes [#618](https://github.com/python-zk/kazoo/issues/618))
+  *  '"is" with a literal' syntax errors (#609) ([6b6ffe62](https://github.com/python-zk/kazoo/commit/6b6ffe62a073d1ed5413c65c2d8ec94ea2fa1760))
+  *  sync() return should be unchrooted ([cbde70ac](https://github.com/python-zk/kazoo/commit/cbde70ac87435afbbacc9806c675184c7f778343), closes [#601](https://github.com/python-zk/kazoo/issues/601))
+
+#### Chore
+
+* **core:**  Update matrix: add pypy3, drop py27 ([522189da](https://github.com/python-zk/kazoo/commit/522189da0f238faafc8f1db34f682f49b15ec503))
+* **tests:**  Add coverage report on codecov.io ([bb475843](https://github.com/python-zk/kazoo/commit/bb475843905af1a2d25b1f5834085c85c28bb175))
+
+
+
+<a name="2.7.0"></a>
+## 2.7.0 (2020-03-13)
+
+#### Features
+
+* **CI:**  Keep only Python 3.{6,7} to CI and bump ZK versions to latests (#574) ([c293aabf](https://github.com/python-zk/kazoo/commit/c293aabf39676b94006cf736f9f75392637b8292))
+* **core:**
+  *  run SASL Kerberos tests as part of build ([5c461bdf](https://github.com/python-zk/kazoo/commit/5c461bdff50efd762805b40fbe283b194d175c61))
+  *  Add create2 support ([1d81f96a](https://github.com/python-zk/kazoo/commit/1d81f96a77a6fd7ae2476cd798a5cb4bf1c1d9a2))
+  *  closed states instead of lost states (#573) ([961b2f3b](https://github.com/python-zk/kazoo/commit/961b2f3be557f8314ab41f75444125222638f9cc))
+  *  improve SASL interface (#546) ([cd49b3fa](https://github.com/python-zk/kazoo/commit/cd49b3fa01136848c5e6bfafb4c241b9704f249d))
+* **recipe:**  add support for curator SharedCount recipe (#559) ([88b657a0](https://github.com/python-zk/kazoo/commit/88b657a0977161f3815657878ba48f82a97a3846), closes [#558](https://github.com/python-zk/kazoo/issues/558))
+* **utils:**  extend create_tcp_connection utility (#568) ([ab0cd00c](https://github.com/python-zk/kazoo/commit/ab0cd00c12624b07dcc3b2d62aa96f8f1e658f65))
+
+#### Bug Fixes
+
+* **CI:**  deploying only for 1 job ([0ba3634d](https://github.com/python-zk/kazoo/commit/0ba3634d99740c9ccc2dd01924a36dffff262f8e))
+* **core:**
+  *  allow requests to be queued in CONNECTING state (#374) (#588) ([a636d7a6](https://github.com/python-zk/kazoo/commit/a636d7a6bb88ab9080e902983b10c8f0f1bf60a8))
+  *  Implement proper retry backoff logic with jitter. ([0bb0659c](https://github.com/python-zk/kazoo/commit/0bb0659cf3fd73714a9d75b093a75c7122e116e6))
+  *  when connection fails, close the ConnectionHandler (#577) (#579) ([c7e80503](https://github.com/python-zk/kazoo/commit/c7e80503f3be97d26ff2de27f9e424070c8181bb))
+* **recipe:**  crash if None in znode (#569) ([ded79467](https://github.com/python-zk/kazoo/commit/ded79467a8254e43841dfeb69f7c3baa1980232c))
+* **tests:**
+  *  Disable JAAS isInitiator for Server ([933b38b5](https://github.com/python-zk/kazoo/commit/933b38b5506d84e05ed6f6c5c8c208a3367400da))
+  *  deactivate TCP port that was enabled by default. ([d7bed550](https://github.com/python-zk/kazoo/commit/d7bed550fee1b861eb2ee81cc685e6d08ee35c34))
+  *  capitalize the default_domain value ([7fd22bfd](https://github.com/python-zk/kazoo/commit/7fd22bfd1992b90042db7946949ce992ddfd1821))
+  *  weaker crypto when configuring Kerberos ([844df87a](https://github.com/python-zk/kazoo/commit/844df87ac83e72c155367cfe4ff4d52d34d46c99))
+  *  prefix with toxinidir variable with a / to ensure path to ensure-zookeeper-env.sh is correct ([c4d42ca7](https://github.com/python-zk/kazoo/commit/c4d42ca7722dec5332ecd4524e8d802a81e2ddca))
+  *  specify -Dfile.encoding=UTF-8 when starting the ZK JVM ([5764da0b](https://github.com/python-zk/kazoo/commit/5764da0b3c25556cb6760f68c51b387f2fd8307b))
+
+
+
 <a name="2.6.1"></a>
 ### 2.6.1 (2019-01-22)
 
