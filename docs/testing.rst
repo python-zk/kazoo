@@ -7,7 +7,7 @@ Testing
 Kazoo has several test harnesses used internally for its own tests that are
 exposed as public API's for use in your own tests for common Zookeeper cluster
 management and session testing. They can be mixed in with your own `unittest`
-or `nose` tests along with a `mock` object that allows you to force specific
+or `pytest` tests along with a `mock` object that allows you to force specific
 `KazooClient` commands to fail in various ways.
 
 The test harness needs to be able to find the Zookeeper Java libraries. You

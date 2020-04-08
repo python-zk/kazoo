@@ -1,10 +1,11 @@
 import unittest
 
 from mock import patch
-from nose import SkipTest
+import pytest
 
 try:
     from kazoo.handlers.eventlet import green_socket as socket
+
     EVENTLET_HANDLER_AVAILABLE = True
 except ImportError:
     EVENTLET_HANDLER_AVAILABLE = False
@@ -30,7 +31,7 @@ class TestCreateTCPConnection(unittest.TestCase):
 
     def test_timeout_arg_eventlet(self):
         if not EVENTLET_HANDLER_AVAILABLE:
-            raise SkipTest('eventlet handler not available.')
+            pytest.skip('eventlet handler not available.')
 
         from kazoo.handlers import utils
         from kazoo.handlers.utils import create_tcp_connection, time
@@ -57,12 +58,13 @@ class TestCreateTCPConnection(unittest.TestCase):
 
         # Simulate a second passing between calls to check the current time.
         with patch.object(time, 'time', side_effect=range(10)):
-            with self.assertRaises(socket.error):
+            with pytest.raises(socket.error):
                 create_tcp_connection(socket, ('127.0.0.1', 2181), timeout=0.5)
 
     def test_negative_timeout(self):
         from kazoo.handlers.utils import create_tcp_connection, socket
-        with self.assertRaises(socket.error):
+
+        with pytest.raises(socket.error):
             create_tcp_connection(socket, ('127.0.0.1', 2181), timeout=-1)
 
     def test_zero_timeout(self):
@@ -74,5 +76,5 @@ class TestCreateTCPConnection(unittest.TestCase):
 
         # Simulate no time passing between calls to check the current time.
         with patch.object(time, 'time', return_value=time.time()):
-            with self.assertRaises(socket.error):
+            with pytest.raises(socket.error):
                 create_tcp_connection(socket, ('127.0.0.1', 2181), timeout=0)

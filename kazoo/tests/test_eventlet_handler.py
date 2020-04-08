@@ -1,8 +1,7 @@
 import contextlib
 import unittest
 
-from nose import SkipTest
-from nose.tools import raises
+import pytest
 
 from kazoo.client import KazooClient
 from kazoo.handlers import utils
@@ -15,6 +14,7 @@ try:
     import eventlet
     from eventlet.green import threading
     from kazoo.handlers import eventlet as eventlet_handler
+
     EVENTLET_HANDLER_AVAILABLE = True
 except ImportError:
     EVENTLET_HANDLER_AVAILABLE = False
@@ -34,15 +34,15 @@ def start_stop_one(handler=None):
 class TestEventletHandler(unittest.TestCase):
     def setUp(self):
         if not EVENTLET_HANDLER_AVAILABLE:
-            raise SkipTest('eventlet handler not available.')
+            pytest.skip("eventlet handler not available.")
         super(TestEventletHandler, self).setUp()
 
     def test_started(self):
         with start_stop_one() as handler:
-            self.assertTrue(handler.running)
-            self.assertNotEqual(0, len(handler._workers))
-        self.assertFalse(handler.running)
-        self.assertEqual(0, len(handler._workers))
+            assert handler.running is True
+            assert len(handler._workers) != 0
+        assert handler.running is False
+        assert len(handler._workers) == 0
 
     def test_spawn(self):
         captures = []
@@ -53,7 +53,7 @@ class TestEventletHandler(unittest.TestCase):
         with start_stop_one() as handler:
             handler.spawn(cb)
 
-        self.assertEqual(1, len(captures))
+        assert len(captures) == 1
 
     def test_dispatch(self):
         captures = []
@@ -62,9 +62,9 @@ class TestEventletHandler(unittest.TestCase):
             captures.append(1)
 
         with start_stop_one() as handler:
-            handler.dispatch_callback(kazoo_states.Callback('watch', cb, []))
+            handler.dispatch_callback(kazoo_states.Callback("watch", cb, []))
 
-        self.assertEqual(1, len(captures))
+        assert len(captures) == 1
 
     def test_async_link(self):
         captures = []
@@ -77,17 +77,14 @@ class TestEventletHandler(unittest.TestCase):
             r.rawlink(cb)
             r.set(2)
 
-        self.assertEqual(1, len(captures))
-        self.assertEqual(2, r.get())
+        assert len(captures) == 1
+        assert r.get() == 2
 
     def test_timeout_raising(self):
         handler = eventlet_handler.SequentialEventletHandler()
 
-        @raises(handler.timeout_exception)
-        def raise_it():
+        with pytest.raises(handler.timeout_exception):
             raise handler.timeout_exception("This is a timeout")
-
-        raise_it()
 
     def test_async_ok(self):
         captures = []
@@ -105,29 +102,22 @@ class TestEventletHandler(unittest.TestCase):
             w = handler.spawn(utils.wrap(r)(delayed))
             w.join()
 
-        self.assertEqual(2, len(captures))
-        self.assertEqual(1, captures[0])
-        self.assertEqual(1, r.get())
+        assert len(captures) == 2
+        assert captures[0] == 1
+        assert r.get() == 1
 
     def test_get_with_no_block(self):
         handler = eventlet_handler.SequentialEventletHandler()
 
-        @raises(handler.timeout_exception)
-        def test_no_block(r):
-            r.get(block=False)
-
         with start_stop_one(handler):
             r = handler.async_result()
-            test_no_block(r)
+
+            with pytest.raises(handler.timeout_exception):
+                r.get(block=False)
             r.set(1)
-            self.assertEqual(1, r.get())
+            assert r.get() == 1
 
     def test_async_exception(self):
-
-        @raises(IOError)
-        def check_exc(r):
-            r.get()
-
         def broken():
             raise IOError("Failed")
 
@@ -136,14 +126,15 @@ class TestEventletHandler(unittest.TestCase):
             w = handler.spawn(utils.wrap(r)(broken))
             w.join()
 
-        self.assertFalse(r.successful())
-        check_exc(r)
+        assert r.successful() is False
+        with pytest.raises(IOError):
+            r.get()
 
 
 class TestEventletClient(test_client.TestClient):
     def setUp(self):
         if not EVENTLET_HANDLER_AVAILABLE:
-            raise SkipTest('eventlet handler not available.')
+            pytest.skip("eventlet handler not available.")
         super(TestEventletClient, self).setUp()
 
     @staticmethod
@@ -165,7 +156,7 @@ class TestEventletClient(test_client.TestClient):
 class TestEventletSemaphore(test_lock.TestSemaphore):
     def setUp(self):
         if not EVENTLET_HANDLER_AVAILABLE:
-            raise SkipTest('eventlet handler not available.')
+            pytest.skip("eventlet handler not available.")
         super(TestEventletSemaphore, self).setUp()
 
     @staticmethod
@@ -196,7 +187,7 @@ class TestEventletSemaphore(test_lock.TestSemaphore):
 class TestEventletLock(test_lock.KazooLockTests):
     def setUp(self):
         if not EVENTLET_HANDLER_AVAILABLE:
-            raise SkipTest('eventlet handler not available.')
+            pytest.skip("eventlet handler not available.")
         super(TestEventletLock, self).setUp()
 
     @staticmethod

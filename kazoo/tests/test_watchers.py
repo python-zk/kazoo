@@ -2,8 +2,7 @@ import time
 import threading
 import uuid
 
-from nose.tools import eq_
-from nose.tools import raises
+import pytest
 
 from kazoo.exceptions import KazooException
 from kazoo.protocol.states import EventType
@@ -30,12 +29,12 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(data, [None])
+        assert data == [None]
         update.clear()
 
         self.client.create(self.path, b'fred')
         update.wait(10)
-        eq_(data[0], b'fred')
+        assert data[0] == b'fred'
         update.clear()
 
     def test_data_watcher_once(self):
@@ -54,15 +53,14 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(data, [None])
+        assert data == [None]
         update.clear()
 
-        @raises(KazooException)
-        def test_it():
+        with pytest.raises(KazooException):
+
             @dwatcher
             def func(d, stat):
                 data.pop()
-        test_it()
 
     def test_data_watcher_with_event(self):
         # Test that the data watcher gets passed the event, if it
@@ -80,12 +78,12 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(data, [None])
+        assert data == [None]
         update.clear()
 
         self.client.create(self.path, b'fred')
         update.wait(10)
-        eq_(data[0].type, EventType.CREATED)
+        assert data[0].type == EventType.CREATED
         update.clear()
 
     def test_func_style_data_watch(self):
@@ -99,15 +97,16 @@ class KazooDataWatcherTests(KazooTestCase):
             data.pop()
             data.append(d)
             update.set()
+
         self.client.DataWatch(path, changed)
 
         update.wait(10)
-        eq_(data, [None])
+        assert data == [None]
         update.clear()
 
         self.client.create(path, b'fred')
         update.wait(10)
-        eq_(data[0], b'fred')
+        assert data[0] == b'fred'
         update.clear()
 
     def test_datawatch_across_session_expire(self):
@@ -121,13 +120,13 @@ class KazooDataWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(data, [b""])
+        assert data == [b""]
         update.clear()
 
         self.expire_session(threading.Event)
         self.client.retry(self.client.set, self.path, b'fred')
         update.wait(25)
-        eq_(data[0], b'fred')
+        assert data[0] == b'fred'
 
     def test_func_stops(self):
         update = threading.Event()
@@ -146,21 +145,21 @@ class KazooDataWatcherTests(KazooTestCase):
                 return False
 
         update.wait(10)
-        eq_(data, [None])
+        assert data == [None]
         update.clear()
 
         fail_through.append(True)
         self.client.create(self.path, b'fred')
         update.wait(10)
-        eq_(data[0], b'fred')
+        assert data[0] == b'fred'
         update.clear()
 
         self.client.set(self.path, b'asdfasdf')
         update.wait(0.2)
-        eq_(data[0], b'fred')
+        assert data[0] == b'fred'
 
         d, stat = self.client.get(self.path)
-        eq_(d, b'asdfasdf')
+        assert d == b'asdfasdf'
 
     def test_no_such_node(self):
         args = []
@@ -169,7 +168,7 @@ class KazooDataWatcherTests(KazooTestCase):
         def changed(d, stat):
             args.extend([d, stat])
 
-        eq_(args, [None, None])
+        assert args == [None, None]
 
     def test_no_such_node_for_children_watch(self):
         args = []
@@ -182,27 +181,27 @@ class KazooDataWatcherTests(KazooTestCase):
 
         # watch a node which does not exist
         children_watch = self.client.ChildrenWatch(path, changed)
-        eq_(update.is_set(), False)
-        eq_(children_watch._stopped, True)
-        eq_(args, [])
+        assert update.is_set() is False
+        assert children_watch._stopped is True
+        assert args == []
 
         # watch a node which exists
         self.client.create(path, b'')
         children_watch = self.client.ChildrenWatch(path, changed)
         update.wait(3)
-        eq_(args, [[]])
+        assert args == [[]]
         update.clear()
 
         # watch changes
         self.client.create(path + '/fred', b'')
         update.wait(3)
-        eq_(args, [[], ['fred']])
+        assert args == [[], ['fred']]
         update.clear()
 
         # delete children
         self.client.delete(path + '/fred')
         update.wait(3)
-        eq_(args, [[], ['fred'], []])
+        assert args == [[], ['fred'], []]
         update.clear()
 
         # delete watching
@@ -216,30 +215,18 @@ class KazooDataWatcherTests(KazooTestCase):
             children_watch._run_lock.release()
             time.sleep(retry / 10.0)
 
-        eq_(update.is_set(), False)
-        eq_(children_watch._stopped, True)
-
-    def test_bad_watch_func2(self):
-        counter = 0
-
-        @self.client.DataWatch(self.path)
-        def changed(d, stat):
-            if counter > 0:
-                raise Exception("oops")
-
-        raises(Exception)(changed)
-
-        counter += 1
-        self.client.set(self.path, b'asdfasdf')
+        assert update.is_set() is False
+        assert children_watch._stopped is True
 
     def test_watcher_evaluating_to_false(self):
         class WeirdWatcher(list):
             def __call__(self, *args):
                 self.called = True
+
         watcher = WeirdWatcher()
         self.client.DataWatch(self.path, watcher)
         self.client.set(self.path, b'mwahaha')
-        self.assertTrue(watcher.called)
+        assert watcher.called is True
 
     def test_watcher_repeat_delete(self):
         a = []
@@ -252,24 +239,24 @@ class KazooDataWatcherTests(KazooTestCase):
             a.append(val)
             ev.set()
 
-        eq_(a, [None])
+        assert a == [None]
         ev.wait(10)
         ev.clear()
         self.client.create(self.path, b'blah')
         ev.wait(10)
-        eq_(ev.is_set(), True)
+        assert ev.is_set() is True
         ev.clear()
-        eq_(a, [None, b'blah'])
+        assert a == [None, b'blah']
         self.client.delete(self.path)
         ev.wait(10)
-        eq_(ev.is_set(), True)
+        assert ev.is_set() is True
         ev.clear()
-        eq_(a, [None, b'blah', None])
+        assert a == [None, b'blah', None]
         self.client.create(self.path, b'blah')
         ev.wait(10)
-        eq_(ev.is_set(), True)
+        assert ev.is_set() is True
         ev.clear()
-        eq_(a, [None, b'blah', None, b'blah'])
+        assert a == [None, b'blah', None, b'blah']
 
     def test_watcher_with_closing(self):
         a = []
@@ -281,14 +268,15 @@ class KazooDataWatcherTests(KazooTestCase):
         def changed(val, stat):
             a.append(val)
             ev.set()
-        eq_(a, [None])
+
+        assert a == [None]
 
         b = False
         try:
             self.client.stop()
         except:
             b = True
-        eq_(b, False)
+        assert b is False
 
 
 class KazooChildrenWatcherTests(KazooTestCase):
@@ -309,17 +297,17 @@ class KazooChildrenWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
         update.wait(10)
-        eq_(sorted(all_children), ['george', 'smith'])
+        assert sorted(all_children) == ['george', 'smith']
 
     def test_child_watcher_once(self):
         update = threading.Event()
@@ -335,15 +323,14 @@ class KazooChildrenWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
-        @raises(KazooException)
-        def test_it():
+        with pytest.raises(KazooException):
+
             @cwatch
             def changed_again(children):
                 update.set()
-        test_it()
 
     def test_child_watcher_with_event(self):
         update = threading.Event()
@@ -356,12 +343,12 @@ class KazooChildrenWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(events, [None])
+        assert events == [None]
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(events[0].type, EventType.CHILD)
+        assert events[0].type == EventType.CHILD
         update.clear()
 
     def test_func_style_child_watcher(self):
@@ -377,17 +364,17 @@ class KazooChildrenWatcherTests(KazooTestCase):
         self.client.ChildrenWatch(self.path, changed)
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
         update.wait(10)
-        eq_(sorted(all_children), ['george', 'smith'])
+        assert sorted(all_children) == ['george', 'smith']
 
     def test_func_stops(self):
         update = threading.Event()
@@ -405,18 +392,18 @@ class KazooChildrenWatcherTests(KazooTestCase):
                 return False
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
         fail_through.append(True)
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
         update.wait(0.5)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
 
     def test_child_watcher_remove_session_watcher(self):
         update = threading.Event()
@@ -436,21 +423,21 @@ class KazooChildrenWatcherTests(KazooTestCase):
         session_watcher = children_watch._session_watcher
 
         update.wait(10)
-        eq_(session_watcher in self.client.state_listeners, True)
-        eq_(all_children, [])
+        assert session_watcher in self.client.state_listeners
+        assert all_children == []
         update.clear()
 
         fail_through.append(True)
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(session_watcher not in self.client.state_listeners, True)
-        eq_(all_children, ['smith'])
+        assert session_watcher not in self.client.state_listeners
+        assert all_children == ['smith']
         update.clear()
 
         self.client.create(self.path + '/' + 'george')
         update.wait(10)
-        eq_(session_watcher not in self.client.state_listeners, True)
-        eq_(all_children, ['smith'])
+        assert session_watcher not in self.client.state_listeners
+        assert all_children == ['smith']
 
     def test_child_watch_session_loss(self):
         update = threading.Event()
@@ -464,19 +451,19 @@ class KazooChildrenWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
         update.clear()
         self.expire_session(threading.Event)
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
         update.wait(20)
-        eq_(sorted(all_children), ['george', 'smith'])
+        assert sorted(all_children) == ['george', 'smith']
 
     def test_child_stop_on_session_loss(self):
         update = threading.Event()
@@ -490,35 +477,23 @@ class KazooChildrenWatcherTests(KazooTestCase):
             update.set()
 
         update.wait(10)
-        eq_(all_children, [])
+        assert all_children == []
         update.clear()
 
         self.client.create(self.path + '/' + 'smith')
         update.wait(10)
-        eq_(all_children, ['smith'])
+        assert all_children == ['smith']
         update.clear()
         self.expire_session(threading.Event)
 
         self.client.retry(self.client.create,
                           self.path + '/' + 'george')
         update.wait(4)
-        eq_(update.is_set(), False)
-        eq_(all_children, ['smith'])
+        assert update.is_set() is False
+        assert all_children == ['smith']
 
         children = self.client.get_children(self.path)
-        eq_(sorted(children), ['george', 'smith'])
-
-    def test_bad_children_watch_func(self):
-        counter = 0
-
-        @self.client.ChildrenWatch(self.path)
-        def changed(children):
-            if counter > 0:
-                raise Exception("oops")
-
-        raises(Exception)(changed)
-        counter += 1
-        self.client.create(self.path + '/' + 'smith')
+        assert sorted(children) == ['george', 'smith']
 
 
 class KazooPatientChildrenWatcherTests(KazooTestCase):
@@ -528,6 +503,7 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
 
     def _makeOne(self, *args, **kwargs):
         from kazoo.recipe.watchers import PatientChildrenWatch
+
         return PatientChildrenWatch(*args, **kwargs)
 
     def test_watch(self):
@@ -535,37 +511,36 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         watcher = self._makeOne(self.client, self.path, 0.1)
         result = watcher.start()
         children, asy = result.get()
-        eq_(len(children), 0)
-        eq_(asy.ready(), False)
+        assert len(children) == 0
+        assert asy.ready() is False
 
         self.client.create(self.path + '/' + 'fred')
         asy.get(timeout=1)
-        eq_(asy.ready(), True)
+        assert asy.ready() is True
 
     def test_exception(self):
         from kazoo.exceptions import NoNodeError
+
         watcher = self._makeOne(self.client, self.path, 0.1)
         result = watcher.start()
 
-        @raises(NoNodeError)
-        def testit():
+        with pytest.raises(NoNodeError):
             result.get()
-        testit()
 
     def test_watch_iterations(self):
         self.client.ensure_path(self.path)
         watcher = self._makeOne(self.client, self.path, 0.5)
         result = watcher.start()
-        eq_(result.ready(), False)
+        assert result.ready() is False
 
         time.sleep(0.08)
         self.client.create(self.path + '/' + uuid.uuid4().hex)
-        eq_(result.ready(), False)
+        assert result.ready() is False
         time.sleep(0.08)
-        eq_(result.ready(), False)
+        assert result.ready() is False
         self.client.create(self.path + '/' + uuid.uuid4().hex)
         time.sleep(0.08)
-        eq_(result.ready(), False)
+        assert result.ready() is False
 
         children, asy = result.get()
-        eq_(len(children), 2)
+        assert len(children) == 2

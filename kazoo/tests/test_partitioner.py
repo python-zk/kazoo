@@ -3,14 +3,13 @@ import threading
 import time
 
 import mock
-from nose.tools import eq_
 
 from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
 from kazoo.recipe.partitioner import PartitionState
 
 
-class SlowLockMock():
+class SlowLockMock:
     """Emulates a slow ZooKeeper lock."""
 
     default_delay_time = 3
@@ -68,7 +67,7 @@ class KazooPartitionerTests(KazooTestCase):
 
         self.__partitioners[0].finish()
         self.__wait()
-        eq_(self.__partitioners[1].release, True)
+        assert self.__partitioners[1].release
         self.__partitioners[1].finish()
 
     def test_party_expansion(self):
@@ -89,7 +88,7 @@ class KazooPartitionerTests(KazooTestCase):
         self.__assert_state(PartitionState.RELEASE,
                             partitioners=self.__partitioners[:-1])
         for partitioner in self.__partitioners[-1]:
-            eq_(partitioner.state_change_event.is_set(), True)
+            assert partitioner.state_change_event.is_set()
         self.__release(self.__partitioners[:-1])
 
         self.__wait_for_acquire()
@@ -110,11 +109,11 @@ class KazooPartitionerTests(KazooTestCase):
     def test_party_session_failure(self):
         partitioner = self.__create_partitioner(size=3)
         self.__wait_for_acquire()
-        eq_(partitioner.state, PartitionState.ACQUIRED)
+        assert partitioner.state == PartitionState.ACQUIRED
         # simulate session failure
         partitioner._fail_out()
         partitioner.release_set()
-        self.assertTrue(partitioner.failed)
+        assert partitioner.failed is True
 
     def test_connection_loss(self):
         self.__create_partitioner(identifier="0", size=3)
@@ -229,13 +228,13 @@ class KazooPartitionerTests(KazooTestCase):
             partitioners = self.__partitioners
 
         for partitioner in partitioners:
-            eq_(partitioner.state, state)
+            assert partitioner.state == state
 
     def __assert_partitions(self, *partitions):
-        eq_(len(partitions), len(self.__partitioners))
+        assert len(partitions) == len(self.__partitioners)
         for partitioner, own_partitions in zip(self.__partitioners,
                                                partitions):
-            eq_(list(partitioner), own_partitions)
+            assert list(partitioner) == own_partitions
 
     def __wait(self):
         time.sleep(0.1)

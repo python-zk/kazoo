@@ -2,18 +2,18 @@ import threading
 import unittest
 
 import mock
-from nose.tools import assert_raises
-from nose.tools import eq_
-from nose.tools import raises
+import pytest
 
 
 class TestThreadingHandler(unittest.TestCase):
     def _makeOne(self, *args):
         from kazoo.handlers.threading import SequentialThreadingHandler
+
         return SequentialThreadingHandler(*args)
 
     def _getAsync(self, *args):
         from kazoo.handlers.threading import AsyncResult
+
         return AsyncResult
 
     def test_proper_threading(self):
@@ -32,27 +32,27 @@ class TestThreadingHandler(unittest.TestCase):
     def test_exception_raising(self):
         h = self._makeOne()
 
-        @raises(h.timeout_exception)
-        def testit():
+        with pytest.raises(h.timeout_exception):
             raise h.timeout_exception("This is a timeout")
-        testit()
 
     def test_double_start_stop(self):
         h = self._makeOne()
         h.start()
-        self.assertTrue(h._running)
+        assert h._running is True
         h.start()
         h.stop()
         h.stop()
-        self.assertFalse(h._running)
+        assert h._running is False
 
     def test_huge_file_descriptor(self):
         from kazoo.handlers.threading import _HAS_EPOLL
+
         if not _HAS_EPOLL:
             self.skipTest('only run on systems with epoll()')
         import resource
         import socket
         from kazoo.handlers.utils import create_tcp_socket
+
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
         except (ValueError, resource.error):
@@ -66,7 +66,7 @@ class TestThreadingHandler(unittest.TestCase):
         h = self._makeOne()
         h.start()
         h.select(socks, [], [])
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             h._select(socks, [], [])
         h._epoll_select(socks, [], [])
         h.stop()
@@ -75,21 +75,23 @@ class TestThreadingHandler(unittest.TestCase):
 class TestThreadingAsync(unittest.TestCase):
     def _makeOne(self, *args):
         from kazoo.handlers.threading import AsyncResult
+
         return AsyncResult(*args)
 
     def _makeHandler(self):
         from kazoo.handlers.threading import SequentialThreadingHandler
+
         return SequentialThreadingHandler()
 
     def test_ready(self):
         mock_handler = mock.Mock()
         async_result = self._makeOne(mock_handler)
 
-        eq_(async_result.ready(), False)
+        assert async_result.ready() is False
         async_result.set('val')
-        eq_(async_result.ready(), True)
-        eq_(async_result.successful(), True)
-        eq_(async_result.exception, None)
+        assert async_result.ready() is True
+        assert async_result.successful() is True
+        assert async_result.exception is None
 
     def test_callback_queued(self):
         mock_handler = mock.Mock()
@@ -124,13 +126,14 @@ class TestThreadingAsync(unittest.TestCase):
             val = async_result.get()
             lst.append(val)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.start()
         bv.wait()
 
         async_result.set('fred')
         cv.wait()
-        eq_(lst, ['fred'])
+        assert lst == ['fred']
         th.join()
 
     def test_get_with_nowait(self):
@@ -138,15 +141,11 @@ class TestThreadingAsync(unittest.TestCase):
         async_result = self._makeOne(mock_handler)
         timeout = self._makeHandler().timeout_exception
 
-        @raises(timeout)
-        def test_it():
+        with pytest.raises(timeout):
             async_result.get(block=False)
-        test_it()
 
-        @raises(timeout)
-        def test_nowait():
+        with pytest.raises(timeout):
             async_result.get_nowait()
-        test_nowait()
 
     def test_get_with_exception(self):
         mock_handler = mock.Mock()
@@ -165,13 +164,14 @@ class TestThreadingAsync(unittest.TestCase):
             else:
                 lst.append(val)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.start()
         bv.wait()
 
         async_result.set_exception(ImportError)
         cv.wait()
-        eq_(lst, ['oops'])
+        assert lst == ['oops']
         th.join()
 
     def test_wait(self):
@@ -191,13 +191,14 @@ class TestThreadingAsync(unittest.TestCase):
             else:
                 lst.append(val)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.start()
         bv.wait(10)
 
         async_result.set("fred")
         cv.wait(15)
-        eq_(lst, [True])
+        assert lst == [True]
         th.join()
 
     def test_wait_race(self):
@@ -217,6 +218,7 @@ class TestThreadingAsync(unittest.TestCase):
             # NB: should not sleep
             async_result.wait(20)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.daemon = True
         th.start()
@@ -224,7 +226,7 @@ class TestThreadingAsync(unittest.TestCase):
         # if the wait() didn't sleep (correctly), cv will be set quickly
         # if it did sleep, the cv will not be set yet and this will timeout
         cv.wait(10)
-        eq_(cv.is_set(), True)
+        assert cv.is_set() is True
         th.join()
 
     def test_set_before_wait(self):
@@ -239,10 +241,11 @@ class TestThreadingAsync(unittest.TestCase):
             val = async_result.get()
             lst.append(val)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.start()
         cv.wait()
-        eq_(lst, ['fred'])
+        assert lst == ['fred']
         th.join()
 
     def test_set_exc_before_wait(self):
@@ -261,10 +264,11 @@ class TestThreadingAsync(unittest.TestCase):
             else:
                 lst.append(val)
             cv.set()
+
         th = threading.Thread(target=wait_for_val)
         th.start()
         cv.wait()
-        eq_(lst, ['ooops'])
+        assert lst == ['ooops']
         th.join()
 
     def test_linkage(self):
@@ -285,11 +289,11 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
 
         async_result.rawlink(add_on)
-        async_result.set('fred')
+        async_result.set(b'fred')
         assert mock_handler.completion_queue.put.called
         async_result.unlink(add_on)
         cv.wait()
-        eq_(async_result.value, 'fred')
+        assert async_result.value == b'fred'
         th.join()
 
     def test_linkage_not_ready(self):
@@ -329,11 +333,12 @@ class TestThreadingAsync(unittest.TestCase):
 
         @capture_exceptions(async_result)
         def exceptional_function():
-            return 1/0
+            return 1 / 0
 
         exceptional_function()
 
-        assert_raises(ZeroDivisionError, async_result.get)
+        with pytest.raises(ZeroDivisionError):
+            async_result.get()
 
     def test_no_capture_exceptions(self):
         from kazoo.handlers.utils import capture_exceptions
