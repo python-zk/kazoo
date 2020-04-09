@@ -1,5 +1,7 @@
 import collections
+import mock
 import threading
+import unittest
 import uuid
 
 import pytest
@@ -7,6 +9,7 @@ import pytest
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import LockTimeout
 from kazoo.exceptions import NoNodeError
+from kazoo.recipe.lock import Lock
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util
 
@@ -716,3 +719,16 @@ class TestSemaphore(KazooTestCase):
             # Cleanup
             t.join()
             client2.stop()
+
+
+class TestSequence(unittest.TestCase):
+
+    def test_get_sorted_children(self):
+        goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
+        pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
+        children = [goLock, pyLock]
+        client = mock.MagicMock()
+        client.get_children.return_value = children
+        lock = Lock(client, "test")
+        sorted_children = lock._get_sorted_children()
+        assert sorted_children[0] == goLock

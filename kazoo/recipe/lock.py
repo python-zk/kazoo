@@ -80,7 +80,7 @@ class Lock(object):
 
     # Node names which exclude this contender when present at a lower
     # sequence number. Involved in read/write locks.
-    _EXCLUDE_NAMES = ["__lock__"]
+    _EXCLUDE_NAMES = ["__lock__", "-lock-"]
 
     def __init__(self, client, path, identifier=None):
         """Create a Kazoo lock.
@@ -289,7 +289,7 @@ class Lock(object):
         # (eg. in case of a lease), just sort them last ('~' sorts after all
         # ASCII digits).
         def _seq(c):
-            for name in ["__lock__", "__rlock__"]:
+            for name in ["__lock__", "-lock-", "__rlock__"]:
                 idx = c.find(name)
                 if idx != -1:
                     return c[idx + len(name):]
@@ -392,7 +392,7 @@ class WriteLock(Lock):
 
     """
     _NODE_NAME = "__lock__"
-    _EXCLUDE_NAMES = ["__lock__", "__rlock__"]
+    _EXCLUDE_NAMES = ["__lock__", "-lock-", "__rlock__"]
 
 
 class ReadLock(Lock):
@@ -421,7 +421,7 @@ class ReadLock(Lock):
 
     """
     _NODE_NAME = "__rlock__"
-    _EXCLUDE_NAMES = ["__lock__"]
+    _EXCLUDE_NAMES = ["__lock__", "-lock-"]
 
 
 class Semaphore(object):
