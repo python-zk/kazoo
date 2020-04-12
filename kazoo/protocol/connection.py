@@ -723,7 +723,7 @@ class ConnectionHandler(object):
         else:
             self._set_connected_ro_or_rw(client)
             for scheme, auth in client_auth_data_copy:
-                if scheme == "digest":
+                if scheme != "sasl":
                     ap = Auth(0, scheme, auth)
                     zxid = self._invoke(
                         connect_timeout / 1000.0,
