@@ -2,7 +2,7 @@ HERE = $(shell pwd)
 BIN = $(HERE)/bin
 PYTHON = $(BIN)/python
 INSTALL = $(BIN)/pip install
-TOX_VENV ?= py27
+TOX_VENV ?= py37
 BUILD_DIRS = bin build include lib lib64 man share
 
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
