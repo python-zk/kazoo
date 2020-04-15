@@ -826,7 +826,8 @@ class KazooClient(object):
         """Strip the chroot if applicable from the path."""
         if not self.chroot:
             return path
-
+        if self.chroot == path:
+            return "/"
         if path.startswith(self.chroot):
             return path[len(self.chroot):]
         else:
@@ -839,7 +840,20 @@ class KazooClient(object):
 
         """
         async_result = self.handler.async_result()
-        self._call(Sync(_prefix_root(self.chroot, path)), async_result)
+
+        @wrap(async_result)
+        def _sync_completion(result):
+            return self.unchroot(result.get())
+
+        def _do_sync():
+            result = self.handler.async_result()
+            self._call(
+                Sync(_prefix_root(self.chroot, path)),
+                result
+            )
+            result.rawlink(_sync_completion)
+
+        _do_sync()
         return async_result
 
     def sync(self, path):
