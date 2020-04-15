@@ -14,20 +14,19 @@ with open(os.path.join(here, 'kazoo', 'version.py')) as f:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         f.read(), re.MULTILINE).group(1)
 
-PYTHON3 = sys.version_info > (3, )
 PYPY = getattr(sys, 'pypy_version_info', False) and True or False
 
 install_requires = ['six']
 
 tests_require = install_requires + [
-    'coverage',
     'mock',
-    'nose',
+    'pytest',
+    'pytest-cov',
     'flake8',
     'objgraph',
 ]
 
-if not (PYTHON3 or PYPY):
+if not PYPY:
     tests_require += [
         'gevent>=1.2',
         'eventlet>=0.17.1',

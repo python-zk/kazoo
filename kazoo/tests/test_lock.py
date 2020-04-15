@@ -2,7 +2,7 @@ import collections
 import threading
 import uuid
 
-from nose.tools import eq_, ok_
+import pytest
 
 from kazoo.exceptions import CancelledError
 from kazoo.exceptions import LockTimeout
@@ -77,14 +77,14 @@ class KazooLockTests(KazooTestCase):
         try:
             with lock:
                 with self.condition:
-                    eq_(self.active_thread, None)
+                    assert self.active_thread is None
                     self.active_thread = name
                     self.condition.notify_all()
 
                 event.wait()
 
                 with self.condition:
-                    eq_(self.active_thread, name)
+                    assert self.active_thread == name
                     self.active_thread = None
                     self.condition.notify_all()
             self.released.set()
@@ -107,7 +107,7 @@ class KazooLockTests(KazooTestCase):
         # wait for any contender to show up on the lock
         wait = self.make_wait()
         wait(anotherlock.contenders)
-        eq_(anotherlock.contenders(), [lock_name])
+        assert anotherlock.contenders() == [lock_name]
 
         with self.condition:
             while self.active_thread != lock_name:
@@ -148,7 +148,7 @@ class KazooLockTests(KazooTestCase):
         wait(lambda: len(lock.contenders()) == 6)
         contenders = lock.contenders()
 
-        eq_(contenders[0], "test")
+        assert contenders[0] == "test"
         contenders = contenders[1:]
         remaining = list(contenders)
 
@@ -161,9 +161,9 @@ class KazooLockTests(KazooTestCase):
             with self.condition:
                 while not self.active_thread:
                     self.condition.wait()
-                eq_(self.active_thread, contender)
+                assert self.active_thread == contender
 
-            eq_(lock.contenders(), remaining)
+            assert lock.contenders() == remaining
             remaining = remaining[1:]
 
             event.set()
@@ -188,7 +188,7 @@ class KazooLockTests(KazooTestCase):
         # wait for the contender to line up on the lock
         wait = self.make_wait()
         wait(lambda: len(lock.contenders()) == 2)
-        eq_(lock.contenders(), ['test', 'contender'])
+        assert lock.contenders() == ['test', 'contender']
 
         self.expire_session(self.make_event)
 
@@ -197,7 +197,7 @@ class KazooLockTests(KazooTestCase):
         with self.condition:
             while not self.active_thread:
                 self.condition.wait()
-            eq_(self.active_thread, 'contender')
+            assert self.active_thread == 'contender'
 
         event.set()
         thread.join()
@@ -218,8 +218,8 @@ class KazooLockTests(KazooTestCase):
             if not self.active_thread:
                 self.condition.wait(5)
 
-        ok_(not lock1.acquire(blocking=False))
-        eq_(lock.contenders(), [lock_name])  # just one - itself
+        assert not lock1.acquire(blocking=False)
+        assert lock.contenders() == [lock_name]  # just one - itself
 
         event.set()
         thread.join()
@@ -235,8 +235,8 @@ class KazooLockTests(KazooTestCase):
         with self.condition:
             if not self.active_thread:
                 self.condition.wait(5)
-                eq_(self.active_thread, "one")
-        eq_(lock1.contenders(), ["one"])
+                assert self.active_thread == "one"
+        assert lock1.contenders() == ["one"]
         event1.set()
         thread1.join()
 
@@ -251,7 +251,7 @@ class KazooLockTests(KazooTestCase):
         with self.condition:
             if not self.active_thread:
                 self.condition.wait(5)
-                eq_(self.active_thread, "one")
+                assert self.active_thread == "one"
 
         client2 = self._get_client()
         client2.start()
@@ -264,7 +264,7 @@ class KazooLockTests(KazooTestCase):
         # this one should block in acquire. check that it is a contender
         wait = self.make_wait()
         wait(lambda: len(lock2.contenders()) > 1)
-        eq_(lock2.contenders(), ["one", "two"])
+        assert lock2.contenders() == ["one", "two"]
 
         lock2.cancel()
         with self.condition:
@@ -272,7 +272,7 @@ class KazooLockTests(KazooTestCase):
                 self.condition.wait()
                 assert "two" in self.cancelled_threads
 
-        eq_(lock2.contenders(), ["one"])
+        assert lock2.contenders() == ["one"]
 
         thread2.join()
         event1.set()
@@ -282,19 +282,19 @@ class KazooLockTests(KazooTestCase):
     def test_lock_no_double_calls(self):
         lock1 = self.client.Lock(self.lockpath, "one")
         lock1.acquire()
-        self.assertTrue(lock1.is_acquired)
-        self.assertFalse(lock1.acquire(timeout=0.5))
-        self.assertTrue(lock1.is_acquired)
+        assert lock1.is_acquired is True
+        assert lock1.acquire(timeout=0.5) is False
+        assert lock1.is_acquired is True
         lock1.release()
-        self.assertFalse(lock1.is_acquired)
+        assert lock1.is_acquired is False
 
     def test_lock_same_thread_no_block(self):
         lock = self.client.Lock(self.lockpath, "one")
         gotten = lock.acquire(blocking=False)
-        self.assertTrue(gotten)
-        self.assertTrue(lock.is_acquired)
+        assert gotten is True
+        assert lock.is_acquired is True
         gotten = lock.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
     def test_lock_many_threads_no_block(self):
         lock = self.client.Lock(self.lockpath, "one")
@@ -313,7 +313,7 @@ class KazooLockTests(KazooTestCase):
             t = threads.pop()
             t.join()
 
-        self.assertEqual(1, sum(list(attempts)))
+        assert sum(list(attempts)) == 1
 
     def test_lock_many_threads(self):
         sleep_func = self.client.handler.sleep_func
@@ -346,8 +346,8 @@ class KazooLockTests(KazooTestCase):
             t = threads.pop()
             t.join()
 
-        self.assertEqual(self.thread_count, len(acquires))
-        self.assertEqual([1] * self.thread_count, list(differences))
+        assert len(acquires) == self.thread_count
+        assert list(differences) == [1] * self.thread_count
 
     def test_lock_reacquire(self):
         lock = self.client.Lock(self.lockpath, "one")
@@ -393,7 +393,7 @@ class KazooLockTests(KazooTestCase):
         client2 = self._get_client()
         client2.start()
         started.wait(5)
-        self.assertTrue(started.isSet())
+        assert started.isSet() is True
         lock2 = client2.Lock(self.lockpath, "two")
         try:
             lock2.acquire(timeout=timeout)
@@ -413,37 +413,37 @@ class KazooLockTests(KazooTestCase):
         # Test that we can obtain a read lock
         lock = self.client.ReadLock(self.lockpath, "reader one")
         gotten = lock.acquire(blocking=False)
-        self.assertTrue(gotten)
-        self.assertTrue(lock.is_acquired)
+        assert gotten is True
+        assert lock.is_acquired is True
         # and that it's still not reentrant.
         gotten = lock.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
         # Test that a second client we can share the same read lock
         client2 = self._get_client()
         client2.start()
         lock2 = client2.ReadLock(self.lockpath, "reader two")
         gotten = lock2.acquire(blocking=False)
-        self.assertTrue(gotten)
-        self.assertTrue(lock2.is_acquired)
+        assert gotten is True
+        assert lock2.is_acquired is True
         gotten = lock2.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
         # Test that a writer is unable to share it
         client3 = self._get_client()
         client3.start()
         lock3 = client3.WriteLock(self.lockpath, "writer")
         gotten = lock3.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
     def test_write_lock(self):
         # Test that we can obtain a write lock
         lock = self.client.WriteLock(self.lockpath, "writer")
         gotten = lock.acquire(blocking=False)
-        self.assertTrue(gotten)
-        self.assertTrue(lock.is_acquired)
+        assert gotten is True
+        assert lock.is_acquired is True
         gotten = lock.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
         # Test that we are unable to obtain a read lock while the
         # write lock is held.
@@ -451,11 +451,10 @@ class KazooLockTests(KazooTestCase):
         client2.start()
         lock2 = client2.ReadLock(self.lockpath, "reader")
         gotten = lock2.acquire(blocking=False)
-        self.assertFalse(gotten)
+        assert gotten is False
 
 
 class TestSemaphore(KazooTestCase):
-
     def __init__(self, *args, **kw):
         super(TestSemaphore, self).__init__(*args, **kw)
         self.threads_made = []
@@ -510,11 +509,11 @@ class TestSemaphore(KazooTestCase):
         thread.start()
         started.wait(10)
 
-        self.assertFalse(event.is_set())
+        assert event.is_set() is False
 
         sem1.release()
         event.wait(10)
-        self.assert_(event.is_set())
+        assert event.is_set() is True
         thread.join()
 
     def test_non_blocking(self):
@@ -527,12 +526,12 @@ class TestSemaphore(KazooTestCase):
 
         sem1.acquire()
         sem2.acquire()
-        ok_(not sem3.acquire(blocking=False))
-        eq_(set(sem1.lease_holders()), set(['sem1', 'sem2']))
+        assert not sem3.acquire(blocking=False)
+        assert set(sem1.lease_holders()) == set(['sem1', 'sem2'])
         sem2.release()
         # the next line isn't required, but avoids timing issues in tests
         sem3.acquire()
-        eq_(set(sem1.lease_holders()), set(['sem1', 'sem3']))
+        assert set(sem1.lease_holders()) == set(['sem1', 'sem3'])
         sem1.release()
         sem3.release()
 
@@ -562,7 +561,7 @@ class TestSemaphore(KazooTestCase):
         started.wait()
         sem1 = self.client.Semaphore(self.lockpath)
         holders = sem1.lease_holders()
-        eq_(holders, ['fred'])
+        assert holders == ['fred']
         event.set()
         thread.join()
 
@@ -584,11 +583,11 @@ class TestSemaphore(KazooTestCase):
         thread = self.make_thread(target=sema_one, args=())
         thread.start()
         started.wait()
-        eq_(sem1.lease_holders(), ['fred'])
-        eq_(event.is_set(), False)
+        assert sem1.lease_holders() == ['fred']
+        assert not event.is_set()
         sem2.cancel()
         event.wait()
-        eq_(event.is_set(), True)
+        assert event.is_set()
         thread.join()
 
     def test_multiple_acquire_and_release(self):
@@ -596,8 +595,8 @@ class TestSemaphore(KazooTestCase):
         sem1.acquire()
         sem1.acquire()
 
-        eq_(True, sem1.release())
-        eq_(False, sem1.release())
+        assert sem1.release()
+        assert not sem1.release()
 
     def test_handle_session_loss(self):
         expire_semaphore = self.client.Semaphore(self.lockpath, 'fred',
@@ -622,7 +621,7 @@ class TestSemaphore(KazooTestCase):
         thread1.start()
 
         started.wait()
-        eq_(lh_semaphore.lease_holders(), ['george'])
+        assert lh_semaphore.lease_holders() == ['george']
 
         # Fired in a separate thread to make sure we can see the effect
         expired = self.make_event()
@@ -640,7 +639,7 @@ class TestSemaphore(KazooTestCase):
         client.stop()
 
         event.wait(15)
-        eq_(expire_semaphore.lease_holders(), ['fred'])
+        assert expire_semaphore.lease_holders() == ['fred']
         event2.set()
 
         for t in (thread1, thread2):
@@ -651,7 +650,8 @@ class TestSemaphore(KazooTestCase):
         sem2 = self.client.Semaphore(self.lockpath, max_leases=2)
 
         sem1.acquire()
-        self.assertRaises(ValueError, sem2.acquire)
+        with pytest.raises(ValueError):
+            sem2.acquire()
 
     def test_inconsistent_max_leases_other_data(self):
         sem1 = self.client.Semaphore(self.lockpath, max_leases=1)
@@ -662,7 +662,7 @@ class TestSemaphore(KazooTestCase):
 
         sem1.acquire()
         # sem2 thinks it's ok to have two lease holders
-        ok_(sem2.acquire(blocking=False))
+        assert sem2.acquire(blocking=False)
 
     def test_reacquire(self):
         lock = self.client.Semaphore(self.lockpath)
@@ -673,11 +673,11 @@ class TestSemaphore(KazooTestCase):
 
     def test_acquire_after_cancelled(self):
         lock = self.client.Semaphore(self.lockpath)
-        self.assertTrue(lock.acquire())
-        self.assertTrue(lock.release())
+        assert lock.acquire() is True
+        assert lock.release() is True
         lock.cancel()
-        self.assertTrue(lock.cancelled)
-        self.assertTrue(lock.acquire())
+        assert lock.cancelled is True
+        assert lock.acquire() is True
 
     def test_timeout(self):
         timeout = 3
@@ -704,7 +704,7 @@ class TestSemaphore(KazooTestCase):
         client2 = self._get_client()
         client2.start()
         started.wait(5)
-        self.assertTrue(started.isSet())
+        assert started.isSet() is True
         sem2 = client2.Semaphore(self.lockpath, "two")
         try:
             sem2.acquire(timeout=timeout)

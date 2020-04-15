@@ -2,7 +2,7 @@ import uuid
 import sys
 import threading
 
-from nose.tools import eq_
+import pytest
 
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
@@ -93,11 +93,11 @@ class KazooElectionTests(KazooTestCase):
         wait(lambda: len(election.contenders()) == len(elections))
         contenders = election.contenders()
 
-        eq_(set(contenders), set(elections.keys()))
+        assert set(contenders) == set(elections.keys())
 
         # first one in list should be leader
         first_leader = contenders[0]
-        eq_(first_leader, self.leader_id)
+        assert first_leader == self.leader_id
 
         # tell second one to cancel election. should never get elected.
         elections[contenders[1]].cancel()
@@ -107,18 +107,19 @@ class KazooElectionTests(KazooTestCase):
         with self.condition:
             while self.leader_id == first_leader:
                 self.condition.wait(45)
-        eq_(self.leader_id, contenders[2])
+        assert self.leader_id == contenders[2]
         self._check_thread_error()
 
         # make first contender re-enter the race
         threads[first_leader].join()
         threads[first_leader] = self._spawn_contender(
-            first_leader, elections[first_leader])
+            first_leader, elections[first_leader]
+        )
 
         # contender set should now be the current leader plus the first leader
         wait(lambda: len(election.contenders()) == 2)
         contenders = election.contenders()
-        eq_(set(contenders), set([self.leader_id, first_leader]))
+        assert set(contenders), set([self.leader_id == first_leader])
 
         # make current leader raise an exception. first should be reelected
         self.raise_exception = True
@@ -126,7 +127,7 @@ class KazooElectionTests(KazooTestCase):
         with self.condition:
             while self.leader_id != first_leader:
                 self.condition.wait(45)
-        eq_(self.leader_id, first_leader)
+        assert self.leader_id == first_leader
         self._check_thread_error()
 
         self.exit_event.set()
@@ -136,4 +137,5 @@ class KazooElectionTests(KazooTestCase):
 
     def test_bad_func(self):
         election = self.client.Election(self.path)
-        self.assertRaises(ValueError, election.run, "not a callable")
+        with pytest.raises(ValueError):
+            election.run("not a callable")

@@ -1,16 +1,15 @@
 import os
 
-from nose import SkipTest
+import pytest
 
 from kazoo.testing import KazooTestCase
 
 
 class TestBuildEnvironment(KazooTestCase):
-
     def setUp(self):
         KazooTestCase.setUp(self)
         if not os.environ.get('TRAVIS'):
-            raise SkipTest('Only run build config tests on Travis.')
+            pytest.skip('Only run build config tests on Travis.')
 
     def test_zookeeper_version(self):
         server_version = self.client.server_version()
@@ -20,4 +19,4 @@ class TestBuildEnvironment(KazooTestCase):
             if '-' in env_version:
                 # Ignore pre-release markers like -alpha
                 env_version = env_version.split('-')[0]
-            self.assertEqual(env_version, server_version)
+            assert env_version == server_version

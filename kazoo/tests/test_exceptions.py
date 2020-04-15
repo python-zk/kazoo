@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+import pytest
 
 class ExceptionsTestCase(TestCase):
 
@@ -9,17 +10,18 @@ class ExceptionsTestCase(TestCase):
 
     def test_backwards_alias(self):
         module = self._get()
-        self.assertTrue(getattr(module, 'NoNodeException'))
-        self.assertTrue(module.NoNodeException, module.NoNodeError)
+        assert hasattr(module, 'NoNodeException')
+        assert module.NoNodeException is module.NoNodeError
 
     def test_exceptions_code(self):
         module = self._get()
         exc_8 = module.EXCEPTIONS[-8]
-        self.assertTrue(isinstance(exc_8(), module.BadArgumentsError))
+        assert isinstance(exc_8(), module.BadArgumentsError)
 
     def test_invalid_code(self):
         module = self._get()
-        self.assertRaises(RuntimeError, module.EXCEPTIONS.__getitem__, 666)
+        with pytest.raises(RuntimeError):
+            module.EXCEPTIONS.__getitem__(666)
 
     def test_exceptions_construction(self):
         module = self._get()

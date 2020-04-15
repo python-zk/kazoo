@@ -1,7 +1,5 @@
 import uuid
 
-from nose.tools import eq_
-
 from kazoo.testing import KazooTestCase
 
 
@@ -16,42 +14,42 @@ class KazooPartyTests(KazooTestCase):
 
         one_party = parties[0]
 
-        eq_(list(one_party), [])
-        eq_(len(one_party), 0)
+        assert list(one_party) == []
+        assert len(one_party) == 0
 
         participants = set()
         for party in parties:
             party.join()
             participants.add(party.data.decode('utf-8'))
 
-            eq_(set(party), participants)
-            eq_(len(party), len(participants))
+            assert set(party) == participants
+            assert len(party) == len(participants)
 
         for party in parties:
             party.leave()
             participants.remove(party.data.decode('utf-8'))
 
-            eq_(set(party), participants)
-            eq_(len(party), len(participants))
+            assert set(party) == participants
+            assert len(party) == len(participants)
 
     def test_party_reuse_node(self):
         party = self.client.Party(self.path, "p1")
         self.client.ensure_path(self.path)
         self.client.create(party.create_path)
         party.join()
-        self.assertTrue(party.participating)
+        assert party.participating is True
         party.leave()
-        self.assertFalse(party.participating)
-        self.assertEqual(len(party), 0)
+        assert party.participating is False
+        assert len(party) == 0
 
     def test_party_vanishing_node(self):
         party = self.client.Party(self.path, "p1")
         party.join()
-        self.assertTrue(party.participating)
+        assert party.participating is True
         self.client.delete(party.create_path)
         party.leave()
-        self.assertFalse(party.participating)
-        self.assertEqual(len(party), 0)
+        assert party.participating is False
+        assert len(party) == 0
 
 
 class KazooShallowPartyTests(KazooTestCase):
@@ -65,20 +63,20 @@ class KazooShallowPartyTests(KazooTestCase):
 
         one_party = parties[0]
 
-        eq_(list(one_party), [])
-        eq_(len(one_party), 0)
+        assert list(one_party) == []
+        assert len(one_party) == 0
 
         participants = set()
         for party in parties:
             party.join()
             participants.add(party.data.decode('utf-8'))
 
-            eq_(set(party), participants)
-            eq_(len(party), len(participants))
+            assert set(party) == participants
+            assert len(party) == len(participants)
 
         for party in parties:
             party.leave()
             participants.remove(party.data.decode('utf-8'))
 
-            eq_(set(party), participants)
-            eq_(len(party), len(participants))
+            assert set(party) == participants
+            assert len(party) == len(participants)

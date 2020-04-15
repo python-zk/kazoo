@@ -6,9 +6,7 @@ import uuid
 import struct
 import sys
 
-from nose import SkipTest
-from nose.tools import eq_
-from nose.tools import raises
+import pytest
 import mock
 
 from kazoo.exceptions import ConnectionLoss
@@ -42,13 +40,12 @@ class TestConnectionHandler(KazooTestCase):
     def test_bad_deserialization(self):
         async_object = self.client.handler.async_result()
         self.client._queue.append(
-            (Delete(self.client.chroot, -1), async_object))
+            (Delete(self.client.chroot, -1), async_object)
+        )
         self.client._connection._write_sock.send(b'\0')
 
-        @raises(ValueError)
-        def testit():
+        with pytest.raises(ValueError):
             async_object.get()
-        testit()
 
     def test_with_bad_sessionid(self):
         ev = threading.Event()
@@ -63,7 +60,7 @@ class TestConnectionHandler(KazooTestCase):
         client.start()
         try:
             ev.wait(15)
-            eq_(ev.is_set(), True)
+            assert ev.is_set()
         finally:
             client.stop()
 
@@ -90,13 +87,14 @@ class TestConnectionHandler(KazooTestCase):
         client.create(path, b"1")
         try:
             handler.select = delayed_select
-            self.assertRaises(ConnectionLoss, client.get, path)
+            with pytest.raises(ConnectionLoss):
+                client.get(path)
         finally:
             handler.select = _select
         # the client reconnects automatically
         ev.wait(5)
-        eq_(ev.is_set(), True)
-        eq_(client.get(path)[0], b"1")
+        assert ev.is_set()
+        assert client.get(path)[0] == b"1"
 
     def test_connection_write_timeout(self):
         client = self.client
@@ -116,17 +114,19 @@ class TestConnectionHandler(KazooTestCase):
         def back(state):
             if state == KazooState.CONNECTED:
                 ev.set()
+
         client.add_listener(back)
 
         try:
             handler.select = delayed_select
-            self.assertRaises(ConnectionLoss, client.create, path)
+            with pytest.raises(ConnectionLoss):
+                client.create(path)
         finally:
             handler.select = _select
         # the client reconnects automatically
         ev.wait(5)
-        eq_(ev.is_set(), True)
-        eq_(client.exists(path), None)
+        assert ev.is_set()
+        assert client.exists(path) is None
 
     def test_connection_deserialize_fail(self):
         client = self.client
@@ -146,6 +146,7 @@ class TestConnectionHandler(KazooTestCase):
         def back(state):
             if state == KazooState.CONNECTED:
                 ev.set()
+
         client.add_listener(back)
 
         deserialize_ev = threading.Event()
@@ -163,21 +164,23 @@ class TestConnectionHandler(KazooTestCase):
             mock_deserialize.side_effect = bad_deserialize
             try:
                 handler.select = delayed_select
-                self.assertRaises(ConnectionLoss, client.create, path)
+                with pytest.raises(ConnectionLoss):
+                    client.create(path)
             finally:
                 handler.select = _select
             # the client reconnects automatically but the first attempt will
             # hit a deserialize failure. wait for that.
             deserialize_ev.wait(5)
-            eq_(deserialize_ev.is_set(), True)
+            assert deserialize_ev.is_set()
 
         # this time should succeed
         ev.wait(5)
-        eq_(ev.is_set(), True)
-        eq_(client.exists(path), None)
+        assert ev.is_set()
+        assert client.exists(path) is None
 
     def test_connection_close(self):
-        self.assertRaises(Exception, self.client.close)
+        with pytest.raises(Exception):
+            self.client.close()
         self.client.stop()
         self.client.close()
 
@@ -245,14 +248,14 @@ class TestConnectionDrop(KazooTestCase):
         result = self.client.set_async(path, b'a' * 1000 * 1024)
         self.client._call(_CONNECTION_DROP, None)
 
-        self.assertRaises(ConnectionLoss, result.get)
+        with pytest.raises(ConnectionLoss):
+            result.get()
         # we have a working connection to a new node
         ev.wait(30)
-        eq_(ev.is_set(), True)
+        assert ev.is_set()
 
 
 class TestReadOnlyMode(KazooTestCase):
-
     def setUp(self):
         self.setup_zookeeper(read_only=True)
         skip = False
@@ -265,7 +268,7 @@ class TestReadOnlyMode(KazooTestCase):
             if ver[1] < 4:
                 skip = True
         if skip:
-            raise SkipTest("Must use Zookeeper 3.4 or above")
+            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def tearDown(self):
         self.client.stop()
@@ -283,21 +286,20 @@ class TestReadOnlyMode(KazooTestCase):
             states.append(state)
             if client.client_state == KeeperState.CONNECTED_RO:
                 ev.set()
+
         try:
             self.cluster[1].stop()
             self.cluster[2].stop()
             ev.wait(6)
-            eq_(ev.is_set(), True)
-            eq_(client.client_state, KeeperState.CONNECTED_RO)
+            assert ev.is_set()
+            assert client.client_state == KeeperState.CONNECTED_RO
 
             # Test read only command
-            eq_(client.get_children('/'), [])
+            assert client.get_children('/') == []
 
             # Test error with write command
-            @raises(NotReadOnlyCallError)
-            def testit():
+            with pytest.raises(NotReadOnlyCallError):
                 client.create('/fred')
-            testit()
 
             # Wait for a ping
             time.sleep(15)
@@ -308,7 +310,6 @@ class TestReadOnlyMode(KazooTestCase):
 
 
 class TestUnorderedXids(KazooTestCase):
-
     def setUp(self):
         super(TestUnorderedXids, self).setUp()
 
@@ -354,16 +355,17 @@ class TestUnorderedXids(KazooTestCase):
         self.connection.logger.exception = log_exception
 
         ev.clear()
-        self.assertRaises(RuntimeError, self.client.get_children, '/')
+        with pytest.raises(RuntimeError):
+            self.client.get_children('/')
 
         ev.wait()
-        eq_(self.client.connected, False)
-        eq_(self.client.state, 'LOST')
-        eq_(self.client.client_state, KeeperState.CLOSED)
+        assert self.client.connected is False
+        assert self.client.state == 'LOST'
+        assert self.client.client_state == KeeperState.CLOSED
 
         args, exc_info = error_stack[-1]
-        eq_(args, ('Unhandled exception in connection loop',))
-        eq_(exc_info[0], RuntimeError)
+        assert args == ('Unhandled exception in connection loop',)
+        assert exc_info[0] == RuntimeError
 
         self.client.handler.sleep_func(0.2)
         assert not self.connection_routine.is_alive()

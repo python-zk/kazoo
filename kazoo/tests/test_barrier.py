@@ -1,36 +1,33 @@
 import threading
 
-from nose.tools import eq_
-
 from kazoo.testing import KazooTestCase
 
 
 class KazooBarrierTests(KazooTestCase):
     def test_barrier_not_exist(self):
         b = self.client.Barrier("/some/path")
-        eq_(b.wait(), True)
+        assert b.wait()
 
     def test_barrier_exists(self):
         b = self.client.Barrier("/some/path")
         b.create()
-        eq_(b.wait(0), False)
+        assert not b.wait(0)
         b.remove()
-        eq_(b.wait(), True)
+        assert b.wait()
 
     def test_remove_nonexistent_barrier(self):
         b = self.client.Barrier("/some/path")
-        eq_(b.remove(), False)
+        assert not b.remove()
 
 
 class KazooDoubleBarrierTests(KazooTestCase):
-
     def test_basic_barrier(self):
         b = self.client.DoubleBarrier("/some/path", 1)
-        eq_(b.participating, False)
+        assert not b.participating
         b.enter()
-        eq_(b.participating, True)
+        assert b.participating
         b.leave()
-        eq_(b.participating, False)
+        assert not b.participating
 
     def test_two_barrier(self):
         av = threading.Event()
@@ -61,14 +58,14 @@ class KazooDoubleBarrierTests(KazooTestCase):
         t2 = threading.Thread(target=make_barrier_two)
         t2.start()
 
-        eq_(b1.participating, False)
-        eq_(b2.participating, False)
+        assert not b1.participating
+        assert not b2.participating
 
         bv.set()
         av.wait()
         ev.wait()
-        eq_(b1.participating, True)
-        eq_(b2.participating, True)
+        assert b1.participating
+        assert b2.participating
 
         av.clear()
         ev.clear()
@@ -76,8 +73,8 @@ class KazooDoubleBarrierTests(KazooTestCase):
         release_all.set()
         av.wait()
         ev.wait()
-        eq_(b1.participating, False)
-        eq_(b2.participating, False)
+        assert not b1.participating
+        assert not b2.participating
         t1.join()
         t2.join()
 
@@ -111,19 +108,19 @@ class KazooDoubleBarrierTests(KazooTestCase):
         t2 = threading.Thread(target=make_barrier_two)
         t2.start()
 
-        eq_(b1.participating, False)
-        eq_(b2.participating, False)
+        assert not b1.participating
+        assert not b2.participating
 
         bv.set()
-        eq_(b1.participating, False)
-        eq_(b2.participating, False)
+        assert not b1.participating
+        assert not b2.participating
         b3.enter()
         ev.wait()
         av.wait()
 
-        eq_(b1.participating, True)
-        eq_(b2.participating, True)
-        eq_(b3.participating, True)
+        assert b1.participating
+        assert b2.participating
+        assert b3.participating
 
         av.clear()
         ev.clear()
@@ -132,26 +129,26 @@ class KazooDoubleBarrierTests(KazooTestCase):
         b3.leave()
         av.wait()
         ev.wait()
-        eq_(b1.participating, False)
-        eq_(b2.participating, False)
-        eq_(b3.participating, False)
+        assert not b1.participating
+        assert not b2.participating
+        assert not b3.participating
         t1.join()
         t2.join()
 
     def test_barrier_existing_parent_node(self):
         b = self.client.DoubleBarrier('/some/path', 1)
-        self.assertFalse(b.participating)
+        assert b.participating is False
         self.client.create('/some', ephemeral=True)
         # the barrier cannot create children under an ephemeral node
         b.enter()
-        self.assertFalse(b.participating)
+        assert b.participating is False
 
     def test_barrier_existing_node(self):
         b = self.client.DoubleBarrier('/some', 1)
-        self.assertFalse(b.participating)
+        assert b.participating is False
         self.client.ensure_path(b.path)
         self.client.create(b.create_path, ephemeral=True)
         # the barrier will re-use an existing node
         b.enter()
-        self.assertTrue(b.participating)
+        assert b.participating is True
         b.leave()

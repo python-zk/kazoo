@@ -41,10 +41,10 @@ Or to run individual tests:
 
 ```
     export ZOOKEEPER_PATH=/<path to current folder>/bin/zookeeper/
-    bin/nosetests -s -d kazoo.tests.test_client:TestClient.test_create
+    bin/pytest -v kazoo/tests/test_client.py::TestClient::test_create
 ```
 
-The nose test runner allows you to filter by test module, class or
+The pytest test runner allows you to filter by test module, class or
 individual test method.
 
 If you made changes to the documentation, you can build it locally:

@@ -1,6 +1,7 @@
 import os
-from nose import SkipTest
 from sys import platform
+
+import pytest
 
 from kazoo.testing import KazooTestCase
 
@@ -12,8 +13,9 @@ class KazooInterruptTests(KazooTestCase):
         can't control what all signals our connection thread will get
         '''
         if 'linux' not in platform:
-            raise SkipTest('Unable to reproduce error case on'
-                           ' non-linux platforms')
+            pytest.skip(
+                'Unable to reproduce error case on non-linux platforms'
+            )
 
         path = 'interrupt_test'
         value = b"1"
