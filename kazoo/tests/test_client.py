@@ -190,8 +190,8 @@ class TestAuthentication(KazooTestCase):
             client.close()
 
     def test_unicode_auth(self):
-        username = u("xe4/\hm")
-        password = u("/\xe4hm")
+        username = u(r"xe4/\hm")
+        password = u(r"/\xe4hm")
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
 
@@ -774,10 +774,11 @@ class TestClient(KazooTestCase):
         client.ensure_path("/1/2/3/4")
         assert client.exists("/1/2/3/4")
 
-    @pytest.mark.skip("BUG: sync() call is not chroot'd")
     def test_sync(self):
         client = self.client
-        assert client.sync('/') == '/'
+        assert client.sync("/") == "/"
+        # Albeit surprising, you can sync anything, even what does not exist.
+        assert client.sync("/not_there") == "/not_there"
 
     def test_exists(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -1366,9 +1367,11 @@ class TestNonChrootClient(KazooTestCase):
 
     def test_unchroot(self):
         client = self._get_nonchroot_client()
-        client.chroot = '/a'
-        assert client.unchroot('/a/b') == '/b'
-        assert client.unchroot('/b/c') == '/b/c'
+        client.chroot = "/a"
+        # Unchroot'ing the chroot path should return "/"
+        assert client.unchroot("/a") == "/"
+        assert client.unchroot("/a/b") == "/b"
+        assert client.unchroot("/b/c") == "/b/c"
 
 
 class TestReconfig(KazooTestCase):
