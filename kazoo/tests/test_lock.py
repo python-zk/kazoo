@@ -434,7 +434,6 @@ class KazooLockTests(KazooTestCase):
         # and that it's still not reentrant.
         gotten = lock.acquire(blocking=False)
         assert gotten is False
-
         # Test that a second client we can share the same read lock
         client2 = self._get_client()
         client2.start()
@@ -444,7 +443,6 @@ class KazooLockTests(KazooTestCase):
         assert lock2.is_acquired is True
         gotten = lock2.acquire(blocking=False)
         assert gotten is False
-
         # Test that a writer is unable to share it
         client3 = self._get_client()
         client3.start()
@@ -741,24 +739,25 @@ class TestSemaphore(KazooTestCase):
 
 
 class TestSequence(unittest.TestCase):
-    def test_get_sorted_children(self):
+    def test_get_predecessor(self):
+        """Validate selection of predecessors.
+        """
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]
         client = mock.MagicMock()
         client.get_children.return_value = children
         lock = Lock(client, "test")
-        sorted_children = lock._get_sorted_children()
-        assert len(sorted_children) == 4
-        assert sorted_children[0] == pyLock
+        assert lock._get_predecessor(pyLock) is None
 
-    def test_get_sorted_children_go(self):
+    def test_get_predecessor_go(self):
+        """Test selection of predecessor when instructed to consider go-zk
+        locks.
+        """
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]
         client = mock.MagicMock()
         client.get_children.return_value = children
-        lock = Lock(client, "test", additional_lock_patterns=["-lock-"])
-        sorted_children = lock._get_sorted_children()
-        assert len(sorted_children) == 4
-        assert sorted_children[0] == goLock
+        lock = Lock(client, "test", extra_lock_patterns=["-lock-"])
+        assert lock._get_predecessor(pyLock) == goLock
