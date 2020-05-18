@@ -111,7 +111,7 @@ class Connect(namedtuple('Connect', 'protocol_version last_zxid_seen'
         password, offset = read_buffer(bytes, offset)
 
         try:
-            read_only = bool_struct.unpack_from(bytes, offset)[0] is 1
+            read_only = bool_struct.unpack_from(bytes, offset)[0] == 1
             offset += bool_struct.size
         except struct.error:
             read_only = False
@@ -446,4 +446,4 @@ class MultiHeader(namedtuple('MultiHeader', 'type done err')):
     def deserialize(cls, bytes, offset):
         t, done, err = multiheader_struct.unpack_from(bytes, offset)
         offset += multiheader_struct.size
-        return cls(t, done is 1, err), offset
+        return cls(t, done == 1, err), offset
