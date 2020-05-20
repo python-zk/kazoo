@@ -29,22 +29,22 @@ matrix:
     env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py27-eventlet
   - python: '2.7'
     env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py27-eventlet
-  - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py36
-  - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py36-sasl
-  - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py36
-  - python: '3.6'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py36-sasl
   - python: '3.7'
     env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37
   - python: '3.7'
     env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37-sasl
   - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37 DEPLOY=true
+    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37
   - python: '3.7'
     env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37-sasl
+  - python: '3.8'
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38
+  - python: '3.8'
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38-sasl
+  - python: '3.8'
+    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38 DEPLOY=true
+  - python: '3.8'
+    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38-sasl
   - python: pypy
     env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=pypy
   - python: 'pypy'
