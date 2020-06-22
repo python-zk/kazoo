@@ -174,6 +174,10 @@ class KazooTestHarness(unittest.TestCase):
     def servers(self):
         return ",".join([s.address for s in self.cluster])
 
+    @property
+    def secure_servers(self):
+        return ",".join([s.secure_address for s in self.cluster])
+
     def _get_nonchroot_client(self):
         c = KazooClient(self.servers)
         self._clients.append(c)
@@ -234,7 +238,10 @@ class KazooTestHarness(unittest.TestCase):
                     self.cluster.terminate()
                     self.cluster.start()
                 continue
-
+        if client_options.get("use_ssl"):
+            self.hosts = self.secure_servers + namespace
+        else:
+            self.hosts = self.servers + namespace
         self.client = self._get_client(**client_options)
         self.client.start()
         self.client.ensure_path("/")

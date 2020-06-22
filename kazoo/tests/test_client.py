@@ -1,5 +1,7 @@
+import os
 import socket
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -1157,6 +1159,37 @@ class TestClient(KazooTestCase):
                 result.get()
         finally:
             client.stop()
+
+
+class TestSSLClient(KazooTestCase):
+    def setUp(self):
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
+            pytest.skip("Must use Zookeeper 3.5 or above")
+        ssl_path = tempfile.mkdtemp()
+        key_path = os.path.join(ssl_path, "key.pem")
+        cert_path = os.path.join(ssl_path, "cert.pem")
+        cacert_path = os.path.join(ssl_path, "cacert.pem")
+        with open(key_path, "wb") as key_file:
+            key_file.write(
+                self.cluster.get_ssl_client_configuration()["client_key"]
+            )
+        with open(cert_path, "wb") as cert_file:
+            cert_file.write(
+                self.cluster.get_ssl_client_configuration()["client_cert"]
+            )
+        with open(cacert_path, "wb") as cacert_file:
+            cacert_file.write(
+                self.cluster.get_ssl_client_configuration()["ca_cert"]
+            )
+        self.setup_zookeeper(
+            use_ssl=True, keyfile=key_path, certfile=cert_path, ca=cacert_path
+        )
+
+    def test_create(self):
+        client = self.client
+        path = client.create("/1")
+        assert path == "/1"
+        assert client.exists("/1")
 
 
 dummy_dict = {
