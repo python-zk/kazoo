@@ -1,4 +1,4 @@
-sudo: false
+os: linux
 dist: xenial
 addons:
   apt:
@@ -11,57 +11,33 @@ cache:
   directories:
   - zookeeper
 language: python
-python:
-- '2.7'
-matrix:
-  exclude:
-  - python: '2.7'
+jobs:
   include:
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py27
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py27
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py27-gevent
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py27-gevent
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py27-eventlet
-  - python: '2.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py27-eventlet
   - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37-gevent-eventlet-sasl
   - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37-sasl
-  - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37
-  - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37-sasl
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37-gevent-eventlet-sasl
   - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38-gevent-eventlet-sasl
   - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38-sasl
-  - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38 DEPLOY=true
-  - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38-sasl
-  - python: pypy
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=pypy
-  - python: 'pypy'
-    env: ZOOKEEPER_VERSION=3.5.7 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=pypy
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38-gevent-eventlet-sasl DEPLOY=true
+  - python: 'pypy3'
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=pypy3-gevent-eventlet-sasl
+  - python: 'pypy3'
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=pypy3-gevent-eventlet-sasl
 notifications:
   email: false
 install:
 - pip install tox
 script:
-- make test
+- tox -e ${TOX_VENV}
 deploy:
   provider: pypi
-  user: bbangert
+  username: bbangert
   password:
     secure: L9yXZ2PhQ2wJKQkgigIzW3f/a3ajzUamMdThVelcp/NZeTJfzlC/t89lfSRwLh95o9Z/aIxC4T8yZvNrRzzyMEP0O6s1F69pVm5Px+KBuv82lmI7p5sKTYPp35CE9jH+K/52Fy0+Az5F502xLrkaO4VLLA+zhLffw/qyvNbZui0=
   on:
     tags: true
     condition: $DEPLOY = true
   distributions: release
-  skip_upload_docs: true
+  upload_docs: false
