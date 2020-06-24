@@ -178,7 +178,7 @@ class SequentialThreadingHandler(object):
         # anything to minimize changes
         if _HAS_EPOLL:
             # if the highest fd we've seen is > 1023
-            if max(map(_to_fileno, chain(*args[:3]))) > 1023:
+            if max(map(_to_fileno, chain.from_iterable(args[:3]))) > 1023:
                 return self._epoll_select(*args, **kwargs)
         return self._select(*args, **kwargs)
 
