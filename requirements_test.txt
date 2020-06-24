@@ -3,3 +3,4 @@ mock
 objgraph
 pytest
 pytest-cov
+pytest-xdist

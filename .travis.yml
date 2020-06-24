@@ -14,17 +14,17 @@ language: python
 jobs:
   include:
   - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37-gevent-eventlet-sasl
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py37-gevent-eventlet-sasl,codecov
   - python: '3.7'
-    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37-gevent-eventlet-sasl
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py37-gevent-eventlet-sasl,codecov
   - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38-gevent-eventlet-sasl
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=py38-gevent-eventlet-sasl,codecov
   - python: '3.8'
-    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38-gevent-eventlet-sasl DEPLOY=true
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=py38-gevent-eventlet-sasl,codecov DEPLOY=true
   - python: 'pypy3'
-    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=pypy3-gevent-eventlet-sasl
+    env: ZOOKEEPER_VERSION=3.4.14 TOX_VENV=pypy3-gevent-eventlet-sasl,codecov
   - python: 'pypy3'
-    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=pypy3-gevent-eventlet-sasl
+    env: ZOOKEEPER_VERSION=3.5.8 ZOOKEEPER_PREFIX="apache-" ZOOKEEPER_SUFFIX="-bin" ZOOKEEPER_LIB="lib" TOX_VENV=pypy3-gevent-eventlet-sasl,codecov
 notifications:
   email: false
 install:
