@@ -6,6 +6,7 @@ import logging
 import random
 import select
 import socket
+import ssl
 import sys
 import time
 
@@ -247,7 +248,14 @@ class ConnectionHandler(object):
                         # have to check wlist and xlist as we don't set any
                         raise self.handler.timeout_exception(
                             "socket time-out during read")
-                chunk = self._socket.recv(remaining)
+                try:
+                    chunk = self._socket.recv(remaining)
+                except ssl.SSLError as e:
+                    if e.errno in (ssl.SSL_ERROR_WANT_READ,
+                                   ssl.SSL_ERROR_WANT_WRITE):
+                        continue
+                    else:
+                        raise
                 if chunk == b'':
                     raise ConnectionDropped('socket connection broken')
                 msgparts.append(chunk)
@@ -319,7 +327,14 @@ class ConnectionHandler(object):
                     raise self.handler.timeout_exception("socket time-out"
                                                          " during write")
                 msg_slice = buffer(msg, sent)
-                bytes_sent = self._socket.send(msg_slice)
+                try:
+                    bytes_sent = self._socket.send(msg_slice)
+                except ssl.SSLError as e:
+                    if e.errno in (ssl.SSL_ERROR_WANT_READ,
+                                   ssl.SSL_ERROR_WANT_WRITE):
+                        continue
+                    else:
+                        raise
                 if not bytes_sent:
                     raise ConnectionDropped('socket connection broken')
                 sent += bytes_sent
