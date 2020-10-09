@@ -80,7 +80,7 @@ log = logging.getLogger(__name__)
 
 
 _RETRY_COMPAT_DEFAULTS = dict(
-    max_retries=None,
+    max_retries=0,
     retry_delay=0.1,
     retry_backoff=2,
     retry_max_delay=3600,
