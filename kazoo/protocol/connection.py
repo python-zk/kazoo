@@ -543,6 +543,8 @@ class ConnectionHandler(object):
 
         # Check for an empty hostlist, indicating none resolved
         if len(host_ports) == 0:
+            if len(self.client.hosts) == 1:
+                raise ForceRetryError('Reconnecting')
             return STOP_CONNECTING
 
         for host, hostip, port in host_ports:
