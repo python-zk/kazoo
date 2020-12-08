@@ -597,7 +597,8 @@ class ConnectionHandler(object):
                         select_block_time = time.time() - select_start_time
                         if select_block_time > read_timeout:
                             self.logger.warning(
-                                "Socket select took longer than expected: %0.5f",
+                                "Socket select took longer than expected: "
+                                "%0.5f",
                                 select_block_time
                             )
                         if self.ping_outstanding.is_set():
