@@ -589,10 +589,17 @@ class ConnectionHandler(object):
                     # Ensure our timeout is positive
                     timeout = max([read_timeout / 2.0 - jitter_time,
                                    jitter_time])
+                    select_start_time = time.time()
                     s = self.handler.select([self._socket, self._read_sock],
                                             [], [], timeout)[0]
 
                     if not s:
+                        select_block_time = time.time() - select_start_time
+                        if select_block_time > read_timeout:
+                            self.logger.warning(
+                                "Socket select took longer than expected: %0.5f",
+                                select_block_time
+                            )
                         if self.ping_outstanding.is_set():
                             self.ping_outstanding.clear()
                             raise ConnectionDropped(
