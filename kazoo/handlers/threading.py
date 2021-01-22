@@ -20,6 +20,7 @@ import select
 import socket
 import threading
 import time
+from multiprocessing.pool import ThreadPool
 
 import six
 
@@ -112,6 +113,7 @@ class SequentialThreadingHandler(object):
         self._running = False
         self._state_change = threading.Lock()
         self._workers = []
+        self._pool = ThreadPool(30)
 
     @property
     def running(self):
@@ -280,6 +282,9 @@ class SequentialThreadingHandler(object):
         t.daemon = True
         t.start()
         return t
+
+    def safe_spawn(self, func, *args, **kwargs):
+        self._pool.apply_async(func, args, kwargs)
 
     def dispatch_callback(self, callback):
         """Dispatch to the callback object

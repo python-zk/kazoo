@@ -99,6 +99,17 @@ class IHandler(object):
 
         """
 
+    def safe_spawn(self, func, *args, **kwargs):
+        """Safely spawn a function to run asynchronously, use pool
+
+        :param args: args to call the function with.
+        :param kwargs: keyword args to call the function with.
+
+        This method should return immediately and execute the function
+        with the provided args and kwargs in an asynchronous manner.
+
+        """
+
 
 class IAsyncResult(object):
     """An Async Result object that can be queried for a value that has

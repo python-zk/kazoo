@@ -191,7 +191,7 @@ class DataWatch(object):
                 stat = self._retry(self._client.exists, self._path,
                                    self._watcher)
                 if stat:
-                    self._client.handler.spawn(self._get_data)
+                    self._client.handler.safe_spawn(self._get_data)
                     return
 
             # No node data, clear out version
@@ -214,7 +214,7 @@ class DataWatch(object):
 
     def _session_watcher(self, state):
         if state == KazooState.CONNECTED:
-            self._client.handler.spawn(self._get_data)
+            self._client.handler.safe_spawn(self._get_data)
 
 
 class ChildrenWatch(object):
@@ -356,7 +356,7 @@ class ChildrenWatch(object):
             self._watch_established = False
         elif (state == KazooState.CONNECTED and
               not self._watch_established and not self._stopped):
-            self._client.handler.spawn(self._get_children)
+            self._client.handler.safe_spawn(self._get_children)
 
 
 class PatientChildrenWatch(object):
@@ -404,7 +404,7 @@ class PatientChildrenWatch(object):
 
         """
         self.asy = asy = self.client.handler.async_result()
-        self.client.handler.spawn(self._inner_start)
+        self.client.handler.safe_spawn(self._inner_start)
         return asy
 
     def _inner_start(self):
