@@ -220,7 +220,7 @@ class LockingQueue(BaseQueue):
 
         :param timeout:
             Maximum waiting time in seconds. If None then it will wait
-            untill an entry appears in the queue.
+            until an entry appears in the queue.
         :returns: A locked entry value or None if the timeout was reached.
         :rtype: bytes
         """
