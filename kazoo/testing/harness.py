@@ -1,10 +1,12 @@
 """Kazoo testing harnesses"""
+import asyncio
 import logging
 import os
 import uuid
 import unittest
 
 from kazoo import python2atexit as atexit
+from kazoo.aio.client import AioKazooClient
 from kazoo.client import KazooClient
 from kazoo.exceptions import KazooException
 from kazoo.protocol.connection import _CONNECTION_DROP, _SESSION_EXPIRED
@@ -144,6 +146,7 @@ class KazooTestHarness(unittest.TestCase):
 
     """
     DEFAULT_CLIENT_TIMEOUT = 15
+    CLIENT_CLS = KazooClient
 
     def __init__(self, *args, **kw):
         super(KazooTestHarness, self).__init__(*args, **kw)
@@ -159,14 +162,14 @@ class KazooTestHarness(unittest.TestCase):
         return ",".join([s.address for s in self.cluster])
 
     def _get_nonchroot_client(self):
-        c = KazooClient(self.servers)
+        c = self.CLIENT_CLS(self.servers)
         self._clients.append(c)
         return c
 
     def _get_client(self, **client_options):
         if 'timeout' not in client_options:
             client_options['timeout'] = self.DEFAULT_CLIENT_TIMEOUT
-        c = KazooClient(self.hosts, **client_options)
+        c = self.CLIENT_CLS(self.hosts, **client_options)
         self._clients.append(c)
         return c
 
@@ -245,3 +248,25 @@ class KazooTestCase(KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
+
+
+class KazooAioTestCase(KazooTestHarness):
+    CLIENT_CLS = AioKazooClient
+
+    def __init__(self, *args, **kw):
+        super(KazooAioTestCase, self).__init__(*args, **kw)
+        self.loop = None
+
+    async def setup_zookeeper_aio(self):
+        self.setup_zookeeper()  # NOTE: could enhance this to call start_aio() on the client
+
+    async def teardown_zookeeper_aio(self):
+        self.teardown_zookeeper()
+
+    def setUp(self):
+        self.loop = asyncio.get_event_loop_policy().new_event_loop()
+        self.loop.run_until_complete(self.setup_zookeeper_aio())
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.teardown_zookeeper_aio())
+        self.loop.close()
