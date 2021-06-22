@@ -32,3 +32,10 @@ class KazooAioTests(KazooAioTestCase):
             tx.set_data("/tmp/x", b"XXX")
         assert (await self.client.get_aio("/tmp/x"))[0] == b"XXX"
         assert (await self.client.get_aio("/tmp/z"))[0] == b"ZZZ"
+        self.client.stop()
+        assert self.client.connected is False
+        await self.client.start_aio()
+        assert self.client.connected is True
+        assert set(await self.client.get_children_aio("/tmp")) == set(
+            ["x", "z"]
+        )

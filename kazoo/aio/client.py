@@ -20,8 +20,13 @@ class AioKazooClient(KazooClient):
         KazooClient.__init__(self, *args, **kwargs)
 
     # asyncio compatible api wrappers
-    async def start_aio(self):
-        return await asyncio.shield(self.start_async().future)
+    async def start_aio(self, timeout=15):
+        """
+        There is no protection for calling this multiple times in parallel.
+        The start_async() seems to lack that as well. Maybe it is allowed and
+        handled internally.
+        """
+        await self.handler.loop.run_in_executor(None, self.start, timeout)
 
     async def add_auth_aio(self, *args, **kwargs):
         return await asyncio.shield(
