@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+from functools import partial
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -11,12 +12,30 @@ from kazoo.exceptions import (
 from kazoo.retry import ForceRetryError, RetryFailedError
 
 
-class AioKazooRetry(object):
+EXCEPTIONS = (
+    ConnectionLoss,
+    OperationTimeoutError,
+    ForceRetryError,
+)
+
+EXCEPTIONS_WITH_EXPIRED = EXCEPTIONS + (SessionExpiredError,)
+
+
+def kazoo_retry_aio(
+    max_tries=1,
+    delay=0.1,
+    backoff=2,
+    max_jitter=0.4,
+    max_delay=60.0,
+    ignore_expire=True,
+    deadline=None,
+):
     """
     This is similar to KazooRetry, but they do not have compatible
     interfaces. The threaded and asyncio constructs are too different
     to easily wrap the KazooRetry implementation. Unless, all retries
-    always get their own thread to work in.
+    always get their own thread to work in. This is much more lightweight
+    compared to the object-copying and resetting implementation.
 
     There is no equivalent analogue to the interrupt API.
     If interrupting the retry is necessary, it must be wrapped in
@@ -33,87 +52,40 @@ class AioKazooRetry(object):
         await zk.create_aio("/x")
         await zk.create_aio("/x/y")
 
-        aio_retry = AioKazooRetry()
+        aio_retry = kazoo_retry_aio()
         await aio_retry(zk.create_aio, "/x")
         await aio_retry(zk.create_aio, "/x/y")
-
-    Re-using an instance is fine as long as it is done serially.
     """
-
-    EXCEPTIONS = (
-        ConnectionLoss,
-        OperationTimeoutError,
-        ForceRetryError,
+    retry_exceptions = (
+        EXCEPTIONS_WITH_EXPIRED if ignore_expire else EXCEPTIONS
     )
+    max_jitter = max(min(max_jitter, 1.0), 0.0)
+    get_jitter = partial(random.uniform, 1.0 - max_jitter, 1.0 + max_jitter)
+    del max_jitter
 
-    EXCEPTIONS_WITH_EXPIRED = EXCEPTIONS + (SessionExpiredError,)
-
-    def __init__(
-        self,
-        max_tries=1,
-        delay=0.1,
-        backoff=2,
-        max_jitter=0.4,
-        max_delay=60.0,
-        ignore_expire=True,
-        deadline=None,
-    ):
-        self.max_tries = max_tries
-        self.delay = delay
-        self.backoff = backoff
-        self.max_jitter = max(min(max_jitter, 1.0), 0.0)
-        self.max_delay = float(max_delay)
-        self._attempts = 0
-        self._cur_delay = delay
-        self.deadline = deadline
-        self.retry_exceptions = (
-            self.EXCEPTIONS_WITH_EXPIRED if ignore_expire else self.EXCEPTIONS
-        )
-
-    def reset(self):
-        self._attempts = 0
-        self._cur_delay = self.delay
-
-    def copy(self):
-        obj = AioKazooRetry(
-            max_tries=self.max_tries,
-            delay=self.delay,
-            backoff=self.backoff,
-            max_jitter=self.max_jitter,
-            max_delay=self.max_delay,
-            deadline=self.deadline,
-        )
-        obj.retry_exceptions = self.retry_exceptions
-        return obj
-
-    async def __call__(self, func, *args, **kwargs):
-        self.reset()
-
+    async def _retry(func, *args, **kwargs):
+        attempts = 0
+        cur_delay = delay
         stop_time = (
-            None
-            if self.deadline is None
-            else time.perf_counter() + self.deadline
+            None if deadline is None else time.perf_counter() + deadline
         )
         while True:
             try:
                 return await func(*args, **kwargs)
             except ConnectionClosedError:
                 raise
-            except self.retry_exceptions:
+            except retry_exceptions:
                 # Note: max_tries == -1 means infinite tries.
-                if self._attempts == self.max_tries:
+                if attempts == max_tries:
                     raise RetryFailedError("Too many retry attempts")
-                self._attempts += 1
-                jitter = random.uniform(
-                    1.0 - self.max_jitter, 1.0 + self.max_jitter
-                )
-                sleeptime = self._cur_delay * jitter
+                attempts += 1
+                sleep_time = cur_delay * get_jitter()
                 if (
                     stop_time is not None
-                    and time.perf_counter() + sleeptime >= stop_time
+                    and time.perf_counter() + sleep_time >= stop_time
                 ):
                     raise RetryFailedError("Exceeded retry deadline")
-                await asyncio.sleep(sleeptime)
-                self._cur_delay = min(
-                    sleeptime * self.backoff, self.max_delay
-                )
+                await asyncio.sleep(sleep_time)
+                cur_delay = min(sleep_time * backoff, max_delay)
+
+    return _retry

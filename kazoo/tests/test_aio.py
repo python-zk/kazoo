@@ -1,6 +1,6 @@
 import pytest
 
-from kazoo.aio.retry import AioKazooRetry
+from kazoo.aio.retry import kazoo_retry_aio
 from kazoo.exceptions import NotEmptyError, NoNodeError
 from kazoo.protocol.states import ZnodeStat
 from kazoo.testing import KazooAioTestCase
@@ -53,14 +53,15 @@ class KazooAioTests(KazooAioTestCase):
     async def _pass(self):
         pass
 
-    def _fail(self, times=1):
+    def _fail(self, times=1, scope=None):
         from kazoo.retry import ForceRetryError
 
-        scope = dict(times=0)
+        if not scope:
+            scope = dict(times=0)
 
         async def inner():
             if scope["times"] >= times:
-                pass
+                return scope
             else:
                 scope["times"] += 1
                 raise ForceRetryError("Failed!")
@@ -68,24 +69,23 @@ class KazooAioTests(KazooAioTestCase):
         return inner
 
     async def _test_aio_retry(self):
-        aio_retry = AioKazooRetry(delay=0, max_tries=2)
-        await aio_retry(self._fail())
-        assert aio_retry._attempts == 1
-        aio_retry.reset()
-        assert aio_retry._attempts == 0
+        aio_retry = kazoo_retry_aio(delay=0, max_tries=2)
+        assert await aio_retry(self._fail()) == {"times": 1}
+        assert await aio_retry(self._fail()) == {"times": 1}
 
     async def _test_too_many_tries(self):
         from kazoo.retry import RetryFailedError
 
-        aio_retry = AioKazooRetry(delay=0)
+        aio_retry = kazoo_retry_aio(delay=0, max_tries=3)
+        scope = dict(times=0)
         with pytest.raises(RetryFailedError):
-            await aio_retry(self._fail(times=999))
-        assert aio_retry._attempts == 1
+            await aio_retry(self._fail(times=999, scope=scope))
+        assert scope == {"times": 4}
 
     async def _test_connection_closed(self):
         from kazoo.exceptions import ConnectionClosedError
 
-        aio_retry = AioKazooRetry()
+        aio_retry = kazoo_retry_aio()
 
         async def testit():
             raise ConnectionClosedError()
@@ -96,7 +96,7 @@ class KazooAioTests(KazooAioTestCase):
     async def _test_session_expired(self):
         from kazoo.exceptions import SessionExpiredError
 
-        aio_retry = AioKazooRetry()
+        aio_retry = kazoo_retry_aio()
 
         async def testit():
             raise SessionExpiredError()
