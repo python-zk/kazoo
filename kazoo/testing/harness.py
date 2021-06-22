@@ -258,7 +258,8 @@ class KazooAioTestCase(KazooTestHarness):
         self.loop = None
 
     async def setup_zookeeper_aio(self):
-        self.setup_zookeeper()  # NOTE: could enhance this to call start_aio() on the client
+        # NOTE: could enhance this to call start_aio() on the client
+        self.setup_zookeeper()
 
     async def teardown_zookeeper_aio(self):
         self.teardown_zookeeper()
