@@ -24,7 +24,9 @@ class AioKazooClient(KazooClient):
         return await asyncio.shield(self.start_async().future)
 
     async def add_auth_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.add_auth_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.add_auth_async(*args, **kwargs).future
+        )
 
     async def sync_aio(self, *args, **kwargs):
         return await asyncio.shield(self.sync_async(*args, **kwargs).future)
@@ -49,10 +51,14 @@ class AioKazooClient(KazooClient):
         )
 
     async def get_acls_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.get_acls_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.get_acls_async(*args, **kwargs).future
+        )
 
     async def set_acls_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.set_acls_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.set_acls_async(*args, **kwargs).future
+        )
 
     async def set_aio(self, *args, **kwargs):
         return await asyncio.shield(self.set_async(*args, **kwargs).future)
@@ -64,7 +70,9 @@ class AioKazooClient(KazooClient):
         return await asyncio.shield(self.delete_async(*args, **kwargs).future)
 
     async def reconfig_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.reconfig_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.reconfig_async(*args, **kwargs).future
+        )
 
 
 class AioTransactionRequest(TransactionRequest):
