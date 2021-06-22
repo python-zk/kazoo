@@ -6,10 +6,12 @@ from kazoo.client import KazooClient, TransactionRequest
 
 class AioKazooClient(KazooClient):
     """
-    The asyncio compatibility mostly mimics the behaviour of the base async one. All calls are wrapped in
-    asyncio.shield() to prevent cancellation that is not supported in the base async implementation.
+    The asyncio compatibility mostly mimics the behaviour of the base async
+    one. All calls are wrapped in asyncio.shield() to prevent cancellation
+    that is not supported in the base async implementation.
 
-    The sync and base-async API are still completely functional. Mixing the use of any of the 3 should be okay.
+    The sync and base-async API are still completely functional. Mixing the
+    use of any of the 3 should be okay.
     """
 
     def __init__(self, *args, **kwargs):
@@ -31,7 +33,9 @@ class AioKazooClient(KazooClient):
         return await asyncio.shield(self.create_async(*args, **kwargs).future)
 
     async def ensure_path_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.ensure_path_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.ensure_path_async(*args, **kwargs).future
+        )
 
     async def exists_aio(self, *args, **kwargs):
         return await asyncio.shield(self.exists_async(*args, **kwargs).future)
@@ -40,7 +44,9 @@ class AioKazooClient(KazooClient):
         return await asyncio.shield(self.get_async(*args, **kwargs).future)
 
     async def get_children_aio(self, *args, **kwargs):
-        return await asyncio.shield(self.get_children_async(*args, **kwargs).future)
+        return await asyncio.shield(
+            self.get_children_async(*args, **kwargs).future
+        )
 
     async def get_acls_aio(self, *args, **kwargs):
         return await asyncio.shield(self.get_acls_async(*args, **kwargs).future)

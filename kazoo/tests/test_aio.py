@@ -12,7 +12,9 @@ class KazooAioTests(KazooAioTestCase):
         assert await self.client.get_children_aio("/") == ["tmp"]
         assert await self.client.ensure_path_aio("/tmp/x/y") == "/tmp/x/y"
         assert await self.client.exists_aio("/tmp/x/y")
-        assert isinstance(await self.client.set_aio("/tmp/x/y", b"very aio"), ZnodeStat)
+        assert isinstance(
+            await self.client.set_aio("/tmp/x/y", b"very aio"), ZnodeStat
+        )
         data, stat = await self.client.get_aio("/tmp/x/y")
         assert data == b"very aio"
         assert isinstance(stat, ZnodeStat)
