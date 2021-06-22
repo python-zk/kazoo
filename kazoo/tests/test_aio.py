@@ -1,3 +1,6 @@
+import pytest
+
+from kazoo.aio.retry import AioKazooRetry
 from kazoo.exceptions import NotEmptyError, NoNodeError
 from kazoo.protocol.states import ZnodeStat
 from kazoo.testing import KazooAioTestCase
@@ -18,15 +21,11 @@ class KazooAioTests(KazooAioTestCase):
         data, stat = await self.client.get_aio("/tmp/x/y")
         assert data == b"very aio"
         assert isinstance(stat, ZnodeStat)
-        try:
+        with pytest.raises(NotEmptyError):
             await self.client.delete_aio("/tmp/x")
-        except NotEmptyError:
-            pass
         await self.client.delete_aio("/tmp/x/y")
-        try:
+        with pytest.raises(NoNodeError):
             await self.client.get_aio("/tmp/x/y")
-        except NoNodeError:
-            pass
         async with self.client.transaction_aio() as tx:
             tx.create("/tmp/z", b"ZZZ")
             tx.set_data("/tmp/x", b"XXX")
@@ -39,3 +38,68 @@ class KazooAioTests(KazooAioTestCase):
         assert set(await self.client.get_children_aio("/tmp")) == set(
             ["x", "z"]
         )
+
+    def test_aio_retry_functionality(self):
+        self.loop.run_until_complete(self._test_aio_retry_functionality())
+
+    async def _test_aio_retry_functionality(self):
+        # Just lump them all in here for now, they are short enough that
+        # it does not matter much.
+        await self._test_aio_retry()
+        await self._test_too_many_tries()
+        await self._test_connection_closed()
+        await self._test_session_expired()
+
+    async def _pass(self):
+        pass
+
+    def _fail(self, times=1):
+        from kazoo.retry import ForceRetryError
+
+        scope = dict(times=0)
+
+        async def inner():
+            if scope["times"] >= times:
+                pass
+            else:
+                scope["times"] += 1
+                raise ForceRetryError("Failed!")
+
+        return inner
+
+    async def _test_aio_retry(self):
+        aio_retry = AioKazooRetry(delay=0, max_tries=2)
+        await aio_retry(self._fail())
+        assert aio_retry._attempts == 1
+        aio_retry.reset()
+        assert aio_retry._attempts == 0
+
+    async def _test_too_many_tries(self):
+        from kazoo.retry import RetryFailedError
+
+        aio_retry = AioKazooRetry(delay=0)
+        with pytest.raises(RetryFailedError):
+            await aio_retry(self._fail(times=999))
+        assert aio_retry._attempts == 1
+
+    async def _test_connection_closed(self):
+        from kazoo.exceptions import ConnectionClosedError
+
+        aio_retry = AioKazooRetry()
+
+        async def testit():
+            raise ConnectionClosedError()
+
+        with pytest.raises(ConnectionClosedError):
+            await aio_retry(testit)
+
+    async def _test_session_expired(self):
+        from kazoo.exceptions import SessionExpiredError
+
+        aio_retry = AioKazooRetry()
+
+        async def testit():
+            raise SessionExpiredError()
+
+        with pytest.raises(Exception):
+            await aio_retry(testit)
