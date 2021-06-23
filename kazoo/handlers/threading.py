@@ -271,8 +271,10 @@ class SequentialThreadingHandler(object):
         """Create an appropriate RLock object"""
         return threading.RLock()
 
-    def async_result(self):
-        """Create a :class:`AsyncResult` instance"""
+    def async_result(self, api=False):
+        """Create a :class:`AsyncResult` instance. The api flag will
+        indicate if this object will be used by a user code or an
+        internal one. It is necessary for asyncio support."""
         return AsyncResult(self)
 
     def spawn(self, func, *args, **kwargs):

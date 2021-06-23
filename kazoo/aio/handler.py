@@ -39,7 +39,7 @@ class AioSequentialThreadingHandler(SequentialThreadingHandler):
         self._aio_thread = threading.current_thread()
         SequentialThreadingHandler.__init__(self)
 
-    def async_result(self):
+    def async_result(self, api=False):
         """
         Almost all async-result objects are created by a method that is
         invoked from the user's thead. The one exception I'm aware of is
@@ -55,6 +55,6 @@ class AioSequentialThreadingHandler(SequentialThreadingHandler):
         For now, just to be safe, we check the current thread and create an
         async-result object based on the invoking thread's identity.
         """
-        if threading.current_thread() is self._aio_thread:
+        if api and threading.current_thread() is self._aio_thread:
             return AioAsyncResult(self)
         return AsyncResult(self)
