@@ -8,7 +8,11 @@ import pytest
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import KazooException
-from kazoo.protocol.states import EventType, WatchedEvent, ZnodeStat
+from kazoo.protocol.states import (
+    EventType,
+    WatchedEvent,
+    ZnodeStat,
+)
 from kazoo.recipe.watchers import PatientChildrenWatch
 
 if TYPE_CHECKING:
@@ -283,6 +287,202 @@ class TestDataWatcher:
         except:  # noqa
             b = True
         assert b is False
+
+
+class TestExistingDataWatcher:
+    def test_data_watcher_non_existent_path(
+        self, zkclient: KazooClient
+    ) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bool | bytes | None] = [True]
+        path = "/" + uuid.uuid4().hex
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> None:
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data == [None]
+        update.clear()
+
+        # We should not get an update
+        zkclient.create(path, b"fred")
+        update.wait(0.2)
+        assert data == [None]
+        update.clear()
+
+    def test_data_watcher_existing_path(self, zkclient: KazooClient) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bool | bytes | None] = [True]
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"fred")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> None:
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b"fred"
+        update.clear()
+
+    def test_data_watcher_delete(self, zkclient: KazooClient) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bool | bytes | None] = [True]
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"fred")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> None:
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b"fred"
+        update.clear()
+
+        zkclient.delete(path)
+        update.wait(10)
+        assert data == [None]
+        update.clear()
+
+        zkclient.create(path, b"ginger")
+        update.wait(0.2)
+        assert data == [None]
+        update.clear()
+
+    def test_data_watcher_modify(self, zkclient: KazooClient) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bool | bytes | None] = [True]
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"fred")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> None:
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b"fred"
+        update.clear()
+
+        zkclient.set(path, b"wilma")
+        update.wait(10)
+        assert data[0] == b"wilma"
+        update.clear()
+
+        zkclient.set(path, b"betty")
+        update.wait(10)
+        assert data[0] == b"betty"
+        update.clear()
+
+    def test_data_watcher_with_event_and_delete(
+        self, zkclient: KazooClient
+    ) -> None:
+        update = zkclient.handler.event_object()
+        events: list[tuple[bytes | None, WatchedEvent | None]] = []
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"initial")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(
+            d: bytes | None,
+            stat: ZnodeStat | None,
+            event: WatchedEvent | None = None,
+        ) -> None:
+            events.append((d, event))
+            update.set()
+
+        update.wait(10)
+        assert len(events) == 1
+        assert events[0][0] == b"initial"
+        assert events[0][1] is None
+        update.clear()
+
+        zkclient.set(path, b"updated")
+        update.wait(10)
+        assert len(events) == 2
+        assert events[1][0] == b"updated"
+        assert events[1][1] is not None
+        assert events[1][1].type == EventType.CHANGED
+        update.clear()
+
+        zkclient.delete(path)
+        update.wait(10)
+        assert len(events) == 3
+        assert events[2][0] is None
+        assert events[2][1] is not None
+        assert events[2][1].type == EventType.DELETED
+        update.clear()
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_data_watcher_no_server_watch_leak(
+        self, zkclient: KazooClient
+    ) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bool | bytes | None] = [True]
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"leak_test")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> None:
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b"leak_test"
+        update.clear()
+
+        zkclient.delete(path)
+        update.wait(10)
+        assert data == [None]
+
+        # In standard DataWatch, an exists watch is set on the deleted node.
+        # ExistingDataWatch must NOT leave any watch behind on the deleted
+        # node.
+        full_path = zkclient.chroot + path
+        assert full_path not in zkclient._data_watchers
+
+        # Recreating the node must not trigger any further callback
+        zkclient.create(path, b"leak_test_recreated")
+        time.sleep(0.5)
+        assert data == [None]
+
+    def test_data_watcher_return_false_unregisters(
+        self, zkclient: KazooClient
+    ) -> None:
+        update = zkclient.handler.event_object()
+        data: list[bytes | None] = []
+        path = "/" + uuid.uuid4().hex
+        zkclient.create(path, b"one")
+
+        @zkclient.ExistingDataWatch(path)
+        def changed(d: bytes | None, stat: ZnodeStat | None) -> bool | None:
+            data.append(d)
+            update.set()
+            if d == b"two":
+                return False
+            return None
+
+        update.wait(10)
+        assert data == [b"one"]
+        update.clear()
+
+        zkclient.set(path, b"two")
+        update.wait(10)
+        assert data == [b"one", b"two"]
+        update.clear()
+
+        zkclient.set(path, b"three")
+        update.wait(0.5)
+        # Should not have received b"three" because False was returned
+        assert data == [b"one", b"two"]
 
 
 class TestChildrenWatcher:
