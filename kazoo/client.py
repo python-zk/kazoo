@@ -63,7 +63,7 @@ from kazoo.recipe.lock import Lock, ReadLock, WriteLock, Semaphore
 from kazoo.recipe.partitioner import SetPartitioner
 from kazoo.recipe.party import Party, ShallowParty
 from kazoo.recipe.queue import Queue, LockingQueue
-from kazoo.recipe.watchers import ChildrenWatch, DataWatch
+from kazoo.recipe.watchers import ChildrenWatch, DataWatch, ExistingDataWatch
 
 
 string_types = six.string_types
@@ -352,6 +352,7 @@ class KazooClient(object):
         self.DoubleBarrier = partial(DoubleBarrier, self)
         self.ChildrenWatch = partial(ChildrenWatch, self)
         self.DataWatch = partial(DataWatch, self)
+        self.ExistingDataWatch = partial(ExistingDataWatch, self)
         self.Election = partial(Election, self)
         self.NonBlockingLease = partial(NonBlockingLease, self)
         self.MultiNonBlockingLease = partial(MultiNonBlockingLease, self)
