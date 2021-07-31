@@ -294,6 +294,7 @@ class Lock(object):
         (e.g. rlock), this and also edge cases where the lock's ephemeral node
         is gone.
         """
+        node_sequence = node[len(self.prefix):]
         children = self.client.get_children(self.path)
         found_self = False
         # Filter out the contenders using the computed regex
@@ -301,7 +302,12 @@ class Lock(object):
         for child in children:
             match = self._contenders_re.search(child)
             if match is not None:
-                contender_matches.append(match)
+                contender_sequence = match.group(1)
+                # Only consider contenders with a smaller sequence number.
+                # A contender with a smaller sequence number has a higher
+                # priority.
+                if contender_sequence < node_sequence:
+                    contender_matches.append(match)
             if child == node:
                 # Remember the node's match object so we can short circuit
                 # below.
@@ -313,15 +319,13 @@ class Lock(object):
             # node was removed.
             raise ForceRetryError()
 
-        predecessor = None
-        # Sort the contenders using the sequence number extracted by the regex,
-        # then extract the original string.
-        for match in sorted(contender_matches, key=lambda m: m.groups()):
-            if match is found_self:
-                break
-            predecessor = match.string
+        if not contender_matches:
+            return None
 
-        return predecessor
+        # Sort the contenders using the sequence number extracted by the regex
+        # and return the original string of the predecessor.
+        sorted_matches = sorted(contender_matches, key=lambda m: m.groups())
+        return sorted_matches[-1].string
 
     def _find_node(self):
         children = self.client.get_children(self.path)

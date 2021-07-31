@@ -467,6 +467,64 @@ class KazooLockTests(KazooTestCase):
         gotten = lock2.acquire(blocking=False)
         assert gotten is False
 
+    def test_rw_lock(self):
+        reader_event = self.make_event()
+        reader_lock = self.client.ReadLock(self. lockpath, "reader")
+        reader_thread = self.make_thread(
+            target=self._thread_lock_acquire_til_event,
+            args=("reader", reader_lock, reader_event)
+        )
+
+        writer_event = self.make_event()
+        writer_lock = self.client.WriteLock(self. lockpath, "writer")
+        writer_thread = self.make_thread(
+            target=self._thread_lock_acquire_til_event,
+            args=("writer", writer_lock, writer_event)
+        )
+
+        # acquire a write lock ourselves first to make the others line up
+        lock = self.client.WriteLock(self.lockpath, "test")
+        lock.acquire()
+
+        reader_thread.start()
+        writer_thread.start()
+
+        # wait for everyone to line up on the lock
+        wait = self.make_wait()
+        wait(lambda: len(lock.contenders()) == 3)
+        contenders = lock.contenders()
+
+        assert contenders[0] == "test"
+        remaining = contenders[1:]
+
+        # release the lock and contenders should claim it in order
+        lock.release()
+
+        contender_bits = {
+            "reader": (reader_thread, reader_event),
+            "writer": (writer_thread, writer_event),
+        }
+
+        for contender in ("reader", "writer"):
+            thread, event = contender_bits[contender]
+
+            with self.condition:
+                while not self.active_thread:
+                    self.condition.wait()
+                assert self.active_thread == contender
+
+            assert lock.contenders() == remaining
+            remaining = remaining[1:]
+
+            event.set()
+
+            with self.condition:
+                while self.active_thread:
+                    self.condition.wait()
+
+        reader_thread.join()
+        writer_thread.join()
+
 
 class TestSemaphore(KazooTestCase):
     def __init__(self, *args, **kw):
