@@ -7,11 +7,11 @@ BUILD_DIRS = bin build include lib lib64 man share
 
 PYTHON_EXE = $(shell [ -f $(PYTHON) ] && echo $(PYTHON) || echo python)
 PYPY = $(shell $(PYTHON_EXE) -c "import sys; print(getattr(sys, 'pypy_version_info', False) and 'yes' or 'no')")
-TRAVIS ?= false
-TRAVIS_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
+CI ?= false
+CI_PYTHON_VERSION ?= $(shell $(PYTHON_EXE) -c "import sys; print('.'.join([str(s) for s in sys.version_info][:2]))")
 
 GREENLET_SUPPORTED = yes
-ifeq ($(findstring 3.,$(TRAVIS_PYTHON_VERSION)), 3.)
+ifeq ($(findstring 3.,$(CI_PYTHON_VERSION)), 3.)
 	GREENLET_SUPPORTED = no
 	VENV_CMD = $(PYTHON_EXE) -m venv .
 else
@@ -33,7 +33,7 @@ ifeq ($(GREENLET_SUPPORTED),yes)
 	$(INSTALL) -U -r requirements_eventlet.txt
 	$(INSTALL) -U -r requirements_gevent.txt
 endif
-ifneq ($(TRAVIS), true)
+ifneq ($(CI), true)
 	$(INSTALL) -U -r requirements_sphinx.txt
 endif
 	$(INSTALL) -U -r requirements.txt

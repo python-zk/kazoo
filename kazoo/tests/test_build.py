@@ -8,8 +8,8 @@ from kazoo.testing import KazooTestCase
 class TestBuildEnvironment(KazooTestCase):
     def setUp(self):
         KazooTestCase.setUp(self)
-        if not os.environ.get('TRAVIS'):
-            pytest.skip('Only run build config tests on Travis.')
+        if not os.environ.get('CI'):
+            pytest.skip('Only run build config tests on CI.')
 
     def test_zookeeper_version(self):
         server_version = self.client.server_version()

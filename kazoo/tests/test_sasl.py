@@ -9,7 +9,7 @@ from kazoo.exceptions import (
     AuthFailedError,
     NoAuthError,
 )
-from kazoo.tests.util import TRAVIS_ZK_VERSION
+from kazoo.tests.util import CI_ZK_VERSION
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
@@ -22,8 +22,8 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
 
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = self.client.server_version()
         if not version or version < (3, 4):
@@ -71,8 +71,8 @@ class TestSASLDigestAuthentication(KazooTestHarness):
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
 
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = self.client.server_version()
         if not version or version < (3, 4):
@@ -136,8 +136,8 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "gssapi"
         self.setup_zookeeper()
 
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = self.client.server_version()
         if not version or version < (3, 4):

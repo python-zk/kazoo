@@ -19,7 +19,7 @@ from kazoo.protocol.states import KazooState
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
-from kazoo.tests.util import TRAVIS_ZK_VERSION
+from kazoo.tests.util import CI_ZK_VERSION
 
 
 class Delete(namedtuple('Delete', 'path version')):
@@ -259,9 +259,9 @@ class TestReadOnlyMode(KazooTestCase):
     def setUp(self):
         self.setup_zookeeper(read_only=True)
         skip = False
-        if TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION < (3, 4):
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
             skip = True
-        elif TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION >= (3, 4):
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
             skip = False
         else:
             ver = self.client.server_version()

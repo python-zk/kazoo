@@ -1,0 +1,68 @@
+name: Kazoo Awesome Testing
+
+on: [push]
+
+jobs:
+  test:
+    name: >
+      Test Python ${{ matrix.python-version }},
+      ZK ${{ matrix.zk-version }}
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, pypy-3.7]
+        zk-version: [3.4.14, 3.5.8]
+        include:
+          - python-version: 3.7
+            tox-env: py37
+          - python-version: 3.8
+            tox-env: py38
+          - python-version: 3.9
+            tox-env: py39
+          - python-version: pypy-3.7
+            tox-env: pypy3
+    steps:
+      - name: Handle the code
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Handle pip cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Handle ZK installation cache
+        uses: actions/cache@v2
+        with:
+          path: zookeeper
+          key: ${{ runner.os }}-zookeeper
+          restore-keys: |
+            ${{ runner.os }}-zookeeper
+
+      - name: Install required dependencies
+        run: |
+          sudo apt-get -y install libevent-dev krb5-kdc krb5-admin-server libkrb5-dev
+          python -m pip install --upgrade pip
+          pip install tox
+
+      - name: Test with tox
+        run: tox -e ${TOX_VENV}
+        env:
+          TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl,codecov') }}
+          ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
+          # TODO: can be removed once tests for ZK 3.4 are removed
+          ZOOKEEPER_PREFIX: "${{ !contains(matrix.zk-version, '3.4') && 'apache-' || '' }}"
+          ZOOKEEPER_SUFFIX: "${{ !contains(matrix.zk-version, '3.4') && '-bin' || '' }}"
+          ZOOKEEPER_LIB: "${{ !contains(matrix.zk-version, '3.4') && 'lib' || '' }}"
+
+      - name: Publish Codecov report
+        uses: codecov/codecov-action@v2

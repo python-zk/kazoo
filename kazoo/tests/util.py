@@ -16,13 +16,13 @@ import logging
 import os
 import time
 
-TRAVIS = os.environ.get('TRAVIS', False)
-TRAVIS_ZK_VERSION = TRAVIS and os.environ.get('ZOOKEEPER_VERSION', None)
-if TRAVIS_ZK_VERSION:
-    if '-' in TRAVIS_ZK_VERSION:
+CI = os.environ.get('CI', False)
+CI_ZK_VERSION = CI and os.environ.get('ZOOKEEPER_VERSION', None)
+if CI_ZK_VERSION:
+    if '-' in CI_ZK_VERSION:
         # Ignore pre-release markers like -alpha
-        TRAVIS_ZK_VERSION = TRAVIS_ZK_VERSION.split('-')[0]
-    TRAVIS_ZK_VERSION = tuple([int(n) for n in TRAVIS_ZK_VERSION.split('.')])
+        CI_ZK_VERSION = CI_ZK_VERSION.split('-')[0]
+    CI_ZK_VERSION = tuple([int(n) for n in CI_ZK_VERSION.split('.')])
 
 
 class Handler(logging.Handler):
