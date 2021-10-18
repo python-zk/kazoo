@@ -76,6 +76,29 @@ class TestGeventHandler(unittest.TestCase):
         h.dispatch_callback(call1)
         ev.wait()
 
+    def test_huge_file_descriptor(self):
+        import resource
+        from gevent import socket
+        from kazoo.handlers.utils import create_tcp_socket
+
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
+        except (ValueError, resource.error):
+            self.skipTest('couldnt raise fd limit high enough')
+        fd = 0
+        socks = []
+        while fd < 2000:
+            sock = create_tcp_socket(socket)
+            fd = sock.fileno()
+            socks.append(sock)
+        h = self._makeOne()
+        h.start()
+        h.select(socks, [], [])
+        with pytest.raises(ValueError):
+            h._select(socks, [], [])
+        h._poll_select(socks, [], [])
+        h.stop()
+
 
 class TestBasicGeventClient(KazooTestCase):
     def setUp(self):

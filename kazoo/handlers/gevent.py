@@ -17,6 +17,9 @@ except ImportError:
 from kazoo.handlers import utils
 from kazoo import python2atexit
 
+import six
+from collections import defaultdict
+from itertools import chain
 
 _using_libevent = gevent.__version__.startswith('0.')
 
@@ -26,6 +29,24 @@ _STOP = object()
 
 AsyncResult = gevent.event.AsyncResult
 
+
+def _to_fileno(obj):
+    if isinstance(obj, six.integer_types):
+        fd = int(obj)
+    elif hasattr(obj, "fileno"):
+        fd = obj.fileno()
+        if not isinstance(fd, six.integer_types):
+            raise TypeError("fileno() returned a non-integer")
+        fd = int(fd)
+    else:
+        raise TypeError("argument must be an int, or have a fileno() method.")
+
+    if fd < 0:
+        raise ValueError(
+            "file descriptor cannot be a negative integer (%d)" % (fd,)
+        )
+
+    return fd
 
 class SequentialGeventHandler(object):
     """Gevent handler for sequentially executing callbacks.
@@ -122,7 +143,57 @@ class SequentialGeventHandler(object):
             python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
+        # if the highest fd we've seen is > 1023, use a poll-based "select".
+        if max(map(_to_fileno, chain(*args[:3]))) > 1023:
+            return self._poll_select(*args, **kwargs)
+        return self._select(*args, **kwargs)
+
+    def _select(self, *args, **kwargs):
         return gevent.select.select(*args, **kwargs)
+
+    def _poll_select(self, rlist, wlist, xlist, timeout=None):
+        """poll-based drop-in replacement for select to overcome select
+        limitation on a maximum filehandle value
+        """
+        if timeout is not None and timeout > 0:
+            timeout *= 1000
+        eventmasks = defaultdict(int)
+        rfd2obj = defaultdict(list)
+        wfd2obj = defaultdict(list)
+        xfd2obj = defaultdict(list)
+
+        def store_evmasks(obj_list, evmask, fd2obj):
+            for obj in obj_list:
+                fileno = _to_fileno(obj)
+                eventmasks[fileno] |= evmask
+                fd2obj[fileno].append(obj)
+
+        store_evmasks(rlist, gevent.select.POLLIN, rfd2obj)
+        store_evmasks(wlist, gevent.select.POLLOUT, wfd2obj)
+        store_evmasks(xlist, gevent.select.POLLNVAL, xfd2obj)
+
+        poller = gevent.select.poll()
+
+        for fileno in eventmasks:
+            poller.register(fileno, eventmasks[fileno])
+
+        try:
+            events = poller.poll(timeout)
+            revents = []
+            wevents = []
+            xevents = []
+            for fileno, event in events:
+                if event & gevent.select.POLLIN:
+                    revents += rfd2obj.get(fileno, [])
+                if event & gevent.select.POLLOUT:
+                    wevents += wfd2obj.get(fileno, [])
+                if event & gevent.select.POLLNVAL:
+                    xevents += xfd2obj.get(fileno, [])
+        finally:
+            for fileno in eventmasks:
+                poller.unregister(fileno)
+
+        return revents, wevents, xevents
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(socket)
