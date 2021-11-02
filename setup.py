@@ -3,7 +3,6 @@ import re
 from setuptools import setup, find_packages
 import sys
 
-
 here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md')) as f:
     README = f.read()
@@ -16,7 +15,7 @@ with open(os.path.join(here, 'kazoo', 'version.py')) as f:
 
 PYPY = getattr(sys, 'pypy_version_info', False) and True or False
 
-install_requires = ['six']
+install_requires = ['six', 'selectors2>=2.0.2; python_version < "3.4.0"']
 
 tests_require = install_requires + [
     'mock',

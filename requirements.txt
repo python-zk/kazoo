@@ -1,1 +1,2 @@
 six
+selectors2>=2.0.2; python_version < "3.4.0"

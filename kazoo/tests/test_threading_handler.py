@@ -45,10 +45,6 @@ class TestThreadingHandler(unittest.TestCase):
         assert h._running is False
 
     def test_huge_file_descriptor(self):
-        from kazoo.handlers.threading import _HAS_EPOLL
-
-        if not _HAS_EPOLL:
-            self.skipTest('only run on systems with epoll()')
         import resource
         import socket
         from kazoo.handlers.utils import create_tcp_socket
@@ -65,11 +61,10 @@ class TestThreadingHandler(unittest.TestCase):
             socks.append(sock)
         h = self._makeOne()
         h.start()
-        h.select(socks, [], [])
-        with pytest.raises(ValueError):
-            h._select(socks, [], [])
-        h._epoll_select(socks, [], [])
+        h.select(socks, [], [], 0)
         h.stop()
+        for sock in socks:
+            sock.close()
 
 
 class TestThreadingAsync(unittest.TestCase):
