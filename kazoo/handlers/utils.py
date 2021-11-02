@@ -7,6 +7,17 @@ import ssl
 import socket
 import time
 
+from collections import defaultdict
+
+import six
+
+if six.PY34:
+    import selectors
+else:
+    import selectors2 as selectors
+
+from selectors import _fileobj_to_fd
+
 HAS_FNCTL = True
 try:
     import fcntl
@@ -19,6 +30,7 @@ _NONE = object()
 
 class AsyncResult(object):
     """A one-time event that stores a value or an exception"""
+
     def __init__(self, handler, condition_factory, timeout_factory):
         self._handler = handler
         self._exception = _NONE
@@ -125,6 +137,7 @@ class AsyncResult(object):
                     functools.partial(callback, self))
             else:
                 functools.partial(callback, self)()
+
 
 def _set_fd_cloexec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
@@ -272,6 +285,7 @@ def capture_exceptions(async_result):
     :param async_result: An async result implementing :class:`IAsyncResult`
 
     """
+
     def capture(function):
         @functools.wraps(function)
         def captured_function(*args, **kwargs):
@@ -279,7 +293,9 @@ def capture_exceptions(async_result):
                 return function(*args, **kwargs)
             except Exception as exc:
                 async_result.set_exception(exc)
+
         return captured_function
+
     return capture
 
 
@@ -291,6 +307,7 @@ def wrap(async_result):
     :param async_result: An async result implementing :class:`IAsyncResult`
 
     """
+
     def capture(function):
         @capture_exceptions(async_result)
         def captured_function(*args, **kwargs):
@@ -298,5 +315,47 @@ def wrap(async_result):
             if value is not None:
                 async_result.set(value)
             return value
+
         return captured_function
+
     return capture
+
+
+def _selector_select(rlist, wlist, xlist, timeout=None, *,
+                     selectors_module=None):
+    """selector-based drop-in replacement for select to overcome select
+    limitation on a maximum filehandle value.
+
+    Need backport selectors2 package in python 2.
+    """
+    if timeout is None:
+        timeout = -1
+    selectors_module = selectors if not selectors_module else selectors_module
+    selector = selectors_module.DefaultSelector()
+    events_mapping = {selectors.EVENT_READ: rlist,
+                      selectors.EVENT_WRITE: wlist}
+    fd_events = defaultdict(int)
+    fd_fileobjs = defaultdict(list)
+
+    for event, fileobjs in events_mapping.items():
+        for fileobj in fileobjs:
+            fd_events[_fileobj_to_fd(fileobj)] |= event
+            fd_fileobjs[_fileobj_to_fd(fileobj)].append(fileobj)
+
+    for fd, events in fd_events.items():
+        selector.register(fd, events)
+
+    revents, wevents, xevents = [], [], []
+    try:
+        ready = selector.select(timeout)
+    finally:
+        selector.close()
+
+    for info in ready:
+        k, events = info
+        if events & selectors.EVENT_READ:
+            revents.extend(fd_fileobjs[k.fd])
+        elif events & selectors.EVENT_WRITE:
+            wevents.append(fd_fileobjs[k.fd])
+
+    return revents, wevents, xevents
