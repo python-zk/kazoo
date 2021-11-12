@@ -229,11 +229,11 @@ class KazooTestHarness(unittest.TestCase):
         self.client._call(break_event, None)
 
         lost.wait(5)
-        if not lost.isSet():
+        if not lost.is_set():
             raise Exception("Failed to get notified of broken connection.")
 
         safe.wait(15)
-        if not safe.isSet():
+        if not safe.is_set():
             raise Exception("Failed to see client reconnect.")
 
         self.client.retry(self.client.get_async, '/')

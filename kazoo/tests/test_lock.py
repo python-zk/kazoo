@@ -397,7 +397,7 @@ class KazooLockTests(KazooTestCase):
             with lock:
                 started.set()
                 event.wait(timeout)
-                if not event.isSet():
+                if not event.is_set():
                     # Eventually fail to avoid hanging the tests
                     self.fail("lock2 never timed out")
 
@@ -409,7 +409,7 @@ class KazooLockTests(KazooTestCase):
         client2 = self._get_client()
         client2.start()
         started.wait(5)
-        assert started.isSet() is True
+        assert started.is_set() is True
         lock2 = client2.Lock(self.lockpath, "two")
         try:
             lock2.acquire(timeout=timeout)
@@ -712,7 +712,7 @@ class TestSemaphore(KazooTestCase):
             with sem:
                 started.set()
                 event.wait(timeout)
-                if not event.isSet():
+                if not event.is_set():
                     # Eventually fail to avoid hanging the tests
                     self.fail("sem2 never timed out")
 
@@ -724,7 +724,7 @@ class TestSemaphore(KazooTestCase):
         client2 = self._get_client()
         client2.start()
         started.wait(5)
-        assert started.isSet() is True
+        assert started.is_set() is True
         sem2 = client2.Semaphore(self.lockpath, "two")
         try:
             sem2.acquire(timeout=timeout)

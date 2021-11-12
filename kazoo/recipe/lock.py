@@ -276,7 +276,7 @@ class Lock(object):
                 pass  # predecessor has already been deleted
             else:
                 self.wake_event.wait(timeout)
-                if not self.wake_event.isSet():
+                if not self.wake_event.is_set():
                     raise LockTimeout(
                         "Failed to acquire lock on %s after %s seconds"
                         % (self.path, timeout)
@@ -638,7 +638,7 @@ class Semaphore(object):
                     # If blocking, wait until self._watch_lease_change() is
                     # called before returning
                     self.wake_event.wait(w.leftover())
-                    if not self.wake_event.isSet():
+                    if not self.wake_event.is_set():
                         raise LockTimeout(
                             "Failed to acquire semaphore on %s"
                             " after %s seconds" % (self.path, timeout)
