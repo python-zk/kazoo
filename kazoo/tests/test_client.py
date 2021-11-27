@@ -26,7 +26,7 @@ from kazoo.exceptions import (
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.protocol.states import KeeperState, KazooState
-from kazoo.tests.util import TRAVIS_ZK_VERSION
+from kazoo.tests.util import CI_ZK_VERSION
 
 
 if sys.version_info > (3, ):  # pragma: nocover
@@ -605,8 +605,8 @@ class TestClient(KazooTestCase):
         client.create("/1", acl=[single_acl, single_acl])
         acls, stat = client.get_acls("/1")
         # ZK >3.4 removes duplicate ACL entries
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = client.server_version()
         assert len(acls) == 1 if version > (3, 4) else 2
@@ -718,8 +718,8 @@ class TestClient(KazooTestCase):
             client.create(path)
 
     def test_create_stat(self):
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = self.client.server_version()
         if not version or version < (3, 5):
@@ -1176,9 +1176,9 @@ class TestClientTransactions(KazooTestCase):
     def setUp(self):
         KazooTestCase.setUp(self)
         skip = False
-        if TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION < (3, 4):
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
             skip = True
-        elif TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION >= (3, 4):
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
             skip = False
         else:
             ver = self.client.server_version()
@@ -1378,8 +1378,8 @@ class TestReconfig(KazooTestCase):
     def setUp(self):
         KazooTestCase.setUp(self)
 
-        if TRAVIS_ZK_VERSION:
-            version = TRAVIS_ZK_VERSION
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
         else:
             version = self.client.server_version()
         if not version or version < (3, 5):

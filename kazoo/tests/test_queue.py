@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from kazoo.testing import KazooTestCase
-from kazoo.tests.util import TRAVIS_ZK_VERSION
+from kazoo.tests.util import CI_ZK_VERSION
 
 
 class KazooQueueTests(KazooTestCase):
@@ -59,9 +59,9 @@ class KazooLockingQueueTests(KazooTestCase):
     def setUp(self):
         KazooTestCase.setUp(self)
         skip = False
-        if TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION < (3, 4):
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
             skip = True
-        elif TRAVIS_ZK_VERSION and TRAVIS_ZK_VERSION >= (3, 4):
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
             skip = False
         else:
             ver = self.client.server_version()
