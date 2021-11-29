@@ -1,6 +1,9 @@
 name: Kazoo Awesome Release
 
-on: [push]
+on:
+  push:
+    tags:
+      - '*'
 
 jobs:
   build-and-release:
