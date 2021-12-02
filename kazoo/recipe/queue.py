@@ -292,7 +292,7 @@ class LockingQueue(BaseQueue):
             if event is not None and event.type != EventType.CHILD:
                 return
             with lock:
-                if canceled or flag.isSet():
+                if canceled or flag.is_set():
                     return
                 values = self.client.retry(
                     self.client.get_children,
