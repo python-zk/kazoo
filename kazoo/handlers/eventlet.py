@@ -5,15 +5,15 @@ import contextlib
 import logging
 
 import eventlet
-from eventlet.green import select as green_select
 from eventlet.green import socket as green_socket
 from eventlet.green import time as green_time
 from eventlet.green import threading as green_threading
+from eventlet.green import selectors as green_selectors
 from eventlet import queue as green_queue
 
 from kazoo.handlers import utils
 import kazoo.python2atexit as python2atexit
-
+from kazoo.handlers.utils import selector_select
 
 LOG = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ class TimeoutError(Exception):
 
 class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
+
     def __init__(self, handler):
         super(AsyncResult, self).__init__(handler,
                                           green_threading.Condition,
@@ -164,7 +165,8 @@ class SequentialEventletHandler(object):
 
     def select(self, *args, **kwargs):
         with _yield_before_after():
-            return green_select.select(*args, **kwargs)
+            return selector_select(*args, selectors_module=green_selectors,
+                                   **kwargs)
 
     def async_result(self):
         return AsyncResult(self)

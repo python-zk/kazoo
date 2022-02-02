@@ -9,6 +9,10 @@ import gevent.event
 import gevent.queue
 import gevent.select
 import gevent.thread
+import gevent.selectors
+
+from kazoo.handlers.utils import selector_select
+
 try:
     from gevent.lock import Semaphore, RLock
 except ImportError:
@@ -16,7 +20,6 @@ except ImportError:
 
 from kazoo.handlers import utils
 from kazoo import python2atexit
-
 
 _using_libevent = gevent.__version__.startswith('0.')
 
@@ -84,6 +87,7 @@ class SequentialGeventHandler(object):
                         del func  # release before possible idle
                 except self.queue_empty:
                     continue
+
         return gevent.spawn(greenlet_worker)
 
     def start(self):
@@ -122,7 +126,8 @@ class SequentialGeventHandler(object):
             python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
-        return gevent.select.select(*args, **kwargs)
+        return selector_select(*args, selectors_module=gevent.selectors,
+                               **kwargs)
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(socket)

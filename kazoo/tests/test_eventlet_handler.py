@@ -130,6 +130,28 @@ class TestEventletHandler(unittest.TestCase):
         with pytest.raises(IOError):
             r.get()
 
+    def test_huge_file_descriptor(self):
+        import resource
+        from eventlet.green import socket
+        from kazoo.handlers.utils import create_tcp_socket
+
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
+        except (ValueError, resource.error):
+            self.skipTest('couldnt raise fd limit high enough')
+        fd = 0
+        socks = []
+        while fd < 4000:
+            sock = create_tcp_socket(socket)
+            fd = sock.fileno()
+            socks.append(sock)
+        with start_stop_one() as h:
+            h.start()
+            h.select(socks, [], [], 0)
+            h.stop()
+        for sock in socks:
+            sock.close()
+
 
 class TestEventletClient(test_client.TestClient):
     def setUp(self):
