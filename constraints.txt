@@ -1,10 +1,10 @@
 # Consistent testing environment.
 coverage==6.3.2
-flake8==3.7.9
+flake8==3.9.2
 mock==3.0.5
-objgraph==3.4.1
-pytest-cov~=2.12
-pytest~=4.6
+objgraph==3.5.0
+pytest==6.2.5
+pytest-cov==3.0.0
 
 # Documentation building.
 Jinja2==2.7.3
