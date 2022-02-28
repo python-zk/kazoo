@@ -702,7 +702,7 @@ class KazooClient(object):
         """
         self._connection.close()
 
-    def command(self, cmd=b'ruok'):
+    def command(self, cmd=b'ruok', bufsize=8192):
         """Sent a management command to the current ZK server.
 
         Examples are `ruok`, `envi` or `stat`.
@@ -732,7 +732,18 @@ class KazooClient(object):
             verify_certs=self.verify_certs,
         )
         sock.sendall(cmd)
-        result = sock.recv(8192)
+
+        chunks = []
+        maxsize = bufsize if bufsize > 0 else 8192
+        while maxsize > 0:
+            chunk = sock.recv(maxsize)
+            if not chunk:
+                 break
+            chunks.append(chunk)
+            if bufsize > 0:
+                maxsize -= len(chunk)
+        result = b''.join(chunks)
+
         sock.close()
         return result.decode('utf-8', 'replace')
 
