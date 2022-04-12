@@ -69,6 +69,7 @@ setup(
     url="https://kazoo.readthedocs.io",
     project_urls={
         "Source": "https://github.com/python-zk/kazoo",
+        "Changelog": "https://github.com/python-zk/kazoo/releases",
     },
     license="Apache 2.0",
     packages=find_packages(),
