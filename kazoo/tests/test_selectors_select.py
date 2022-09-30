@@ -8,7 +8,7 @@ import os
 import socket
 import sys
 import unittest
-from test import support
+
 from kazoo.handlers.utils import selector_select
 
 select = selector_select
@@ -56,18 +56,12 @@ class SelectTestCase(unittest.TestCase):
         cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
         p = os.popen(cmd, 'r')
         for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:
-            if support.verbose:
-                print('timeout =', tout)
             rfd, wfd, xfd = select([p], [], [], tout)
             if (rfd, wfd, xfd) == ([], [], []):
                 continue
             if (rfd, wfd, xfd) == ([p], [], []):
                 line = p.readline()
-                if support.verbose:
-                    print(repr(line))
                 if not line:
-                    if support.verbose:
-                        print('EOF')
                     break
                 continue
             self.fail('Unexpected return values from select():', rfd, wfd, xfd)
@@ -87,5 +81,5 @@ class SelectTestCase(unittest.TestCase):
             self.assertEqual(select([], a, []), ([], a[:5], []))
 
 
-def tearDownModule():
-    support.reap_children()
+if __name__ == '__main__':
+    unittest.main()
