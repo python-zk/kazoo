@@ -27,6 +27,7 @@ from itertools import chain
 import logging
 import os
 import os.path
+import pathlib
 import shutil
 import signal
 import subprocess
@@ -207,6 +208,9 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
             jars.extend(glob(os.path.join(
                 self.install_path,
                 "lib/*.jar")))
+            jars.extend(glob(os.path.join(
+                self.install_path,
+                "*.jar")))
             # support for different file locations on Debian/Ubuntu
             jars.extend(glob(os.path.join(
                 self.install_path,
@@ -268,6 +272,16 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
 
         shutil.rmtree(self.working_path, True)
 
+    def get_logs(self):
+        log_path = pathlib.Path(
+            self.working_path,
+            'zookeeper.log'
+        )
+        if log_path.exists():
+            log_file = log_path.open('r')
+            lines = log_file.readlines()
+            return lines[-100:]
+        return []
 
 class ZookeeperCluster(object):
 
@@ -339,3 +353,9 @@ class ZookeeperCluster(object):
     def reset(self):
         for server in self:
             server.reset()
+
+    def get_logs(self):
+        logs = []
+        for server in self:
+            logs += server.get_logs()
+        return logs

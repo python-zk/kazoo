@@ -31,6 +31,7 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
+        os.environ.pop('ZOOKEEPER_JAAS_AUTH', None)
 
     def test_connect_sasl_auth(self):
         from kazoo.security import make_acl
@@ -80,6 +81,7 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
+        os.environ.pop('ZOOKEEPER_JAAS_AUTH', None)
 
     def test_connect_sasl_auth(self):
         from kazoo.security import make_acl
@@ -145,6 +147,7 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
+        os.environ.pop('ZOOKEEPER_JAAS_AUTH', None)
 
     def test_connect_gssapi_auth(self):
         from kazoo.security import make_acl

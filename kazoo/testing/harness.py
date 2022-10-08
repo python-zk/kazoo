@@ -21,6 +21,7 @@ CLUSTER_DEFAULTS = {
     "ZOOKEEPER_PORT_OFFSET": 20000,
     "ZOOKEEPER_CLUSTER_SIZE": 3,
     "ZOOKEEPER_OBSERVER_START_ID": -1,
+    "ZOOKEEPER_LOCAL_SESSION_RO": "false"
 }
 
 
@@ -34,7 +35,8 @@ def get_global_cluster():
                   "ZOOKEEPER_CLUSTER_SIZE",
                   "ZOOKEEPER_VERSION",
                   "ZOOKEEPER_OBSERVER_START_ID",
-                  "ZOOKEEPER_JAAS_AUTH"]
+                  "ZOOKEEPER_JAAS_AUTH",
+                  "ZOOKEEPER_LOCAL_SESSION_RO"]
     }
     if CLUSTER is not None:
         if CLUSTER_CONF == cluster_conf:
@@ -61,9 +63,16 @@ def get_global_cluster():
         "For deb package installations this is /usr/share/java")
 
     if ZK_VERSION >= (3, 5):
+        ZOOKEEPER_LOCAL_SESSION_RO = cluster_conf.get(
+            "ZOOKEEPER_LOCAL_SESSION_RO"
+        )
         additional_configuration_entries = [
             "4lw.commands.whitelist=*",
-            "reconfigEnabled=true"
+            "reconfigEnabled=true",
+            # required to avoid session validation error
+            # in read only test
+            "localSessionsEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
+            "localSessionsUpgradingEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO
         ]
         # If defined, this sets the superuser password to "test"
         additional_java_system_properties = [

@@ -257,6 +257,7 @@ class TestConnectionDrop(KazooTestCase):
 
 class TestReadOnlyMode(KazooTestCase):
     def setUp(self):
+        os.environ["ZOOKEEPER_LOCAL_SESSION_RO"] = "true"
         self.setup_zookeeper(read_only=True)
         skip = False
         if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
@@ -272,6 +273,7 @@ class TestReadOnlyMode(KazooTestCase):
 
     def tearDown(self):
         self.client.stop()
+        os.environ.pop('ZOOKEEPER_LOCAL_SESSION_RO', None)
 
     def test_read_only(self):
         from kazoo.exceptions import NotReadOnlyCallError
@@ -288,9 +290,24 @@ class TestReadOnlyMode(KazooTestCase):
                 ev.set()
 
         try:
-            self.cluster[1].stop()
-            self.cluster[2].stop()
-            ev.wait(6)
+            # stopping both nodes at the same time
+            # else the test seems flaky when on CI hosts
+            zk_stop_threads = []
+            zk_stop_threads.append(
+                threading.Thread(
+                    target=self.cluster[1].stop, daemon=True
+                )
+            )
+            zk_stop_threads.append(
+                threading.Thread(
+                    target=self.cluster[2].stop, daemon=True
+                )
+            )
+            for thread in zk_stop_threads:
+                thread.start()
+            for thread in zk_stop_threads:
+                thread.join()
+            ev.wait(15)
             assert ev.is_set()
             assert client.client_state == KeeperState.CONNECTED_RO
 
