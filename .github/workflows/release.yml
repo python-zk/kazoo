@@ -29,6 +29,8 @@ jobs:
       run: >-
         python -m
         build
+        -C--global-option=egg_info
+        -C--global-option=--tag-build=""
         --sdist
         --wheel
         --outdir dist/
