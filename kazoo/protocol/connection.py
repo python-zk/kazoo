@@ -177,7 +177,7 @@ class ConnectionHandler(object):
     def _socket_error_handling(self):
         try:
             yield
-        except (socket.error, select.error) as e:
+        except (socket.error, socket.timeout, select.error) as e:
             err = getattr(e, 'strerror', e)
             raise ConnectionDropped("socket connection error: %s" % (err,))
 
