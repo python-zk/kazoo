@@ -818,7 +818,7 @@ class KazooClient(object):
         # we need this auth data to re-authenticate on reconnect
         self.auth_data.add((scheme, credential))
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(Auth(0, scheme, credential), async_result)
         return async_result
 
@@ -839,7 +839,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
 
         @wrap(async_result)
         def _sync_completion(result):
@@ -997,7 +997,7 @@ class KazooClient(object):
         if acl is None:
             acl = OPEN_ACL_UNSAFE
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
 
         @capture_exceptions(async_result)
         def do_create():
@@ -1071,7 +1071,7 @@ class KazooClient(object):
 
         """
         acl = acl or self.default_acl
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
 
         @wrap(async_result)
         def create_completion(result):
@@ -1134,7 +1134,7 @@ class KazooClient(object):
         if watch and not callable(watch):
             raise TypeError("Invalid type for 'watch' (must be a callable)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(Exists(_prefix_root(self.chroot, path), watch),
                    async_result)
         return async_result
@@ -1176,7 +1176,7 @@ class KazooClient(object):
         if watch and not callable(watch):
             raise TypeError("Invalid type for 'watch' (must be a callable)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(GetData(_prefix_root(self.chroot, path), watch),
                    async_result)
         return async_result
@@ -1232,7 +1232,7 @@ class KazooClient(object):
         if not isinstance(include_data, bool):
             raise TypeError("Invalid type for 'include_data' (bool expected)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         if include_data:
             req = GetChildren2(_prefix_root(self.chroot, path), watch)
         else:
@@ -1270,7 +1270,7 @@ class KazooClient(object):
         if not isinstance(path, string_types):
             raise TypeError("Invalid type for 'path' (string expected)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(GetACL(_prefix_root(self.chroot, path)), async_result)
         return async_result
 
@@ -1318,7 +1318,7 @@ class KazooClient(object):
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(SetACL(_prefix_root(self.chroot, path), acls, version),
                    async_result)
         return async_result
@@ -1372,7 +1372,7 @@ class KazooClient(object):
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(SetData(_prefix_root(self.chroot, path), value, version),
                    async_result)
         return async_result
@@ -1443,7 +1443,7 @@ class KazooClient(object):
             raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         self._call(Delete(_prefix_root(self.chroot, path), version),
                    async_result)
         return async_result
@@ -1556,7 +1556,7 @@ class KazooClient(object):
         if not isinstance(from_config, int):
             raise TypeError("Invalid type for 'from_config' (int expected)")
 
-        async_result = self.handler.async_result()
+        async_result = self.handler.async_result(api=True)
         reconfig = Reconfig(joining, leaving, new_members, from_config)
         self._call(reconfig, async_result)
 
@@ -1672,7 +1672,7 @@ class TransactionRequest(object):
         """
         self._check_tx_state()
         self.committed = True
-        async_object = self.client.handler.async_result()
+        async_object = self.client.handler.async_result(api=True)
         self.client._call(Transaction(self.operations), async_object)
         return async_object
 
