@@ -274,7 +274,7 @@ class KazooDataWatcherTests(KazooTestCase):
         b = False
         try:
             self.client.stop()
-        except:
+        except:  # noqa
             b = True
         assert b is False
 

@@ -134,20 +134,21 @@ class KazooLockTests(KazooTestCase):
         contender_bits = {}
 
         for name in names:
-            e = self.make_event()
-            l = self.client.Lock(self.lockpath, name)
-            t = self.make_thread(
-                target=self._thread_lock_acquire_til_event, args=(name, l, e)
+            ev = self.make_event()
+            lock = self.client.Lock(self.lockpath, name)
+            thread = self.make_thread(
+                target=self._thread_lock_acquire_til_event,
+                args=(name, lock, ev),
             )
-            contender_bits[name] = (t, e)
-            threads.append(t)
+            contender_bits[name] = (thread, ev)
+            threads.append(thread)
 
         # acquire the lock ourselves first to make the others line up
         lock = self.client.Lock(self.lockpath, "test")
         lock.acquire()
 
-        for t in threads:
-            t.start()
+        for thread in threads:
+            thread.start()
 
         # wait for everyone to line up on the lock
         wait = self.make_wait()

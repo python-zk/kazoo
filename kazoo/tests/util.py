@@ -133,9 +133,7 @@ class Wait(object):
                 return
             if now() > deadline:
                 raise self.TimeOutWaitingFor(
-                    message
-                    or getattr(func, "__doc__")
-                    or getattr(func, "__name__")
+                    message or func.__doc__ or func.__name__
                 )
 
 

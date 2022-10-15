@@ -810,13 +810,13 @@ class ConnectionHandler(object):
             except puresasl.SASLError as err:
                 six.reraise(
                     SASLException,
-                    SASLException("library error: %s" % err.message),
+                    SASLException("library error: %s" % err),
                     sys.exc_info()[2],
                 )
             except puresasl.SASLProtocolException as err:
                 six.reraise(
                     AuthFailedError,
-                    AuthFailedError("protocol error: %s" % err.message),
+                    AuthFailedError("protocol error: %s" % err),
                     sys.exc_info()[2],
                 )
             except Exception as err:

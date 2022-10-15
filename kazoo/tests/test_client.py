@@ -37,7 +37,7 @@ if sys.version_info > (3,):  # pragma: nocover
 else:  # pragma: nocover
 
     def u(s):
-        return unicode(s, "unicode_escape")
+        return unicode(s, "unicode_escape")  # noqa
 
 
 class TestClientTransitions(KazooTestCase):
