@@ -51,7 +51,7 @@ class SASLException(KazooException):
 
 
 def _invalid_error_code():
-    raise RuntimeError('Invalid error code')
+    raise RuntimeError("Invalid error code")
 
 
 EXCEPTIONS = defaultdict(_invalid_error_code)

@@ -469,17 +469,17 @@ class KazooLockTests(KazooTestCase):
 
     def test_rw_lock(self):
         reader_event = self.make_event()
-        reader_lock = self.client.ReadLock(self. lockpath, "reader")
+        reader_lock = self.client.ReadLock(self.lockpath, "reader")
         reader_thread = self.make_thread(
             target=self._thread_lock_acquire_til_event,
-            args=("reader", reader_lock, reader_event)
+            args=("reader", reader_lock, reader_event),
         )
 
         writer_event = self.make_event()
-        writer_lock = self.client.WriteLock(self. lockpath, "writer")
+        writer_lock = self.client.WriteLock(self.lockpath, "writer")
         writer_thread = self.make_thread(
             target=self._thread_lock_acquire_til_event,
-            args=("writer", writer_lock, writer_event)
+            args=("writer", writer_lock, writer_event),
         )
 
         # acquire a write lock ourselves first to make the others line up
@@ -798,8 +798,7 @@ class TestSemaphore(KazooTestCase):
 
 class TestSequence(unittest.TestCase):
     def test_get_predecessor(self):
-        """Validate selection of predecessors.
-        """
+        """Validate selection of predecessors."""
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]

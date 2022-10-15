@@ -2,6 +2,7 @@ import unittest
 
 import pytest
 
+
 class TestRetrySleeper(unittest.TestCase):
     def _pass(self):
         pass
@@ -12,11 +13,11 @@ class TestRetrySleeper(unittest.TestCase):
         scope = dict(times=0)
 
         def inner():
-            if scope['times'] >= times:
+            if scope["times"] >= times:
                 pass
             else:
-                scope['times'] += 1
-                raise ForceRetryError('Failed!')
+                scope["times"] += 1
+                raise ForceRetryError("Failed!")
 
         return inner
 

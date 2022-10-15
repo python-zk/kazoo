@@ -22,7 +22,7 @@ from kazoo.tests.util import wait
 from kazoo.tests.util import CI_ZK_VERSION
 
 
-class Delete(namedtuple('Delete', 'path version')):
+class Delete(namedtuple("Delete", "path version")):
     type = 2
 
     def serialize(self):
@@ -42,7 +42,7 @@ class TestConnectionHandler(KazooTestCase):
         self.client._queue.append(
             (Delete(self.client.chroot, -1), async_object)
         )
-        self.client._connection._write_sock.send(b'\0')
+        self.client._connection._write_sock.send(b"\0")
 
         with pytest.raises(ValueError):
             async_object.get()
@@ -160,7 +160,7 @@ class TestConnectionHandler(KazooTestCase):
         # continues to retry. This partially reproduces a rare bug seen
         # in production.
 
-        with mock.patch.object(Connect, 'deserialize') as mock_deserialize:
+        with mock.patch.object(Connect, "deserialize") as mock_deserialize:
             mock_deserialize.side_effect = bad_deserialize
             try:
                 handler.select = delayed_select
@@ -227,7 +227,7 @@ class TestConnectionHandler(KazooTestCase):
         # blow up client. simulates case where some error leaves
         # a byte in the socket which doesn't correspond to the
         # request queue.
-        write_sock.send(b'\0')
+        write_sock.send(b"\0")
 
         # eventually this byte should disappear from socket
         wait(lambda: client.handler.select([read_sock], [], [], 0)[0] == [])
@@ -245,7 +245,7 @@ class TestConnectionDrop(KazooTestCase):
         path = "/" + uuid.uuid4().hex
         self.client.create(path)
         self.client.add_listener(back)
-        result = self.client.set_async(path, b'a' * 1000 * 1024)
+        result = self.client.set_async(path, b"a" * 1000 * 1024)
         self.client._call(_CONNECTION_DROP, None)
 
         with pytest.raises(ConnectionLoss):
@@ -273,7 +273,7 @@ class TestReadOnlyMode(KazooTestCase):
 
     def tearDown(self):
         self.client.stop()
-        os.environ.pop('ZOOKEEPER_LOCAL_SESSION_RO', None)
+        os.environ.pop("ZOOKEEPER_LOCAL_SESSION_RO", None)
 
     def test_read_only(self):
         from kazoo.exceptions import NotReadOnlyCallError
@@ -294,14 +294,10 @@ class TestReadOnlyMode(KazooTestCase):
             # else the test seems flaky when on CI hosts
             zk_stop_threads = []
             zk_stop_threads.append(
-                threading.Thread(
-                    target=self.cluster[1].stop, daemon=True
-                )
+                threading.Thread(target=self.cluster[1].stop, daemon=True)
             )
             zk_stop_threads.append(
-                threading.Thread(
-                    target=self.cluster[2].stop, daemon=True
-                )
+                threading.Thread(target=self.cluster[2].stop, daemon=True)
             )
             for thread in zk_stop_threads:
                 thread.start()
@@ -312,11 +308,11 @@ class TestReadOnlyMode(KazooTestCase):
             assert client.client_state == KeeperState.CONNECTED_RO
 
             # Test read only command
-            assert client.get_children('/') == []
+            assert client.get_children("/") == []
 
             # Test error with write command
             with pytest.raises(NotReadOnlyCallError):
-                client.create('/fred')
+                client.create("/fred")
 
             # Wait for a ping
             time.sleep(15)
@@ -373,15 +369,15 @@ class TestUnorderedXids(KazooTestCase):
 
         ev.clear()
         with pytest.raises(RuntimeError):
-            self.client.get_children('/')
+            self.client.get_children("/")
 
         ev.wait()
         assert self.client.connected is False
-        assert self.client.state == 'LOST'
+        assert self.client.state == "LOST"
         assert self.client.client_state == KeeperState.CLOSED
 
         args, exc_info = error_stack[-1]
-        assert args == ('Unhandled exception in connection loop',)
+        assert args == ("Unhandled exception in connection loop",)
         assert exc_info[0] == RuntimeError
 
         self.client.handler.sleep_func(0.2)

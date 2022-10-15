@@ -16,17 +16,16 @@ import logging
 import os
 import time
 
-CI = os.environ.get('CI', False)
-CI_ZK_VERSION = CI and os.environ.get('ZOOKEEPER_VERSION', None)
+CI = os.environ.get("CI", False)
+CI_ZK_VERSION = CI and os.environ.get("ZOOKEEPER_VERSION", None)
 if CI_ZK_VERSION:
-    if '-' in CI_ZK_VERSION:
+    if "-" in CI_ZK_VERSION:
         # Ignore pre-release markers like -alpha
-        CI_ZK_VERSION = CI_ZK_VERSION.split('-')[0]
-    CI_ZK_VERSION = tuple([int(n) for n in CI_ZK_VERSION.split('.')])
+        CI_ZK_VERSION = CI_ZK_VERSION.split("-")[0]
+    CI_ZK_VERSION = tuple([int(n) for n in CI_ZK_VERSION.split(".")])
 
 
 class Handler(logging.Handler):
-
     def __init__(self, *names, **kw):
         logging.Handler.__init__(self)
         self.names = names
@@ -57,34 +56,48 @@ class Handler(logging.Handler):
             logger.removeHandler(self)
 
     def __str__(self):
-        return '\n'.join(
-            [("%s %s\n  %s" %
-              (record.name, record.levelname,
-               '\n'.join([line
-                          for line in record.getMessage().split('\n')
-                          if line.strip()])
-               )
-              )
-             for record in self.records])
+        return "\n".join(
+            [
+                (
+                    "%s %s\n  %s"
+                    % (
+                        record.name,
+                        record.levelname,
+                        "\n".join(
+                            [
+                                line
+                                for line in record.getMessage().split("\n")
+                                if line.strip()
+                            ]
+                        ),
+                    )
+                )
+                for record in self.records
+            ]
+        )
 
 
 class InstalledHandler(Handler):
-
     def __init__(self, *names, **kw):
         Handler.__init__(self, *names, **kw)
         self.install()
 
 
 class Wait(object):
-
     class TimeOutWaitingFor(Exception):
         "A test condition timed out"
 
     timeout = 9
-    wait = .01
+    wait = 0.01
 
-    def __init__(self, timeout=None, wait=None, exception=None,
-                 getnow=(lambda: time.time), getsleep=(lambda: time.sleep)):
+    def __init__(
+        self,
+        timeout=None,
+        wait=None,
+        exception=None,
+        getnow=(lambda: time.time),
+        getsleep=(lambda: time.sleep),
+    ):
 
         if timeout is not None:
             self.timeout = timeout
@@ -120,9 +133,10 @@ class Wait(object):
                 return
             if now() > deadline:
                 raise self.TimeOutWaitingFor(
-                    message or
-                    getattr(func, '__doc__') or
-                    getattr(func, '__name__')
-                    )
+                    message
+                    or getattr(func, "__doc__")
+                    or getattr(func, "__name__")
+                )
+
 
 wait = Wait()

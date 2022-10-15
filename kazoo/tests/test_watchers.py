@@ -20,7 +20,7 @@ class KazooDataWatcherTests(KazooTestCase):
         data = [True]
 
         # Make it a non-existent path
-        self.path += 'f'
+        self.path += "f"
 
         @self.client.DataWatch(self.path)
         def changed(d, stat):
@@ -32,9 +32,9 @@ class KazooDataWatcherTests(KazooTestCase):
         assert data == [None]
         update.clear()
 
-        self.client.create(self.path, b'fred')
+        self.client.create(self.path, b"fred")
         update.wait(10)
-        assert data[0] == b'fred'
+        assert data[0] == b"fred"
         update.clear()
 
     def test_data_watcher_once(self):
@@ -42,7 +42,7 @@ class KazooDataWatcherTests(KazooTestCase):
         data = [True]
 
         # Make it a non-existent path
-        self.path += 'f'
+        self.path += "f"
 
         dwatcher = self.client.DataWatch(self.path)
 
@@ -69,7 +69,7 @@ class KazooDataWatcherTests(KazooTestCase):
         data = [True]
 
         # Make it a non-existent path
-        self.path += 'f'
+        self.path += "f"
 
         @self.client.DataWatch(self.path)
         def changed(d, stat, event):
@@ -81,7 +81,7 @@ class KazooDataWatcherTests(KazooTestCase):
         assert data == [None]
         update.clear()
 
-        self.client.create(self.path, b'fred')
+        self.client.create(self.path, b"fred")
         update.wait(10)
         assert data[0].type == EventType.CREATED
         update.clear()
@@ -91,7 +91,7 @@ class KazooDataWatcherTests(KazooTestCase):
         data = [True]
 
         # Make it a non-existent path
-        path = self.path + 'f'
+        path = self.path + "f"
 
         def changed(d, stat):
             data.pop()
@@ -104,9 +104,9 @@ class KazooDataWatcherTests(KazooTestCase):
         assert data == [None]
         update.clear()
 
-        self.client.create(path, b'fred')
+        self.client.create(path, b"fred")
         update.wait(10)
-        assert data[0] == b'fred'
+        assert data[0] == b"fred"
         update.clear()
 
     def test_datawatch_across_session_expire(self):
@@ -124,9 +124,9 @@ class KazooDataWatcherTests(KazooTestCase):
         update.clear()
 
         self.expire_session(threading.Event)
-        self.client.retry(self.client.set, self.path, b'fred')
+        self.client.retry(self.client.set, self.path, b"fred")
         update.wait(25)
-        assert data[0] == b'fred'
+        assert data[0] == b"fred"
 
     def test_func_stops(self):
         update = threading.Event()
@@ -149,17 +149,17 @@ class KazooDataWatcherTests(KazooTestCase):
         update.clear()
 
         fail_through.append(True)
-        self.client.create(self.path, b'fred')
+        self.client.create(self.path, b"fred")
         update.wait(10)
-        assert data[0] == b'fred'
+        assert data[0] == b"fred"
         update.clear()
 
-        self.client.set(self.path, b'asdfasdf')
+        self.client.set(self.path, b"asdfasdf")
         update.wait(0.2)
-        assert data[0] == b'fred'
+        assert data[0] == b"fred"
 
         d, stat = self.client.get(self.path)
-        assert d == b'asdfasdf'
+        assert d == b"asdfasdf"
 
     def test_no_such_node(self):
         args = []
@@ -172,7 +172,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
     def test_no_such_node_for_children_watch(self):
         args = []
-        path = self.path + '/test_no_such_node_for_children_watch'
+        path = self.path + "/test_no_such_node_for_children_watch"
         update = threading.Event()
 
         def changed(children):
@@ -186,22 +186,22 @@ class KazooDataWatcherTests(KazooTestCase):
         assert args == []
 
         # watch a node which exists
-        self.client.create(path, b'')
+        self.client.create(path, b"")
         children_watch = self.client.ChildrenWatch(path, changed)
         update.wait(3)
         assert args == [[]]
         update.clear()
 
         # watch changes
-        self.client.create(path + '/fred', b'')
+        self.client.create(path + "/fred", b"")
         update.wait(3)
-        assert args == [[], ['fred']]
+        assert args == [[], ["fred"]]
         update.clear()
 
         # delete children
-        self.client.delete(path + '/fred')
+        self.client.delete(path + "/fred")
         update.wait(3)
-        assert args == [[], ['fred'], []]
+        assert args == [[], ["fred"], []]
         update.clear()
 
         # delete watching
@@ -225,7 +225,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
         watcher = WeirdWatcher()
         self.client.DataWatch(self.path, watcher)
-        self.client.set(self.path, b'mwahaha')
+        self.client.set(self.path, b"mwahaha")
         assert watcher.called is True
 
     def test_watcher_repeat_delete(self):
@@ -242,21 +242,21 @@ class KazooDataWatcherTests(KazooTestCase):
         assert a == [None]
         ev.wait(10)
         ev.clear()
-        self.client.create(self.path, b'blah')
+        self.client.create(self.path, b"blah")
         ev.wait(10)
         assert ev.is_set() is True
         ev.clear()
-        assert a == [None, b'blah']
+        assert a == [None, b"blah"]
         self.client.delete(self.path)
         ev.wait(10)
         assert ev.is_set() is True
         ev.clear()
-        assert a == [None, b'blah', None]
-        self.client.create(self.path, b'blah')
+        assert a == [None, b"blah", None]
+        self.client.create(self.path, b"blah")
         ev.wait(10)
         assert ev.is_set() is True
         ev.clear()
-        assert a == [None, b'blah', None, b'blah']
+        assert a == [None, b"blah", None, b"blah"]
 
     def test_watcher_with_closing(self):
         a = []
@@ -287,7 +287,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
     def test_child_watcher(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         @self.client.ChildrenWatch(self.path)
         def changed(children):
@@ -300,18 +300,18 @@ class KazooChildrenWatcherTests(KazooTestCase):
         assert all_children == []
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
 
-        self.client.create(self.path + '/' + 'george')
+        self.client.create(self.path + "/" + "george")
         update.wait(10)
-        assert sorted(all_children) == ['george', 'smith']
+        assert sorted(all_children) == ["george", "smith"]
 
     def test_child_watcher_once(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         cwatch = self.client.ChildrenWatch(self.path)
 
@@ -346,14 +346,14 @@ class KazooChildrenWatcherTests(KazooTestCase):
         assert events == [None]
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
         assert events[0].type == EventType.CHILD
         update.clear()
 
     def test_func_style_child_watcher(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         def changed(children):
             while all_children:
@@ -367,18 +367,18 @@ class KazooChildrenWatcherTests(KazooTestCase):
         assert all_children == []
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
 
-        self.client.create(self.path + '/' + 'george')
+        self.client.create(self.path + "/" + "george")
         update.wait(10)
-        assert sorted(all_children) == ['george', 'smith']
+        assert sorted(all_children) == ["george", "smith"]
 
     def test_func_stops(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         fail_through = []
 
@@ -396,18 +396,18 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
 
         fail_through.append(True)
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
 
-        self.client.create(self.path + '/' + 'george')
+        self.client.create(self.path + "/" + "george")
         update.wait(0.5)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
 
     def test_child_watcher_remove_session_watcher(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         fail_through = []
 
@@ -428,20 +428,20 @@ class KazooChildrenWatcherTests(KazooTestCase):
         update.clear()
 
         fail_through.append(True)
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
         assert session_watcher not in self.client.state_listeners
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
 
-        self.client.create(self.path + '/' + 'george')
+        self.client.create(self.path + "/" + "george")
         update.wait(10)
         assert session_watcher not in self.client.state_listeners
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
 
     def test_child_watch_session_loss(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         @self.client.ChildrenWatch(self.path)
         def changed(children):
@@ -454,20 +454,19 @@ class KazooChildrenWatcherTests(KazooTestCase):
         assert all_children == []
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
         self.expire_session(threading.Event)
 
-        self.client.retry(self.client.create,
-                          self.path + '/' + 'george')
+        self.client.retry(self.client.create, self.path + "/" + "george")
         update.wait(20)
-        assert sorted(all_children) == ['george', 'smith']
+        assert sorted(all_children) == ["george", "smith"]
 
     def test_child_stop_on_session_loss(self):
         update = threading.Event()
-        all_children = ['fred']
+        all_children = ["fred"]
 
         @self.client.ChildrenWatch(self.path, allow_session_lost=False)
         def changed(children):
@@ -480,20 +479,19 @@ class KazooChildrenWatcherTests(KazooTestCase):
         assert all_children == []
         update.clear()
 
-        self.client.create(self.path + '/' + 'smith')
+        self.client.create(self.path + "/" + "smith")
         update.wait(10)
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
         update.clear()
         self.expire_session(threading.Event)
 
-        self.client.retry(self.client.create,
-                          self.path + '/' + 'george')
+        self.client.retry(self.client.create, self.path + "/" + "george")
         update.wait(4)
         assert update.is_set() is False
-        assert all_children == ['smith']
+        assert all_children == ["smith"]
 
         children = self.client.get_children(self.path)
-        assert sorted(children) == ['george', 'smith']
+        assert sorted(children) == ["george", "smith"]
 
 
 class KazooPatientChildrenWatcherTests(KazooTestCase):
@@ -514,7 +512,7 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         assert len(children) == 0
         assert asy.ready() is False
 
-        self.client.create(self.path + '/' + 'fred')
+        self.client.create(self.path + "/" + "fred")
         asy.get(timeout=1)
         assert asy.ready() is True
 
@@ -534,11 +532,11 @@ class KazooPatientChildrenWatcherTests(KazooTestCase):
         assert result.ready() is False
 
         time.sleep(0.08)
-        self.client.create(self.path + '/' + uuid.uuid4().hex)
+        self.client.create(self.path + "/" + uuid.uuid4().hex)
         assert result.ready() is False
         time.sleep(0.08)
         assert result.ready() is False
-        self.client.create(self.path + '/' + uuid.uuid4().hex)
+        self.client.create(self.path + "/" + uuid.uuid4().hex)
         time.sleep(0.08)
         assert result.ready() is False
 

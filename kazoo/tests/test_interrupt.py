@@ -8,16 +8,16 @@ from kazoo.testing import KazooTestCase
 
 class KazooInterruptTests(KazooTestCase):
     def test_interrupted_systemcall(self):
-        '''
+        """
         Make sure interrupted system calls don't break the world, since we
         can't control what all signals our connection thread will get
-        '''
-        if 'linux' not in platform:
+        """
+        if "linux" not in platform:
             pytest.skip(
-                'Unable to reproduce error case on non-linux platforms'
+                "Unable to reproduce error case on non-linux platforms"
             )
 
-        path = 'interrupt_test'
+        path = "interrupt_test"
         value = b"1"
         self.client.create(path, value)
 

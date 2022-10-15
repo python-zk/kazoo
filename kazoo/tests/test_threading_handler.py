@@ -20,7 +20,7 @@ class TestThreadingHandler(unittest.TestCase):
         h = self._makeOne()
         h.start()
         # In Python 3.3 _Event is gone, before Event is function
-        event_class = getattr(threading, '_Event', threading.Event)
+        event_class = getattr(threading, "_Event", threading.Event)
         assert isinstance(h.event_object(), event_class)
 
     def test_matching_async(self):
@@ -52,7 +52,7 @@ class TestThreadingHandler(unittest.TestCase):
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
         except (ValueError, resource.error):
-            self.skipTest('couldnt raise fd limit high enough')
+            self.skipTest("couldnt raise fd limit high enough")
         fd = 0
         socks = []
         while fd < 4000:
@@ -83,7 +83,7 @@ class TestThreadingAsync(unittest.TestCase):
         async_result = self._makeOne(mock_handler)
 
         assert async_result.ready() is False
-        async_result.set('val')
+        async_result.set("val")
         assert async_result.ready() is True
         assert async_result.successful() is True
         assert async_result.exception is None
@@ -94,7 +94,7 @@ class TestThreadingAsync(unittest.TestCase):
         async_result = self._makeOne(mock_handler)
 
         async_result.rawlink(lambda a: a)
-        async_result.set('val')
+        async_result.set("val")
 
         assert mock_handler.completion_queue.put.called
 
@@ -103,7 +103,7 @@ class TestThreadingAsync(unittest.TestCase):
         mock_handler.completion_queue = mock.Mock()
         async_result = self._makeOne(mock_handler)
         async_result.rawlink(lambda a: a)
-        async_result.set_exception(ImportError('Error occured'))
+        async_result.set_exception(ImportError("Error occured"))
 
         assert isinstance(async_result.exception, ImportError)
         assert mock_handler.completion_queue.put.called
@@ -126,9 +126,9 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
         bv.wait()
 
-        async_result.set('fred')
+        async_result.set("fred")
         cv.wait()
-        assert lst == ['fred']
+        assert lst == ["fred"]
         th.join()
 
     def test_get_with_nowait(self):
@@ -155,7 +155,7 @@ class TestThreadingAsync(unittest.TestCase):
             try:
                 val = async_result.get()
             except ImportError:
-                lst.append('oops')
+                lst.append("oops")
             else:
                 lst.append(val)
             cv.set()
@@ -166,7 +166,7 @@ class TestThreadingAsync(unittest.TestCase):
 
         async_result.set_exception(ImportError)
         cv.wait()
-        assert lst == ['oops']
+        assert lst == ["oops"]
         th.join()
 
     def test_wait(self):
@@ -182,7 +182,7 @@ class TestThreadingAsync(unittest.TestCase):
             try:
                 val = async_result.wait(10)
             except ImportError:
-                lst.append('oops')
+                lst.append("oops")
             else:
                 lst.append(val)
             cv.set()
@@ -230,7 +230,7 @@ class TestThreadingAsync(unittest.TestCase):
 
         lst = []
         cv = threading.Event()
-        async_result.set('fred')
+        async_result.set("fred")
 
         def wait_for_val():
             val = async_result.get()
@@ -240,7 +240,7 @@ class TestThreadingAsync(unittest.TestCase):
         th = threading.Thread(target=wait_for_val)
         th.start()
         cv.wait()
-        assert lst == ['fred']
+        assert lst == ["fred"]
         th.join()
 
     def test_set_exc_before_wait(self):
@@ -255,7 +255,7 @@ class TestThreadingAsync(unittest.TestCase):
             try:
                 val = async_result.get()
             except ImportError:
-                lst.append('ooops')
+                lst.append("ooops")
             else:
                 lst.append(val)
             cv.set()
@@ -263,7 +263,7 @@ class TestThreadingAsync(unittest.TestCase):
         th = threading.Thread(target=wait_for_val)
         th.start()
         cv.wait()
-        assert lst == ['ooops']
+        assert lst == ["ooops"]
         th.join()
 
     def test_linkage(self):
@@ -284,11 +284,11 @@ class TestThreadingAsync(unittest.TestCase):
         th.start()
 
         async_result.rawlink(add_on)
-        async_result.set(b'fred')
+        async_result.set(b"fred")
         assert mock_handler.completion_queue.put.called
         async_result.unlink(add_on)
         cv.wait()
-        assert async_result.value == b'fred'
+        assert async_result.value == b"fred"
         th.join()
 
     def test_linkage_not_ready(self):
@@ -300,7 +300,7 @@ class TestThreadingAsync(unittest.TestCase):
         def add_on():
             lst.append(True)
 
-        async_result.set('fred')
+        async_result.set("fred")
         assert not mock_handler.completion_queue.called
         async_result.rawlink(add_on)
         assert mock_handler.completion_queue.put.called
@@ -317,7 +317,7 @@ class TestThreadingAsync(unittest.TestCase):
         async_result.rawlink(add_on)
         assert not mock_handler.completion_queue.put.called
         async_result.unlink(add_on)
-        async_result.set('fred')
+        async_result.set("fred")
         assert not mock_handler.completion_queue.put.called
 
     def test_captured_exception(self):
@@ -371,22 +371,22 @@ class TestThreadingAsync(unittest.TestCase):
 
         @wrap(async_result)
         def regular_function():
-            return 'hello'
+            return "hello"
 
-        assert regular_function() == 'hello'
+        assert regular_function() == "hello"
         assert mock_handler.completion_queue.put.called
-        assert async_result.get() == 'hello'
+        assert async_result.get() == "hello"
 
     def test_multiple_callbacks(self):
-        mockback1 = mock.Mock(name='mockback1')
-        mockback2 = mock.Mock(name='mockback2')
+        mockback1 = mock.Mock(name="mockback1")
+        mockback2 = mock.Mock(name="mockback2")
         handler = self._makeHandler()
         handler.start()
 
         async_result = self._makeOne(handler)
         async_result.rawlink(mockback1)
         async_result.rawlink(mockback2)
-        async_result.set('howdy')
+        async_result.set("howdy")
         async_result.wait()
         handler.stop()
 

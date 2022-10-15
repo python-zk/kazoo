@@ -249,7 +249,7 @@ class Lock(object):
                 self.create_path, self.data, ephemeral=ephemeral, sequence=True
             )
             # strip off path to node
-            node = node[len(self.path) + 1:]
+            node = node[len(self.path) + 1 :]
 
         self.node = node
 
@@ -294,7 +294,7 @@ class Lock(object):
         (e.g. rlock), this and also edge cases where the lock's ephemeral node
         is gone.
         """
-        node_sequence = node[len(self.prefix):]
+        node_sequence = node[len(self.prefix) :]
         children = self.client.get_children(self.path)
         found_self = False
         # Filter out the contenders using the computed regex

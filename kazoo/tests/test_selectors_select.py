@@ -14,15 +14,16 @@ from kazoo.handlers.utils import selector_select
 select = selector_select
 
 
-@unittest.skipIf((sys.platform[:3] == 'win'),
-                 "can't easily test on this system")
+@unittest.skipIf(
+    (sys.platform[:3] == "win"), "can't easily test on this system"
+)
 class SelectTestCase(unittest.TestCase):
     class Nope:
         pass
 
     class Almost:
         def fileno(self):
-            return 'fileno'
+            return "fileno"
 
     def test_error_conditions(self):
         self.assertRaises(TypeError, select, 1, 2, 3)
@@ -32,10 +33,12 @@ class SelectTestCase(unittest.TestCase):
         self.assertRaises(ValueError, select, [], [], [], -1)
 
     # Issue #12367: http://www.freebsd.org/cgi/query-pr.cgi?pr=kern/155606
-    @unittest.skipIf(sys.platform.startswith('freebsd'),
-                     'skip because of a FreeBSD bug: kern/155606')
+    @unittest.skipIf(
+        sys.platform.startswith("freebsd"),
+        "skip because of a FreeBSD bug: kern/155606",
+    )
     def test_errno(self):
-        with open(__file__, 'rb') as fp:
+        with open(__file__, "rb") as fp:
             fd = fp.fileno()
             fp.close()
             try:
@@ -53,8 +56,8 @@ class SelectTestCase(unittest.TestCase):
         self.assertIsNot(w, x)
 
     def test_select(self):
-        cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
-        p = os.popen(cmd, 'r')
+        cmd = "for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done"
+        p = os.popen(cmd, "r")
         for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:
             rfd, wfd, xfd = select([p], [], [], tout)
             if (rfd, wfd, xfd) == ([], [], []):
@@ -64,7 +67,7 @@ class SelectTestCase(unittest.TestCase):
                 if not line:
                     break
                 continue
-            self.fail('Unexpected return values from select():', rfd, wfd, xfd)
+            self.fail("Unexpected return values from select():", rfd, wfd, xfd)
         p.close()
 
     # Issue 16230: Crash on select resized list
@@ -81,5 +84,5 @@ class SelectTestCase(unittest.TestCase):
             self.assertEqual(select([], a, []), ([], a[:5], []))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -133,7 +133,8 @@ class AsyncResult(object):
         for callback in self._callbacks:
             if self._handler.running:
                 self._handler.completion_queue.put(
-                    functools.partial(callback, self))
+                    functools.partial(callback, self)
+                )
             else:
                 functools.partial(callback, self)()
 
@@ -156,7 +157,7 @@ def create_socket_pair(module, port=0):
     If socket.socketpair isn't available, we emulate it.
     """
     # See if socketpair() is available.
-    have_socketpair = hasattr(module, 'socketpair')
+    have_socketpair = hasattr(module, "socketpair")
     if have_socketpair:
         client_sock, srv_sock = module.socketpair()
         return client_sock, srv_sock
@@ -164,7 +165,7 @@ def create_socket_pair(module, port=0):
     # Create a non-blocking temporary server socket
     temp_srv_sock = module.socket()
     temp_srv_sock.setblocking(False)
-    temp_srv_sock.bind(('', port))
+    temp_srv_sock.bind(("", port))
     port = temp_srv_sock.getsockname()[1]
     temp_srv_sock.listen(1)
 
@@ -172,7 +173,7 @@ def create_socket_pair(module, port=0):
     client_sock = module.socket()
     client_sock.setblocking(False)
     try:
-        client_sock.connect(('localhost', port))
+        client_sock.connect(("localhost", port))
     except module.error as err:
         # EWOULDBLOCK is not an error, as the socket is non-blocking
         if err.errno != errno.EWOULDBLOCK:
@@ -182,17 +183,17 @@ def create_socket_pair(module, port=0):
     timeout = 1
     readable = select.select([temp_srv_sock], [], [], timeout)[0]
     if temp_srv_sock not in readable:
-        raise Exception('Client socket not connected in %s'
-                        ' second(s)' % (timeout))
+        raise Exception(
+            "Client socket not connected in %s" " second(s)" % (timeout)
+        )
     srv_sock, _ = temp_srv_sock.accept()
     return client_sock, srv_sock
 
 
 def create_tcp_socket(module):
-    """Create a TCP socket with the CLOEXEC flag set.
-    """
+    """Create a TCP socket with the CLOEXEC flag set."""
     type_ = module.SOCK_STREAM
-    if hasattr(module, 'SOCK_CLOEXEC'):  # pragma: nocover
+    if hasattr(module, "SOCK_CLOEXEC"):  # pragma: nocover
         # if available, set cloexec flag during socket creation
         type_ |= module.SOCK_CLOEXEC
     sock = module.socket(module.AF_INET, type_)
@@ -200,10 +201,19 @@ def create_tcp_socket(module):
     return sock
 
 
-def create_tcp_connection(module, address, timeout=None,
-                          use_ssl=False, ca=None, certfile=None,
-                          keyfile=None, keyfile_password=None,
-                          verify_certs=True, options=None, ciphers=None):
+def create_tcp_connection(
+    module,
+    address,
+    timeout=None,
+    use_ssl=False,
+    ca=None,
+    certfile=None,
+    keyfile=None,
+    keyfile_password=None,
+    verify_certs=True,
+    options=None,
+    ciphers=None,
+):
     end = None
     if timeout is None:
         # thanks to create_connection() developers for
@@ -244,13 +254,16 @@ def create_tcp_connection(module, address, timeout=None,
                 context.verify_mode = (
                     ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
                 )
-                context.load_cert_chain(certfile=certfile,
-                                        keyfile=keyfile,
-                                        password=keyfile_password)
+                context.load_cert_chain(
+                    certfile=certfile,
+                    keyfile=keyfile,
+                    password=keyfile_password,
+                )
             try:
                 # Query the address to get back it's address family
-                addrs = socket.getaddrinfo(address[0], address[1], 0,
-                                           socket.SOCK_STREAM)
+                addrs = socket.getaddrinfo(
+                    address[0], address[1], 0, socket.SOCK_STREAM
+                )
                 conn = context.wrap_socket(module.socket(addrs[0][0]))
                 conn.settimeout(timeout_at)
                 conn.connect(address)
@@ -338,30 +351,34 @@ def fileobj_to_fd(fileobj):
         try:
             fd = int(fileobj.fileno())
         except (AttributeError, TypeError, ValueError):
-            raise TypeError("Invalid file object: "
-                            "{!r}".format(fileobj))
+            raise TypeError("Invalid file object: " "{!r}".format(fileobj))
     if fd < 0:
         raise TypeError("Invalid file descriptor: {}".format(fd))
     os.fstat(fd)
     return fd
 
 
-def selector_select(rlist, wlist, xlist, timeout=None,
-                    selectors_module=selectors):
+def selector_select(
+    rlist, wlist, xlist, timeout=None, selectors_module=selectors
+):
     """Selector-based drop-in replacement for select to overcome select
     limitation on a maximum filehandle value.
 
     Need backport selectors2 package in python 2.
     """
     if timeout is not None:
-        if not (isinstance(timeout, six.integer_types) or isinstance(
-                timeout, float)):
-            raise TypeError('timeout must be a number')
+        if not (
+            isinstance(timeout, six.integer_types)
+            or isinstance(timeout, float)
+        ):
+            raise TypeError("timeout must be a number")
         if timeout < 0:
-            raise ValueError('timeout must be non-negative')
+            raise ValueError("timeout must be non-negative")
 
-    events_mapping = {selectors_module.EVENT_READ: rlist,
-                      selectors_module.EVENT_WRITE: wlist}
+    events_mapping = {
+        selectors_module.EVENT_READ: rlist,
+        selectors_module.EVENT_WRITE: wlist,
+    }
     fd_events = defaultdict(int)
     fd_fileobjs = defaultdict(list)
 

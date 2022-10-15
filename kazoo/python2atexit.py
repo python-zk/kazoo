@@ -27,6 +27,7 @@ def _run_exitfuncs():
             exc_info = sys.exc_info()
         except:
             import traceback
+
             sys.stderr.write("Error in atexit._run_exitfuncs:\n")
             traceback.print_exc()
             exc_info = sys.exc_info()
@@ -63,6 +64,7 @@ def unregister(func):
         handler_entries = [e for e in _exithandlers if e[0] == func]
         for e in handler_entries:
             _exithandlers.remove(e)
+
 
 if not hasattr(atexit, "unregister"):
     # Only in python 2.x

@@ -3,11 +3,11 @@ from six.moves import urllib_parse
 
 def collect_hosts(hosts):
     """
-       Collect a set of hosts and an optional chroot from
-       a string or a list of strings.
+    Collect a set of hosts and an optional chroot from
+    a string or a list of strings.
     """
     if isinstance(hosts, list):
-        if hosts[-1].strip().startswith('/'):
+        if hosts[-1].strip().startswith("/"):
             host_ports, chroot = hosts[:-1], hosts[-1]
         else:
             host_ports, chroot = hosts, None
