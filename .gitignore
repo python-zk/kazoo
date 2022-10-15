@@ -30,6 +30,7 @@ zookeeper/
 .project
 .pydevproject
 .tox
+venv
 /.settings
 /.metadata
 
