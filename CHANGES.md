@@ -1,3 +1,34 @@
+<a name="2.9.0"></a>
+## 2.9.0 (2022-10-08)
+
+
+#### Chore
+
+*   migrate to setup.cfg (#666) ([5f7ae483](https://github.com/python-zk/kazoo/commit/5f7ae4833a64dac7e6cca407498fc6a1e2baca90))
+* **ci:**
+  *  testing with Python3.10 and ZK 3.5.10, 3.6.3, 3.7.1 (#659) ([bd627973](https://github.com/python-zk/kazoo/commit/bd62797358bd0f8993af829be9cb5a95d0305434))
+  *  better specify how to trigger Github Actions (#658) ([1ea097d5](https://github.com/python-zk/kazoo/commit/1ea097d5d50466705ca1ec12945ce290c256915c))
+  *  Replace Travis with Github Actions ([8eb462f2](https://github.com/python-zk/kazoo/commit/8eb462f26cb7af090d863850f71618594620d223))
+
+#### Doc
+
+*   fix simple typo, untill -> until ([85f1b5fc](https://github.com/python-zk/kazoo/commit/85f1b5fc02271247b0ce1dc84bfed03076e573de))
+
+#### Features
+
+* **core:**  make DNS resolution error retriable  (#631) ([e0810242](https://github.com/python-zk/kazoo/commit/e081024216bceaafc0d5022ce62f702667e2e9b3))
+
+#### Bug Fixes
+
+* **core:**
+  *  use selectors to poll connections instead of raw select in threading,gevent,eventlet (#656) ([4042a850](https://github.com/python-zk/kazoo/commit/4042a8505cdac94dba5718b6a89f82d478fef0d6))
+  *  do not allow responses to choke request and ping processing ([89e06603](https://github.com/python-zk/kazoo/commit/89e0660371df940a4c15f5f6ab4c540bbd109d20))
+* **recipe:**
+  *  fix deadlock in r/w lock recipe (#650) ([9bb84994](https://github.com/python-zk/kazoo/commit/9bb849941deb1d62ca3ca4d74882ed41cf569513), closes [#649](https://github.com/python-zk/kazoo/issues/649))
+  *  fix deprecation warning from threading.Event ([569c89cd](https://github.com/python-zk/kazoo/commit/569c89cda811593f99294c055d00ebf27aab3068))
+
+
+
 <a name="2.8.0"></a>
 ## 2.8.0 (2020-07-11)
 
