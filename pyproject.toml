@@ -19,3 +19,5 @@ include = '\.pyi?$'
 extend-exclude = '''
 '''
 
+[tool.pytest.ini_options]
+addopts = "-ra -v"
