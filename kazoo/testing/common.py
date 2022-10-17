@@ -41,30 +41,34 @@ log = logging.getLogger(__name__)
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
     interactive debugging."""
-    d = {'_frame': frame}         # Allow access to frame object.
+    d = {"_frame": frame}  # Allow access to frame object.
     d.update(frame.f_globals)  # Unless shadowed by global
     d.update(frame.f_locals)
 
     i = code.InteractiveConsole(d)
     message = "Signal recieved : entering python shell.\nTraceback:\n"
-    message += ''.join(traceback.format_stack(frame))
+    message += "".join(traceback.format_stack(frame))
     i.interact(message)
 
 
 def listen():
-    if os.name != 'nt':  # SIGUSR1 is not supported on Windows
+    if os.name != "nt":  # SIGUSR1 is not supported on Windows
         signal.signal(signal.SIGUSR1, debug)  # Register handler
+
+
 listen()
 
 
 def to_java_compatible_path(path):
-    if os.name == 'nt':
-        path = path.replace('\\', '/')
+    if os.name == "nt":
+        path = path.replace("\\", "/")
     return path
+
 
 ServerInfo = namedtuple(
     "ServerInfo",
-    "server_id client_port election_port leader_port admin_port peer_type")
+    "server_id client_port election_port leader_port admin_port peer_type",
+)
 
 
 class ManagedZooKeeper(object):
@@ -75,9 +79,16 @@ class ManagedZooKeeper(object):
     future, we may want to do that, especially when run in a
     Hudson/Buildbot context, to ensure more test robustness."""
 
-    def __init__(self, software_path, server_info, peers=(), classpath=None,
-                 configuration_entries=(), java_system_properties=(),
-                 jaas_config=None):
+    def __init__(
+        self,
+        software_path,
+        server_info,
+        peers=(),
+        classpath=None,
+        configuration_entries=(),
+        java_system_properties=(),
+        jaas_config=None,
+    ):
         """Define the ZooKeeper test instance.
 
         @param install_path: The path to the install for ZK
@@ -116,7 +127,8 @@ class ManagedZooKeeper(object):
             os.mkdir(data_path)
 
         with open(config_path, "w") as config:
-            config.write("""
+            config.write(
+                """
 tickTime=2000
 dataDir=%s
 clientPort=%s
@@ -124,72 +136,95 @@ maxClientCnxns=0
 admin.serverPort=%s
 authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
 %s
-""" % (to_java_compatible_path(data_path),
-       self.server_info.client_port,
-       self.server_info.admin_port,
-       "\n".join(self.configuration_entries)))  # NOQA
+"""
+                % (
+                    to_java_compatible_path(data_path),
+                    self.server_info.client_port,
+                    self.server_info.admin_port,
+                    "\n".join(self.configuration_entries),
+                )
+            )  # NOQA
 
         # setup a replicated setup if peers are specified
         if self.peers:
             servers_cfg = []
             for p in chain((self.server_info,), self.peers):
-                servers_cfg.append("server.%s=localhost:%s:%s:%s" % (
-                    p.server_id, p.leader_port, p.election_port, p.peer_type))
+                servers_cfg.append(
+                    "server.%s=localhost:%s:%s:%s"
+                    % (
+                        p.server_id,
+                        p.leader_port,
+                        p.election_port,
+                        p.peer_type,
+                    )
+                )
 
             with open(config_path, "a") as config:
-                config.write("""
+                config.write(
+                    """
 initLimit=4
 syncLimit=2
 %s
 peerType=%s
-""" % ("\n".join(servers_cfg), self.server_info.peer_type))
+"""
+                    % ("\n".join(servers_cfg), self.server_info.peer_type)
+                )
 
         # Write server ids into datadir
         with open(os.path.join(data_path, "myid"), "w") as myid_file:
             myid_file.write(str(self.server_info.server_id))
         # Write JAAS configuration
         with open(jaas_config_path, "w") as jaas_file:
-            jaas_file.write(self.jaas_config or '')
+            jaas_file.write(self.jaas_config or "")
         with open(log4j_path, "w") as log4j:
-            log4j.write("""
+            log4j.write(
+                """
 # DEFAULT: console appender only
 log4j.rootLogger=INFO, ROLLINGFILE
 log4j.appender.ROLLINGFILE.layout=org.apache.log4j.PatternLayout
-log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n
+log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} \
+[myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
-log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
-                self.working_path + os.sep + "zookeeper.log\n"))
+log4j.appender.ROLLINGFILE.File="""
+                + to_java_compatible_path(  # NOQA
+                    self.working_path + os.sep + "zookeeper.log\n"
+                )
+            )
 
-        args = [
-            "java",
-            "-cp", self.classpath,
-
-            # make_digest_acl_credential assumes UTF-8, but ZK decodes
-            # digest auth packets using the JVM's default "charset"--which
-            # depends on the environment.  Force it to use UTF-8 to avoid
-            # test failures.
-            "-Dfile.encoding=UTF-8",
-
-            # "-Dlog4j.debug",
-            "-Dreadonlymode.enabled=true",
-            "-Dzookeeper.log.dir=%s" % log_path,
-            "-Dzookeeper.root.logger=INFO,CONSOLE",
-            "-Dlog4j.configuration=file:%s" % log4j_path,
-
-            # OS X: Prevent java from appearing in menu bar, process dock
-            # and from activation of the main workspace on run.
-            "-Djava.awt.headless=true",
-
-            # JAAS configuration for SASL authentication
-            "-Djava.security.auth.login.config=%s" % jaas_config_path,
-        ] + list(self.java_system_properties) + [
-            "org.apache.zookeeper.server.quorum.QuorumPeerMain",
-            config_path,
-        ]
+        args = (
+            [
+                "java",
+                "-cp",
+                self.classpath,
+                # make_digest_acl_credential assumes UTF-8, but ZK decodes
+                # digest auth packets using the JVM's default "charset"--which
+                # depends on the environment.  Force it to use UTF-8 to avoid
+                # test failures.
+                "-Dfile.encoding=UTF-8",
+                # "-Dlog4j.debug",
+                "-Dreadonlymode.enabled=true",
+                "-Dzookeeper.log.dir=%s" % log_path,
+                "-Dzookeeper.root.logger=INFO,CONSOLE",
+                "-Dlog4j.configuration=file:%s" % log4j_path,
+                # OS X: Prevent java from appearing in menu bar, process dock
+                # and from activation of the main workspace on run.
+                "-Djava.awt.headless=true",
+                # JAAS configuration for SASL authentication
+                "-Djava.security.auth.login.config=%s" % jaas_config_path,
+            ]
+            + list(self.java_system_properties)
+            + [
+                "org.apache.zookeeper.server.quorum.QuorumPeerMain",
+                config_path,
+            ]
+        )
         self.process = subprocess.Popen(args=args)
-        log.info("Started zookeeper process %s using args %s",
-                 self.process.pid, args)
+        log.info(
+            "Started zookeeper process %s using args %s",
+            self.process.pid,
+            args,
+        )
         self._running = True
 
     @property
@@ -201,33 +236,27 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
 
         # Two possibilities, as seen in zkEnv.sh:
         # Check for a release - top-level zookeeper-*.jar?
-        jars = glob((os.path.join(
-            self.install_path, 'zookeeper-*.jar')))
+        jars = glob((os.path.join(self.install_path, "zookeeper-*.jar")))
         if jars:
             # Release build (`ant package`)
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "lib/*.jar")))
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "*.jar")))
+            jars.extend(glob(os.path.join(self.install_path, "lib/*.jar")))
+            jars.extend(glob(os.path.join(self.install_path, "*.jar")))
             # support for different file locations on Debian/Ubuntu
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "log4j-*.jar")))
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "slf4j-api-*.jar")))
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "slf4j-log4j*.jar")))
+            jars.extend(glob(os.path.join(self.install_path, "log4j-*.jar")))
+            jars.extend(
+                glob(os.path.join(self.install_path, "slf4j-api-*.jar"))
+            )
+            jars.extend(
+                glob(os.path.join(self.install_path, "slf4j-log4j*.jar"))
+            )
         else:
             # Development build (plain `ant`)
-            jars = glob((os.path.join(
-                self.install_path, 'build/zookeeper-*.jar')))
-            jars.extend(glob(os.path.join(
-                self.install_path,
-                "build/lib/*.jar")))
+            jars = glob(
+                (os.path.join(self.install_path, "build/zookeeper-*.jar"))
+            )
+            jars.extend(
+                glob(os.path.join(self.install_path, "build/lib/*.jar"))
+            )
 
         return os.pathsep.join(jars)
 
@@ -259,10 +288,13 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
         self.process.terminate()
         self.process.wait()
         if self.process.returncode != 0:
-            log.warn("Zookeeper process %s failed to terminate with"
-                     " non-zero return code (it terminated with %s return"
-                     " code instead)", self.process.pid,
-                     self.process.returncode)
+            log.warn(
+                "Zookeeper process %s failed to terminate with"
+                " non-zero return code (it terminated with %s return"
+                " code instead)",
+                self.process.pid,
+                self.process.returncode,
+            )
         self._running = False
 
     def destroy(self):
@@ -273,23 +305,26 @@ log4j.appender.ROLLINGFILE.File=""" + to_java_compatible_path(  # NOQA
         shutil.rmtree(self.working_path, True)
 
     def get_logs(self):
-        log_path = pathlib.Path(
-            self.working_path,
-            'zookeeper.log'
-        )
+        log_path = pathlib.Path(self.working_path, "zookeeper.log")
         if log_path.exists():
-            log_file = log_path.open('r')
+            log_file = log_path.open("r")
             lines = log_file.readlines()
             return lines[-100:]
         return []
 
-class ZookeeperCluster(object):
 
-    def __init__(self, install_path=None, classpath=None,
-                 size=3, port_offset=20000, observer_start_id=-1,
-                 configuration_entries=(),
-                 java_system_properties=(),
-                 jaas_config=None):
+class ZookeeperCluster(object):
+    def __init__(
+        self,
+        install_path=None,
+        classpath=None,
+        size=3,
+        port_offset=20000,
+        observer_start_id=-1,
+        configuration_entries=(),
+        java_system_properties=(),
+        jaas_config=None,
+    ):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
@@ -301,11 +336,12 @@ class ZookeeperCluster(object):
         for i in range(size):
             server_id = i + 1
             if observer_start_id != -1 and server_id >= observer_start_id:
-                peer_type = 'observer'
+                peer_type = "observer"
             else:
-                peer_type = 'participant'
-            info = ServerInfo(server_id, port, port + 1, port + 2, port + 3,
-                              peer_type)
+                peer_type = "participant"
+            info = ServerInfo(
+                server_id, port, port + 1, port + 2, port + 3, peer_type
+            )
             peers.append(info)
             port += 10
 
@@ -315,11 +351,13 @@ class ZookeeperCluster(object):
             server_info = server_peers.pop(i)
             self._servers.append(
                 ManagedZooKeeper(
-                    self._install_path, server_info, server_peers,
+                    self._install_path,
+                    server_info,
+                    server_peers,
                     classpath=self._classpath,
                     configuration_entries=configuration_entries,
                     java_system_properties=java_system_properties,
-                    jaas_config=jaas_config
+                    jaas_config=jaas_config,
                 )
             )
 
@@ -339,6 +377,7 @@ class ZookeeperCluster(object):
         # required for a client to successfully connect (2s vs. 4s without
         # the sleep).
         import time
+
         time.sleep(2)
 
     def stop(self):

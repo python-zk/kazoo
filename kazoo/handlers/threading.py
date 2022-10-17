@@ -61,9 +61,9 @@ class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
     def __init__(self, handler):
-        super(AsyncResult, self).__init__(handler,
-                                          threading.Condition,
-                                          KazooTimeoutError)
+        super(AsyncResult, self).__init__(
+            handler, threading.Condition, KazooTimeoutError
+        )
 
 
 class SequentialThreadingHandler(object):
@@ -94,6 +94,7 @@ class SequentialThreadingHandler(object):
         returns.
 
     """
+
     name = "sequential_threading_handler"
     timeout_exception = KazooTimeoutError
     sleep_func = staticmethod(time.sleep)

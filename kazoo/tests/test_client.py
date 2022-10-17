@@ -29,12 +29,15 @@ from kazoo.protocol.states import KeeperState, KazooState
 from kazoo.tests.util import CI_ZK_VERSION
 
 
-if sys.version_info > (3, ):  # pragma: nocover
+if sys.version_info > (3,):  # pragma: nocover
+
     def u(s):
         return s
+
 else:  # pragma: nocover
+
     def u(s):
-        return unicode(s, "unicode_escape")
+        return unicode(s, "unicode_escape")  # noqa
 
 
 class TestClientTransitions(KazooTestCase):
@@ -81,44 +84,47 @@ class TestClientConstructor(unittest.TestCase):
             self._makeOne(handler=SequentialThreadingHandler)
 
     def test_chroot(self):
-        assert self._makeOne(hosts='127.0.0.1:2181/').chroot == ''
-        assert self._makeOne(hosts='127.0.0.1:2181/a').chroot == '/a'
-        assert self._makeOne(hosts='127.0.0.1/a').chroot == '/a'
-        assert self._makeOne(hosts='127.0.0.1/a/b').chroot == '/a/b'
+        assert self._makeOne(hosts="127.0.0.1:2181/").chroot == ""
+        assert self._makeOne(hosts="127.0.0.1:2181/a").chroot == "/a"
+        assert self._makeOne(hosts="127.0.0.1/a").chroot == "/a"
+        assert self._makeOne(hosts="127.0.0.1/a/b").chroot == "/a/b"
         assert (
-            self._makeOne(hosts='127.0.0.1:2181,127.0.0.1:2182/a/b').chroot
-            == '/a/b'
+            self._makeOne(hosts="127.0.0.1:2181,127.0.0.1:2182/a/b").chroot
+            == "/a/b"
         )
 
     def test_connection_timeout(self):
         from kazoo.handlers.threading import KazooTimeoutError
 
-        client = self._makeOne(hosts='127.0.0.1:9')
+        client = self._makeOne(hosts="127.0.0.1:9")
         assert client.handler.timeout_exception is KazooTimeoutError
 
         with pytest.raises(KazooTimeoutError):
             client.start(0.1)
 
     def test_ordered_host_selection(self):
-        client = self._makeOne(hosts='127.0.0.1:9,127.0.0.2:9/a',
-                               randomize_hosts=False)
+        client = self._makeOne(
+            hosts="127.0.0.1:9,127.0.0.2:9/a", randomize_hosts=False
+        )
         hosts = [h for h in client.hosts]
-        assert hosts == [('127.0.0.1', 9), ('127.0.0.2', 9)]
+        assert hosts == [("127.0.0.1", 9), ("127.0.0.2", 9)]
 
     def test_invalid_hostname(self):
-        client = self._makeOne(hosts='nosuchhost/a')
+        client = self._makeOne(hosts="nosuchhost/a")
         timeout = client.handler.timeout_exception
         with pytest.raises(timeout):
             client.start(0.1)
 
     def test_another_invalid_hostname(self):
         with pytest.raises(ValueError):
-            self._makeOne(hosts='/nosuchhost/a')
+            self._makeOne(hosts="/nosuchhost/a")
 
     def test_retry_options_dict(self):
         from kazoo.retry import KazooRetry
-        client = self._makeOne(command_retry=dict(max_tries=99),
-                               connection_retry=dict(delay=99))
+
+        client = self._makeOne(
+            command_retry=dict(max_tries=99), connection_retry=dict(delay=99)
+        )
         assert type(client._conn_retry) is KazooRetry
         assert type(client._retry) is KazooRetry
         assert client._retry.max_tries == 99
@@ -174,10 +180,10 @@ class TestAuthentication(KazooTestCase):
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
 
-        client = self._get_client(auth_data=[('digest', digest_auth)])
+        client = self._get_client(auth_data=[("digest", digest_auth)])
         client.start()
         try:
-            client.create('/1', acl=(acl,))
+            client.create("/1", acl=(acl,))
             # give ZK a chance to copy data to other node
             time.sleep(0.1)
 
@@ -185,7 +191,7 @@ class TestAuthentication(KazooTestCase):
                 self.client.get("/1")
 
         finally:
-            client.delete('/1')
+            client.delete("/1")
             client.stop()
             client.close()
 
@@ -227,10 +233,10 @@ class TestAuthentication(KazooTestCase):
         client.start()
 
         with pytest.raises(TypeError):
-            client.add_auth('digest', ('user', 'pass'))
+            client.add_auth("digest", ("user", "pass"))
 
         with pytest.raises(TypeError):
-            client.add_auth(None, ('user', 'pass'))
+            client.add_auth(None, ("user", "pass"))
 
     def test_async_auth(self):
         client = self._get_client()
@@ -272,9 +278,9 @@ class TestConnection(KazooTestCase):
 
     def test_chroot_warning(self):
         k = self._get_nonchroot_client()
-        k.chroot = 'abba'
+        k.chroot = "abba"
         try:
-            with patch('warnings.warn') as mock_func:
+            with patch("warnings.warn") as mock_func:
                 k.start()
                 assert mock_func.called
         finally:
@@ -363,7 +369,7 @@ class TestConnection(KazooTestCase):
         assert client.client_id is None
 
         with pytest.raises(ConnectionClosedError):
-            client.exists('/')
+            client.exists("/")
 
     def test_close_connecting_connection(self):
         client = self.client
@@ -388,7 +394,7 @@ class TestConnection(KazooTestCase):
         ev.wait(5)
 
         with pytest.raises(ConnectionClosedError):
-            self.client.create('/foobar')
+            self.client.create("/foobar")
 
     def test_double_start(self):
         assert self.client.connected is True
@@ -425,13 +431,13 @@ class TestConnection(KazooTestCase):
         try:
             # simulate call made after write socket is closed
             with pytest.raises(ConnectionClosedError):
-                client.exists('/')
+                client.exists("/")
 
             # simulate call made after write socket is set to None
             client._connection._write_sock = None
 
             with pytest.raises(ConnectionClosedError):
-                client.exists('/')
+                client.exists("/")
 
         finally:
             # reset for teardown
@@ -468,10 +474,10 @@ class TestClient(KazooTestCase):
     def test_server_version_retries_fail(self):
         client = self.client
         side_effects = [
-            '',
-            'zookeeper.version=',
-            'zookeeper.version=1.',
-            'zookeeper.ver',
+            "",
+            "zookeeper.version=",
+            "zookeeper.version=1.",
+            "zookeeper.ver",
         ]
         client.command = mock.MagicMock()
         client.command.side_effect = side_effects
@@ -480,7 +486,7 @@ class TestClient(KazooTestCase):
 
     def test_server_version_retries_eventually_ok(self):
         client = self.client
-        actual_version = 'zookeeper.version=1.2'
+        actual_version = "zookeeper.version=1.2"
         side_effects = []
         for i in range(0, len(actual_version) + 1):
             side_effects.append(actual_version[0:i])
@@ -510,17 +516,17 @@ class TestClient(KazooTestCase):
 
         client._state = KeeperState.EXPIRED_SESSION
         with pytest.raises(SessionExpiredError):
-            client.create('/closedpath', b'bar')
+            client.create("/closedpath", b"bar")
 
         client._state = KeeperState.AUTH_FAILED
         with pytest.raises(AuthFailedError):
-            client.create('/closedpath', b'bar')
+            client.create("/closedpath", b"bar")
 
         client.stop()
         client.close()
 
         with pytest.raises(ConnectionClosedError):
-            client.create('/closedpath', b'bar')
+            client.create("/closedpath", b"bar")
 
     def test_create_null_data(self):
         client = self.client
@@ -543,13 +549,13 @@ class TestClient(KazooTestCase):
 
     def test_create_async_returns_unchrooted_path(self):
         client = self.client
-        path = client.create_async('/1').get()
+        path = client.create_async("/1").get()
         assert path == "/1"
 
     def test_create_invalid_path(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.create(('a',))
+            client.create(("a",))
         with pytest.raises(ValueError):
             client.create(".")
         with pytest.raises(ValueError):
@@ -565,17 +571,17 @@ class TestClient(KazooTestCase):
         single_acl = OPEN_ACL_UNSAFE[0]
         client = self.client
         with pytest.raises(TypeError):
-            client.create('a', acl='all')
+            client.create("a", acl="all")
         with pytest.raises(TypeError):
-            client.create('a', acl=single_acl)
+            client.create("a", acl=single_acl)
         with pytest.raises(TypeError):
-            client.create('a', value=['a'])
+            client.create("a", value=["a"])
         with pytest.raises(TypeError):
-            client.create('a', ephemeral='yes')
+            client.create("a", ephemeral="yes")
         with pytest.raises(TypeError):
-            client.create('a', sequence='yes')
+            client.create("a", sequence="yes")
         with pytest.raises(TypeError):
-            client.create('a', makepath='yes')
+            client.create("a", makepath="yes")
 
     def test_create_value(self):
         client = self.client
@@ -659,8 +665,9 @@ class TestClient(KazooTestCase):
 
     def test_create_ephemeral_sequence(self):
         basepath = "/" + uuid.uuid4().hex
-        realpath = self.client.create(basepath, b"sandwich",
-                                      sequence=True, ephemeral=True)
+        realpath = self.client.create(
+            basepath, b"sandwich", sequence=True, ephemeral=True
+        )
         assert basepath != realpath and realpath.startswith(basepath)
         data, stat = self.client.get(realpath)
         assert data == b"sandwich"
@@ -696,7 +703,7 @@ class TestClient(KazooTestCase):
                 self.client.create("/1/2/3/4/5", b"val2", makepath=True)
 
         finally:
-            alt_client.delete('/', recursive=True)
+            alt_client.delete("/", recursive=True)
             alt_client.stop()
 
     def test_create_no_makepath(self):
@@ -756,9 +763,9 @@ class TestClient(KazooTestCase):
     def test_get_invalid_arguments(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.get(('a', 'b'))
+            client.get(("a", "b"))
         with pytest.raises(TypeError):
-            client.get('a', watch=True)
+            client.get("a", watch=True)
 
     def test_bad_argument(self):
         client = self.client
@@ -798,9 +805,9 @@ class TestClient(KazooTestCase):
     def test_exists_invalid_arguments(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.exists(('a', 'b'))
+            client.exists(("a", "b"))
         with pytest.raises(TypeError):
-            client.exists('a', watch=True)
+            client.exists("a", watch=True)
 
     def test_exists_watch(self):
         nodepath = "/" + uuid.uuid4().hex
@@ -850,49 +857,49 @@ class TestClient(KazooTestCase):
     def test_get_acls(self):
         from kazoo.security import make_digest_acl
 
-        user = 'user'
-        passw = 'pass'
+        user = "user"
+        passw = "pass"
         acl = make_digest_acl(user, passw, all=True)
         client = self.client
         try:
-            client.create('/a', acl=[acl])
-            client.add_auth('digest', '{}:{}'.format(user, passw))
-            assert acl in client.get_acls('/a')[0]
+            client.create("/a", acl=[acl])
+            client.add_auth("digest", "{}:{}".format(user, passw))
+            assert acl in client.get_acls("/a")[0]
         finally:
-            client.delete('/a')
+            client.delete("/a")
 
     def test_get_acls_invalid_arguments(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.get_acls(('a', 'b'))
+            client.get_acls(("a", "b"))
 
     def test_set_acls(self):
         from kazoo.security import make_digest_acl
 
-        user = 'user'
-        passw = 'pass'
+        user = "user"
+        passw = "pass"
         acl = make_digest_acl(user, passw, all=True)
         client = self.client
-        client.create('/a')
+        client.create("/a")
         try:
-            client.set_acls('/a', [acl])
-            client.add_auth('digest', '{}:{}'.format(user, passw))
-            assert acl in client.get_acls('/a')[0]
+            client.set_acls("/a", [acl])
+            client.add_auth("digest", "{}:{}".format(user, passw))
+            assert acl in client.get_acls("/a")[0]
         finally:
-            client.delete('/a')
+            client.delete("/a")
 
     def test_set_acls_empty(self):
         client = self.client
-        client.create('/a')
+        client.create("/a")
         with pytest.raises(InvalidACLError):
-            client.set_acls('/a', [])
+            client.set_acls("/a", [])
 
     def test_set_acls_no_node(self):
         from kazoo.security import OPEN_ACL_UNSAFE
 
         client = self.client
         with pytest.raises(NoNodeError):
-            client.set_acls('/a', OPEN_ACL_UNSAFE)
+            client.set_acls("/a", OPEN_ACL_UNSAFE)
 
     def test_set_acls_invalid_arguments(self):
         from kazoo.security import OPEN_ACL_UNSAFE
@@ -900,20 +907,20 @@ class TestClient(KazooTestCase):
         single_acl = OPEN_ACL_UNSAFE[0]
         client = self.client
         with pytest.raises(TypeError):
-            client.set_acls(('a', 'b'), ())
+            client.set_acls(("a", "b"), ())
         with pytest.raises(TypeError):
-            client.set_acls('a', single_acl)
+            client.set_acls("a", single_acl)
         with pytest.raises(TypeError):
-            client.set_acls('a', 'all')
+            client.set_acls("a", "all")
         with pytest.raises(TypeError):
-            client.set_acls('a', [single_acl], 'V1')
+            client.set_acls("a", [single_acl], "V1")
 
     def test_set(self):
         client = self.client
-        client.create('a', b'first')
-        stat = client.set('a', b'second')
-        data, stat2 = client.get('a')
-        assert data == b'second'
+        client.create("a", b"first")
+        stat = client.set("a", b"second")
+        data, stat2 = client.get("a")
+        assert data == b"second"
         assert stat == stat2
 
     def test_set_null_data(self):
@@ -932,85 +939,85 @@ class TestClient(KazooTestCase):
 
     def test_set_invalid_arguments(self):
         client = self.client
-        client.create('a', b'first')
+        client.create("a", b"first")
         with pytest.raises(TypeError):
-            client.set(('a', 'b'), b'value')
+            client.set(("a", "b"), b"value")
         with pytest.raises(TypeError):
-            client.set('a', ['v', 'w'])
+            client.set("a", ["v", "w"])
         with pytest.raises(TypeError):
-            client.set('a', b'value', 'V1')
+            client.set("a", b"value", "V1")
 
     def test_delete(self):
         client = self.client
-        client.ensure_path('/a/b')
-        assert 'b' in client.get_children('a')
-        client.delete('/a/b')
-        assert 'b' not in client.get_children('a')
+        client.ensure_path("/a/b")
+        assert "b" in client.get_children("a")
+        client.delete("/a/b")
+        assert "b" not in client.get_children("a")
 
     def test_delete_recursive(self):
         client = self.client
-        client.ensure_path('/a/b/c')
-        client.ensure_path('/a/b/d')
-        client.delete('/a/b', recursive=True)
-        client.delete('/a/b/c', recursive=True)
-        assert 'b' not in client.get_children('a')
+        client.ensure_path("/a/b/c")
+        client.ensure_path("/a/b/d")
+        client.delete("/a/b", recursive=True)
+        client.delete("/a/b/c", recursive=True)
+        assert "b" not in client.get_children("a")
 
     def test_delete_invalid_arguments(self):
         client = self.client
-        client.ensure_path('/a/b')
+        client.ensure_path("/a/b")
         with pytest.raises(TypeError):
-            client.delete('/a/b', recursive='all')
+            client.delete("/a/b", recursive="all")
         with pytest.raises(TypeError):
-            client.delete(('a', 'b'))
+            client.delete(("a", "b"))
         with pytest.raises(TypeError):
-            client.delete('/a/b', version='V1')
+            client.delete("/a/b", version="V1")
 
     def test_get_children(self):
         client = self.client
-        client.ensure_path('/a/b/c')
-        client.ensure_path('/a/b/d')
-        assert client.get_children('/a') == ['b']
-        assert set(client.get_children('/a/b')) == set(['c', 'd'])
-        assert client.get_children('/a/b/c') == []
+        client.ensure_path("/a/b/c")
+        client.ensure_path("/a/b/d")
+        assert client.get_children("/a") == ["b"]
+        assert set(client.get_children("/a/b")) == set(["c", "d"])
+        assert client.get_children("/a/b/c") == []
 
     def test_get_children2(self):
         client = self.client
-        client.ensure_path('/a/b')
-        children, stat = client.get_children('/a', include_data=True)
-        value, stat2 = client.get('/a')
-        assert children == ['b']
+        client.ensure_path("/a/b")
+        children, stat = client.get_children("/a", include_data=True)
+        value, stat2 = client.get("/a")
+        assert children == ["b"]
         assert stat2.version == stat.version
 
     def test_get_children2_many_nodes(self):
         client = self.client
-        client.ensure_path('/a/b')
-        client.ensure_path('/a/c')
-        client.ensure_path('/a/d')
-        children, stat = client.get_children('/a', include_data=True)
-        value, stat2 = client.get('/a')
-        assert set(children) == set(['b', 'c', 'd'])
+        client.ensure_path("/a/b")
+        client.ensure_path("/a/c")
+        client.ensure_path("/a/d")
+        children, stat = client.get_children("/a", include_data=True)
+        value, stat2 = client.get("/a")
+        assert set(children) == set(["b", "c", "d"])
         assert stat2.version == stat.version
 
     def test_get_children_no_node(self):
         client = self.client
         with pytest.raises(NoNodeError):
-            client.get_children('/none')
+            client.get_children("/none")
         with pytest.raises(NoNodeError):
-            client.get_children('/none', include_data=True)
+            client.get_children("/none", include_data=True)
 
     def test_get_children_invalid_path(self):
         client = self.client
         with pytest.raises(ValueError):
-            client.get_children('../a')
+            client.get_children("../a")
 
     def test_get_children_invalid_arguments(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.get_children(('a', 'b'))
+            client.get_children(("a", "b"))
         with pytest.raises(TypeError):
-            client.get_children('a', watch=True)
+            client.get_children("a", watch=True)
         with pytest.raises(TypeError):
-            client.get_children('a', include_data='yes')
+            client.get_children("a", include_data="yes")
 
     def test_invalid_auth(self):
         from kazoo.exceptions import AuthFailedError
@@ -1021,7 +1028,7 @@ class TestClient(KazooTestCase):
         client._state = KeeperState.AUTH_FAILED
 
         with pytest.raises(AuthFailedError):
-            client.get('/')
+            client.get("/")
 
     def test_client_state(self):
         from kazoo.protocol.states import KeeperState
@@ -1039,7 +1046,7 @@ class TestClient(KazooTestCase):
 
         # try to change the chroot, not currently allowed
         with pytest.raises(ConfigurationError):
-            client.set_hosts(hosts + '/new_chroot')
+            client.set_hosts(hosts + "/new_chroot")
 
         # grow the cluster to 3
         client.set_hosts(self.servers)
@@ -1107,9 +1114,9 @@ class TestClient(KazooTestCase):
             # optionally cause a SessionExpiredError to occur by
             # mangling the first byte of the session password.
             if expire_session:
-                b0 = b'\x00'
+                b0 = b"\x00"
                 if client._session_passwd[0] == 0:
-                    b0 = b'\xff'
+                    b0 = b"\xff"
                 client._session_passwd = b0 + client._session_passwd[1:]
         finally:
             server.run()
@@ -1127,10 +1134,7 @@ class TestClient(KazooTestCase):
 
         try:
             result = self._request_queuing_common(
-                client=client,
-                server=server,
-                path=path,
-                expire_session=False
+                client=client, server=server, path=path, expire_session=False
             )
 
             assert result.get() == path
@@ -1144,10 +1148,7 @@ class TestClient(KazooTestCase):
 
         try:
             result = self._request_queuing_common(
-                client=client,
-                server=server,
-                path=path,
-                expire_session=True
+                client=client, server=server, path=path, expire_session=True
             )
 
             assert len(client._queue) == 0
@@ -1158,17 +1159,17 @@ class TestClient(KazooTestCase):
 
 
 dummy_dict = {
-    'aversion': 1,
-    'ctime': 0,
-    'cversion': 1,
-    'czxid': 110,
-    'dataLength': 1,
-    'ephemeralOwner': 'ben',
-    'mtime': 1,
-    'mzxid': 1,
-    'numChildren': 0,
-    'pzxid': 1,
-    'version': 1,
+    "aversion": 1,
+    "ctime": 0,
+    "cversion": 1,
+    "czxid": 110,
+    "dataLength": 1,
+    "ephemeralOwner": "ben",
+    "mtime": 1,
+    "mzxid": 1,
+    "numChildren": 0,
+    "pzxid": 1,
+    "version": 1,
 }
 
 
@@ -1189,18 +1190,22 @@ class TestClientTransactions(KazooTestCase):
 
     def test_basic_create(self):
         t = self.client.transaction()
-        t.create('/freddy')
-        t.create('/fred', ephemeral=True)
-        t.create('/smith', sequence=True)
+        t.create("/freddy")
+        t.create("/fred", ephemeral=True)
+        t.create("/smith", sequence=True)
         results = t.commit()
         assert len(results) == 3
-        assert results[0] == '/freddy'
-        assert results[2].startswith('/smith0') is True
+        assert results[0] == "/freddy"
+        assert results[2].startswith("/smith0") is True
 
     def test_bad_creates(self):
-        args_list = [(True,), ('/smith', 0), ('/smith', b'', 'bleh'),
-                     ('/smith', b'', None, 'fred'),
-                     ('/smith', b'', None, True, 'fred')]
+        args_list = [
+            (True,),
+            ("/smith", 0),
+            ("/smith", b"", "bleh"),
+            ("/smith", b"", None, "fred"),
+            ("/smith", b"", None, True, "fred"),
+        ]
 
         for args in args_list:
             with pytest.raises(TypeError):
@@ -1220,19 +1225,22 @@ class TestClientTransactions(KazooTestCase):
         self.client.default_acl = (acl,)
 
         t = self.client.transaction()
-        t.create('/freddy')
+        t.create("/freddy")
         results = t.commit()
-        assert results[0] == '/freddy'
+        assert results[0] == "/freddy"
 
     def test_basic_delete(self):
-        self.client.create('/fred')
+        self.client.create("/fred")
         t = self.client.transaction()
-        t.delete('/fred')
+        t.delete("/fred")
         results = t.commit()
         assert results[0] is True
 
     def test_bad_deletes(self):
-        args_list = [(True,), ('/smith', 'woops'), ]
+        args_list = [
+            (True,),
+            ("/smith", "woops"),
+        ]
 
         for args in args_list:
             with pytest.raises(TypeError):
@@ -1240,15 +1248,15 @@ class TestClientTransactions(KazooTestCase):
                 t.delete(*args)
 
     def test_set(self):
-        self.client.create('/fred', b'01')
+        self.client.create("/fred", b"01")
         t = self.client.transaction()
-        t.set_data('/fred', b'oops')
+        t.set_data("/fred", b"oops")
         t.commit()
-        res = self.client.get('/fred')
-        assert res[0] == b'oops'
+        res = self.client.get("/fred")
+        assert res[0] == b"oops"
 
     def test_bad_sets(self):
-        args_list = [(42, 52), ('/smith', False), ('/smith', b'', 'oops')]
+        args_list = [(42, 52), ("/smith", False), ("/smith", b"", "oops")]
 
         for args in args_list:
             with pytest.raises(TypeError):
@@ -1256,17 +1264,17 @@ class TestClientTransactions(KazooTestCase):
                 t.set_data(*args)
 
     def test_check(self):
-        self.client.create('/fred')
-        version = self.client.get('/fred')[1].version
+        self.client.create("/fred")
+        version = self.client.get("/fred")[1].version
         t = self.client.transaction()
-        t.check('/fred', version)
-        t.create('/blah')
+        t.check("/fred", version)
+        t.create("/blah")
         results = t.commit()
         assert results[0] is True
-        assert results[1] == '/blah'
+        assert results[1] == "/blah"
 
     def test_bad_checks(self):
-        args_list = [(42, 52), ('/smith', 'oops')]
+        args_list = [(42, 52), ("/smith", "oops")]
 
         for args in args_list:
             with pytest.raises(TypeError):
@@ -1277,8 +1285,8 @@ class TestClientTransactions(KazooTestCase):
         from kazoo.exceptions import RolledBackError, NoNodeError
 
         t = self.client.transaction()
-        t.create('/fred')
-        t.delete('/smith')
+        t.create("/fred")
+        t.delete("/smith")
         results = t.commit()
         assert results[0].__class__ == RolledBackError
         assert results[1].__class__ == NoNodeError
@@ -1297,8 +1305,8 @@ class TestClientTransactions(KazooTestCase):
 
     def test_context(self):
         with self.client.transaction() as t:
-            t.create('/smith', b'32')
-        assert self.client.get('/smith')[0] == b'32'
+            t.create("/smith", b"32")
+        assert self.client.get("/smith")[0] == b"32"
 
 
 class TestSessionCallbacks(unittest.TestCase):
@@ -1358,7 +1366,7 @@ class TestCallbacks(KazooTestCase):
 class TestNonChrootClient(KazooTestCase):
     def test_create(self):
         client = self._get_nonchroot_client()
-        assert client.chroot == ''
+        assert client.chroot == ""
         client.start()
         node = uuid.uuid4().hex
         path = client.create(node, ephemeral=True)
@@ -1388,7 +1396,7 @@ class TestReconfig(KazooTestCase):
     def test_no_super_auth(self):
         with pytest.raises(NoAuthError):
             self.client.reconfig(
-                joining='server.999=0.0.0.0:1234:2345:observer;3456',
+                joining="server.999=0.0.0.0:1234:2345:observer;3456",
                 leaving=None,
                 new_members=None,
             )
@@ -1396,13 +1404,13 @@ class TestReconfig(KazooTestCase):
     def test_add_remove_observer(self):
         def free_sock_port():
             s = socket.socket()
-            s.bind(('', 0))
+            s.bind(("", 0))
             return s, s.getsockname()[1]
 
         username = "super"
         password = "test"
         digest_auth = "%s:%s" % (username, password)
-        client = self._get_client(auth_data=[('digest', digest_auth)])
+        client = self._get_client(auth_data=[("digest", digest_auth)])
         client.start()
 
         # get ports for election, zab and client endpoints. we need to use
@@ -1413,20 +1421,23 @@ class TestReconfig(KazooTestCase):
         s2, port2 = free_sock_port()
         s3, port3 = free_sock_port()
 
-        joining = 'server.100=0.0.0.0:%d:%d:observer;0.0.0.0:%d' % (
-            port1, port2, port3)
-        data, _ = client.reconfig(joining=joining,
-                                  leaving=None,
-                                  new_members=None)
-        assert joining.encode('utf8') in data
+        joining = "server.100=0.0.0.0:%d:%d:observer;0.0.0.0:%d" % (
+            port1,
+            port2,
+            port3,
+        )
+        data, _ = client.reconfig(
+            joining=joining, leaving=None, new_members=None
+        )
+        assert joining.encode("utf8") in data
 
-        data, _ = client.reconfig(joining=None,
-                                  leaving='100',
-                                  new_members=None)
-        assert joining.encode('utf8') not in data
+        data, _ = client.reconfig(
+            joining=None, leaving="100", new_members=None
+        )
+        assert joining.encode("utf8") not in data
 
         # try to add it again, but a config number in the future
-        curver = int(data.decode().split('\n')[-1].split('=')[1], base=16)
+        curver = int(data.decode().split("\n")[-1].split("=")[1], base=16)
         with pytest.raises(BadVersionError):
             self.client.reconfig(
                 joining=joining,
@@ -1438,5 +1449,5 @@ class TestReconfig(KazooTestCase):
     def test_bad_input(self):
         with pytest.raises(BadArgumentsError):
             self.client.reconfig(
-                joining='some thing', leaving=None, new_members=None
+                joining="some thing", leaving=None, new_members=None
             )

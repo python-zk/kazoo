@@ -9,8 +9,7 @@ from kazoo.tests.util import wait
 
 
 class UniqueError(Exception):
-    """Error raised only by test leader function
-    """
+    """Error raised only by test leader function"""
 
 
 class KazooElectionTests(KazooTestCase):
@@ -33,8 +32,9 @@ class KazooElectionTests(KazooTestCase):
         self.thread_exc_info = None
 
     def _spawn_contender(self, contender_id, election):
-        thread = threading.Thread(target=self._election_thread,
-                                  args=(contender_id, election))
+        thread = threading.Thread(
+            target=self._election_thread, args=(contender_id, election)
+        )
         thread.daemon = True
         thread.start()
         return thread
@@ -75,7 +75,8 @@ class KazooElectionTests(KazooTestCase):
             contender = "c" + uuid.uuid4().hex
             elections[contender] = self.client.Election(self.path, contender)
             threads[contender] = self._spawn_contender(
-                contender, elections[contender])
+                contender, elections[contender]
+            )
 
         # wait for a leader to be elected
         times = 0
@@ -84,8 +85,9 @@ class KazooElectionTests(KazooTestCase):
                 self.condition.wait(5)
                 times += 1
                 if times > 5:
-                    raise Exception("Still not a leader: lid: %s",
-                                    self.leader_id)
+                    raise Exception(
+                        "Still not a leader: lid: %s", self.leader_id
+                    )
 
         election = self.client.Election(self.path)
 

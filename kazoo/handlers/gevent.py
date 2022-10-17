@@ -21,7 +21,7 @@ except ImportError:
 from kazoo.handlers import utils
 from kazoo import python2atexit
 
-_using_libevent = gevent.__version__.startswith('0.')
+_using_libevent = gevent.__version__.startswith("0.")
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class SequentialGeventHandler(object):
     proceed.
 
     """
+
     name = "sequential_gevent_handler"
     queue_impl = gevent.queue.Queue
     queue_empty = gevent.queue.Empty
@@ -126,8 +127,9 @@ class SequentialGeventHandler(object):
             python2atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
-        return selector_select(*args, selectors_module=gevent.selectors,
-                               **kwargs)
+        return selector_select(
+            *args, selectors_module=gevent.selectors, **kwargs
+        )
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(socket)

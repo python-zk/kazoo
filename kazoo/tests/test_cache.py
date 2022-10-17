@@ -13,9 +13,9 @@ from kazoo.recipe.cache import TreeCache, TreeNode, TreeEvent
 
 class KazooAdaptiveHandlerTestCase(KazooTestHarness):
     HANDLERS = (
-        ('kazoo.handlers.gevent', 'SequentialGeventHandler'),
-        ('kazoo.handlers.eventlet', 'SequentialEventletHandler'),
-        ('kazoo.handlers.threading', 'SequentialThreadingHandler'),
+        ("kazoo.handlers.gevent", "SequentialGeventHandler"),
+        ("kazoo.handlers.eventlet", "SequentialEventletHandler"),
+        ("kazoo.handlers.threading", "SequentialThreadingHandler"),
     )
 
     def setUp(self):
@@ -35,7 +35,7 @@ class KazooAdaptiveHandlerTestCase(KazooTestHarness):
                 continue
             else:
                 return cls()
-        raise ImportError('No available handler')
+        raise ImportError("No available handler")
 
 
 class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
@@ -59,7 +59,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
     def make_cache(self):
         if self.cache is None:
-            self.path = '/' + uuid.uuid4().hex
+            self.path = "/" + uuid.uuid4().hex
             self.cache = TreeCache(self.client, self.path)
             self.cache.listen(lambda event: self._event_queue.put(event))
             self.cache.listen_fault(lambda error: self._error_queue.put(error))
@@ -87,7 +87,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         # trigger switching on some coroutine handlers
         self.client.handler.sleep_func(0.1)
 
-        completion_queue = getattr(self.handler, 'completion_queue', None)
+        completion_queue = getattr(self.handler, "completion_queue", None)
         if completion_queue is not None:
             while not self.client.handler.completion_queue.empty():
                 self.client.handler.sleep_func(0.1)
@@ -101,10 +101,10 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
             result = set()
             for _ in range(5):
                 self._wait_gc()
-                result.add(count_refs_by_type('TreeNode'))
+                result.add(count_refs_by_type("TreeNode"))
             if len(result) == 1:
                 return list(result)[0]
-        raise RuntimeError('could not count refs exactly')
+        raise RuntimeError("could not count refs exactly")
 
     def test_start(self):
         self.make_cache()
@@ -132,25 +132,25 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
-        self.client.create(self.path + '/foo/bar/baz', makepath=True)
+        self.client.create(self.path + "/foo/bar/baz", makepath=True)
         for _ in range(3):
             self.wait_cache(TreeEvent.NODE_ADDED)
 
         # setup stub watchers which are outside of tree cache
         stub_data_watcher = Mock(spec=lambda event: None)
         stub_child_watcher = Mock(spec=lambda event: None)
-        self.client.get(self.path + '/foo', stub_data_watcher)
-        self.client.get_children(self.path + '/foo', stub_child_watcher)
+        self.client.get(self.path + "/foo", stub_data_watcher)
+        self.client.get_children(self.path + "/foo", stub_child_watcher)
 
         # watchers inside tree cache should be here
         root_path = self.client.chroot + self.path
-        assert len(self.client._data_watchers[root_path + '/foo']) == 2
-        assert len(self.client._data_watchers[root_path + '/foo/bar']) == 1
-        assert len(self.client._data_watchers[root_path + '/foo/bar/baz']) == 1
-        assert len(self.client._child_watchers[root_path + '/foo']) == 2
-        assert len(self.client._child_watchers[root_path + '/foo/bar']) == 1
+        assert len(self.client._data_watchers[root_path + "/foo"]) == 2
+        assert len(self.client._data_watchers[root_path + "/foo/bar"]) == 1
+        assert len(self.client._data_watchers[root_path + "/foo/bar/baz"]) == 1
+        assert len(self.client._child_watchers[root_path + "/foo"]) == 2
+        assert len(self.client._child_watchers[root_path + "/foo/bar"]) == 1
         assert (
-            len(self.client._child_watchers[root_path + '/foo/bar/baz']) == 1
+            len(self.client._child_watchers[root_path + "/foo/bar/baz"]) == 1
         )
 
         self.cache.close()
@@ -167,22 +167,22 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         assert self.cache._root._state != TreeNode.STATE_DEAD
 
         # watchers should be reset
-        assert len(self.client._data_watchers[root_path + '/foo']) == 1
-        assert len(self.client._data_watchers[root_path + '/foo/bar']) == 0
-        assert len(self.client._data_watchers[root_path + '/foo/bar/baz']) == 0
-        assert len(self.client._child_watchers[root_path + '/foo']) == 1
-        assert len(self.client._child_watchers[root_path + '/foo/bar']) == 0
+        assert len(self.client._data_watchers[root_path + "/foo"]) == 1
+        assert len(self.client._data_watchers[root_path + "/foo/bar"]) == 0
+        assert len(self.client._data_watchers[root_path + "/foo/bar/baz"]) == 0
+        assert len(self.client._child_watchers[root_path + "/foo"]) == 1
+        assert len(self.client._child_watchers[root_path + "/foo/bar"]) == 0
         assert (
-            len(self.client._child_watchers[root_path + '/foo/bar/baz']) == 0
+            len(self.client._child_watchers[root_path + "/foo/bar/baz"]) == 0
         )
 
         # outside watchers should not be deleted
         assert (
-            list(self.client._data_watchers[root_path + '/foo'])[0]
+            list(self.client._data_watchers[root_path + "/foo"])[0]
             == stub_data_watcher
         )
         assert (
-            list(self.client._child_watchers[root_path + '/foo'])[0]
+            list(self.client._child_watchers[root_path + "/foo"])[0]
             == stub_child_watcher
         )
 
@@ -196,11 +196,11 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
         assert self.count_tree_node() == 1
 
-        self.client.create(self.path + '/foo/bar/baz', makepath=True)
+        self.client.create(self.path + "/foo/bar/baz", makepath=True)
         for _ in range(3):
             self.wait_cache(TreeEvent.NODE_ADDED)
 
-        self.client.delete(self.path + '/foo', recursive=True)
+        self.client.delete(self.path + "/foo", recursive=True)
         for _ in range(3):
             self.wait_cache(TreeEvent.NODE_REMOVED)
 
@@ -209,12 +209,12 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
         # watchers should be reset
         root_path = self.client.chroot + self.path
-        assert self.client._data_watchers[root_path + '/foo'] == set()
-        assert self.client._data_watchers[root_path + '/foo/bar'] == set()
-        assert self.client._data_watchers[root_path + '/foo/bar/baz'] == set()
-        assert self.client._child_watchers[root_path + '/foo'] == set()
-        assert self.client._child_watchers[root_path + '/foo/bar'] == set()
-        assert self.client._child_watchers[root_path + '/foo/bar/baz'] == set()
+        assert self.client._data_watchers[root_path + "/foo"] == set()
+        assert self.client._data_watchers[root_path + "/foo/bar"] == set()
+        assert self.client._data_watchers[root_path + "/foo/bar/baz"] == set()
+        assert self.client._child_watchers[root_path + "/foo"] == set()
+        assert self.client._child_watchers[root_path + "/foo/bar"] == set()
+        assert self.client._child_watchers[root_path + "/foo/bar/baz"] == set()
 
         # should not be any leaked memory (tree node) here
         assert self.count_tree_node() == 1
@@ -223,41 +223,41 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
 
-        self.client.create(self.path + '/test_children', b'test_children_1')
+        self.client.create(self.path + "/test_children", b"test_children_1")
         event = self.wait_cache(TreeEvent.NODE_ADDED)
         assert event.event_type == TreeEvent.NODE_ADDED
-        assert event.event_data.path == self.path + '/test_children'
-        assert event.event_data.data == b'test_children_1'
+        assert event.event_data.path == self.path + "/test_children"
+        assert event.event_data.data == b"test_children_1"
         assert event.event_data.stat.version == 0
 
-        self.client.set(self.path + '/test_children', b'test_children_2')
+        self.client.set(self.path + "/test_children", b"test_children_2")
         event = self.wait_cache(TreeEvent.NODE_UPDATED)
         assert event.event_type == TreeEvent.NODE_UPDATED
-        assert event.event_data.path == self.path + '/test_children'
-        assert event.event_data.data == b'test_children_2'
+        assert event.event_data.path == self.path + "/test_children"
+        assert event.event_data.data == b"test_children_2"
         assert event.event_data.stat.version == 1
 
-        self.client.delete(self.path + '/test_children')
+        self.client.delete(self.path + "/test_children")
         event = self.wait_cache(TreeEvent.NODE_REMOVED)
         assert event.event_type == TreeEvent.NODE_REMOVED
-        assert event.event_data.path == self.path + '/test_children'
-        assert event.event_data.data == b'test_children_2'
+        assert event.event_data.path == self.path + "/test_children"
+        assert event.event_data.data == b"test_children_2"
         assert event.event_data.stat.version == 1
 
     def test_subtree_operation(self):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
 
-        self.client.create(self.path + '/foo/bar/baz', makepath=True)
-        for relative_path in ('/foo', '/foo/bar', '/foo/bar/baz'):
+        self.client.create(self.path + "/foo/bar/baz", makepath=True)
+        for relative_path in ("/foo", "/foo/bar", "/foo/bar/baz"):
             event = self.wait_cache(TreeEvent.NODE_ADDED)
             assert event.event_type == TreeEvent.NODE_ADDED
             assert event.event_data.path == self.path + relative_path
-            assert event.event_data.data == b''
+            assert event.event_data.data == b""
             assert event.event_data.stat.version == 0
 
-        self.client.delete(self.path + '/foo', recursive=True)
-        for relative_path in ('/foo/bar/baz', '/foo/bar', '/foo'):
+        self.client.delete(self.path + "/foo", recursive=True)
+        for relative_path in ("/foo/bar/baz", "/foo/bar", "/foo"):
             event = self.wait_cache(TreeEvent.NODE_REMOVED)
             assert event.event_type == TreeEvent.NODE_REMOVED
             assert event.event_data.path == self.path + relative_path
@@ -265,79 +265,78 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
     def test_get_data(self):
         cache = self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
-        self.client.create(self.path + '/foo/bar/baz', b'@', makepath=True)
+        self.client.create(self.path + "/foo/bar/baz", b"@", makepath=True)
         self.wait_cache(TreeEvent.NODE_ADDED)
         self.wait_cache(TreeEvent.NODE_ADDED)
         self.wait_cache(TreeEvent.NODE_ADDED)
 
-        with patch.object(cache, '_client'):  # disable any remote operation
-            assert cache.get_data(self.path).data == b''
+        with patch.object(cache, "_client"):  # disable any remote operation
+            assert cache.get_data(self.path).data == b""
             assert cache.get_data(self.path).stat.version == 0
 
-            assert cache.get_data(self.path + '/foo').data == b''
-            assert cache.get_data(self.path + '/foo').stat.version == 0
+            assert cache.get_data(self.path + "/foo").data == b""
+            assert cache.get_data(self.path + "/foo").stat.version == 0
 
-            assert cache.get_data(self.path + '/foo/bar').data == b''
-            assert cache.get_data(self.path + '/foo/bar').stat.version == 0
+            assert cache.get_data(self.path + "/foo/bar").data == b""
+            assert cache.get_data(self.path + "/foo/bar").stat.version == 0
 
-            assert cache.get_data(self.path + '/foo/bar/baz').data == b'@'
-            assert cache.get_data(self.path + '/foo/bar/baz').stat.version == 0
+            assert cache.get_data(self.path + "/foo/bar/baz").data == b"@"
+            assert cache.get_data(self.path + "/foo/bar/baz").stat.version == 0
 
     def test_get_children(self):
         cache = self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
-        self.client.create(self.path + '/foo/bar/baz', b'@', makepath=True)
+        self.client.create(self.path + "/foo/bar/baz", b"@", makepath=True)
         self.wait_cache(TreeEvent.NODE_ADDED)
         self.wait_cache(TreeEvent.NODE_ADDED)
         self.wait_cache(TreeEvent.NODE_ADDED)
 
-        with patch.object(cache, '_client'):  # disable any remote operation
+        with patch.object(cache, "_client"):  # disable any remote operation
             assert (
-                cache.get_children(self.path + '/foo/bar/baz') == frozenset()
+                cache.get_children(self.path + "/foo/bar/baz") == frozenset()
             )
-            assert (
-                cache.get_children(self.path + '/foo/bar')
-                == frozenset(['baz'])
+            assert cache.get_children(self.path + "/foo/bar") == frozenset(
+                ["baz"]
             )
-            assert cache.get_children(self.path + '/foo') == frozenset(['bar'])
-            assert cache.get_children(self.path) == frozenset(['foo'])
+            assert cache.get_children(self.path + "/foo") == frozenset(["bar"])
+            assert cache.get_children(self.path) == frozenset(["foo"])
 
     def test_get_data_out_of_tree(self):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
         with pytest.raises(ValueError):
-            self.cache.get_data('/out_of_tree')
+            self.cache.get_data("/out_of_tree")
 
     def test_get_children_out_of_tree(self):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
         with pytest.raises(ValueError):
-            self.cache.get_children('/out_of_tree')
+            self.cache.get_children("/out_of_tree")
 
     def test_get_data_no_node(self):
         cache = self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
 
-        with patch.object(cache, '_client'):  # disable any remote operation
-            assert cache.get_data(self.path + '/non_exists') is None
+        with patch.object(cache, "_client"):  # disable any remote operation
+            assert cache.get_data(self.path + "/non_exists") is None
 
     def test_get_children_no_node(self):
         cache = self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
 
-        with patch.object(cache, '_client'):  # disable any remote operation
-            assert cache.get_children(self.path + '/non_exists') is None
+        with patch.object(cache, "_client"):  # disable any remote operation
+            assert cache.get_children(self.path + "/non_exists") is None
 
     def test_session_reconnected(self):
         self.make_cache()
         self.wait_cache(since=TreeEvent.INITIALIZED)
 
-        self.client.create(self.path + '/foo')
+        self.client.create(self.path + "/foo")
         event = self.wait_cache(TreeEvent.NODE_ADDED)
-        assert event.event_data.path == self.path + '/foo'
+        assert event.event_data.path == self.path + "/foo"
 
-        with self.spy_client('get_async') as get_data:
-            with self.spy_client('get_children_async') as get_children:
+        with self.spy_client("get_async") as get_data:
+            with self.spy_client("get_children_async") as get_children:
                 # session suspended
                 self.lose_connection(self.client.handler.event_object)
                 self.wait_cache(TreeEvent.CONNECTION_SUSPENDED)
@@ -355,14 +354,14 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
                 # inspect in-memory nodes
                 _node_root = self.cache._root
-                _node_foo = self.cache._root._children['foo']
+                _node_foo = self.cache._root._children["foo"]
 
                 # make sure that all nodes are refreshed
                 get_data.assert_has_calls(
                     [
                         call(self.path, watch=_node_root._process_watch),
                         call(
-                            self.path + '/foo', watch=_node_foo._process_watch
+                            self.path + "/foo", watch=_node_foo._process_watch
                         ),
                     ],
                     any_order=True,
@@ -371,7 +370,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
                     [
                         call(self.path, watch=_node_root._process_watch),
                         call(
-                            self.path + '/foo', watch=_node_foo._process_watch
+                            self.path + "/foo", watch=_node_foo._process_watch
                         ),
                     ],
                     any_order=True,
@@ -385,7 +384,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         self.client.delete(self.path)
         event = self.wait_cache(TreeEvent.NODE_REMOVED)
         assert event.event_type == TreeEvent.NODE_REMOVED
-        assert event.event_data.data == b''
+        assert event.event_data.data == b""
         assert event.event_data.path == self.path
         assert event.event_data.stat.version == 0
 
@@ -393,19 +392,19 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         self.client.ensure_path(self.path)
         event = self.wait_cache(TreeEvent.NODE_ADDED)
         assert event.event_type == TreeEvent.NODE_ADDED
-        assert event.event_data.data == b''
+        assert event.event_data.data == b""
         assert event.event_data.path == self.path
         assert event.event_data.stat.version == 0
 
         assert self.cache._outstanding_ops >= 0, (
-            'unexpected outstanding ops %r' % self.cache._outstanding_ops
+            "unexpected outstanding ops %r" % self.cache._outstanding_ops
         )
 
     def test_exception_handler(self):
         error_value = FakeException()
         error_handler = Mock()
 
-        with patch.object(TreeNode, 'on_deleted') as on_deleted:
+        with patch.object(TreeNode, "on_deleted") as on_deleted:
             on_deleted.side_effect = [error_value]
 
             self.make_cache()
@@ -424,10 +423,10 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         self.client.handler.start()  # keep the async completion
         self.wait_cache(since=TreeEvent.CONNECTION_LOST)
 
-        with patch.object(TreeNode, 'on_created') as on_created:
-            self.cache._root._call_client('exists', '/')
-            self.cache._root._call_client('get', '/')
-            self.cache._root._call_client('get_children', '/')
+        with patch.object(TreeNode, "on_created") as on_created:
+            self.cache._root._call_client("exists", "/")
+            self.cache._root._call_client("get", "/")
+            self.cache._root._call_client("get_children", "/")
 
             self.wait_cache(since=TreeEvent.INITIALIZED)
             on_created.assert_not_called()

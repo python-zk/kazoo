@@ -11,7 +11,41 @@ on:
       - release/*
 
 jobs:
+  validate:
+    name: Code Validation
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Handle the code
+        uses: actions/checkout@v2
+
+      - name: "Set up Python 3.10"
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Handle pip cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install required dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install tox tox-wheel
+
+      - name: Code check
+        run: tox -e ${TOX_VENV}
+        env:
+          TOX_VENV: black,pep8
+
   test:
+    needs: [validate]
+
     name: >
       Test Python ${{ matrix.python-version }},
       ZK ${{ matrix.zk-version }}
@@ -21,18 +55,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", pypy-3.7]
-        zk-version: [3.4.14, 3.5.10, 3.6.3, 3.7.1]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "pypy-3.7"]
+        zk-version: ["3.4.14", "3.5.10", "3.6.3", "3.7.1"]
         include:
-          - python-version: 3.7
+          - python-version: "3.7"
             tox-env: py37
-          - python-version: 3.8
+          - python-version: "3.8"
             tox-env: py38
-          - python-version: 3.9
+          - python-version: "3.9"
             tox-env: py39
           - python-version: "3.10"
             tox-env: py310
-          - python-version: pypy-3.7
+          - python-version: "pypy-3.7"
             tox-env: pypy3
     steps:
       - name: Handle the code
@@ -62,7 +96,7 @@ jobs:
       - name: Install required dependencies
         run: |
           sudo apt-get -y install libevent-dev krb5-kdc krb5-admin-server libkrb5-dev
-          python -m pip install --upgrade pip
+          python3 -m pip install --upgrade pip
           pip install tox
 
       - name: Test with tox

@@ -17,8 +17,9 @@ class SlowLockMock:
     def __init__(self, client, lock, delay_time=None):
         self._client = client
         self._lock = lock
-        self.delay_time = self.default_delay_time \
-            if delay_time is None else delay_time
+        self.delay_time = (
+            self.default_delay_time if delay_time is None else delay_time
+        )
 
     def acquire(self, timeout=None):
         sleep = self._client.handler.sleep_func
@@ -85,8 +86,9 @@ class KazooPartitionerTests(KazooTestCase):
         self.__create_partitioner(size=3, identifier="2")
         self.__wait()
 
-        self.__assert_state(PartitionState.RELEASE,
-                            partitioners=self.__partitioners[:-1])
+        self.__assert_state(
+            PartitionState.RELEASE, partitioners=self.__partitioners[:-1]
+        )
         for partitioner in self.__partitioners[-1]:
             assert partitioner.state_change_event.is_set()
         self.__release(self.__partitioners[:-1])
@@ -137,8 +139,9 @@ class KazooPartitionerTests(KazooTestCase):
         self.__create_partitioner(identifier="2", size=3)
         self.__wait()
 
-        self.__assert_state(PartitionState.RELEASE,
-                            partitioners=self.__partitioners[:-1])
+        self.__assert_state(
+            PartitionState.RELEASE, partitioners=self.__partitioners[:-1]
+        )
         self.__release(partitioners=self.__partitioners[:-1])
         self.__wait_for_acquire()
         self.__assert_state(PartitionState.ACQUIRED)
@@ -214,8 +217,11 @@ class KazooPartitionerTests(KazooTestCase):
 
     def __create_partitioner(self, size, identifier=None):
         partitioner = self.client.SetPartitioner(
-            self.path, set=range(size), time_boundary=0.2,
-            identifier=identifier)
+            self.path,
+            set=range(size),
+            time_boundary=0.2,
+            identifier=identifier,
+        )
         self.__partitioners.append(partitioner)
         return partitioner
 
@@ -232,8 +238,9 @@ class KazooPartitionerTests(KazooTestCase):
 
     def __assert_partitions(self, *partitions):
         assert len(partitions) == len(self.__partitioners)
-        for partitioner, own_partitions in zip(self.__partitioners,
-                                               partitions):
+        for partitioner, own_partitions in zip(
+            self.__partitioners, partitions
+        ):
             assert list(partitioner) == own_partitions
 
     def __wait(self):

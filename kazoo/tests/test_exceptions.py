@@ -2,15 +2,16 @@ from unittest import TestCase
 
 import pytest
 
-class ExceptionsTestCase(TestCase):
 
+class ExceptionsTestCase(TestCase):
     def _get(self):
         from kazoo import exceptions
+
         return exceptions
 
     def test_backwards_alias(self):
         module = self._get()
-        assert hasattr(module, 'NoNodeException')
+        assert hasattr(module, "NoNodeException")
         assert module.NoNodeException is module.NoNodeError
 
     def test_exceptions_code(self):

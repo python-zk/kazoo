@@ -30,7 +30,10 @@ zookeeper/
 .project
 .pydevproject
 .tox
+venv
 /.settings
 /.metadata
 
 !.gitignore
+!.git-blame-ignore-revs
+
