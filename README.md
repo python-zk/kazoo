@@ -1,7 +1,7 @@
 Kazoo
 =====
 
-[![Build Status](https://travis-ci.org/python-zk/kazoo.svg?branch=master)](https://travis-ci.org/python-zk/kazoo)
+[![Kazoo Awesome Testing](https://github.com/python-zk/kazoo/actions/workflows/testing.yml/badge.svg?branch=master)](https://github.com/python-zk/kazoo/actions/workflows/testing.yml?query=branch%3Amaster)
 [![Latest Version](https://img.shields.io/pypi/v/kazoo.svg)](https://pypi.org/project/kazoo/)
 [![Reviewed by Hound](https://img.shields.io/badge/Reviewed_by-Hound-8E64B0.svg)](https://houndci.com)
 
