@@ -134,7 +134,7 @@ class Lock(object):
         self._retry = KazooRetry(
             max_tries=None, sleep_func=client.handler.sleep_func
         )
-        self._lock = client.handler.lock_object()
+        self._acquire_method_lock = client.handler.lock_object()
 
     def _ensure_path(self):
         self.client.ensure_path(self.path)
@@ -174,27 +174,17 @@ class Lock(object):
             The ephemeral option.
         """
 
-        def _acquire_lock():
-            got_it = self._lock.acquire(False)
-            if not got_it:
-                raise ForceRetryError()
-            return True
-
         retry = self._retry.copy()
         retry.deadline = timeout
 
         # Ensure we are locked so that we avoid multiple threads in
         # this acquistion routine at the same time...
-        locked = self._lock.acquire(False)
-        if not locked and not blocking:
+        method_locked = self._acquire_method_lock.acquire(
+            blocking=blocking, timeout=timeout if timeout is not None else -1
+        )
+        if not method_locked:
             return False
-        if not locked:
-            # Lock acquire doesn't take a timeout, so simulate it...
-            # XXX: This is not true in Py3 >= 3.2
-            try:
-                locked = retry(_acquire_lock)
-            except RetryFailedError:
-                return False
+
         already_acquired = self.is_acquired
         try:
             gotten = False
@@ -220,7 +210,7 @@ class Lock(object):
                 self._best_effort_cleanup()
             return gotten
         finally:
-            self._lock.release()
+            self._acquire_method_lock.release()
 
     def _watch_session(self, state):
         self.wake_event.set()
