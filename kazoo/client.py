@@ -1,10 +1,13 @@
 """Kazoo Zookeeper Client"""
+from __future__ import annotations
+
 from collections import defaultdict, deque
 from functools import partial
 import inspect
 import logging
 from os.path import split
 import re
+from typing import TYPE_CHECKING, overload
 import warnings
 
 from kazoo.exceptions import (
@@ -63,6 +66,20 @@ from kazoo.recipe.party import Party, ShallowParty
 from kazoo.recipe.queue import Queue, LockingQueue
 from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 
+if TYPE_CHECKING:
+    from typing import (
+        Any,
+        List,
+        Optional,
+        Sequence,
+        Tuple,
+        Union,
+        Callable,
+        Literal,
+    )
+    from kazoo.protocol.states import ZnodeStat
+
+    WatchListener = Callable[[WatchedEvent], None]
 
 CLOSED_STATES = (
     KeeperState.EXPIRED_SESSION,
