@@ -12,13 +12,13 @@ environments that use threads.
 """
 from __future__ import absolute_import
 
+import atexit
 import logging
 import queue
 import socket
 import threading
 import time
 
-import kazoo.python2atexit as python2atexit
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 
@@ -141,7 +141,7 @@ class SequentialThreadingHandler(object):
                 w = self._create_thread_worker(work_queue)
                 self._workers.append(w)
             self._running = True
-            python2atexit.register(self.stop)
+            atexit.register(self.stop)
 
     def stop(self):
         """Stop the worker threads and empty all queues."""
@@ -162,7 +162,7 @@ class SequentialThreadingHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()
             self.completion_queue = self.queue_impl()
-            python2atexit.unregister(self.stop)
+            atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return selector_select(*args, **kwargs)

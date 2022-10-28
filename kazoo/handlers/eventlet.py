@@ -1,6 +1,7 @@
 """A eventlet based handler."""
 from __future__ import absolute_import
 
+import atexit
 import contextlib
 import logging
 
@@ -12,7 +13,6 @@ from eventlet.green import selectors as green_selectors
 from eventlet import queue as green_queue
 
 from kazoo.handlers import utils
-import kazoo.python2atexit as python2atexit
 from kazoo.handlers.utils import selector_select
 
 LOG = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ class SequentialEventletHandler(object):
             w = eventlet.spawn(self._process_callback_queue)
             self._workers.append((w, self.callback_queue))
             self._started = True
-            python2atexit.register(self.stop)
+            atexit.register(self.stop)
 
     def stop(self):
         while self._workers:
@@ -148,7 +148,7 @@ class SequentialEventletHandler(object):
             q.put(_STOP)
             w.wait()
         self._started = False
-        python2atexit.unregister(self.stop)
+        atexit.unregister(self.stop)
 
     def socket(self, *args, **kwargs):
         return utils.create_tcp_socket(green_socket)

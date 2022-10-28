@@ -1,6 +1,7 @@
 """A gevent based handler."""
 from __future__ import absolute_import
 
+import atexit
 import logging
 
 import gevent
@@ -19,7 +20,6 @@ except ImportError:
     from gevent.coros import Semaphore, RLock
 
 from kazoo.handlers import utils
-from kazoo import python2atexit
 
 _using_libevent = gevent.__version__.startswith("0.")
 
@@ -104,7 +104,7 @@ class SequentialGeventHandler(object):
             for queue in (self.callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
-            python2atexit.register(self.stop)
+            atexit.register(self.stop)
 
     def stop(self):
         """Stop the greenlet workers and empty all queues."""
@@ -124,7 +124,7 @@ class SequentialGeventHandler(object):
             # Clear the queues
             self.callback_queue = self.queue_impl()  # pragma: nocover
 
-            python2atexit.unregister(self.stop)
+            atexit.unregister(self.stop)
 
     def select(self, *args, **kwargs):
         return selector_select(
