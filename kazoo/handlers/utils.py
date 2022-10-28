@@ -1,21 +1,14 @@
 """Kazoo handler helpers"""
 
+from collections import defaultdict
 import errno
 import functools
 import os
 import select
+import selectors
 import ssl
 import socket
 import time
-
-from collections import defaultdict
-
-import six
-
-if six.PY34:
-    import selectors
-else:
-    import selectors2 as selectors
 
 HAS_FNCTL = True
 try:
@@ -363,14 +356,9 @@ def selector_select(
 ):
     """Selector-based drop-in replacement for select to overcome select
     limitation on a maximum filehandle value.
-
-    Need backport selectors2 package in python 2.
     """
     if timeout is not None:
-        if not (
-            isinstance(timeout, six.integer_types)
-            or isinstance(timeout, float)
-        ):
+        if not isinstance(timeout, (int, float)):
             raise TypeError("timeout must be a number")
         if timeout < 0:
             raise ValueError("timeout must be non-negative")
@@ -400,9 +388,9 @@ def selector_select(
 
     for info in ready:
         k, events = info
-        if events & selectors.EVENT_READ:
+        if events & selectors_module.EVENT_READ:
             revents.extend(fd_fileobjs[k.fd])
-        elif events & selectors.EVENT_WRITE:
+        elif events & selectors_module.EVENT_WRITE:
             wevents.extend(fd_fileobjs[k.fd])
 
     return revents, wevents, xevents
