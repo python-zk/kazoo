@@ -190,12 +190,12 @@ class Lock(object):
                 )
             except RetryFailedError:
                 pass
-            except KazooException as ex:
+            except KazooException:
                 # if we did ultimately fail, attempt to clean up
                 if not already_acquired:
                     self._best_effort_cleanup()
                     self.cancelled = False
-                raise ex
+                raise
             if gotten:
                 self.is_acquired = gotten
             if not gotten and not already_acquired:

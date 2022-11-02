@@ -806,11 +806,11 @@ class ConnectionHandler(object):
             try:
                 response = sasl_cli.process(challenge=challenge)
             except puresasl.SASLError as err:
-                raise SASLException("library error: %s" % err) from err
-            except puresasl.SASLProtocolException as err:
-                raise AuthFailedError("protocol error: %s" % err) from err
-            except Exception as err:
-                raise AuthFailedError("Unknown error: %s" % err) from err
+                raise SASLException("library error") from err
+            except puresasl.SASLProtocolException as exc:
+                raise AuthFailedError("protocol error") from exc
+            except Exception as exc:
+                raise AuthFailedError("Unknown error") from exc
 
             if sasl_cli.complete and not response:
                 break
@@ -824,9 +824,9 @@ class ConnectionHandler(object):
 
             try:
                 header, buffer, offset = self._read_header(timeout)
-            except ConnectionDropped as ex:
+            except ConnectionDropped as exc:
                 # Zookeeper simply drops connections with failed authentication
-                raise AuthFailedError("Connection dropped in SASL") from ex
+                raise AuthFailedError("Connection dropped in SASL") from exc
 
             if header.xid != xid:
                 raise RuntimeError(
