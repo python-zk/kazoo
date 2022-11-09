@@ -16,12 +16,10 @@ import contextlib
 import functools
 import logging
 import operator
-import os
 
 from kazoo.exceptions import NoNodeError, KazooException
-from kazoo.protocol.paths import _prefix_root
+from kazoo.protocol.paths import _prefix_root, join as kazoo_join
 from kazoo.protocol.states import KazooState, EventType
-
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +334,7 @@ class TreeNode(object):
             if result.successful():
                 children = result.get()
                 for child in sorted(children):
-                    full_path = os.path.join(path, child)
+                    full_path = kazoo_join(path, child)
                     if child not in self._children:
                         node = TreeNode(self._tree, full_path, self)
                         self._children[child] = node
