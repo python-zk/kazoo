@@ -1,4 +1,5 @@
 """A gevent based handler."""
+
 from __future__ import absolute_import
 
 import atexit
@@ -14,7 +15,10 @@ import gevent.selectors
 
 from kazoo.handlers.utils import selector_select
 
-from gevent.lock import Semaphore, RLock
+from gevent.lock import (
+    BoundedSemaphore as Semaphore,
+    RLock as RLock,
+)
 
 from kazoo.handlers import utils
 
@@ -52,6 +56,7 @@ class SequentialGeventHandler(object):
     queue_impl = gevent.queue.Queue
     queue_empty = gevent.queue.Empty
     sleep_func = staticmethod(gevent.sleep)
+    semaphore_impl = Semaphore
 
     def __init__(self):
         """Create a :class:`SequentialGeventHandler` instance"""
