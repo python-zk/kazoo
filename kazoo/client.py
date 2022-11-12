@@ -73,10 +73,17 @@ from kazoo.security import ACL, OPEN_ACL_UNSAFE
 
 if TYPE_CHECKING:
     from types import TracebackType
+    from typing import Annotated
 
     from kazoo.handlers.gevent import SequentialGeventHandler
     from kazoo.interfaces import IAsyncResult, IHandler
     from kazoo.protocol.states import ZnodeStat
+
+    class _Gt:
+        def __init__(self, gt: int) -> None:
+            self.gt = gt
+
+    PositiveInt = Annotated[int, _Gt(0)]
 
 
 ENVI_VERSION = re.compile(r"([\d\.]*).*", re.DOTALL)
@@ -161,6 +168,7 @@ class KazooClient:
         use_ssl: bool = False,
         verify_certs: bool = True,
         check_hostname: bool = False,
+        concurrent_request_limit: PositiveInt | None = None,
     ) -> None: ...
 
     # FIXME This should be deprecated then killed
@@ -191,6 +199,7 @@ class KazooClient:
         use_ssl: bool = False,
         verify_certs: bool = True,
         check_hostname: bool = False,
+        concurrent_request_limit: PositiveInt | None = None,
         **kwargs: Unpack[LegacyRetryParams],
     ) -> None: ...
 
@@ -215,6 +224,7 @@ class KazooClient:
         use_ssl: bool = False,
         verify_certs: bool = True,
         check_hostname: bool = False,
+        concurrent_request_limit: PositiveInt | None = None,
         **kwargs: Unpack[LegacyRetryParams],
     ) -> None:
         """Create a :class:`KazooClient` instance. All time arguments
@@ -279,6 +289,10 @@ class KazooClient:
             certs verification
         :param check_hostname: when using SSL, check the hostname
             against the hostname in the cert
+        :param concurrent_request_limit:
+            Maximum number of concurrent in-flight requests permitted on the
+            connection to the ZooKeeper server. If None (the default) or
+            non-positive, rate limiting is disabled.
 
         Basic Example:
 
@@ -350,6 +364,20 @@ class KazooClient:
         self.keyfile = keyfile
         self.keyfile_password = keyfile_password
         self.ca = ca
+        if (
+            concurrent_request_limit is not None
+            and concurrent_request_limit <= 0
+        ):
+            raise ConfigurationError(
+                "concurrent_request_limit must be greater than 0"
+            )
+        self.concurrent_request_limit = concurrent_request_limit
+        if concurrent_request_limit is not None:
+            self.logger.debug(
+                "Zookeeper client rate-limited to %d concurrent requests",
+                concurrent_request_limit,
+            )
+
         # Curator like simplified state tracking, and listeners for
         # state transitions
         self._state: KeeperState = KeeperState.CLOSED
