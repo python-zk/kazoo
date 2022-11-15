@@ -7,15 +7,26 @@ A Zookeeper pool of party members. The :class:`Party` object can be
 used for determining members of a party.
 
 """
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 import uuid
 
 from kazoo.exceptions import NodeExistsError, NoNodeError
 
+if TYPE_CHECKING:
+    from typing import Generator, List, Optional
 
-class BaseParty(object):
+    from kazoo.client import KazooClient
+
+
+class BaseParty(ABC):
     """Base implementation of a party."""
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(
+        self, client: KazooClient, path: str, identifier: Optional[str] = None
+    ):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The party path to use.
@@ -29,17 +40,17 @@ class BaseParty(object):
         self.ensured_path = False
         self.participating = False
 
-    def _ensure_parent(self):
+    def _ensure_parent(self) -> None:
         if not self.ensured_path:
             # make sure our parent node exists
             self.client.ensure_path(self.path)
             self.ensured_path = True
 
-    def join(self):
+    def join(self) -> None:
         """Join the party"""
         return self.client.retry(self._inner_join)
 
-    def _inner_join(self):
+    def _inner_join(self) -> None:
         self._ensure_parent()
         try:
             self.client.create(self.create_path, self.data, ephemeral=True)
@@ -49,25 +60,30 @@ class BaseParty(object):
             # suspended connection
             self.participating = True
 
-    def leave(self):
+    def leave(self) -> bool:
         """Leave the party"""
         self.participating = False
         return self.client.retry(self._inner_leave)
 
-    def _inner_leave(self):
+    def _inner_leave(self) -> bool:
         try:
             self.client.delete(self.create_path)
         except NoNodeError:
             return False
         return True
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return a count of participating clients"""
         self._ensure_parent()
         return len(self._get_children())
 
-    def _get_children(self):
+    def _get_children(self) -> List[str]:
         return self.client.retry(self.client.get_children, self.path)
+
+    @property
+    @abstractmethod
+    def create_path(self) -> str:
+        ...
 
 
 class Party(BaseParty):
@@ -75,12 +91,18 @@ class Party(BaseParty):
 
     _NODE_NAME = "__party__"
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(
+        self, client: KazooClient, path: str, identifier: Optional[str] = None
+    ):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = uuid.uuid4().hex + self._NODE_NAME
-        self.create_path = self.path + "/" + self.node
+        self._create_path = self.path + "/" + self.node
 
-    def __iter__(self):
+    @property
+    def create_path(self) -> str:
+        return self._create_path
+
+    def __iter__(self) -> Generator[str, None, None]:
         """Get a list of participating clients' data values"""
         self._ensure_parent()
         children = self._get_children()
@@ -93,7 +115,7 @@ class Party(BaseParty):
             except NoNodeError:  # pragma: nocover
                 pass
 
-    def _get_children(self):
+    def _get_children(self) -> List[str]:
         children = BaseParty._get_children(self)
         return [c for c in children if self._NODE_NAME in c]
 
@@ -109,12 +131,18 @@ class ShallowParty(BaseParty):
 
     """
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(
+        self, client: KazooClient, path: str, identifier: Optional[str] = None
+    ):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = "-".join([uuid.uuid4().hex, self.data.decode("utf-8")])
-        self.create_path = self.path + "/" + self.node
+        self._create_path = self.path + "/" + self.node
 
-    def __iter__(self):
+    @property
+    def create_path(self) -> str:
+        return self._create_path
+
+    def __iter__(self) -> Generator[str, None, None]:
         """Get a list of participating clients' identifiers"""
         self._ensure_parent()
         children = self._get_children()

@@ -68,6 +68,7 @@ from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 
 if TYPE_CHECKING:
     from typing import (
+        Any,
         List,
         Optional,
         Sequence,
@@ -284,7 +285,7 @@ class KazooClient(object):
         self._stopped.set()
         self._writer_stopped.set()
 
-        self.retry = self._conn_retry = None
+        _retry = self._conn_retry = None
 
         if type(connection_retry) is dict:
             self._conn_retry = KazooRetry(**connection_retry)
@@ -292,9 +293,9 @@ class KazooClient(object):
             self._conn_retry = connection_retry
 
         if type(command_retry) is dict:
-            self.retry = KazooRetry(**command_retry)
+            _retry = KazooRetry(**command_retry)
         elif type(command_retry) is KazooRetry:
-            self.retry = command_retry
+            _retry = command_retry
 
         if type(self._conn_retry) is KazooRetry:
             if self.handler.sleep_func != self._conn_retry.sleep_func:
@@ -303,14 +304,14 @@ class KazooClient(object):
                     " must use the same sleep func"
                 )
 
-        if type(self.retry) is KazooRetry:
-            if self.handler.sleep_func != self.retry.sleep_func:
+        if type(_retry) is KazooRetry:
+            if self.handler.sleep_func != _retry.sleep_func:
                 raise ConfigurationError(
                     "Command retry handler and event handler "
                     "must use the same sleep func"
                 )
 
-        if self.retry is None or self._conn_retry is None:
+        if _retry is None or self._conn_retry is None:
             old_retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
             for key in old_retry_keys:
                 try:
@@ -326,7 +327,7 @@ class KazooClient(object):
                 except KeyError:
                     pass
 
-            retry_keys = {}
+            retry_keys: Any = {}
             for oldname, value in old_retry_keys.items():
                 retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
 
@@ -334,8 +335,8 @@ class KazooClient(object):
                 self._conn_retry = KazooRetry(
                     sleep_func=self.handler.sleep_func, **retry_keys
                 )
-            if self.retry is None:
-                self.retry = KazooRetry(
+            if _retry is None:
+                _retry = KazooRetry(
                     sleep_func=self.handler.sleep_func, **retry_keys
                 )
 
@@ -380,14 +381,7 @@ class KazooClient(object):
             sasl_options=sasl_options,
         )
 
-        # Every retry call should have its own copy of the retry helper
-        # to avoid shared retry counts
-        self._retry = self.retry
-
-        def _retry(*args, **kwargs):
-            return self._retry.copy()(*args, **kwargs)
-
-        self.retry = _retry
+        self._retry = _retry
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
@@ -413,6 +407,12 @@ class KazooClient(object):
                 "__init__() got unexpected keyword arguments: %s"
                 % (kwargs.keys(),)
             )
+
+    @property
+    def retry(self) -> KazooRetry:
+        # Every retry call should have its own copy of the retry helper
+        # to avoid shared retry counts
+        return self._retry.copy()
 
     def _reset(self):
         """Resets a variety of client states for a new connection."""

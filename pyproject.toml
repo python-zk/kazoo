@@ -104,7 +104,6 @@ module = [
     'kazoo.recipe.cache',
     'kazoo.recipe.lock',
     'kazoo.recipe.partitioner',
-    'kazoo.recipe.party',
     'kazoo.recipe.queue',
     'kazoo.recipe.watchers',
     'kazoo.retry',
