@@ -103,7 +103,6 @@ module = [
     'kazoo.protocol.states',
     'kazoo.recipe.barrier',
     'kazoo.recipe.cache',
-    'kazoo.recipe.counter',
     'kazoo.recipe.lock',
     'kazoo.recipe.partitioner',
     'kazoo.recipe.party',

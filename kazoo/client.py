@@ -1139,7 +1139,7 @@ class KazooClient(object):
             raise async_result.exception
         return async_result
 
-    def ensure_path(self, path, acl=None):
+    def ensure_path(self, path: str, acl: Optional[List[ACL]] = None) -> bool:
         """Recursively create a path if it doesn't exist.
 
         :param path: Path of node.
@@ -1228,7 +1228,9 @@ class KazooClient(object):
         )
         return async_result
 
-    def get(self, path, watch=None):
+    def get(
+        self, path: str, watch: Optional[WatchListener] = None
+    ) -> Tuple[bytes, ZnodeStat]:
         """Get the value of a node.
 
         If a watch is provided, it will be left on the node with the
@@ -1417,7 +1419,7 @@ class KazooClient(object):
         )
         return async_result
 
-    def set(self, path, value, version=-1):
+    def set(self, path: str, value: bytes, version: int = -1) -> ZnodeStat:
         """Set the value of a node.
 
         If the version of the node being updated is newer than the
