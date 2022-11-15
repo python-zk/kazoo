@@ -101,7 +101,6 @@ module = [
     'kazoo.protocol.paths',
     'kazoo.protocol.serialization',
     'kazoo.protocol.states',
-    'kazoo.recipe.barrier',
     'kazoo.recipe.cache',
     'kazoo.recipe.lock',
     'kazoo.recipe.partitioner',

@@ -68,7 +68,6 @@ from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 
 if TYPE_CHECKING:
     from typing import (
-        Any,
         List,
         Optional,
         Sequence,
@@ -927,14 +926,14 @@ class KazooClient(object):
 
     def create(
         self,
-        path,
-        value=b"",
-        acl=None,
-        ephemeral=False,
-        sequence=False,
-        makepath=False,
-        include_data=False,
-    ):
+        path: str,
+        value: bytes = b"",
+        acl: Optional[Sequence[ACL]] = None,
+        ephemeral: bool = False,
+        sequence: bool = False,
+        makepath: bool = False,
+        include_data: bool = False,
+    ) -> Union[str, Tuple[str, ZnodeStat]]:
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
 
@@ -1188,7 +1187,9 @@ class KazooClient(object):
 
         return async_result
 
-    def exists(self, path, watch=None):
+    def exists(
+        self, path: str, watch: Optional[WatchListener] = None
+    ) -> Optional[ZnodeStat]:
         """Check if a node exists.
 
         If a watch is provided, it will be left on the node with the
@@ -1273,7 +1274,53 @@ class KazooClient(object):
         )
         return async_result
 
-    def get_children(self, path, watch=None, include_data=False):
+    @overload
+    def get_children(
+        self,
+        path: str,
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(
+        self,
+        path: str,
+        watch: WatchListener,
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(
+        self,
+        path: str,
+        watch: Optional[WatchListener],
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(
+        self,
+        path: str,
+        watch: Optional[WatchListener],
+        include_data: Literal[True],
+    ) -> List[Tuple[str, ZnodeStat]]:
+        ...
+
+    @overload
+    def get_children(
+        self,
+        path: str,
+        watch: Optional[WatchListener] = None,
+        include_data: Literal[False] = False,
+    ) -> List[str]:
+        ...
+
+    def get_children(
+        self,
+        path: str,
+        watch: Optional[WatchListener] = None,
+        include_data: bool = False,
+    ) -> Union[List[Tuple[str, ZnodeStat]], List[str]]:
         """Get a list of child nodes of a path.
 
         If a watch is provided it will be left on the node with the
@@ -1492,7 +1539,9 @@ class KazooClient(object):
         """
         return TransactionRequest(self)
 
-    def delete(self, path, version=-1, recursive=False):
+    def delete(
+        self, path: str, version: int = -1, recursive: bool = False
+    ) -> Optional[bool]:
         """Delete a node.
 
         The call will succeed if such a node exists, and the given
