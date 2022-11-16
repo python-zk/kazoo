@@ -14,10 +14,7 @@ import gevent.selectors
 
 from kazoo.handlers.utils import selector_select
 
-try:
-    from gevent.lock import Semaphore, RLock
-except ImportError:
-    from gevent.coros import Semaphore, RLock
+from gevent.lock import Semaphore, RLock
 
 from kazoo.handlers import utils
 
