@@ -116,6 +116,10 @@ class KazooRetry:
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
+    @property
+    def cur_delay(self) -> float:
+        return self._cur_delay
+
     def __call__(
         self,
         func: Callable[..., RETRY_RETURN],
