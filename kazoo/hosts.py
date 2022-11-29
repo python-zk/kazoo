@@ -1,4 +1,4 @@
-from six.moves import urllib_parse
+import urllib.parse
 
 
 def collect_hosts(hosts):
@@ -20,7 +20,7 @@ def collect_hosts(hosts):
     for host_port in host_ports:
         # put all complexity of dealing with
         # IPv4 & IPv6 address:port on the urlsplit
-        res = urllib_parse.urlsplit("xxx://" + host_port)
+        res = urllib.parse.urlsplit("xxx://" + host_port)
         host = res.hostname
         if host is None:
             raise ValueError("bad hostname")

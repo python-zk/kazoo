@@ -2,8 +2,6 @@
 from collections import namedtuple
 import struct
 
-import six
-
 from kazoo.exceptions import EXCEPTIONS
 from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL
@@ -367,7 +365,7 @@ class Transaction(namedtuple("Transaction", "operations")):
     def unchroot(client, response):
         resp = []
         for result in response:
-            if isinstance(result, six.string_types):
+            if isinstance(result, str):
                 resp.append(client.unchroot(result))
             else:
                 resp.append(result)

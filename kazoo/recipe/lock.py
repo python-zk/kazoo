@@ -15,15 +15,8 @@ and/or the lease has been lost.
 
 """
 import re
-import sys
-
-try:
-    from time import monotonic as now
-except ImportError:
-    from time import time as now
+import time
 import uuid
-
-import six
 
 from kazoo.exceptions import (
     CancelledError,
@@ -45,13 +38,13 @@ class _Watch(object):
         self.started_at = None
 
     def start(self):
-        self.started_at = now()
+        self.started_at = time.monotonic()
 
     def leftover(self):
         if self.duration is None:
             return None
         else:
-            elapsed = now() - self.started_at
+            elapsed = time.monotonic() - self.started_at
             return max(0, self.duration - elapsed)
 
 
@@ -199,11 +192,10 @@ class Lock(object):
                 pass
             except KazooException:
                 # if we did ultimately fail, attempt to clean up
-                exc_info = sys.exc_info()
                 if not already_acquired:
                     self._best_effort_cleanup()
                     self.cancelled = False
-                six.reraise(exc_info[0], exc_info[1], exc_info[2])
+                raise
             if gotten:
                 self.is_acquired = gotten
             if not gotten and not already_acquired:

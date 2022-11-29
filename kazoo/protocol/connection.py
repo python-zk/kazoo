@@ -10,8 +10,6 @@ import ssl
 import sys
 import time
 
-import six
-
 from kazoo.exceptions import (
     AuthFailedError,
     ConnectionDropped,
@@ -808,23 +806,11 @@ class ConnectionHandler(object):
             try:
                 response = sasl_cli.process(challenge=challenge)
             except puresasl.SASLError as err:
-                six.reraise(
-                    SASLException,
-                    SASLException("library error: %s" % err),
-                    sys.exc_info()[2],
-                )
-            except puresasl.SASLProtocolException as err:
-                six.reraise(
-                    AuthFailedError,
-                    AuthFailedError("protocol error: %s" % err),
-                    sys.exc_info()[2],
-                )
-            except Exception as err:
-                six.reraise(
-                    AuthFailedError,
-                    AuthFailedError("Unknown error: %s" % err),
-                    sys.exc_info()[2],
-                )
+                raise SASLException("library error") from err
+            except puresasl.SASLProtocolException as exc:
+                raise AuthFailedError("protocol error") from exc
+            except Exception as exc:
+                raise AuthFailedError("Unknown error") from exc
 
             if sasl_cli.complete and not response:
                 break
@@ -838,13 +824,9 @@ class ConnectionHandler(object):
 
             try:
                 header, buffer, offset = self._read_header(timeout)
-            except ConnectionDropped:
+            except ConnectionDropped as exc:
                 # Zookeeper simply drops connections with failed authentication
-                six.reraise(
-                    AuthFailedError,
-                    AuthFailedError("Connection dropped in SASL"),
-                    sys.exc_info()[2],
-                )
+                raise AuthFailedError("Connection dropped in SASL") from exc
 
             if header.xid != xid:
                 raise RuntimeError(

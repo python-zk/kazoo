@@ -7,8 +7,6 @@ from os.path import split
 import re
 import warnings
 
-import six
-
 from kazoo.exceptions import (
     AuthFailedError,
     ConfigurationError,
@@ -65,9 +63,6 @@ from kazoo.recipe.party import Party, ShallowParty
 from kazoo.recipe.queue import Queue, LockingQueue
 from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 
-
-string_types = six.string_types
-bytes_types = (six.binary_type,)
 
 CLOSED_STATES = (
     KeeperState.EXPIRED_SESSION,
@@ -415,10 +410,10 @@ class KazooClient(object):
 
     def _reset_watchers(self):
         watchers = []
-        for child_watchers in six.itervalues(self._child_watchers):
+        for child_watchers in self._child_watchers.values():
             watchers.extend(child_watchers)
 
-        for data_watchers in six.itervalues(self._data_watchers):
+        for data_watchers in self._data_watchers.values():
             watchers.extend(data_watchers)
 
         self._child_watchers = defaultdict(set)
@@ -821,7 +816,7 @@ class KazooClient(object):
         version = _try_fetch()
         if _is_valid(version):
             return version
-        for _i in six.moves.range(0, retries):
+        for _i in range(0, retries):
             version = _try_fetch()
             if _is_valid(version):
                 return version
@@ -854,9 +849,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(scheme, string_types):
+        if not isinstance(scheme, str):
             raise TypeError("Invalid type for 'scheme' (string expected)")
-        if not isinstance(credential, string_types):
+        if not isinstance(credential, str):
             raise TypeError("Invalid type for 'credential' (string expected)")
 
         # we need this auth data to re-authenticate on reconnect
@@ -1034,7 +1029,7 @@ class KazooClient(object):
         if acl is None and self.default_acl:
             acl = self.default_acl
 
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if acl and (
             isinstance(acl, ACL) or not isinstance(acl, (tuple, list))
@@ -1042,7 +1037,7 @@ class KazooClient(object):
             raise TypeError(
                 "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
             )
-        if value is not None and not isinstance(value, bytes_types):
+        if value is not None and not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(ephemeral, bool):
             raise TypeError("Invalid type for 'ephemeral' (bool expected)")
@@ -1205,7 +1200,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
             raise TypeError("Invalid type for 'watch' (must be a callable)")
@@ -1248,7 +1243,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
             raise TypeError("Invalid type for 'watch' (must be a callable)")
@@ -1304,7 +1299,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if watch and not callable(watch):
             raise TypeError("Invalid type for 'watch' (must be a callable)")
@@ -1346,7 +1341,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
 
         async_result = self.handler.async_result()
@@ -1389,7 +1384,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if isinstance(acls, ACL) or not isinstance(acls, (tuple, list)):
             raise TypeError(
@@ -1447,9 +1442,9 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
-        if value is not None and not isinstance(value, bytes_types):
+        if value is not None and not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
@@ -1523,7 +1518,7 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
@@ -1632,11 +1627,11 @@ class KazooClient(object):
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
 
         """
-        if joining and not isinstance(joining, string_types):
+        if joining and not isinstance(joining, str):
             raise TypeError("Invalid type for 'joining' (string expected)")
-        if leaving and not isinstance(leaving, string_types):
+        if leaving and not isinstance(leaving, str):
             raise TypeError("Invalid type for 'leaving' (string expected)")
-        if new_members and not isinstance(new_members, string_types):
+        if new_members and not isinstance(new_members, str):
             raise TypeError(
                 "Invalid type for 'new_members' (string " "expected)"
             )
@@ -1690,13 +1685,13 @@ class TransactionRequest(object):
         if acl is None and self.client.default_acl:
             acl = self.client.default_acl
 
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if acl and not isinstance(acl, (tuple, list)):
             raise TypeError(
                 "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
             )
-        if not isinstance(value, bytes_types):
+        if not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(ephemeral, bool):
             raise TypeError("Invalid type for 'ephemeral' (bool expected)")
@@ -1722,7 +1717,7 @@ class TransactionRequest(object):
         `recursive`.
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
@@ -1733,9 +1728,9 @@ class TransactionRequest(object):
         arguments as :meth:`KazooClient.set`.
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
-        if not isinstance(value, bytes_types):
+        if not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
@@ -1750,7 +1745,7 @@ class TransactionRequest(object):
         does not match the specified version.
 
         """
-        if not isinstance(path, string_types):
+        if not isinstance(path, str):
             raise TypeError("Invalid type for 'path' (string expected)")
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
