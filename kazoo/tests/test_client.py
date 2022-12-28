@@ -256,6 +256,8 @@ class TestAuthentication(KazooTestCase):
         with pytest.raises(AuthFailedError):
             client.add_auth("unknown-scheme", digest_auth)
 
+        client.stop()
+
     def test_add_auth_on_reconnect(self):
         client = self._get_client()
         client.start()
