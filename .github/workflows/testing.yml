@@ -36,7 +36,7 @@ jobs:
       - name: Install required dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install tox tox-wheel
+          pip install tox
 
       - name: Code check
         run: tox -e ${TOX_VENV}
