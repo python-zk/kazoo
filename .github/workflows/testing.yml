@@ -110,4 +110,4 @@ jobs:
           ZOOKEEPER_LIB: "${{ !contains(matrix.zk-version, '3.4') && 'lib' || '' }}"
 
       - name: Publish Codecov report
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
