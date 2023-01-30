@@ -3,11 +3,11 @@ import os
 import threading
 import time
 import uuid
+from unittest.mock import patch
 import struct
 import sys
 
 import pytest
-import mock
 
 from kazoo.exceptions import ConnectionLoss
 from kazoo.protocol.serialization import (
@@ -160,7 +160,7 @@ class TestConnectionHandler(KazooTestCase):
         # continues to retry. This partially reproduces a rare bug seen
         # in production.
 
-        with mock.patch.object(Connect, "deserialize") as mock_deserialize:
+        with patch.object(Connect, "deserialize") as mock_deserialize:
             mock_deserialize.side_effect = bad_deserialize
             try:
                 handler.select = delayed_select

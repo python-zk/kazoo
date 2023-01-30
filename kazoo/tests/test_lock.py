@@ -1,7 +1,7 @@
 import collections
-import mock
 import threading
 import unittest
+from unittest.mock import MagicMock
 import uuid
 
 import pytest
@@ -803,7 +803,7 @@ class TestSequence(unittest.TestCase):
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]
-        client = mock.MagicMock()
+        client = MagicMock()
         client.get_children.return_value = children
         lock = Lock(client, "test")
         assert lock._get_predecessor(pyLock) is None
@@ -815,7 +815,7 @@ class TestSequence(unittest.TestCase):
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]
-        client = mock.MagicMock()
+        client = MagicMock()
         client.get_children.return_value = children
         lock = Lock(client, "test", extra_lock_patterns=["-lock-"])
         assert lock._get_predecessor(pyLock) == goLock

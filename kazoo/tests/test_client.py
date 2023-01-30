@@ -4,9 +4,8 @@ import threading
 import time
 import uuid
 import unittest
+from unittest.mock import Mock, MagicMock, patch
 
-import mock
-from mock import patch
 import pytest
 
 from kazoo.testing import KazooTestCase
@@ -479,7 +478,7 @@ class TestClient(KazooTestCase):
             "zookeeper.version=1.",
             "zookeeper.ver",
         ]
-        client.command = mock.MagicMock()
+        client.command = MagicMock()
         client.command.side_effect = side_effects
         with pytest.raises(KazooException):
             client.server_version(retries=len(side_effects) - 1)
@@ -490,7 +489,7 @@ class TestClient(KazooTestCase):
         side_effects = []
         for i in range(0, len(actual_version) + 1):
             side_effects.append(actual_version[0:i])
-        client.command = mock.MagicMock()
+        client.command = MagicMock()
         client.command.side_effect = side_effects
         assert client.server_version(retries=len(side_effects) - 1) == (1, 2)
 
@@ -1343,7 +1342,7 @@ class TestSessionCallbacks(unittest.TestCase):
 class TestCallbacks(KazooTestCase):
     def test_async_result_callbacks_are_always_called(self):
         # create a callback object
-        callback_mock = mock.Mock()
+        callback_mock = Mock()
 
         # simulate waiting for a response
         async_result = self.client.handler.async_result()

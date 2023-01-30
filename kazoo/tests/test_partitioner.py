@@ -1,8 +1,7 @@
 import uuid
 import threading
 import time
-
-import mock
+from unittest.mock import patch
 
 from kazoo.exceptions import LockTimeout
 from kazoo.testing import KazooTestCase
@@ -154,7 +153,7 @@ class KazooPartitionerTests(KazooTestCase):
             lock = locks.setdefault(path, self.client.handler.lock_object())
             return SlowLockMock(self.client, lock)
 
-        with mock.patch.object(self.client, "Lock", side_effect=get_lock):
+        with patch.object(self.client, "Lock", side_effect=get_lock):
             # Create first partitioner. It will start to acquire the set
             # members.
             self.__create_partitioner(identifier="0", size=2)
@@ -192,7 +191,7 @@ class KazooPartitionerTests(KazooTestCase):
 
             return SlowLockMock(self.client, lock, delay_time=delay_time)
 
-        with mock.patch.object(self.client, "Lock", side_effect=get_lock):
+        with patch.object(self.client, "Lock", side_effect=get_lock):
             # Create first partitioner. It will start to acquire the set
             # members.
             self.__create_partitioner(identifier="0", size=2)
