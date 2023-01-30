@@ -41,7 +41,7 @@ jobs:
       - name: Code check
         run: tox -e ${TOX_VENV}
         env:
-          TOX_VENV: black,pep8
+          TOX_VENV: black,pep8,mypy
 
   test:
     needs: [validate]
