@@ -23,4 +23,4 @@ Project](http://www.nimbusproject.org/) and through collaboration with
 the open-source community has been merged with code from
 [Mozilla](http://www.mozilla.org/) and the [Zope
 Corporation](http://zope.com/). It has since gathered an active
-community of over fifty contributors.
+community of over one hundred contributors.
