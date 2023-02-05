@@ -225,7 +225,7 @@ def create_tcp_connection(
 
         if use_ssl:
             # Disallow use of SSLv2 and V3 (meaning we require TLSv1.0+)
-            context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
             if options is not None:
                 context.options = options
@@ -238,15 +238,17 @@ def create_tcp_connection(
 
             # Load default CA certs
             context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+            # We must set check_hostname to False prior to setting
+            # verify_mode to CERT_NONE.
+            # TODO: Make hostname verification configurable as some users may
+            # elect to use it.
+            context.check_hostname = False
             context.verify_mode = (
-                ssl.CERT_OPTIONAL if verify_certs else ssl.CERT_NONE
+                ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
             )
             if ca:
                 context.load_verify_locations(ca)
             if certfile and keyfile:
-                context.verify_mode = (
-                    ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
-                )
                 context.load_cert_chain(
                     certfile=certfile,
                     keyfile=keyfile,
