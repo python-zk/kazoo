@@ -1,22 +1,56 @@
 name: Kazoo Awesome Release
 
 on:
+  workflow_call:
+    inputs:
+      TAG_BUILD:
+        description: 'The egg info tag build (will be appended to `kazoo.version` value)'
+        default: ""
+        required: false
+        type: string
+      USE_TEST_PYPI:
+        description: 'Whether to the use the TestPyPI repository or not'
+        default: false
+        required: false
+        type: boolean
+      PYTHON_VERSION:
+        description: 'The Python version to use to perform the steps'
+        default: ""
+        required: true
+        type: string
+    secrets:
+      TEST_PYPI_API_TOKEN:
+        required: false
+      PYPI_API_TOKEN:
+        required: false
   push:
     tags:
       - '*'
 
+env:
+  DEFAULT_TOOLING_PYTHON_VERSION: "3.10"
+
 jobs:
   build-and-release:
-    name: Build and release Kazoo to Pypi
+    name: Build and release Kazoo to PyPI
     runs-on: ubuntu-latest
     steps:
+
+    # this is to handle the on:push:tags case, to which it is not possible to set
+    # default values
+    - name: Maybe set default vars
+      id: thevars
+      run: |
+        DEFINED_PYTHON_VERSION=${{ inputs.PYTHON_VERSION }}
+        echo "PYTHON_VERSION=${DEFINED_PYTHON_VERSION:-"${{ env.DEFAULT_TOOLING_PYTHON_VERSION }}"}" >> $GITHUB_OUTPUT
+
     - name: Handle the code
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.10
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: ${{ steps.thevars.outputs.PYTHON_VERSION }}
 
     - name: Install pypa/build
       run: >-
@@ -29,15 +63,22 @@ jobs:
       run: >-
         python -m
         build
-        -C--global-option=egg_info
-        -C--global-option=--tag-build=""
+        -C--build-option=egg_info
+        -C--build-option=--tag-build="${{ inputs.TAG_BUILD }}"
         --sdist
         --wheel
         --outdir dist/
         .
 
+    - name: Publish Kazoo to TestPyPI
+      if: ${{ inputs.USE_TEST_PYPI }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+
     - name: Publish Kazoo to PyPI
-      if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@master
+      if: ${{ github.event_name == 'push' || !inputs.USE_TEST_PYPI }}
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}

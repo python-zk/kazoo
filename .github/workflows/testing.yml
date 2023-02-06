@@ -10,20 +10,27 @@ on:
       - master
       - release/*
 
+env:
+  TOOLING_PYTHON_VERSION: "3.10"
+
 jobs:
   validate:
     name: Code Validation
 
     runs-on: ubuntu-latest
 
+    outputs:
+      tooling-python-version: ${{ steps.setup-python.outputs.python-version }}
+
     steps:
       - name: Handle the code
         uses: actions/checkout@v3
 
-      - name: "Set up Python 3.10"
+      - name: "Set up Python"
         uses: actions/setup-python@v4
+        id: setup-python
         with:
-          python-version: "3.10"
+          python-version: ${{ env.TOOLING_PYTHON_VERSION }}
 
       - name: Handle pip cache
         uses: actions/cache@v3
@@ -111,3 +118,16 @@ jobs:
 
       - name: Publish Codecov report
         uses: codecov/codecov-action@v3
+
+  package_and_release:
+    name: "Package & release"
+    needs: [validate, test]
+    uses: ./.github/workflows/release.yml
+    with:
+      # https://peps.python.org/pep-0440
+      TAG_BUILD: -dev0+g${{ github.sha }}.1
+      USE_TEST_PYPI: true
+      # cant use ${{ env.STUFF }} here...
+      PYTHON_VERSION: ${{ needs.validate.outputs.tooling-python-version }}
+    secrets:
+      TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
