@@ -2,7 +2,7 @@ import gc
 import importlib
 import uuid
 
-from mock import patch, call, Mock
+from unittest.mock import patch, call, Mock
 import pytest
 from objgraph import count as count_refs_by_type
 

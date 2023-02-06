@@ -1,6 +1,6 @@
 import unittest
+from unittest.mock import patch
 
-from mock import patch
 import pytest
 
 try:
