@@ -1275,14 +1275,14 @@ class KazooClient(object):
         return async_result
 
     @overload
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
     ) -> List[str]:
         ...
 
     @overload
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
         watch: WatchListener,
@@ -1290,7 +1290,7 @@ class KazooClient(object):
         ...
 
     @overload
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
         watch: Optional[WatchListener],
@@ -1298,7 +1298,7 @@ class KazooClient(object):
         ...
 
     @overload
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
         watch: Optional[WatchListener],
@@ -1307,7 +1307,7 @@ class KazooClient(object):
         ...
 
     @overload
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
         watch: Optional[WatchListener] = None,
@@ -1315,7 +1315,7 @@ class KazooClient(object):
     ) -> List[str]:
         ...
 
-    def get_children(
+    def get_children(  # noqa: F811
         self,
         path: str,
         watch: Optional[WatchListener] = None,
