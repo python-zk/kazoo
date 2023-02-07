@@ -24,8 +24,6 @@ addopts = "-ra -v"
 
 [tool.mypy]
 
-python_version = "3.7"
-
 # For details on each flag, please see the mypy documentation at:
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file
 
@@ -34,6 +32,9 @@ python_version = "3.7"
 
 # Import Discovery
 ignore_missing_imports = false
+
+# Platform configuration
+python_version = "3.7"
 
 # Disallow dynamic typing
 disallow_any_unimported = true
