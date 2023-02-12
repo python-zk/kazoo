@@ -393,8 +393,18 @@ class CheckVersion(namedtuple("CheckVersion", "path version")):
 
 
 # FIXME Transaction class should move after Create2
-Transaction_Types = Union[Create, "Create2", Delete, SetData, CheckVersion]
-Transaction_Response = Union[str, bool, ZnodeStat, ZookeeperError, None]
+Transaction_Types = Union[
+    Create,
+    "Create2",
+    "CreateContainer",
+    "CreateTTL",
+    Delete,
+    SetData,
+    CheckVersion,
+]
+Transaction_Response = Union[
+    str, bool, ZnodeStat, tuple[str, ZnodeStat], ZookeeperError, None
+]
 
 
 class Transaction(namedtuple("Transaction", "operations")):
@@ -420,7 +430,11 @@ class Transaction(namedtuple("Transaction", "operations")):
         while not header.done:
             if header.type == Create.type:
                 response, offset = read_string(bytes, offset)
-            elif header.type == Create2.type:
+            elif header.type in (
+                Create2.type,
+                CreateContainer.type,
+                CreateTTL.type,
+            ):
                 path, offset = read_string(bytes, offset)
                 stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
                 offset += stat_struct.size
@@ -512,6 +526,66 @@ class Reconfig(
         data, offset = read_buffer(bytes, offset)
         stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return data, stat
+
+
+class CreateContainer(namedtuple("CreateContainer", "path data acl flags")):
+    path: str
+    data: bytes | None
+    acl: Sequence[ACL]
+    flags: int
+
+    type: ClassVar[int] = 19
+
+    def serialize(self) -> bytearray:
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(
+                int_struct.pack(acl.perms)
+                + write_string(acl.id.scheme)
+                + write_string(acl.id.id)
+            )
+        b.extend(int_struct.pack(self.flags))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[str, ZnodeStat]:
+        path, offset = read_string(bytes, offset)
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
+        return path, stat
+
+
+class CreateTTL(namedtuple("CreateTTL", "path data acl flags ttl")):
+    path: str
+    data: bytes | None
+    acl: Sequence[ACL]
+    flags: int
+    ttl: int
+
+    type: ClassVar[int] = 21
+
+    def serialize(self) -> bytearray:
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(
+                int_struct.pack(acl.perms)
+                + write_string(acl.id.scheme)
+                + write_string(acl.id.id)
+            )
+        b.extend(int_struct.pack(self.flags))
+        b.extend(long_struct.pack(self.ttl))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[str, ZnodeStat]:
+        path, offset = read_string(bytes, offset)
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
+        return path, stat
 
 
 class Auth(namedtuple("Auth", "auth_type scheme auth")):

@@ -20,11 +20,12 @@ from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
     InvalidACLError,
+    KazooException,
     NoAuthError,
     NoNodeError,
     NodeExistsError,
     SessionExpiredError,
-    KazooException,
+    UnimplementedError,
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.protocol.states import KeeperState, KazooState
@@ -694,6 +695,60 @@ class TestClient:
         assert data == b"bytes"
         assert stat1 == stat2
 
+    @pytest.mark.zk_version(">=3.5")
+    def test_create_container(self, zkclient):
+        client = zkclient
+        path, stat1 = client.create("/1_cnt", b"bytes", container=True)
+        data, stat2 = client.get(path)
+        assert path == "/1_cnt"
+        assert data == b"bytes"
+        assert stat1 == stat2
+
+    @pytest.mark.zk_version(">=3.5")
+    @pytest.mark.zk_features(require=["ttl"])
+    def test_create_ttl(self, zkclient):
+        client = zkclient
+        path, stat1 = client.create("/1_ttl", b"bytes", ttl=1)
+        data, stat2 = client.get(path)
+        assert path == "/1_ttl"
+        assert data == b"bytes"
+        assert stat1 == stat2
+
+    @pytest.mark.zk_version(">=3.5")
+    @pytest.mark.zk_features(require=["ttl"])
+    def test_create_ttl_sequential(self, zkclient):
+        client = zkclient
+        path, stat1 = client.create(
+            "/1_ttl_seq", b"bytes", sequence=True, ttl=1
+        )
+        assert path.startswith("/1_ttl_seq0")
+        data, stat2 = client.get(path)
+        assert data == b"bytes"
+        assert stat1 == stat2
+
+    @pytest.mark.zk_version(">=3.5")
+    @pytest.mark.zk_features(skip=["ttl"])
+    def test_create_ttl_unsupported(self, zkclient):
+        """When ZooKeeper does not have extended types enabled (TTL disabled),
+        creating a TTL node must raise UnimplementedError."""
+        client = zkclient
+        with pytest.raises(UnimplementedError):
+            client.create("/unsupported_ttl", b"bytes", ttl=1)
+
+    @pytest.mark.zk_version("<3.5")
+    def test_create_container_unsupported_version(self, zkclient):
+        """On ZooKeeper < 3.5, container nodes are not supported."""
+        client = zkclient
+        with pytest.raises(UnimplementedError):
+            client.create("/unsupported_cnt", b"bytes", container=True)
+
+    @pytest.mark.zk_version("<3.5")
+    def test_create_ttl_unsupported_version(self, zkclient):
+        """On ZooKeeper < 3.5, TTL nodes are not supported."""
+        client = zkclient
+        with pytest.raises(UnimplementedError):
+            client.create("/unsupported_ttl", b"bytes", ttl=1)
+
     def test_create_get_set(self, zkclient):
         client = zkclient
         nodepath = "/test"
@@ -1243,12 +1298,67 @@ class TestClientTransactions:
             ("/smith", b"", "bleh"),
             ("/smith", b"", None, "fred"),
             ("/smith", b"", None, True, "fred"),
+            ("/smith", b"", None, False, False, False, "yes"),
+            ("/smith", b"", None, False, False, False, False, -1),
+            ("/smith", b"", None, True, False, False, True),
+            ("/smith", b"", None, True, False, False, False, 100),
+            ("/smith", b"", None, False, True, False, True),
         ]
 
         for args in args_list:
             with pytest.raises(TypeError):
                 t = zkclient.transaction()
                 t.create(*args)
+
+    @pytest.mark.zk_version(">=3.5")
+    def test_create_container(self, zkclient):
+        t = zkclient.transaction()
+        t.create("/cnt_tx", b"data", container=True)
+        results = t.commit()
+        assert len(results) == 1
+        path, stat = results[0]
+        assert path == "/cnt_tx"
+        data, stat2 = zkclient.get("/cnt_tx")
+        assert data == b"data"
+        assert stat == stat2
+
+    @pytest.mark.zk_version(">=3.5")
+    @pytest.mark.zk_features(require=["ttl"])
+    def test_create_ttl(self, zkclient):
+        t = zkclient.transaction()
+        t.create("/ttl_tx", b"data", ttl=1000)
+        results = t.commit()
+        assert len(results) == 1
+        path, stat = results[0]
+        assert path == "/ttl_tx"
+        data, stat2 = zkclient.get("/ttl_tx")
+        assert data == b"data"
+        assert stat == stat2
+
+    @pytest.mark.zk_version(">=3.5")
+    @pytest.mark.zk_features(skip=["ttl"])
+    def test_create_ttl_unsupported(self, zkclient):
+        t = zkclient.transaction()
+        t.create("/ttl_tx_fail", b"data", ttl=1000)
+        results = t.commit()
+        assert len(results) == 1
+        assert isinstance(results[0], UnimplementedError)
+
+    @pytest.mark.zk_version("<3.5")
+    def test_create_container_unsupported_version(self, zkclient):
+        t = zkclient.transaction()
+        t.create("/cnt_tx_fail", b"data", container=True)
+        results = t.commit()
+        assert len(results) == 1
+        assert isinstance(results[0], UnimplementedError)
+
+    @pytest.mark.zk_version("<3.5")
+    def test_create_ttl_unsupported_version(self, zkclient):
+        t = zkclient.transaction()
+        t.create("/ttl_tx_fail", b"data", ttl=1000)
+        results = t.commit()
+        assert len(results) == 1
+        assert isinstance(results[0], UnimplementedError)
 
     def test_default_acl(self, zkclient):
         username = uuid.uuid4().hex

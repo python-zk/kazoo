@@ -390,6 +390,68 @@ class TestTransaction:
         )
         assert result == ["/b", True, "/c"]
 
+    def test_serialize_container_and_ttl(self) -> None:
+        transaction = serialization.Transaction(
+            [
+                serialization.CreateContainer(
+                    "/cnt", b"data", _make_acl_list(), 4
+                ),
+                serialization.CreateTTL(
+                    "/ttl", b"data", _make_acl_list(), 5, 5000
+                ),
+            ]
+        )
+        serialized = transaction.serialize()
+        assert serialized.startswith(
+            serialization.MultiHeader(
+                serialization.CreateContainer.type, False, -1
+            ).serialize()
+        )
+        assert serialized.endswith(
+            serialization.MultiHeader(-1, True, -1).serialize()
+        )
+        assert _write_string("/cnt") in serialized
+        assert _write_string("/ttl") in serialized
+
+    def test_deserialize_container_and_ttl(self) -> None:
+        stat_bytes = _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+        response = (
+            _multiheader_struct.pack(serialization.CreateContainer.type, 0, -1)
+            + _write_string("/cnt")
+            + stat_bytes
+            + _multiheader_struct.pack(serialization.CreateTTL.type, 0, -1)
+            + _write_string("/ttl")
+            + stat_bytes
+            + _multiheader_struct.pack(-1, 0, -1)
+            + _int_struct.pack(-6)
+            + _multiheader_struct.pack(-1, 1, -1)
+        )
+        result = serialization.Transaction.deserialize(response, 0)
+        assert result[0] == ("/cnt", _make_stat())
+        assert result[1] == ("/ttl", _make_stat())
+        assert isinstance(result[2], ZookeeperError)
+        assert result[2].__class__.__name__ == "UnimplementedError"
+
+    def test_unchroot_tuples(self) -> None:
+        class DummyClient:
+            def __init__(self, chroot: str) -> None:
+                self.chroot = chroot
+
+            def unchroot(self, path: str) -> str:
+                if self.chroot == path:
+                    return "/"
+                if path.startswith(self.chroot):
+                    return path[len(self.chroot) :]
+                return path
+
+        response = [("/a/cnt", _make_stat()), ("/a/ttl", _make_stat()), True]
+        client = DummyClient("/a")
+        result = serialization.Transaction.unchroot(
+            client,  # type: ignore[arg-type]
+            response,  # type: ignore[arg-type]
+        )
+        assert result == [("/cnt", _make_stat()), ("/ttl", _make_stat()), True]
+
 
 class TestCreate2:
     def test_type(self) -> None:
@@ -437,6 +499,88 @@ class TestReconfig:
             0,
         )
         assert data == b"config-data"
+        assert stat == _make_stat()
+
+
+class TestCreateContainer:
+    def test_type(self) -> None:
+        assert serialization.CreateContainer.type == 19
+
+    def test_serialize(self) -> None:
+        obj = serialization.CreateContainer(
+            "/cnt", b"data", _make_acl_list(), 4
+        )
+        assert obj.serialize() == (
+            _write_string("/cnt")
+            + _write_buffer(b"data")
+            + _int_struct.pack(1)
+            + _int_struct.pack(1)
+            + _write_string("scheme")
+            + _write_string("identifier")
+            + _int_struct.pack(4)
+        )
+
+    def test_serialize_none_data(self) -> None:
+        obj = serialization.CreateContainer("/cnt", None, _make_acl_list(), 4)
+        assert obj.serialize() == (
+            _write_string("/cnt")
+            + _write_buffer(None)
+            + _int_struct.pack(1)
+            + _int_struct.pack(1)
+            + _write_string("scheme")
+            + _write_string("identifier")
+            + _int_struct.pack(4)
+        )
+
+    def test_deserialize(self) -> None:
+        path, stat = serialization.CreateContainer.deserialize(
+            _write_string("/cnt")
+            + _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+            0,
+        )
+        assert path == "/cnt"
+        assert stat == _make_stat()
+
+
+class TestCreateTTL:
+    def test_type(self) -> None:
+        assert serialization.CreateTTL.type == 21
+
+    def test_serialize(self) -> None:
+        obj = serialization.CreateTTL(
+            "/ttl", b"data", _make_acl_list(), 5, 10000
+        )
+        assert obj.serialize() == (
+            _write_string("/ttl")
+            + _write_buffer(b"data")
+            + _int_struct.pack(1)
+            + _int_struct.pack(1)
+            + _write_string("scheme")
+            + _write_string("identifier")
+            + _int_struct.pack(5)
+            + _long_struct.pack(10000)
+        )
+
+    def test_serialize_none_data(self) -> None:
+        obj = serialization.CreateTTL("/ttl", None, _make_acl_list(), 5, 10000)
+        assert obj.serialize() == (
+            _write_string("/ttl")
+            + _write_buffer(None)
+            + _int_struct.pack(1)
+            + _int_struct.pack(1)
+            + _write_string("scheme")
+            + _write_string("identifier")
+            + _int_struct.pack(5)
+            + _long_struct.pack(10000)
+        )
+
+    def test_deserialize(self) -> None:
+        path, stat = serialization.CreateTTL.deserialize(
+            _write_string("/ttl")
+            + _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+            0,
+        )
+        assert path == "/ttl"
         assert stat == _make_stat()
 
 
