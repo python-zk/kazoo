@@ -1673,7 +1673,13 @@ class TransactionRequest(object):
         self.committed = False
 
     def create(
-        self, path, value=b"", acl=None, ephemeral=False, sequence=False
+        self,
+        path,
+        value=b"",
+        acl=None,
+        ephemeral=False,
+        sequence=False,
+        include_data=False,
     ):
         """Add a create ZNode to the transaction. Takes the same
         arguments as :meth:`KazooClient.create`, with the exception
@@ -1697,6 +1703,8 @@ class TransactionRequest(object):
             raise TypeError("Invalid type for 'ephemeral' (bool expected)")
         if not isinstance(sequence, bool):
             raise TypeError("Invalid type for 'sequence' (bool expected)")
+        if not isinstance(include_data, bool):
+            raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         flags = 0
         if ephemeral:
@@ -1705,9 +1713,13 @@ class TransactionRequest(object):
             flags |= 2
         if acl is None:
             acl = OPEN_ACL_UNSAFE
+        if include_data:
+            opcode = Create2
+        else:
+            opcode = Create
 
         self._add(
-            Create(_prefix_root(self.client.chroot, path), value, acl, flags),
+            opcode(_prefix_root(self.client.chroot, path), value, acl, flags),
             None,
         )
 

@@ -343,6 +343,11 @@ class Transaction(namedtuple("Transaction", "operations")):
         while not header.done:
             if header.type == Create.type:
                 response, offset = read_string(bytes, offset)
+            elif header.type == Create2.type:
+                path, offset = read_string(bytes, offset)
+                stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+                offset += stat_struct.size
+                response = (path, stat)
             elif header.type == Delete.type:
                 response = True
             elif header.type == SetData.type:
@@ -367,6 +372,10 @@ class Transaction(namedtuple("Transaction", "operations")):
         for result in response:
             if isinstance(result, str):
                 resp.append(client.unchroot(result))
+            elif isinstance(result, ZnodeStat):  # Need to test before tuple
+                resp.append(result)
+            elif isinstance(result, tuple):
+                resp.append((client.unchroot(result[0]), result[1]))
             else:
                 resp.append(result)
         return resp
