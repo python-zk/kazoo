@@ -425,6 +425,55 @@ class Reconfig(
         return data, stat
 
 
+class CreateContainer(namedtuple("CreateContainer", "path data acl flags")):
+    type = 19
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(
+                int_struct.pack(acl.perms)
+                + write_string(acl.id.scheme)
+                + write_string(acl.id.id)
+            )
+        b.extend(int_struct.pack(self.flags))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        path, offset = read_string(bytes, offset)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return path, stat
+
+
+class CreateTTL(namedtuple("CreateTTL", "path data acl flags ttl")):
+    type = 21
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(
+                int_struct.pack(acl.perms)
+                + write_string(acl.id.scheme)
+                + write_string(acl.id.id)
+            )
+        b.extend(int_struct.pack(self.flags))
+        b.extend(long_struct.pack(self.ttl))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        path, offset = read_string(bytes, offset)
+        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        return path, stat
+
+
 class Auth(namedtuple("Auth", "auth_type scheme auth")):
     type = 100
 
