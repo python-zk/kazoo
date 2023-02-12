@@ -48,6 +48,8 @@ from kazoo.protocol.serialization import (
     CloseInstance,
     Create,
     Create2,
+    CreateContainer,
+    CreateTTL,
     Delete,
     Exists,
     GetChildren,
@@ -1116,6 +1118,8 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: Literal[False] = False,
+        container: bool = False,
+        ttl: int = 0,
     ) -> str:
         ...
 
@@ -1129,6 +1133,8 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: Literal[True] = True,
+        container: bool = False,
+        ttl: int = 0,
     ) -> tuple[str, ZnodeStat]:
         ...
 
@@ -1141,6 +1147,8 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: bool = False,
+        container: bool = False,
+        ttl: int = 0,
     ) -> str | tuple[str, ZnodeStat]:
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
@@ -1218,6 +1226,9 @@ class KazooClient:
             The `makepath` option.
         .. versionadded:: 2.7
             The `include_data` option.
+        .. versionadded:: 2.9
+            The `container` and `ttl` options.
+
         """
         acl = acl or self.default_acl
         return cast(
@@ -1230,6 +1241,8 @@ class KazooClient:
                 sequence=sequence,
                 makepath=makepath,
                 include_data=include_data,
+                container=container,
+                ttl=ttl,
             ).get(),
         )
 
@@ -1242,6 +1255,8 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: bool = False,
+        container: bool = False,
+        ttl: int = 0,
     ) -> IAsyncResult:
         """Asynchronously create a ZNode. Takes the same arguments as
         :meth:`create`.
@@ -1252,55 +1267,39 @@ class KazooClient:
             The makepath option.
         .. versionadded:: 2.7
             The `include_data` option.
+        .. versionadded:: 2.9
+            The `container` and `ttl` options.
         """
         if acl is None and self.default_acl:
             acl = self.default_acl
 
-        if not isinstance(path, str):
-            raise TypeError("Invalid type for 'path' (string expected)")
-        if acl and (
-            isinstance(acl, ACL) or not isinstance(acl, (tuple, list))
-        ):
-            raise TypeError(
-                "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
-            )
-        if value is not None and not isinstance(value, bytes):
-            raise TypeError("Invalid type for 'value' (must be a byte string)")
-        if not isinstance(ephemeral, bool):
-            raise TypeError("Invalid type for 'ephemeral' (bool expected)")
-        if not isinstance(sequence, bool):
-            raise TypeError("Invalid type for 'sequence' (bool expected)")
-        if not isinstance(makepath, bool):
-            raise TypeError("Invalid type for 'makepath' (bool expected)")
-        if not isinstance(include_data, bool):
-            raise TypeError("Invalid type for 'include_data' (bool expected)")
-
-        flags = 0
-        if ephemeral:
-            flags |= 1
-        if sequence:
-            flags |= 2
-        if acl is None:
-            acl = OPEN_ACL_UNSAFE
-
+        opcode = _create_opcode(
+            path,
+            value,
+            acl,
+            self.chroot,
+            ephemeral,
+            sequence,
+            include_data,
+            container,
+            ttl,
+        )
         async_result = self.handler.async_result()
 
         @capture_exceptions(async_result)
         def do_create() -> None:
-            result = self._create_async_inner(
-                path,
-                value,
-                # The way acl is constructed ends up confusing mypy, which
-                # thinks that acl can be None here, even though the code
-                # above ensures that if acl is None, it gets set to
-                # OPEN_ACL_UNSAFE, so we ignore the type error here.
-                # behaves differently in python3.8 and python3.14, sigh.
-                acl,  # type: ignore[arg-type]
-                flags,
-                trailing=sequence,
-                include_data=include_data,
-            )
-            result.rawlink(create_completion)
+            inner_async_result = self.handler.async_result()
+
+            call_result = self._call(opcode, inner_async_result)
+            if call_result is False:
+                # We hit a short-circuit exit on the _call. Because we are
+                # not using the original async_result here, we bubble the
+                # exception upwards to the do_create function in
+                # KazooClient.create so that it gets set on the correct
+                # async_result object
+                raise cast(Exception, inner_async_result.exception)
+
+            inner_async_result.rawlink(create_completion)
 
         @capture_exceptions(async_result)
         def retry_completion(result: IAsyncResult) -> None:
@@ -1312,11 +1311,11 @@ class KazooClient:
             result: IAsyncResult,
         ) -> str | tuple[str, ZnodeStat] | None:
             try:
-                if include_data:
+                if opcode.type == Create.type:
+                    return self.unchroot(result.get())
+                else:
                     new_path, stat = result.get()
                     return self.unchroot(new_path), stat
-                else:
-                    return self.unchroot(result.get())
             except NoNodeError:
                 if not makepath:
                     raise
@@ -1328,39 +1327,6 @@ class KazooClient:
                 return None
 
         do_create()
-        return async_result
-
-    def _create_async_inner(
-        self,
-        path: str,
-        value: bytes | None,
-        acl: Sequence[ACL],
-        flags: int,
-        trailing: bool = False,
-        include_data: bool = False,
-    ) -> IAsyncResult:
-        async_result = self.handler.async_result()
-        opcode = Create2 if include_data else Create
-
-        call_result = self._call(
-            opcode(
-                _prefix_root(self.chroot, path, trailing=trailing),
-                value,
-                acl,
-                flags,
-            ),
-            async_result,
-        )
-        if call_result is False:
-            # We hit a short-circuit exit on the _call. Because we are
-            # not using the original async_result here, we bubble the
-            # exception upwards to the do_create function in
-            # KazooClient.create so that it gets set on the correct
-            # async_result object
-            # Note: Do we actually need call_result? It seems like we could
-            # just check the state of the exception, and avoid the typing
-            # stuff.
-            raise async_result.exception  # type: ignore[misc]
         return async_result
 
     def ensure_path(self, path: str, acl: Sequence[ACL] | None = None) -> bool:
@@ -2001,6 +1967,8 @@ class TransactionRequest:
         ephemeral: bool = False,
         sequence: bool = False,
         include_data: bool = False,
+        container: bool = False,
+        ttl: int = 0,
     ) -> None:
         """Add a create ZNode to the transaction. Takes the same
         arguments as :meth:`KazooClient.create`, with the exception
@@ -2008,41 +1976,24 @@ class TransactionRequest:
 
         :returns: None
 
+        .. versionadded:: 2.9
+            The `include_data`, `container` and `ttl` options.
         """
         if acl is None and self.client.default_acl:
             acl = self.client.default_acl
 
-        if not isinstance(path, str):
-            raise TypeError("Invalid type for 'path' (string expected)")
-        if acl and not isinstance(acl, (tuple, list)):
-            raise TypeError(
-                "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
-            )
-        if not isinstance(value, bytes):
-            raise TypeError("Invalid type for 'value' (must be a byte string)")
-        if not isinstance(ephemeral, bool):
-            raise TypeError("Invalid type for 'ephemeral' (bool expected)")
-        if not isinstance(sequence, bool):
-            raise TypeError("Invalid type for 'sequence' (bool expected)")
-        if not isinstance(include_data, bool):
-            raise TypeError("Invalid type for 'include_data' (bool expected)")
-
-        flags = 0
-        if ephemeral:
-            flags |= 1
-        if sequence:
-            flags |= 2
-        if acl is None:
-            acl = OPEN_ACL_UNSAFE
-        if include_data:
-            opcode = Create2
-        else:
-            opcode = Create
-
-        self._add(
-            opcode(_prefix_root(self.client.chroot, path), value, acl, flags),
-            None,
+        opcode = _create_opcode(
+            path,
+            value,
+            acl,
+            self.client.chroot,
+            ephemeral,
+            sequence,
+            include_data,
+            container,
+            ttl,
         )
+        self._add(opcode, None)
 
     def delete(self, path: str, version: int = -1) -> None:
         """Add a delete ZNode to the transaction. Takes the same
@@ -2133,3 +2084,85 @@ class TransactionRequest:
         self._check_tx_state()
         self.client.logger.log(BLATHER, "Added %r to %r", request, self)
         self.operations.append(request)
+
+
+def _create_opcode(
+    path: str,
+    value: bytes | None,
+    acl: Sequence[ACL] | None,
+    chroot: str | None,
+    ephemeral: bool,
+    sequence: bool,
+    include_data: bool,
+    container: bool,
+    ttl: int,
+) -> Create | Create2 | CreateContainer | CreateTTL:
+    """Helper function.
+    Creates the create OpCode for regular `client.create()` operations as
+    well as in a `client.transaction()` context.
+    """
+    if not isinstance(path, str):
+        raise TypeError("Invalid type for 'path' (string expected)")
+    if acl and (isinstance(acl, ACL) or not isinstance(acl, (tuple, list))):
+        raise TypeError(
+            "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
+        )
+    if value is not None and not isinstance(value, bytes):
+        raise TypeError("Invalid type for 'value' (must be a byte string)")
+    if not isinstance(ephemeral, bool):
+        raise TypeError("Invalid type for 'ephemeral' (bool expected)")
+    if not isinstance(sequence, bool):
+        raise TypeError("Invalid type for 'sequence' (bool expected)")
+    if not isinstance(include_data, bool):
+        raise TypeError("Invalid type for 'include_data' (bool expected)")
+    if not isinstance(container, bool):
+        raise TypeError("Invalid type for 'container' (bool expected)")
+    if not isinstance(ttl, int) or ttl < 0:
+        raise TypeError("Invalid 'ttl' (integer >= 0 expected)")
+    if ttl and ephemeral:
+        raise TypeError("Invalid node creation: ephemeral & ttl")
+    if container and (ephemeral or sequence or ttl):
+        raise TypeError(
+            "Invalid node creation: container & ephemeral/sequence/ttl"
+        )
+
+    # Should match Zookeeper's CreateMode fromFlag
+    # https://github.com/apache/zookeeper/blob/master/zookeeper-server/
+    # src/main/java/org/apache/zookeeper/CreateMode.java#L112
+    flags = 0
+    if ephemeral:
+        flags |= 1
+    if sequence:
+        flags |= 2
+    if container:
+        flags = 4
+    if ttl:
+        if sequence:
+            flags = 6
+        else:
+            flags = 5
+
+    if acl is None:
+        acl = OPEN_ACL_UNSAFE
+
+    # Figure out the OpCode we are going to send
+    if include_data:
+        return Create2(
+            _prefix_root(chroot, path, trailing=sequence), value, acl, flags
+        )
+    elif container:
+        return CreateContainer(
+            _prefix_root(chroot, path, trailing=False), value, acl, flags
+        )
+    elif ttl:
+        return CreateTTL(
+            _prefix_root(chroot, path, trailing=sequence),
+            value,
+            acl,
+            flags,
+            ttl,
+        )
+    else:
+        return Create(
+            _prefix_root(chroot, path, trailing=sequence), value, acl, flags
+        )
