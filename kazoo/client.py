@@ -43,6 +43,7 @@ from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import _prefix_root, normpath
 from kazoo.protocol.serialization import (
+    AddWatch,
     Auth,
     CheckVersion,
     CloseInstance,
@@ -56,6 +57,7 @@ from kazoo.protocol.serialization import (
     SetACL,
     GetData,
     Reconfig,
+    RemoveWatches,
     SetData,
     Sync,
     Transaction,
@@ -67,6 +69,8 @@ from kazoo.protocol.states import (
     KazooState,
     KeeperState,
     WatchedEvent,
+    AddWatchMode,
+    WatcherType,
 )
 from kazoo.retry import KazooRetry
 from kazoo.security import ACL, OPEN_ACL_UNSAFE
@@ -371,6 +375,12 @@ class KazooClient:
         self._data_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
             set
         )
+        self._persistent_watchers: defaultdict[str, Set[WatchFunc]] = (
+            defaultdict(set)
+        )
+        self._persistent_recursive_watchers: defaultdict[
+            str, Set[WatchFunc]
+        ] = defaultdict(set)
         self._reset()
         self.read_only = read_only
 
@@ -565,8 +575,16 @@ class KazooClient:
         for data_watchers in self._data_watchers.values():
             watchers.extend(data_watchers)
 
+        for persistent_watchers in self._persistent_watchers.values():
+            watchers.extend(persistent_watchers)
+
+        for pr_watchers in self._persistent_recursive_watchers.values():
+            watchers.extend(pr_watchers)
+
         self._child_watchers = defaultdict(set)
         self._data_watchers = defaultdict(set)
+        self._persistent_watchers = defaultdict(set)
+        self._persistent_recursive_watchers = defaultdict(set)
 
         ev = WatchedEvent(EventType.NONE, self._state, None)
         for watch in watchers:
@@ -1975,6 +1993,153 @@ class KazooClient:
         reconfig = Reconfig(joining, leaving, new_members, from_config)
         self._call(reconfig, async_result)
 
+        return async_result
+
+    def add_watch(
+        self,
+        path: str,
+        watch: WatchFunc,
+        mode: AddWatchMode | int,
+    ) -> None:
+        """Add a watch.
+
+        This method adds persistent watches.  Unlike the data and
+        child watches which may be set by calls to
+        :meth:`KazooClient.exists`, :meth:`KazooClient.get`, and
+        :meth:`KazooClient.get_children`, persistent watches are not
+        removed after being triggered.
+
+        To remove a persistent watch, use
+        :meth:`KazooClient.remove_all_watches` with an argument of
+        :attr:`~kazoo.protocol.states.WatcherType.ANY`.
+
+        The `mode` argument determines whether or not the watch is
+        recursive.  To set a persistent watch, use
+        :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT`.  To set a
+        persistent recursive watch, use
+        :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT_RECURSIVE`.
+
+        :param path: Path of node to watch.
+        :param watch: Watch callback to set for future changes
+        :param mode: The mode to use
+                      (:class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT`
+                      or
+                      :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT_RECURSIVE`).
+        :type mode: :class:`~kazoo.protocol.states.AddWatchMode` | int
+
+        :raises:
+            :exc:`TypeError` if arguments have invalid types.
+
+            :exc:`ValueError` if mode is not a valid
+            :class:`~kazoo.protocol.states.AddWatchMode`.
+
+            :exc:`~kazoo.exceptions.UnimplementedError` if the connected
+            ZooKeeper server does not support persistent watches
+            (requires ZooKeeper 3.6.0+).
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+        """
+        self.add_watch_async(path, watch, mode).get()
+
+    def add_watch_async(
+        self,
+        path: str,
+        watch: WatchFunc,
+        mode: AddWatchMode | int,
+    ) -> IAsyncResult:
+        """Asynchronously add a watch. Takes the same arguments as
+        :meth:`add_watch`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        """
+        if not isinstance(path, str):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if not callable(watch):
+            raise TypeError("Invalid type for 'watch' (must be a callable)")
+        if not isinstance(mode, int):
+            raise TypeError("Invalid type for 'mode' (int expected)")
+        if mode not in (
+            AddWatchMode.PERSISTENT,
+            AddWatchMode.PERSISTENT_RECURSIVE,
+        ):
+            raise ValueError("Invalid value for 'mode'")
+
+        async_result = self.handler.async_result()
+        self._call(
+            AddWatch(_prefix_root(self.chroot, path), watch, mode),
+            async_result,
+        )
+        return async_result
+
+    def remove_all_watches(
+        self,
+        path: str,
+        watcher_type: WatcherType | int,
+    ) -> None:
+        """Remove watches from a path.
+
+        This removes all watches of a specified type (data, child,
+        any) from a given path.
+
+        The `watcher_type` argument specifies which type to use.  It
+        may be one of:
+
+        * :attr:`~kazoo.protocol.states.WatcherType.DATA`
+        * :attr:`~kazoo.protocol.states.WatcherType.CHILDREN`
+        * :attr:`~kazoo.protocol.states.WatcherType.ANY`
+
+        To remove persistent watches, specify a watcher type of
+        :attr:`~kazoo.protocol.states.WatcherType.ANY`.
+
+        :param path: Path of watch to remove.
+        :param watcher_type: The type of watch to remove.
+        :type watcher_type: :class:`~kazoo.protocol.states.WatcherType` | int
+
+        :raises:
+            :exc:`TypeError` if arguments have invalid types.
+
+            :exc:`ValueError` if watcher_type is not a valid
+            :class:`~kazoo.protocol.states.WatcherType`.
+
+            :exc:`~kazoo.exceptions.NoWatcherError` if no watcher exists
+            matching the criteria.
+
+            :exc:`~kazoo.exceptions.UnimplementedError` if the connected
+            ZooKeeper server does not support removing watches
+            (requires ZooKeeper 3.5.0+).
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+        """
+        self.remove_all_watches_async(path, watcher_type).get()
+
+    def remove_all_watches_async(
+        self,
+        path: str,
+        watcher_type: WatcherType | int,
+    ) -> IAsyncResult:
+        """Asynchronously remove watches. Takes the same arguments as
+        :meth:`remove_all_watches`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        """
+        if not isinstance(path, str):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if not isinstance(watcher_type, int):
+            raise TypeError("Invalid type for 'watcher_type' (int expected)")
+        if watcher_type not in (
+            WatcherType.ANY,
+            WatcherType.CHILDREN,
+            WatcherType.DATA,
+        ):
+            raise ValueError("Invalid value for 'watcher_type'")
+
+        async_result = self.handler.async_result()
+        self._call(
+            RemoveWatches(_prefix_root(self.chroot, path), watcher_type),
+            async_result,
+        )
         return async_result
 
 
