@@ -20,6 +20,7 @@ from kazoo.exceptions import (
 )
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
+    AddWatch,
     Auth,
     Close,
     Connect,
@@ -28,6 +29,7 @@ from kazoo.protocol.serialization import (
     GetChildren2,
     Ping,
     PingInstance,
+    RemoveWatches,
     ReplyHeader,
     SASL,
     Transaction,
@@ -363,6 +365,18 @@ class ConnectionHandler(object):
                     raise ConnectionDropped("socket connection broken")
                 sent += bytes_sent
 
+    def _find_persistent_watchers(self, path):
+        parts = path.split("/")
+        watchers = []
+        for count in range(len(parts)):
+            candidate = "/".join(parts[: count + 1])
+            if not candidate:
+                continue
+            watchers.extend(
+                self.client._persistent_watchers.get(candidate, [])
+            )
+        return watchers
+
     def _read_watch_event(self, buffer, offset):
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
@@ -374,9 +388,11 @@ class ConnectionHandler(object):
 
         if watch.type in (CREATED_EVENT, CHANGED_EVENT):
             watchers.extend(client._data_watchers.pop(path, []))
+            watchers.extend(self._find_persistent_watchers(path))
         elif watch.type == DELETED_EVENT:
             watchers.extend(client._data_watchers.pop(path, []))
             watchers.extend(client._child_watchers.pop(path, []))
+            watchers.extend(self._find_persistent_watchers(path))
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
         else:
@@ -448,13 +464,25 @@ class ConnectionHandler(object):
 
                 async_object.set(response)
 
-            # Determine if watchers should be registered
-            watcher = getattr(request, "watcher", None)
-            if not client._stopped.is_set() and watcher:
-                if isinstance(request, (GetChildren, GetChildren2)):
-                    client._child_watchers[request.path].add(watcher)
-                else:
-                    client._data_watchers[request.path].add(watcher)
+            # Determine if watchers should be registered or unregistered
+            if not client._stopped.is_set():
+                watcher = getattr(request, "watcher", None)
+                if watcher:
+                    if isinstance(request, AddWatch):
+                        client._persistent_watchers[request.path].add(watcher)
+                    elif isinstance(request, (GetChildren, GetChildren2)):
+                        client._child_watchers[request.path].add(watcher)
+                    else:
+                        client._data_watchers[request.path].add(watcher)
+                if isinstance(request, RemoveWatches):
+                    if request.watcher_type == 1:
+                        client._child_watchers.pop(request.path, None)
+                    if request.watcher_type == 2:
+                        client._data_watchers.pop(request.path, None)
+                    if request.watcher_type == 3:
+                        client._child_watchers.pop(request.path, None)
+                        client._data_watchers.pop(request.path, None)
+                        client._persistent_watchers.pop(request.path, None)
 
         if isinstance(request, Close):
             self.logger.log(BLATHER, "Read close response")
