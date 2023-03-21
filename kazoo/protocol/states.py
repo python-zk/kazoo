@@ -251,3 +251,44 @@ class ZnodeStat(
     @property
     def children_count(self):
         return self.numChildren
+
+
+class AddWatchMode(object):
+    """Modes for use with :meth:`~kazoo.client.KazooClient.add_watch`
+
+    .. attribute:: PERSISTENT
+
+        The watch is not removed when trigged.
+
+    .. attribute:: PERSISTENT_RECURSIVE
+
+        The watch is not removed when trigged, and applies to all
+        paths underneath the supplied path as well.
+    """
+
+    PERSISTENT = 0
+    PERSISTENT_RECURSIVE = 1
+
+
+class WatcherType(object):
+    """Watcher types for use with
+    :meth:`~kazoo.client.KazooClient.remove_all_watches`
+
+    .. attribute:: CHILDREN
+
+        Child watches.
+
+    .. attribute:: DATA
+
+        Data watches.
+
+    .. attribute:: ANY
+
+        Any type of watch (child, data, persistent, or persistent
+        recursive).
+
+    """
+
+    CHILDREN = 1
+    DATA = 2
+    ANY = 3
