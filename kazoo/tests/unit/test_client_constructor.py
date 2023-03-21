@@ -68,3 +68,21 @@ def test_retry_options_dict() -> None:
     assert isinstance(client._retry, KazooRetry)
     assert client._retry.max_tries == 99
     assert client._conn_retry.delay == 99
+
+
+def test_persistent_watchers_collections_initialized() -> None:
+    client = KazooClient(hosts="127.0.0.1:2181")
+    assert client._persistent_watchers == {}
+    assert client._persistent_recursive_watchers == {}
+
+
+def test_reset_watchers_clears_persistent_watchers() -> None:
+    client = KazooClient(hosts="127.0.0.1:2181")
+    dummy_cb = lambda event: None  # noqa: E731
+    client._persistent_watchers["/a"].add(dummy_cb)
+    client._persistent_recursive_watchers["/b"].add(dummy_cb)
+
+    client._reset_watchers()
+
+    assert len(client._persistent_watchers) == 0
+    assert len(client._persistent_recursive_watchers) == 0

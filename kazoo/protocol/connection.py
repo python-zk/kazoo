@@ -34,6 +34,7 @@ from kazoo.exceptions import (
 )
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
+    AddWatch,
     Auth,
     Close,
     Connect,
@@ -42,6 +43,7 @@ from kazoo.protocol.serialization import (
     GetChildren2,
     Ping,
     PingInstance,
+    RemoveWatches,
     ReplyHeader,
     SASL,
     Transaction,
@@ -49,11 +51,13 @@ from kazoo.protocol.serialization import (
     int_struct,
 )
 from kazoo.protocol.states import (
+    AddWatchMode,
     Callback,
     CLOSED_STATES,
     KeeperState,
     WatchedEvent,
     EVENT_TYPE_MAP,
+    WatcherType,
 )
 from kazoo.retry import (
     ForceRetryError,
@@ -446,6 +450,23 @@ class ConnectionHandler:
                     raise ConnectionDropped("socket connection broken")
                 sent += bytes_sent
 
+    def _find_persistent_recursive_watchers(
+        self, path: str
+    ) -> list[WatchFunc]:
+        watchers: list[WatchFunc] = []
+        candidates = ["/"]
+        stripped = path.strip("/")
+        if stripped:
+            parts = stripped.split("/")
+            candidates.extend(
+                "/" + "/".join(parts[: i + 1]) for i in range(len(parts))
+            )
+        for candidate in candidates:
+            watchers.extend(
+                self.client._persistent_recursive_watchers.get(candidate, [])
+            )
+        return watchers
+
     def _read_watch_event(self, buffer: bytes, offset: int) -> None:
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
@@ -457,11 +478,16 @@ class ConnectionHandler:
 
         if watch.type in (CREATED_EVENT, CHANGED_EVENT):
             watchers.extend(client._data_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
+            watchers.extend(self._find_persistent_recursive_watchers(path))
         elif watch.type == DELETED_EVENT:
             watchers.extend(client._data_watchers.pop(path, []))
             watchers.extend(client._child_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
+            watchers.extend(self._find_persistent_recursive_watchers(path))
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
         else:
             self.logger.warn("Received unknown event %r", watch.type)
             return
@@ -518,7 +544,7 @@ class ConnectionHandler:
             if exists_error:
                 # It's a NoNodeError, which is fine for an exists
                 # request
-                async_object.set(None)
+                response = None
             else:
                 try:
                     response = request.deserialize(buffer, offset)
@@ -538,15 +564,45 @@ class ConnectionHandler:
                 if request.type == Transaction.type:
                     response = Transaction.unchroot(client, response)
 
-                async_object.set(response)
+            # Determine if watchers should be registered or unregistered
+            if not client._stopped.is_set():
+                watcher = getattr(request, "watcher", None)
+                if watcher:
+                    if isinstance(request, AddWatch):
+                        if request.mode == AddWatchMode.PERSISTENT:
+                            client._persistent_watchers[request.path].add(
+                                watcher
+                            )
+                        elif request.mode == AddWatchMode.PERSISTENT_RECURSIVE:
+                            client._persistent_recursive_watchers[
+                                request.path
+                            ].add(watcher)
+                        else:
+                            raise ValueError(
+                                f"Unexpected AddWatchMode: {request.mode}"
+                            )
+                    elif isinstance(request, (GetChildren, GetChildren2)):
+                        client._child_watchers[request.path].add(watcher)
+                    else:
+                        client._data_watchers[request.path].add(watcher)
+                if isinstance(request, RemoveWatches):
+                    if request.watcher_type == WatcherType.CHILDREN:
+                        client._child_watchers.pop(request.path, None)
+                    elif request.watcher_type == WatcherType.DATA:
+                        client._data_watchers.pop(request.path, None)
+                    elif request.watcher_type == WatcherType.ANY:
+                        client._child_watchers.pop(request.path, None)
+                        client._data_watchers.pop(request.path, None)
+                        client._persistent_watchers.pop(request.path, None)
+                        client._persistent_recursive_watchers.pop(
+                            request.path, None
+                        )
+                    else:
+                        raise ValueError(
+                            f"Unexpected WatcherType: {request.watcher_type}"
+                        )
 
-            # Determine if watchers should be registered
-            watcher = getattr(request, "watcher", None)
-            if not client._stopped.is_set() and watcher:
-                if isinstance(request, (GetChildren, GetChildren2)):
-                    client._child_watchers[request.path].add(watcher)
-                else:
-                    client._data_watchers[request.path].add(watcher)
+            async_object.set(response)
 
         if isinstance(request, Close):
             self.logger.log(BLATHER, "Read close response")

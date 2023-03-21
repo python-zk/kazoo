@@ -23,11 +23,18 @@ from kazoo.exceptions import (
     NoAuthError,
     NoNodeError,
     NodeExistsError,
+    NoWatcherError,
     SessionExpiredError,
     KazooException,
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
-from kazoo.protocol.states import KeeperState, KazooState
+from kazoo.protocol.states import (
+    AddWatchMode,
+    EventType,
+    KazooState,
+    KeeperState,
+    WatcherType,
+)
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient
@@ -1167,6 +1174,317 @@ class TestClient:
                 result.get()
         finally:
             client.stop()
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_persistent_watch(self, zkclient):
+        """This tests adding and removing a persistent watch."""
+        events = []
+
+        def callback(event):
+            events.append(dict(type=event.type, path=event.path))
+
+        client = zkclient
+        client.add_watch("/a", callback, AddWatchMode.PERSISTENT)
+        full_path = client.chroot + "/a"
+        assert len(client._persistent_watchers[full_path]) == 1
+        client.create("/a")
+        client.set("/a", b"new_data")
+        # Persistent watch on /a monitors children of /a, firing CHILD on /a
+        client.create("/a/b")
+        client.delete("/a", recursive=True)
+        # Remove the watch
+        client.remove_all_watches("/a", WatcherType.ANY)
+        # Perform one more call that we don't expect to see
+        client.create("/a")
+        # Wait in case the callback does arrive
+        time.sleep(3)
+        assert client._persistent_watchers[full_path] == set()
+        assert events == [
+            dict(type=EventType.CREATED, path="/a"),
+            dict(type=EventType.CHANGED, path="/a"),
+            dict(type=EventType.CHILD, path="/a"),
+            dict(type=EventType.CHILD, path="/a"),
+            dict(type=EventType.DELETED, path="/a"),
+        ]
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_persistent_recursive_watch(self, zkclient):
+        """This tests adding and removing a persistent recursive watch."""
+        events = []
+
+        def callback(event):
+            events.append(dict(type=event.type, path=event.path))
+
+        client = zkclient
+        client.add_watch("/a", callback, AddWatchMode.PERSISTENT_RECURSIVE)
+        full_path = client.chroot + "/a"
+        assert len(client._persistent_recursive_watchers[full_path]) == 1
+        client.create("/a")
+        client.create("/a/b")
+        client.create("/a/b/c", value=b"1")
+        client.create("/a/b/d", value=b"1")
+        client.set("/a/b/c", value=b"2")
+        client.set("/a/b/d", value=b"2")
+        client.delete("/a", recursive=True)
+        # Remove the watch
+        client.remove_all_watches("/a", WatcherType.ANY)
+        # Perform one more call that we don't expect to see
+        client.create("/a")
+        # Wait in case the callback does arrive
+        time.sleep(3)
+        assert client._persistent_recursive_watchers[full_path] == set()
+        assert events == [
+            dict(type=EventType.CREATED, path="/a"),
+            dict(type=EventType.CREATED, path="/a/b"),
+            dict(type=EventType.CREATED, path="/a/b/c"),
+            dict(type=EventType.CREATED, path="/a/b/d"),
+            dict(type=EventType.CHANGED, path="/a/b/c"),
+            dict(type=EventType.CHANGED, path="/a/b/d"),
+            dict(type=EventType.DELETED, path="/a/b/c"),
+            dict(type=EventType.DELETED, path="/a/b/d"),
+            dict(type=EventType.DELETED, path="/a/b"),
+            dict(type=EventType.DELETED, path="/a"),
+        ]
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_persistent_recursive_watch_root(self, zkclient):
+        """This tests adding and removing a persistent recursive watch
+        on the root path "/".
+        """
+        events = []
+
+        def callback(event):
+            events.append(dict(type=event.type, path=event.path))
+
+        client = zkclient
+        client.add_watch("/", callback, AddWatchMode.PERSISTENT_RECURSIVE)
+        full_path = client.chroot or "/"
+        assert len(client._persistent_recursive_watchers[full_path]) == 1
+        client.create("/root_test")
+        client.create("/root_test/sub")
+        client.delete("/root_test", recursive=True)
+        # Remove the watch
+        client.remove_all_watches("/", WatcherType.ANY)
+        # Perform one more call that we don't expect to see
+        client.create("/root_test")
+        # Wait in case the callback does arrive
+        time.sleep(3)
+        assert client._persistent_recursive_watchers[full_path] == set()
+        assert events == [
+            dict(type=EventType.CREATED, path="/root_test"),
+            dict(type=EventType.CREATED, path="/root_test/sub"),
+            dict(type=EventType.DELETED, path="/root_test/sub"),
+            dict(type=EventType.DELETED, path="/root_test"),
+        ]
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_remove_data_watch(self, zkclient):
+        """Test that removing a data watch leaves a child watch in place."""
+        callback_event = threading.Event()
+
+        def child_callback(event):
+            callback_event.set()
+
+        def data_callback(event):
+            pass
+
+        client = zkclient
+        client.create("/a")
+        client.get("/a", watch=data_callback)
+        client.get_children("/a", watch=child_callback)
+        client.remove_all_watches("/a", WatcherType.DATA)
+        client.create("/a/b")
+        callback_event.wait(30)
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_remove_children_watch(self, zkclient):
+        """Test that removing a children watch leaves a data watch in place."""
+        callback_event = threading.Event()
+
+        def data_callback(event):
+            callback_event.set()
+
+        def child_callback(event):
+            pass
+
+        client = zkclient
+        client.create("/a")
+        client.get("/a", watch=data_callback)
+        client.get_children("/a", watch=child_callback)
+        client.remove_all_watches("/a", WatcherType.CHILDREN)
+        client.set("/a", b"1")
+        callback_event.wait(30)
+
+    def test_invalid_add_watch_values(self, zkclient):
+        def callback(event):
+            return
+
+        client = zkclient
+        with pytest.raises(TypeError):
+            client.add_watch(b"/a", callback, AddWatchMode.PERSISTENT)
+        with pytest.raises(TypeError):
+            client.add_watch("/a", "test", AddWatchMode.PERSISTENT)
+        with pytest.raises(TypeError):
+            client.add_watch("/a", callback, "1")
+        with pytest.raises(ValueError):
+            client.add_watch("/a", callback, 42)
+
+    def test_invalid_remove_all_watch_values(self, zkclient):
+        client = zkclient
+        with pytest.raises(TypeError):
+            client.remove_all_watches(b"/a", WatcherType.ANY)
+        with pytest.raises(TypeError):
+            client.remove_all_watches("/a", "test")
+        with pytest.raises(ValueError):
+            client.remove_all_watches("/a", 42)
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_remove_all_watches_no_watcher(self, zkclient):
+        client = zkclient
+        client.create("/a")
+        with pytest.raises(NoWatcherError):
+            client.remove_all_watches("/a", WatcherType.ANY)
+
+    @pytest.mark.zk_version(">=3.9")
+    def test_remove_data_watch_leaves_persistent_watch(self, zkclient):
+        """Test that removing a data watch leaves a persistent watch intact."""
+        events = []
+
+        def pers_callback(event):
+            events.append(event)
+
+        def data_callback(event):
+            pass
+
+        client = zkclient
+        client.create("/a_iso", b"v1")
+        client.add_watch("/a_iso", pers_callback, AddWatchMode.PERSISTENT)
+        client.get("/a_iso", watch=data_callback)
+
+        # Remove only the data watch
+        client.remove_all_watches("/a_iso", WatcherType.DATA)
+
+        # Update /a_iso: persistent watch should fire, data watch should not
+        client.set("/a_iso", b"v2")
+        time.sleep(1)
+
+        assert any(ev.type == EventType.CHANGED for ev in events)
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_persistent_watch_multiple_and_deduplicate(self, zkclient):
+        events_1 = []
+        events_2 = []
+
+        def cb1(event):
+            events_1.append(event)
+
+        def cb2(event):
+            events_2.append(event)
+
+        client = zkclient
+        client.add_watch("/multi", cb1, AddWatchMode.PERSISTENT)
+        client.add_watch("/multi", cb2, AddWatchMode.PERSISTENT)
+        # Register cb1 a second time; set semantics should prevent
+        # duplicate invocations
+        client.add_watch("/multi", cb1, AddWatchMode.PERSISTENT)
+
+        client.create("/multi")
+        time.sleep(1)
+
+        assert len(events_1) == 1
+        assert len(events_2) == 1
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_remove_all_watches_any_clears_all_watch_types(self, zkclient):
+        """Test that WatcherType.ANY simultaneously removes data, child,
+        persistent, and persistent recursive watches from a path.
+        """
+        data_events = []
+        child_events = []
+        pers_events = []
+        rec_events = []
+
+        client = zkclient
+        client.create("/combo", b"init")
+
+        client.get("/combo", watch=lambda ev: data_events.append(ev))
+        client.get_children("/combo", watch=lambda ev: child_events.append(ev))
+        client.add_watch(
+            "/combo",
+            lambda ev: pers_events.append(ev),
+            AddWatchMode.PERSISTENT,
+        )
+        client.add_watch(
+            "/combo",
+            lambda ev: rec_events.append(ev),
+            AddWatchMode.PERSISTENT_RECURSIVE,
+        )
+
+        full_path = client.chroot + "/combo"
+        assert len(client._data_watchers[full_path]) == 1
+        assert len(client._child_watchers[full_path]) == 1
+        assert len(client._persistent_watchers[full_path]) == 1
+        assert len(client._persistent_recursive_watchers[full_path]) == 1
+
+        client.remove_all_watches("/combo", WatcherType.ANY)
+
+        assert client._data_watchers[full_path] == set()
+        assert client._child_watchers[full_path] == set()
+        assert client._persistent_watchers[full_path] == set()
+        assert client._persistent_recursive_watchers[full_path] == set()
+
+        # Mutate /combo and add children; none of the removed watches
+        # should fire
+        client.set("/combo", b"v2")
+        client.create("/combo/child")
+        client.delete("/combo/child")
+        client.delete("/combo")
+        time.sleep(1)
+
+        assert len(data_events) == 0
+        assert len(child_events) == 0
+        assert len(pers_events) == 0
+        assert len(rec_events) == 0
+
+    @pytest.mark.zk_version(">=3.6")
+    def test_hierarchical_persistent_recursive_watches(self, zkclient):
+        """Test that multiple persistent recursive watches registered at
+        different levels of a hierarchy both receive events in the subtree.
+        """
+        events_root = []
+        events_mid = []
+
+        client = zkclient
+        client.create("/hier")
+        client.create("/hier/mid")
+
+        client.add_watch(
+            "/hier",
+            lambda ev: events_root.append(ev),
+            AddWatchMode.PERSISTENT_RECURSIVE,
+        )
+        client.add_watch(
+            "/hier/mid",
+            lambda ev: events_mid.append(ev),
+            AddWatchMode.PERSISTENT_RECURSIVE,
+        )
+
+        # Create child under /hier/mid: both should receive CREATED
+        client.create("/hier/mid/leaf", b"v1")
+        time.sleep(1)
+
+        assert any(
+            ev.path == "/hier/mid/leaf" and ev.type == EventType.CREATED
+            for ev in events_root
+        )
+        assert any(
+            ev.path == "/hier/mid/leaf" and ev.type == EventType.CREATED
+            for ev in events_mid
+        )
+
+        # Clean up
+        client.remove_all_watches("/hier/mid", WatcherType.ANY)
+        client.remove_all_watches("/hier", WatcherType.ANY)
 
 
 @pytest.mark.zk_auth("tls")
