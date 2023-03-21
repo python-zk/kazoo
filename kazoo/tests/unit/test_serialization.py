@@ -500,3 +500,27 @@ class TestMultiHeader:
         assert decoded_multi.done is True
         assert decoded_multi.err == 2
         assert offset == len(data)
+
+
+class TestRemoveWatches:
+    def test_type(self) -> None:
+        assert serialization.RemoveWatches.type == 18
+
+    def test_serialize(self) -> None:
+        obj = serialization.RemoveWatches("/path", 3)
+        assert obj.serialize() == _write_string("/path") + _int_struct.pack(3)
+
+    def test_deserialize(self) -> None:
+        assert serialization.RemoveWatches.deserialize(b"", 0) is None
+
+
+class TestAddWatch:
+    def test_type(self) -> None:
+        assert serialization.AddWatch.type == 106
+
+    def test_serialize(self) -> None:
+        obj = serialization.AddWatch("/path", lambda event: None, 1)
+        assert obj.serialize() == _write_string("/path") + _int_struct.pack(1)
+
+    def test_deserialize(self) -> None:
+        assert serialization.AddWatch.deserialize(b"", 0) is None
