@@ -221,8 +221,9 @@ log4j.appender.ROLLINGFILE.File="""
         )
         self.process = subprocess.Popen(args=args)
         log.info(
-            "Started zookeeper process %s using args %s",
+            "Started zookeeper process %s on port %s using args %s",
             self.process.pid,
+            self.server_info.client_port,
             args,
         )
         self._running = True
@@ -304,12 +305,12 @@ log4j.appender.ROLLINGFILE.File="""
 
         shutil.rmtree(self.working_path, True)
 
-    def get_logs(self):
+    def get_logs(self, num_lines=100):
         log_path = pathlib.Path(self.working_path, "zookeeper.log")
         if log_path.exists():
             log_file = log_path.open("r")
             lines = log_file.readlines()
-            return lines[-100:]
+            return lines[-num_lines:]
         return []
 
 
