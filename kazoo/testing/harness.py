@@ -21,6 +21,7 @@ CLUSTER_DEFAULTS = {
     "ZOOKEEPER_OBSERVER_START_ID": -1,
     "ZOOKEEPER_LOCAL_SESSION_RO": "false",
 }
+MAX_INIT_TRIES = 5
 
 
 def get_global_cluster():
@@ -208,8 +209,29 @@ class KazooTestHarness(unittest.TestCase):
             self.cluster.start()
         namespace = "/kazootests" + uuid.uuid4().hex
         self.hosts = self.servers + namespace
-        if "timeout" not in client_options:
-            client_options["timeout"] = self.DEFAULT_CLIENT_TIMEOUT
+
+        tries = 0
+        while True:
+            try:
+                client_cluster_health = self._get_client()
+                client_cluster_health.start()
+                client_cluster_health.ensure_path("/")
+                client_cluster_health.stop()
+                self.log(logging.INFO, "cluster looks ready to go")
+                break
+            except Exception:
+                tries += 1
+                if tries >= MAX_INIT_TRIES:
+                    raise
+                if tries > 0 and tries % 2 == 0:
+                    self.log(
+                        logging.WARNING,
+                        "nuking current cluster and making another one",
+                    )
+                    self.cluster.terminate()
+                    self.cluster.start()
+                continue
+
         self.client = self._get_client(**client_options)
         self.client.start()
         self.client.ensure_path("/")
@@ -259,3 +281,9 @@ class KazooTestCase(KazooTestHarness):
 
     def tearDown(self):
         self.teardown_zookeeper()
+
+    @classmethod
+    def tearDownClass(cls):
+        cluster = get_global_cluster()
+        if cluster is not None:
+            cluster.terminate()
