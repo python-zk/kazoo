@@ -102,7 +102,7 @@ jobs:
       - name: Test with tox
         run: tox -e ${TOX_VENV}
         env:
-          TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl,codecov') }}
+          TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl') }}
           ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
           # TODO: can be removed once tests for ZK 3.4 are removed
           ZOOKEEPER_PREFIX: "${{ !contains(matrix.zk-version, '3.4') && 'apache-' || '' }}"
