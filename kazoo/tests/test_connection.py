@@ -18,8 +18,7 @@ from kazoo.protocol.serialization import (
 from kazoo.protocol.states import KazooState
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
-from kazoo.tests.util import wait
-from kazoo.tests.util import CI_ZK_VERSION
+from kazoo.tests.util import wait, CI_ZK_VERSION, CI
 
 
 class Delete(namedtuple("Delete", "path version")):
@@ -258,7 +257,7 @@ class TestConnectionDrop(KazooTestCase):
 class TestReadOnlyMode(KazooTestCase):
     def setUp(self):
         os.environ["ZOOKEEPER_LOCAL_SESSION_RO"] = "true"
-        self.setup_zookeeper(read_only=True)
+        self.setup_zookeeper()
         skip = False
         if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
             skip = True
@@ -279,7 +278,15 @@ class TestReadOnlyMode(KazooTestCase):
         from kazoo.exceptions import NotReadOnlyCallError
         from kazoo.protocol.states import KeeperState
 
-        client = self.client
+        if CI:
+            # force some wait to make sure the data produced during the
+            # `setUp()` step are replicaed to all zk members
+            # if not done the `get_children()` test may fail because the
+            # node does not exist on the node that we will keep alive
+            time.sleep(15)
+        # do not keep the client started in the `setUp` step alive
+        self.client.stop()
+        client = self._get_client(connection_retry=None, read_only=True)
         states = []
         ev = threading.Event()
 
@@ -289,6 +296,7 @@ class TestReadOnlyMode(KazooTestCase):
             if client.client_state == KeeperState.CONNECTED_RO:
                 ev.set()
 
+        client.start()
         try:
             # stopping both nodes at the same time
             # else the test seems flaky when on CI hosts
@@ -303,6 +311,11 @@ class TestReadOnlyMode(KazooTestCase):
                 thread.start()
             for thread in zk_stop_threads:
                 thread.join()
+            # stopping the client is *mandatory*, else the client might try to
+            # reconnect using a xid that the server may endlessly refuse
+            # restarting the client makes sure the xid gets reset
+            client.stop()
+            client.start()
             ev.wait(15)
             assert ev.is_set()
             assert client.client_state == KeeperState.CONNECTED_RO
