@@ -1,0 +1,6 @@
+[run]
+include =
+    kazoo/*
+omit =
+    kazoo/tests/*
+    kazoo/testing/*
