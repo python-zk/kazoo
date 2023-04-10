@@ -167,6 +167,9 @@ class KazooTestHarness(unittest.TestCase):
     def cluster(self):
         return get_global_cluster()
 
+    def log(self, level, msg, *args, **kwargs):
+        log.log(level, msg, *args, **kwargs)
+
     @property
     def servers(self):
         return ",".join([s.address for s in self.cluster])
