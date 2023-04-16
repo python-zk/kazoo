@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import random
 import time
+from typing import TYPE_CHECKING
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -9,6 +12,14 @@ from kazoo.exceptions import (
     OperationTimeoutError,
     SessionExpiredError,
 )
+
+
+if TYPE_CHECKING:
+    from typing import Callable, TypeVar
+    from typing_extensions import ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
 
 
 log = logging.getLogger(__name__)
@@ -109,7 +120,9 @@ class KazooRetry(object):
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
-    def __call__(self, func, *args, **kwargs):
+    def __call__(
+        self, func: Callable[P, R], *args: P.args, **kwargs: P.kwargs
+    ) -> R:
         """Call a function with arguments until it completes without
         throwing a Kazoo exception
 

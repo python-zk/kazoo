@@ -14,8 +14,11 @@ changes and re-act appropriately. In the event that a
 and/or the lease has been lost.
 
 """
+from __future__ import annotations
+
 import re
 import time
+from typing import TYPE_CHECKING
 import uuid
 
 from kazoo.exceptions import (
@@ -30,6 +33,9 @@ from kazoo.retry import (
     KazooRetry,
     RetryFailedError,
 )
+
+if TYPE_CHECKING:
+    from typing import List
 
 
 class _Watch(object):
@@ -133,7 +139,7 @@ class Lock(object):
         self.client.ensure_path(self.path)
         self.assured_path = True
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Cancel a pending lock acquire."""
         self.cancelled = True
         self.wake_event.set()
@@ -344,7 +350,7 @@ class Lock(object):
         self.node = None
         return True
 
-    def contenders(self):
+    def contenders(self) -> List[str]:
         """Return an ordered list of the current contenders for the
         lock.
 
@@ -550,7 +556,7 @@ class Semaphore(object):
         else:
             self.client.set(self.path, str(self.max_leases).encode("utf-8"))
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Cancel a pending semaphore acquire."""
         self.cancelled = True
         self.wake_event.set()

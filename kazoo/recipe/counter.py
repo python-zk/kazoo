@@ -4,9 +4,20 @@
 :Status: Unknown
 
 """
+from __future__ import annotations
+
+import struct
+from typing import cast, TYPE_CHECKING
+
 from kazoo.exceptions import BadVersionError
 from kazoo.retry import ForceRetryError
-import struct
+
+if TYPE_CHECKING:
+    from typing import Optional, Tuple, Type, Union
+
+    from kazoo.client import KazooClient
+
+    CountT = Union[int, float]
 
 
 class Counter(object):
@@ -58,7 +69,13 @@ class Counter(object):
 
     """
 
-    def __init__(self, client, path, default=0, support_curator=False):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        default: CountT = 0,
+        support_curator: bool = False,
+    ):
         """Create a Kazoo Counter
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -70,46 +87,50 @@ class Counter(object):
         """
         self.client = client
         self.path = path
-        self.default = default
-        self.default_type = type(default)
+        self.default: CountT = default
+        self.default_type: Type[CountT] = type(default)
         self.support_curator = support_curator
         self._ensured_path = False
-        self.pre_value = None
-        self.post_value = None
+        self.pre_value: Optional[CountT] = None
+        self.post_value: Optional[CountT] = None
         if self.support_curator and not isinstance(self.default, int):
             raise TypeError(
                 "when support_curator is enabled the default "
                 "type must be an int"
             )
 
-    def _ensure_node(self):
+    def _ensure_node(self) -> None:
         if not self._ensured_path:
             # make sure our node exists
             self.client.ensure_path(self.path)
             self._ensured_path = True
 
-    def _value(self):
+    def _value(self) -> Tuple[CountT, int]:
         self._ensure_node()
         old, stat = self.client.get(self.path)
         if self.support_curator:
-            old = struct.unpack(">i", old)[0] if old != b"" else self.default
+            parsed_old: Union[int, float, str] = (
+                cast(int, struct.unpack(">i", old)[0])
+                if old != b""
+                else self.default
+            )
         else:
-            old = old.decode("ascii") if old != b"" else self.default
+            parsed_old = old.decode("ascii") if old != b"" else self.default
         version = stat.version
-        data = self.default_type(old)
+        data = self.default_type(parsed_old)
         return data, version
 
     @property
-    def value(self):
+    def value(self) -> CountT:
         return self._value()[0]
 
-    def _change(self, value):
+    def _change(self, value: CountT) -> "Counter":
         if not isinstance(value, self.default_type):
             raise TypeError("invalid type for value change")
         self.client.retry(self._inner_change, value)
         return self
 
-    def _inner_change(self, value):
+    def _inner_change(self, value: CountT) -> None:
         self.pre_value, version = self._value()
         post_value = self.pre_value + value
         if self.support_curator:
@@ -123,10 +144,10 @@ class Counter(object):
             raise ForceRetryError()
         self.post_value = post_value
 
-    def __add__(self, value):
+    def __add__(self, value: CountT) -> "Counter":
         """Add value to counter."""
         return self._change(value)
 
-    def __sub__(self, value):
+    def __sub__(self, value: CountT) -> "Counter":
         """Subtract value from counter."""
         return self._change(-value)
