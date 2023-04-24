@@ -3,7 +3,6 @@
 from collections import defaultdict
 import errno
 import functools
-import os
 import select
 import selectors
 import ssl
@@ -349,7 +348,6 @@ def fileobj_to_fd(fileobj):
             raise TypeError("Invalid file object: " "{!r}".format(fileobj))
     if fd < 0:
         raise TypeError("Invalid file descriptor: {}".format(fd))
-    os.fstat(fd)
     return fd
 
 
@@ -380,7 +378,11 @@ def selector_select(
 
     selector = selectors_module.DefaultSelector()
     for fd, events in fd_events.items():
-        selector.register(fd, events)
+        try:
+            selector.register(fd, events)
+        except (ValueError, OSError) as e:
+            # gevent can raise OSError
+            raise ValueError('Invalid event mask or fd') from e
 
     revents, wevents, xevents = [], [], []
     try:
