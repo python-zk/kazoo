@@ -209,7 +209,6 @@ class Lock(object):
         return True
 
     def _inner_acquire(self, blocking, timeout, ephemeral=True):
-
         # wait until it's our chance to get it..
         if self.is_acquired:
             if not blocking:

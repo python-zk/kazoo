@@ -1,4 +1,5 @@
 import unittest
+import sys
 
 import pytest
 
@@ -9,6 +10,7 @@ from kazoo.testing import KazooTestCase
 from kazoo.tests import test_client
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestGeventHandler(unittest.TestCase):
     def setUp(self):
         try:
@@ -77,6 +79,7 @@ class TestGeventHandler(unittest.TestCase):
         ev.wait()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestBasicGeventClient(KazooTestCase):
     def setUp(self):
         try:
@@ -165,6 +168,7 @@ class TestBasicGeventClient(KazooTestCase):
             sock.close()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestGeventClient(test_client.TestClient):
     def setUp(self):
         try:

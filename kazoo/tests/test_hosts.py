@@ -36,7 +36,6 @@ class HostsTestCase(TestCase):
         assert chroot is None
 
     def test_hosts_list(self):
-
         hosts, chroot = collect_hosts("zk01:2181, zk02:2181, zk03:2181")
         expected1 = [("zk01", 2181), ("zk02", 2181), ("zk03", 2181)]
         assert hosts == expected1

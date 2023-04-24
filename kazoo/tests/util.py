@@ -98,7 +98,6 @@ class Wait(object):
         getnow=(lambda: time.time),
         getsleep=(lambda: time.sleep),
     ):
-
         if timeout is not None:
             self.timeout = timeout
 

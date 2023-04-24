@@ -131,7 +131,10 @@ class TestEventletHandler(unittest.TestCase):
             r.get()
 
     def test_huge_file_descriptor(self):
-        import resource
+        try:
+            import resource
+        except ImportError:
+            self.skipTest("resource module unavailable on this platform")
         from eventlet.green import socket
         from kazoo.handlers.utils import create_tcp_socket
 
