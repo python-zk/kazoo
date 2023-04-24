@@ -382,7 +382,7 @@ def selector_select(
             selector.register(fd, events)
         except (ValueError, OSError) as e:
             # gevent can raise OSError
-            raise ValueError('Invalid event mask or fd') from e
+            raise ValueError("Invalid event mask or fd") from e
 
     revents, wevents, xevents = [], [], []
     try:

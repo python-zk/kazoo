@@ -45,7 +45,10 @@ class TestThreadingHandler(unittest.TestCase):
         assert h._running is False
 
     def test_huge_file_descriptor(self):
-        import resource
+        try:
+            import resource
+        except ImportError:
+            self.skipTest("resource module unavailable on this platform")
         import socket
         from kazoo.handlers.utils import create_tcp_socket
 
