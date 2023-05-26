@@ -187,6 +187,11 @@ class NotReadOnlyCallError(ZookeeperError):
     a read-only server"""
 
 
+@_zookeeper_exception(-125)
+class QuotaExceededError(ZookeeperError):
+    """Exceeded the quota that was set on the path"""
+
+
 class ConnectionClosedError(SessionExpiredError):
     """Connection is closed"""
 
