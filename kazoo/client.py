@@ -221,7 +221,9 @@ class KazooClient(object):
         self.logger = logger or log
 
         # Record the handler strategy used
-        self.handler = handler or SequentialThreadingHandler(logger=self.logger)
+        self.handler = handler
+        if not handler:
+            self.handler = SequentialThreadingHandler(logger=self.logger)
         if inspect.isclass(self.handler):
             raise ConfigurationError(
                 "Handler must be an instance of a class, "

@@ -110,6 +110,8 @@ class SequentialThreadingHandler(object):
         return self._running
 
     def _create_thread_worker(self, work_queue):
+        log = self.logger
+
         def _thread_worker():  # pragma: nocover
             while True:
                 try:
@@ -119,7 +121,7 @@ class SequentialThreadingHandler(object):
                             break
                         func()
                     except Exception:
-                        self.logger.exception("Exception in worker queue thread")
+                        log.exception("Exception in worker queue thread")
                     finally:
                         work_queue.task_done()
                         del func  # release before possible idle
