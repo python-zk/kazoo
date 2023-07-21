@@ -96,8 +96,9 @@ class SequentialThreadingHandler(object):
     queue_impl = queue.Queue
     queue_empty = queue.Empty
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """Create a :class:`SequentialThreadingHandler` instance"""
+        self.logger = logger or log
         self.callback_queue = self.queue_impl()
         self.completion_queue = self.queue_impl()
         self._running = False
@@ -118,7 +119,7 @@ class SequentialThreadingHandler(object):
                             break
                         func()
                     except Exception:
-                        log.exception("Exception in worker queue thread")
+                        self.logger.exception("Exception in worker queue thread")
                     finally:
                         work_queue.task_done()
                         del func  # release before possible idle
