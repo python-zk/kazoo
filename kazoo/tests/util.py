@@ -95,7 +95,7 @@ class Wait(object):
         timeout=None,
         wait=None,
         exception=None,
-        getnow=(lambda: time.time),
+        getnow=(lambda: time.monotonic),
         getsleep=(lambda: time.sleep),
     ):
         if timeout is not None:
