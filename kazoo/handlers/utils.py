@@ -212,11 +212,11 @@ def create_tcp_connection(
         # this ugliness...
         timeout = module.getdefaulttimeout()
     if timeout is not None:
-        end = time.time() + timeout
+        end = time.monotonic() + timeout
     sock = None
 
     while True:
-        timeout_at = end if end is None else end - time.time()
+        timeout_at = end if end is None else end - time.monotonic()
         # The condition is not '< 0' here because socket.settimeout treats 0 as
         # a special case to put the socket in non-blocking mode.
         if timeout_at is not None and timeout_at <= 0:

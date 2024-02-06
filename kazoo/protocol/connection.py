@@ -109,19 +109,19 @@ class RWPinger(object):
 
     def __iter__(self):
         if not self.last_attempt:
-            self.last_attempt = time.time()
+            self.last_attempt = time.monotonic()
         delay = 0.5
         while True:
             yield self._next_server(delay)
 
     def _next_server(self, delay):
         jitter = random.randint(0, 100) / 100.0
-        while time.time() < self.last_attempt + delay + jitter:
+        while time.monotonic() < self.last_attempt + delay + jitter:
             # Skip rw ping checks if its too soon
             return False
         for host, port in self.hosts:
             log.debug("Pinging server for r/w: %s:%s", host, port)
-            self.last_attempt = time.time()
+            self.last_attempt = time.monotonic()
             try:
                 with self.socket_handling():
                     sock = self.connection((host, port))
@@ -136,7 +136,7 @@ class RWPinger(object):
                 return False
 
             # Add some jitter between host pings
-            while time.time() < self.last_attempt + jitter:
+            while time.monotonic() < self.last_attempt + jitter:
                 return False
         delay *= 2
 
@@ -617,14 +617,14 @@ class ConnectionHandler(object):
             connect_timeout = connect_timeout / 1000.0
             retry.reset()
             self.ping_outstanding.clear()
-            last_send = time.time()
+            last_send = time.monotonic()
             with self._socket_error_handling():
                 while not self.client._stopped.is_set():
                     # Watch for something to read or send
                     jitter_time = random.randint(1, 40) / 100.0
                     deadline = last_send + read_timeout / 2.0 - jitter_time
                     # Ensure our timeout is positive
-                    timeout = max([deadline - time.time(), jitter_time])
+                    timeout = max([deadline - time.monotonic(), jitter_time])
                     s = self.handler.select(
                         [self._socket, self._read_sock], [], [], timeout
                     )[0]
@@ -646,12 +646,12 @@ class ConnectionHandler(object):
                         if self._read_sock in s:
                             self._send_request(read_timeout, connect_timeout)
                             # Requests act as implicit pings.
-                            last_send = time.time()
+                            last_send = time.monotonic()
                             continue
 
-                    if time.time() >= deadline:
+                    if time.monotonic() >= deadline:
                         self._send_ping(connect_timeout)
-                        last_send = time.time()
+                        last_send = time.monotonic()
             self.logger.info("Closing connection to %s:%s", host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
