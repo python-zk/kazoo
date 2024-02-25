@@ -8,7 +8,7 @@ ZOOKEEPER_VERSION=${ZOOKEEPER_VERSION:-3.4.14}
 ZOOKEEPER_PATH="$ZOO_BASE_DIR/$ZOOKEEPER_VERSION"
 ZOOKEEPER_PREFIX=${ZOOKEEPER_PREFIX}
 ZOOKEEPER_SUFFIX=${ZOOKEEPER_SUFFIX}
-ZOO_MIRROR_URL="http://archive.apache.org/dist"
+ZOO_MIRROR_URL="https://archive.apache.org/dist"
 
 
 function download_zookeeper(){
@@ -16,7 +16,7 @@ function download_zookeeper(){
     cd $ZOO_BASE_DIR
     ZOOKEEPER_DOWNLOAD_URL=${ZOO_MIRROR_URL}/zookeeper/zookeeper-${ZOOKEEPER_VERSION}/${ZOOKEEPER_PREFIX}zookeeper-${ZOOKEEPER_VERSION}${ZOOKEEPER_SUFFIX}.tar.gz
     echo "Will download ZK from ${ZOOKEEPER_DOWNLOAD_URL}"
-    (curl --silent -C - $ZOOKEEPER_DOWNLOAD_URL | tar -zx) || echo "Failed downloading ZK from ${ZOOKEEPER_DOWNLOAD_URL}"
+    (curl --silent -L -C - $ZOOKEEPER_DOWNLOAD_URL | tar -zx) || (echo "Failed downloading ZK from ${ZOOKEEPER_DOWNLOAD_URL}" && exit 1)
     mv ${ZOOKEEPER_PREFIX}zookeeper-${ZOOKEEPER_VERSION}${ZOOKEEPER_SUFFIX} $ZOOKEEPER_VERSION
     chmod a+x $ZOOKEEPER_PATH/bin/zkServer.sh
 }
