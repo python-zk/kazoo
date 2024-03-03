@@ -487,27 +487,29 @@ class KazooLockTests(KazooTestCase):
         lock = self.client.WriteLock(self.lockpath, "test")
         lock.acquire()
 
+        wait = self.make_wait()
         reader_thread.start()
+        # make sure reader_thread is a contender before writer_thread
+        wait(lambda: len(lock.contenders()) == 2)
         writer_thread.start()
 
         # wait for everyone to line up on the lock
-        wait = self.make_wait()
         wait(lambda: len(lock.contenders()) == 3)
         contenders = lock.contenders()
 
         assert contenders[0] == "test"
         remaining = contenders[1:]
 
-        # release the lock and contenders should claim it in order
-        lock.release()
-
         contender_bits = {
             "reader": (reader_thread, reader_event),
             "writer": (writer_thread, writer_event),
         }
 
-        for contender in ("reader", "writer"):
-            thread, event = contender_bits[contender]
+        # release the lock and contenders should claim it in order
+        lock.release()
+
+        for contender, contender_bits in contender_bits.items():
+            _, event = contender_bits
 
             with self.condition:
                 while not self.active_thread:
