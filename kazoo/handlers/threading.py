@@ -96,8 +96,9 @@ class SequentialThreadingHandler(object):
     queue_impl = queue.Queue
     queue_empty = queue.Empty
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """Create a :class:`SequentialThreadingHandler` instance"""
+        self.logger = logger or log
         self.callback_queue = self.queue_impl()
         self.completion_queue = self.queue_impl()
         self._running = False
@@ -109,6 +110,8 @@ class SequentialThreadingHandler(object):
         return self._running
 
     def _create_thread_worker(self, work_queue):
+        log = self.logger
+
         def _thread_worker():  # pragma: nocover
             while True:
                 try:
