@@ -120,6 +120,7 @@ class KazooClient(object):
         ca=None,
         use_ssl=False,
         verify_certs=True,
+        concurrent_request_limit=0,
         **kwargs,
     ):
         """Create a :class:`KazooClient` instance. All time arguments
@@ -241,6 +242,18 @@ class KazooClient(object):
         self.keyfile = keyfile
         self.keyfile_password = keyfile_password
         self.ca = ca
+        if concurrent_request_limit > 0:
+            self.logger.info(
+                "Zookeeper client rate-limited to %d concurrent requests",
+                concurrent_request_limit,
+            )
+            self.rate_limiting_sem = self.handler.semaphore_impl(
+                concurrent_request_limit
+            )
+
+        else:
+            self.rate_limiting_sem = None
+
         # Curator like simplified state tracking, and listeners for
         # state transitions
         self._state = KeeperState.CLOSED
@@ -634,6 +647,16 @@ class KazooClient(object):
         elif self._state == KeeperState.EXPIRED_SESSION:
             async_object.set_exception(SessionExpiredError())
             return False
+
+        if self.rate_limiting_sem:
+            if not self.rate_limiting_sem.acquire(blocking=False):
+                self.logger.info(
+                    "Limiting concurrent requests. Waiting for completion."
+                )
+                # Actually block on the sempahore here
+                self.rate_limiting_sem.acquire(blocking=True)
+            # Register the release of the semaphore on async request completion
+            async_object.rawlink(lambda _res: self.rate_limiting_sem.release())
 
         self._queue.append((request, async_object))
 

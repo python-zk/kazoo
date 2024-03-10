@@ -10,6 +10,7 @@ environments that use threads.
     :class:`~kazoo.handlers.gevent.SequentialGeventHandler` instead.
 
 """
+
 from __future__ import absolute_import
 
 import atexit
@@ -95,6 +96,7 @@ class SequentialThreadingHandler(object):
     sleep_func = staticmethod(time.sleep)
     queue_impl = queue.Queue
     queue_empty = queue.Empty
+    semaphore_impl = threading.BoundedSemaphore
 
     def __init__(self):
         """Create a :class:`SequentialThreadingHandler` instance"""

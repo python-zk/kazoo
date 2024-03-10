@@ -11,6 +11,7 @@ from eventlet.green import time as green_time
 from eventlet.green import threading as green_threading
 from eventlet.green import selectors as green_selectors
 from eventlet import queue as green_queue
+from eventlet import semaphore as green_semaphore
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
@@ -80,6 +81,7 @@ class SequentialEventletHandler(object):
     name = "sequential_eventlet_handler"
     queue_impl = green_queue.LightQueue
     queue_empty = green_queue.Empty
+    semaphore_impl = green_semaphore.BoundedSemaphore
 
     def __init__(self):
         """Create a :class:`SequentialEventletHandler` instance"""
