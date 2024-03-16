@@ -15,6 +15,12 @@ Public API
 
         .. automethod:: __call__
 
+    .. autoclass:: ExistingDataWatch
+        :members:
+
+        .. automethod:: __init__
+
+        .. automethod:: __call__
 
     .. autoclass:: ChildrenWatch
         :members:

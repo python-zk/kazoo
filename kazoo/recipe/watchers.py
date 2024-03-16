@@ -222,6 +222,67 @@ class DataWatch(object):
             self._client.handler.spawn(self._get_data)
 
 
+class ExistingDataWatch(DataWatch):
+    """Watches a node for data updates and calls the specified
+    function each time it changes
+
+    Similar to :class:`~kazoo.recipes.watchers.DataWatch`, but it does
+    not operate on nodes which do not exist.
+
+    The function will also be called the very first time its
+    registered to get the data.
+
+    Returning `False` from the registered function will disable future
+    data change calls. If the client connection is closed (using the
+    close command), the DataWatch will no longer get updates.
+
+    If the function supplied takes three arguments, then the third one
+    will be a :class:`~kazoo.protocol.states.WatchedEvent`. It will
+    only be set if the change to the data occurs as a result of the
+    server notifying the watch that there has been a change. Events
+    like reconnection or the first call will not include an event.
+
+    If the node does not exist on creation then the function will be
+    called with ``None`` for all values and no futher callbacks will
+    occur.  If the node is deleted after the watch is created, the
+    function will be called with the event argument indicating a
+    delete event and no further callbacks will occur.
+    """
+
+    @_ignore_closed
+    def _get_data(self, event=None):
+        # Ensure this runs one at a time, possible because the session
+        # watcher may trigger a run
+        with self._run_lock:
+            if self._stopped:
+                return
+
+            initial_version = self._version
+
+            try:
+                data, stat = self._retry(self._client.get,
+                                         self._path, self._watcher)
+            except NoNodeError:
+                data = stat = None
+
+            # No node data, clear out version
+            if stat is None:
+                self._version = None
+            else:
+                self._version = stat.mzxid
+
+            # Call our function if its the first time ever, or if the
+            # version has changed
+            if initial_version != self._version or not self._ever_called:
+                self._log_func_exception(data, stat, event)
+
+            # If the node doesn't exist, we won't be watching any more
+            if stat is None:
+                self._stopped = True
+                self._func = None
+                self._client.remove_listener(self._session_watcher)
+
+
 class ChildrenWatch(object):
     """Watches a node for children updates and calls the specified
     function each time it changes
