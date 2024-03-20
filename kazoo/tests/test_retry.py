@@ -1,89 +1,103 @@
-import unittest
+from unittest import mock
 
 import pytest
 
+from kazoo import exceptions as ke
+from kazoo import retry as kr
 
-class TestRetrySleeper(unittest.TestCase):
-    def _pass(self):
+
+def _make_retry(*args, **kwargs):
+    """Return a KazooRetry instance with a dummy sleep function."""
+
+    def _sleep_func(_time):
         pass
 
-    def _fail(self, times=1):
-        from kazoo.retry import ForceRetryError
-
-        scope = dict(times=0)
-
-        def inner():
-            if scope["times"] >= times:
-                pass
-            else:
-                scope["times"] += 1
-                raise ForceRetryError("Failed!")
-
-        return inner
-
-    def _makeOne(self, *args, **kwargs):
-        from kazoo.retry import KazooRetry
-
-        return KazooRetry(*args, **kwargs)
-
-    def test_reset(self):
-        retry = self._makeOne(delay=0, max_tries=2)
-        retry(self._fail())
-        assert retry._attempts == 1
-        retry.reset()
-        assert retry._attempts == 0
-
-    def test_too_many_tries(self):
-        from kazoo.retry import RetryFailedError
-
-        retry = self._makeOne(delay=0)
-        with pytest.raises(RetryFailedError):
-            retry(self._fail(times=999))
-        assert retry._attempts == 1
-
-    def test_maximum_delay(self):
-        def sleep_func(_time):
-            pass
-
-        retry = self._makeOne(delay=10, max_tries=100, sleep_func=sleep_func)
-        retry(self._fail(times=10))
-        assert retry._cur_delay < 4000
-        # gevent's sleep function is picky about the type
-        assert type(retry._cur_delay) == float
-
-    def test_copy(self):
-        def _sleep(t):
-            return None
-
-        retry = self._makeOne(sleep_func=_sleep)
-        rcopy = retry.copy()
-        assert rcopy.sleep_func is _sleep
+    return kr.KazooRetry(*args, sleep_func=_sleep_func, **kwargs)
 
 
-class TestKazooRetry(unittest.TestCase):
-    def _makeOne(self, **kw):
-        from kazoo.retry import KazooRetry
+def _make_try_func(times=1):
+    """Returns a function that raises ForceRetryError `times` time before
+    returning None.
+    """
+    callmock = mock.Mock(
+        side_effect=[kr.ForceRetryError("Failed!")] * times + [None],
+    )
+    return callmock
 
-        return KazooRetry(**kw)
 
-    def test_connection_closed(self):
-        from kazoo.exceptions import ConnectionClosedError
+def test_call():
+    retry = _make_retry(delay=0, max_tries=2)
+    func = _make_try_func()
+    retry(func, "foo", bar="baz")
+    assert func.call_args_list == [
+        mock.call("foo", bar="baz"),
+        mock.call("foo", bar="baz"),
+    ]
 
-        retry = self._makeOne()
 
-        def testit():
-            raise ConnectionClosedError()
+def test_reset():
+    retry = _make_retry(delay=0, max_tries=2)
+    func = _make_try_func()
+    retry(func)
+    assert (
+        func.call_count == retry._attempts + 1 == 2
+    ), "Called 2 times, failed _attempts 1, succeeded 1"
+    retry.reset()
+    assert retry._attempts == 0
 
-        with pytest.raises(ConnectionClosedError):
-            retry(testit)
 
-    def test_session_expired(self):
-        from kazoo.exceptions import SessionExpiredError
+def test_too_many_tries():
+    retry = _make_retry(delay=0, max_tries=10)
+    func = _make_try_func(times=999)
+    with pytest.raises(kr.RetryFailedError):
+        retry(func)
+    assert (
+        func.call_count == retry._attempts == 10
+    ), "Called 10 times, failed _attempts 10"
 
-        retry = self._makeOne(max_tries=1)
 
-        def testit():
-            raise SessionExpiredError()
+def test_maximum_delay():
+    retry = _make_retry(delay=10, max_tries=100, max_jitter=0)
+    func = _make_try_func(times=2)
+    retry(func)
+    assert func.call_count == 3, "Called 3 times, 2 failed _attemps"
+    assert retry._cur_delay == 10 * 2**2, "Normal exponential backoff"
+    retry.reset()
+    func = _make_try_func(times=10)
+    retry(func)
+    assert func.call_count == 11, "Called 11 times, 10 failed _attemps"
+    assert retry._cur_delay == 60, "Delay capped by maximun"
+    # gevent's sleep function is picky about the type
+    assert isinstance(retry._cur_delay, float)
 
-        with pytest.raises(Exception):
-            retry(testit)
+
+def test_copy():
+    retry = _make_retry()
+    rcopy = retry.copy()
+    assert rcopy is not retry
+    assert rcopy.sleep_func is retry.sleep_func
+
+
+def test_connection_closed():
+    retry = _make_retry()
+
+    def testit():
+        raise ke.ConnectionClosedError
+
+    with pytest.raises(ke.ConnectionClosedError):
+        retry(testit)
+
+
+def test_session_expired():
+    retry = _make_retry(max_tries=1)
+
+    def testit():
+        raise ke.SessionExpiredError
+
+    with pytest.raises(kr.RetryFailedError):
+        retry(testit)
+
+    retry = _make_retry(max_tries=1, ignore_expire=False)
+
+    with pytest.raises(ke.SessionExpiredError):
+        retry(testit)
