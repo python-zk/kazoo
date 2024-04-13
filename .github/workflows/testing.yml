@@ -1,0 +1,160 @@
+name: Kazoo Awesome Testing
+
+on:
+  push:
+    branches:
+      - master
+      - release/*
+  pull_request:
+    branches:
+      - master
+      - release/*
+
+jobs:
+  validate:
+    name: Code Validation
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Handle pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install required dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install tox
+
+      - name: Code check
+        run: tox -e ${TOX_VENV}
+        env:
+          TOX_VENV: black,pep8,mypy
+
+  test:
+    needs: [validate]
+
+    name: >
+      Linux - Test Python ${{ matrix.python-version }},
+      ZK ${{ matrix.zk-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.10-v7.3.15"]
+        zk-version: ["3.6.4", "3.7.2", "3.8.3", "3.9.1"]
+        include:
+          - python-version: "3.8"
+            tox-env: py38
+          - python-version: "3.9"
+            tox-env: py39
+          - python-version: "3.10"
+            tox-env: py310
+          - python-version: "3.11"
+            tox-env: py311
+          - python-version: "3.12"
+            tox-env: py312
+          - python-version: "pypy-3.10-v7.3.15"
+            tox-env: pypy3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Handle pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Handle ZK installation cache
+        uses: actions/cache@v4
+        with:
+          path: zookeeper
+          key: ${{ runner.os }}-zookeeper
+          restore-keys: |
+            ${{ runner.os }}-zookeeper
+
+      - name: Install required dependencies
+        run: |
+          sudo apt-get -y install libevent-dev krb5-kdc krb5-admin-server libkrb5-dev
+          python3 -m pip install --upgrade pip
+          pip install tox
+
+      - name: Test with tox
+        run: tox -e ${TOX_VENV}
+        env:
+          TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl') }}
+          ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
+          # TODO: can be removed once tests for ZK 3.4 are removed
+          ZOOKEEPER_PREFIX: "${{ !contains(matrix.zk-version, '3.4') && 'apache-' || '' }}"
+          ZOOKEEPER_SUFFIX: "${{ !contains(matrix.zk-version, '3.4') && '-bin' || '' }}"
+          ZOOKEEPER_LIB: "${{ !contains(matrix.zk-version, '3.4') && 'lib' || '' }}"
+
+      - name: Publish Codecov report
+        uses: codecov/codecov-action@v4
+
+  test_windows:
+    needs: [validate]
+    name: Windows - Sanity test using a single version of Python and ZK
+
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Handle pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Handle ZK installation cache
+        uses: actions/cache@v4
+        with:
+          path: zookeeper
+          key: ${{ runner.os }}-zookeeper
+          restore-keys: |
+            ${{ runner.os }}-zookeeper
+
+      # https://github.com/actions/setup-java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install required dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install tox
+
+      - name: Test with tox
+        run: tox -e py310
+        env:
+          ZOOKEEPER_VERSION: 3.9.1
+          ZOOKEEPER_PREFIX: "apache-"
+          ZOOKEEPER_SUFFIX: "-bin"
+          ZOOKEEPER_LIB: "lib"
+        shell: bash

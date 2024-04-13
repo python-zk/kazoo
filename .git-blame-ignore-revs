@@ -1,0 +1,5 @@
+# Commit ignored from blame
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Reformat using black 22.10.0
+686717629f71c66d39ab0352c605c73eace5bd1f

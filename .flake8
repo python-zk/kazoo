@@ -1,0 +1,14 @@
+[flake8]
+builtins = _
+exclude =
+    .git,
+    __pycache__,
+    .venv/,venv/,
+    .tox/,
+    build/,dist/,*egg,
+    docs/conf.py,
+    zookeeper/
+# See black's documentation for E203
+max-line-length = 79
+extend-ignore = BLK100,E203
+
