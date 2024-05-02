@@ -3,7 +3,6 @@
 from collections import defaultdict
 import errno
 import functools
-import os
 import select
 import selectors
 import ssl
@@ -213,11 +212,11 @@ def create_tcp_connection(
         # this ugliness...
         timeout = module.getdefaulttimeout()
     if timeout is not None:
-        end = time.time() + timeout
+        end = time.monotonic() + timeout
     sock = None
 
     while True:
-        timeout_at = end if end is None else end - time.time()
+        timeout_at = end if end is None else end - time.monotonic()
         # The condition is not '< 0' here because socket.settimeout treats 0 as
         # a special case to put the socket in non-blocking mode.
         if timeout_at is not None and timeout_at <= 0:
@@ -349,7 +348,6 @@ def fileobj_to_fd(fileobj):
             raise TypeError("Invalid file object: " "{!r}".format(fileobj))
     if fd < 0:
         raise TypeError("Invalid file descriptor: {}".format(fd))
-    os.fstat(fd)
     return fd
 
 
@@ -380,7 +378,11 @@ def selector_select(
 
     selector = selectors_module.DefaultSelector()
     for fd, events in fd_events.items():
-        selector.register(fd, events)
+        try:
+            selector.register(fd, events)
+        except (ValueError, OSError) as e:
+            # gevent can raise OSError
+            raise ValueError("Invalid event mask or fd") from e
 
     revents, wevents, xevents = [], [], []
     try:

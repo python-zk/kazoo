@@ -1,5 +1,6 @@
 import gc
 import importlib
+import sys
 import uuid
 
 from unittest.mock import patch, call, Mock
@@ -28,6 +29,11 @@ class KazooAdaptiveHandlerTestCase(KazooTestHarness):
 
     def choose_an_installed_handler(self):
         for handler_module, handler_class in self.HANDLERS:
+            if (
+                handler_module == "kazoo.handlers.gevent"
+                and sys.platform == "win32"
+            ):
+                continue
             try:
                 mod = importlib.import_module(handler_module)
                 cls = getattr(mod, handler_class)
