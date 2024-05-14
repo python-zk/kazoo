@@ -612,7 +612,9 @@ class ConnectionHandler(object):
 
         try:
             self._xid = 0
-            read_timeout, connect_timeout = self._connect(host, hostip, port)
+            read_timeout, connect_timeout = self._connect(
+                host, hostip, port, timeout=retry.cur_delay
+            )
             read_timeout = read_timeout / 1000.0
             connect_timeout = connect_timeout / 1000.0
             retry.reset()
@@ -683,7 +685,7 @@ class ConnectionHandler(object):
             if self._socket is not None:
                 self._socket.close()
 
-    def _connect(self, host, hostip, port):
+    def _connect(self, host, hostip, port, timeout):
         client = self.client
         self.logger.info(
             "Connecting to %s(%s):%s, use_ssl: %r",
@@ -703,7 +705,7 @@ class ConnectionHandler(object):
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
                 address=(hostip, port),
-                timeout=client._session_timeout / 1000.0,
+                timeout=timeout,
                 use_ssl=self.client.use_ssl,
                 keyfile=self.client.keyfile,
                 certfile=self.client.certfile,

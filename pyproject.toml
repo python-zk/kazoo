@@ -125,6 +125,7 @@ module = [
     'kazoo.tests.test_cache',
     'kazoo.tests.test_client',
     'kazoo.tests.test_connection',
+    'kazoo.tests.test_cnx_retry',
     'kazoo.tests.test_counter',
     'kazoo.tests.test_election',
     'kazoo.tests.test_eventlet_handler',

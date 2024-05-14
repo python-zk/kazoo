@@ -109,6 +109,10 @@ class KazooRetry(object):
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
+    @property
+    def cur_delay(self):
+        return self._cur_delay
+
     def __call__(self, func, *args, **kwargs):
         """Call a function with arguments until it completes without
         throwing a Kazoo exception
