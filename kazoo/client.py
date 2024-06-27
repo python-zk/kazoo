@@ -120,6 +120,7 @@ class KazooClient(object):
         ca=None,
         use_ssl=False,
         verify_certs=True,
+        check_hostname=False,
         **kwargs,
     ):
         """Create a :class:`KazooClient` instance. All time arguments
@@ -237,6 +238,7 @@ class KazooClient(object):
 
         self.use_ssl = use_ssl
         self.verify_certs = verify_certs
+        self.check_hostname = check_hostname
         self.certfile = certfile
         self.keyfile = keyfile
         self.keyfile_password = keyfile_password
@@ -758,8 +760,10 @@ class KazooClient(object):
             raise ConnectionLoss("No connection to server")
 
         peer = self._connection._socket.getpeername()[:2]
+        peer_host = self._connection._socket.getpeername()[1]
         sock = self.handler.create_connection(
             peer,
+            hostname=peer_host,
             timeout=self._session_timeout / 1000.0,
             use_ssl=self.use_ssl,
             ca=self.ca,
@@ -767,6 +771,7 @@ class KazooClient(object):
             keyfile=self.keyfile,
             keyfile_password=self.keyfile_password,
             verify_certs=self.verify_certs,
+            check_hostname=self.check_hostname
         )
         sock.sendall(cmd)
         result = sock.recv(8192)

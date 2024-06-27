@@ -196,6 +196,7 @@ def create_tcp_socket(module):
 def create_tcp_connection(
     module,
     address,
+    hostname=None,
     timeout=None,
     use_ssl=False,
     ca=None,
@@ -203,6 +204,7 @@ def create_tcp_connection(
     keyfile=None,
     keyfile_password=None,
     verify_certs=True,
+    check_hostname=False,
     options=None,
     ciphers=None,
 ):
@@ -241,7 +243,7 @@ def create_tcp_connection(
             # verify_mode to CERT_NONE.
             # TODO: Make hostname verification configurable as some users may
             # elect to use it.
-            context.check_hostname = False
+            context.check_hostname = check_hostname
             context.verify_mode = (
                 ssl.CERT_REQUIRED if verify_certs else ssl.CERT_NONE
             )
@@ -258,7 +260,7 @@ def create_tcp_connection(
                 addrs = socket.getaddrinfo(
                     address[0], address[1], 0, socket.SOCK_STREAM
                 )
-                conn = context.wrap_socket(module.socket(addrs[0][0]))
+                conn = context.wrap_socket(module.socket(addrs[0][0]), server_hostname=hostname)
                 conn.settimeout(timeout_at)
                 conn.connect(address)
                 sock = conn

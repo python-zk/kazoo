@@ -703,6 +703,7 @@ class ConnectionHandler(object):
         with self._socket_error_handling():
             self._socket = self.handler.create_connection(
                 address=(hostip, port),
+                hostname=host,
                 timeout=client._session_timeout / 1000.0,
                 use_ssl=self.client.use_ssl,
                 keyfile=self.client.keyfile,
@@ -710,6 +711,7 @@ class ConnectionHandler(object):
                 ca=self.client.ca,
                 keyfile_password=self.client.keyfile_password,
                 verify_certs=self.client.verify_certs,
+                check_hostname=self.client.check_hostname
             )
 
         self._socket.setblocking(0)

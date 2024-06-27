@@ -30,12 +30,26 @@ class TestCreateTCPConnection(unittest.TestCase):
                     timeout = call_args[0][1]
                     assert timeout >= 0, "socket timeout must be nonnegative"
 
+    def test_ssl_server_hostname(self):
+        from kazoo.handlers import utils
+        from kazoo.handlers.utils import create_tcp_connection, socket, ssl
+
+        with patch.object(utils, "_set_default_tcpsock_options"):
+            with patch.object(ssl.SSLContext, "wrap_socket") as wrap_socket:
+                create_tcp_connection(
+                    socket, ("127.0.0.1", 2181), timeout=1.5, hostname="fakehostname", use_ssl=True
+                )
+
+                for call_args in wrap_socket.call_args_list:
+                    server_hostname = call_args[1]['server_hostname']
+                    assert server_hostname == "fakehostname"
+
     def test_timeout_arg_eventlet(self):
         if not EVENTLET_HANDLER_AVAILABLE:
             pytest.skip("eventlet handler not available.")
 
         from kazoo.handlers import utils
-        from kazoo.handlers.utils import create_tcp_connection, time
+        from kazoo.handlers.utils import create_tcp_connection, socket, time
 
         with patch.object(socket, "create_connection") as create_connection:
             with patch.object(utils, "_set_default_tcpsock_options"):
