@@ -41,11 +41,11 @@ class TestCreateTCPConnection(unittest.TestCase):
                     ("127.0.0.1", 2181),
                     timeout=1.5,
                     hostname="fakehostname",
-                    use_ssl=True
+                    use_ssl=True,
                 )
 
                 for call_args in wrap_socket.call_args_list:
-                    server_hostname = call_args[1]['server_hostname']
+                    server_hostname = call_args[1]["server_hostname"]
                     assert server_hostname == "fakehostname"
 
     def test_timeout_arg_eventlet(self):

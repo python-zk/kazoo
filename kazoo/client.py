@@ -771,7 +771,7 @@ class KazooClient(object):
             keyfile=self.keyfile,
             keyfile_password=self.keyfile_password,
             verify_certs=self.verify_certs,
-            check_hostname=self.check_hostname
+            check_hostname=self.check_hostname,
         )
         sock.sendall(cmd)
         result = sock.recv(8192)
