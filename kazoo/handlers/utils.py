@@ -260,7 +260,9 @@ def create_tcp_connection(
                 addrs = socket.getaddrinfo(
                     address[0], address[1], 0, socket.SOCK_STREAM
                 )
-                conn = context.wrap_socket(module.socket(addrs[0][0]), server_hostname=hostname)
+                conn = context.wrap_socket(
+                    module.socket(addrs[0][0]), server_hostname=hostname
+                )
                 conn.settimeout(timeout_at)
                 conn.connect(address)
                 sock = conn
