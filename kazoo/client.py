@@ -183,6 +183,8 @@ class KazooClient(object):
         :param use_ssl: argument to control whether SSL is used or not
         :param verify_certs: when using SSL, argument to bypass
             certs verification
+        :param check_hostname: when using SSL, check the hostname
+            against the hostname in the cert
 
         Basic Example:
 
