@@ -241,8 +241,8 @@ def create_tcp_connection(
             context.load_default_certs(ssl.Purpose.SERVER_AUTH)
             if check_hostname and not verify_certs:
                 raise ValueError(
-                    "verify_certs must be False when"
-                    + "check_hostname is specified"
+                    "verify_certs must be True when"
+                    + " check_hostname is True"
                 )
             # We must set check_hostname to False prior to setting
             # verify_mode to CERT_NONE.
