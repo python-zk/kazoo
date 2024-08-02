@@ -776,7 +776,10 @@ class KazooClient(object):
             check_hostname=self.check_hostname,
         )
         sock.sendall(cmd)
-        result = sock.recv(8192)
+        result = b""
+        temp = sock.recv(8192)
+        while temp:
+            result += temp
         sock.close()
         return result.decode("utf-8", "replace")
 
