@@ -880,3 +880,35 @@ class TestSequence:
         client.get_children.return_value = children
         lock = Lock(client, "test", extra_lock_patterns=["-lock-"])
         assert lock._get_predecessor(pyLock) == goLock
+
+
+class TestLockContenderCleanup:
+    """Integration tests verifying that failed lock acquisition cleans up the
+    contender node from ZooKeeper.
+    """
+
+    def test_non_blocking_acquire_cleans_up_contender(
+        self, zkclient: KazooClient
+    ) -> None:
+        """Test that a non-blocking lock acquisition failure cleans up the
+        contender node, leaving only the lock holder.
+        """
+        lockpath = "/" + uuid.uuid4().hex
+        lock1 = zkclient.Lock(lockpath, "holder")
+        lock2 = zkclient.Lock(lockpath, "contender")
+
+        assert lock1.acquire(blocking=True) is True
+
+        # Non-blocking attempt by contender fails
+        assert lock2.acquire(blocking=False) is False
+
+        # Only holder's node should remain; contender must have been cleaned up
+        children = zkclient.get_children(lockpath)
+        assert len(children) == 1
+        assert lock1.node is not None
+        assert lock1.node in children[0]
+
+        # Release lock1, lock2 can now acquire
+        lock1.release()
+        assert lock2.acquire(blocking=False) is True
+        lock2.release()
