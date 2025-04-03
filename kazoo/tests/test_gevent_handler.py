@@ -153,7 +153,7 @@ class TestBasicGeventClient(KazooTestCase):
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
         except (ValueError, resource.error):
-            self.skipTest("couldnt raise fd limit high enough")
+            self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []
         while fd < 4000:
