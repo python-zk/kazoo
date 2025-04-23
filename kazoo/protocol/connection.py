@@ -797,7 +797,7 @@ class ConnectionHandler(object):
             host=host, **self.sasl_options
         )
 
-        # Inititalize the process with an empty challenge token
+        # Initialize the process with an empty challenge token
         challenge = None
         xid = 0
 

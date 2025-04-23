@@ -60,13 +60,13 @@ def test_maximum_delay():
     retry = _make_retry(delay=10, max_tries=100, max_jitter=0)
     func = _make_try_func(times=2)
     retry(func)
-    assert func.call_count == 3, "Called 3 times, 2 failed _attemps"
+    assert func.call_count == 3, "Called 3 times, 2 failed _attempts"
     assert retry._cur_delay == 10 * 2**2, "Normal exponential backoff"
     retry.reset()
     func = _make_try_func(times=10)
     retry(func)
-    assert func.call_count == 11, "Called 11 times, 10 failed _attemps"
-    assert retry._cur_delay == 60, "Delay capped by maximun"
+    assert func.call_count == 11, "Called 11 times, 10 failed _attempts"
+    assert retry._cur_delay == 60, "Delay capped by maximum"
     # gevent's sleep function is picky about the type
     assert isinstance(retry._cur_delay, float)
 

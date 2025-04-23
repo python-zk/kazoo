@@ -55,7 +55,7 @@ class TestThreadingHandler(unittest.TestCase):
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
         except (ValueError, resource.error):
-            self.skipTest("couldnt raise fd limit high enough")
+            self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []
         while fd < 4000:
@@ -106,7 +106,7 @@ class TestThreadingAsync(unittest.TestCase):
         mock_handler.completion_queue = Mock()
         async_result = self._makeOne(mock_handler)
         async_result.rawlink(lambda a: a)
-        async_result.set_exception(ImportError("Error occured"))
+        async_result.set_exception(ImportError("Error occurred"))
 
         assert isinstance(async_result.exception, ImportError)
         assert mock_handler.completion_queue.put.called

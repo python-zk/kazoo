@@ -128,7 +128,7 @@ class UnknownSessionError(ZookeeperError):
 @_zookeeper_exception(-13)
 class NewConfigNoQuorumError(ZookeeperError):
     """No quorum of new config is connected and up-to-date with the leader of
-    last commmitted config - try invoking reconfiguration after new servers are
+    last committed config - try invoking reconfiguration after new servers are
     connected and synced.
     """
 
