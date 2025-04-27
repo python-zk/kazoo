@@ -76,10 +76,13 @@ def get_global_cluster():
             "localSessionsEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
             "localSessionsUpgradingEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
         ]
-        # If defined, this sets the superuser password to "test"
         additional_java_system_properties = [
+            # Enable extended types (container & ttl znodes)
+            "-Dzookeeper.extendedTypesEnabled=true",
+            "-Dznode.container.checkIntervalMs=100",
+            # If defined, this sets the superuser password to "test"
             "-Dzookeeper.DigestAuthenticationProvider.superDigest="
-            "super:D/InIHSb7yEEbrWz8b9l71RjZJU="
+            "super:D/InIHSb7yEEbrWz8b9l71RjZJU=",
         ]
     else:
         additional_configuration_entries = []
