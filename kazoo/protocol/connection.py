@@ -74,6 +74,7 @@ AUTH_XID = -4
 
 CLOSE_RESPONSE = Close.type
 
+
 # removed from Python3+
 def buffer(obj, offset=0):
     return memoryview(obj)[offset:]
