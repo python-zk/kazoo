@@ -7,7 +7,6 @@ import random
 import select
 import socket
 import ssl
-import sys
 import time
 
 from kazoo.exceptions import (
@@ -75,16 +74,9 @@ AUTH_XID = -4
 
 CLOSE_RESPONSE = Close.type
 
-if sys.version_info > (3,):  # pragma: nocover
-
-    def buffer(obj, offset=0):
-        return memoryview(obj)[offset:]
-
-    advance_iterator = next
-else:  # pragma: nocover
-
-    def advance_iterator(it):
-        return it.next()
+# removed from Python3+
+def buffer(obj, offset=0):
+    return memoryview(obj)[offset:]
 
 
 class RWPinger(object):
@@ -526,7 +518,7 @@ class ConnectionHandler(object):
 
         # Determine if we need to check for a r/w server
         if self._ro_mode:
-            result = advance_iterator(self._ro_mode)
+            result = next(self._ro_mode)
             if result:
                 self._rw_server = result
                 raise RWServerAvailable()
