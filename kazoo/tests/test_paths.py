@@ -5,7 +5,6 @@ import pytest
 from kazoo.protocol import paths
 
 
-
 class NormPathTestCase(TestCase):
     def test_normpath(self):
         assert paths.normpath("/a/b") == "/a/b"

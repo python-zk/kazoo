@@ -29,7 +29,6 @@ from kazoo.protocol.states import KeeperState, KazooState
 from kazoo.tests.util import CI_ZK_VERSION
 
 
-
 class TestClientTransitions(KazooTestCase):
     @staticmethod
     def make_event():
