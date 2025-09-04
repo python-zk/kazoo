@@ -1,6 +1,5 @@
 import os
 import socket
-import sys
 import tempfile
 import threading
 import time
@@ -28,17 +27,6 @@ from kazoo.exceptions import (
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.protocol.states import KeeperState, KazooState
 from kazoo.tests.util import CI_ZK_VERSION
-
-
-if sys.version_info > (3,):  # pragma: nocover
-
-    def u(s):
-        return s
-
-else:  # pragma: nocover
-
-    def u(s):
-        return unicode(s, "unicode_escape")  # noqa
 
 
 class TestClientTransitions(KazooTestCase):
@@ -197,8 +185,8 @@ class TestAuthentication(KazooTestCase):
             client.close()
 
     def test_unicode_auth(self):
-        username = u(r"xe4/\hm")
-        password = u(r"/\xe4hm")
+        username = r"xe4/\hm"
+        password = r"/\xe4hm"
         digest_auth = "%s:%s" % (username, password)
         acl = self._makeAuth(username, password, all=True)
 
@@ -543,10 +531,10 @@ class TestClient(KazooTestCase):
 
     def test_create_unicode_path(self):
         client = self.client
-        path = client.create(u("/ascii"))
-        assert path == u("/ascii")
-        path = client.create(u("/\xe4hm"))
-        assert path == u("/\xe4hm")
+        path = client.create("/ascii")
+        assert path == "/ascii"
+        path = client.create("/\xe4hm")
+        assert path == "/\xe4hm"
 
     def test_create_async_returns_unchrooted_path(self):
         client = self.client
@@ -593,7 +581,7 @@ class TestClient(KazooTestCase):
     def test_create_unicode_value(self):
         client = self.client
         with pytest.raises(TypeError):
-            client.create("/1", u("\xe4hm"))
+            client.create("/1", "\xe4hm")
 
     def test_create_large_value(self):
         client = self.client
