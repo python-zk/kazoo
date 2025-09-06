@@ -39,6 +39,9 @@ timeout = 180
 # Import Discovery
 ignore_missing_imports = false
 
+# Platform configuration
+python_version = "3.7"
+
 # Disallow dynamic typing
 disallow_any_unimported = true
 disallow_any_expr = false
@@ -105,14 +108,9 @@ module = [
     'kazoo.protocol.paths',
     'kazoo.protocol.serialization',
     'kazoo.protocol.states',
-    'kazoo.recipe.barrier',
     'kazoo.recipe.cache',
-    'kazoo.recipe.counter',
-    'kazoo.recipe.election',
-    'kazoo.recipe.lease',
     'kazoo.recipe.lock',
     'kazoo.recipe.partitioner',
-    'kazoo.recipe.party',
     'kazoo.recipe.queue',
     'kazoo.recipe.watchers',
     'kazoo.retry',

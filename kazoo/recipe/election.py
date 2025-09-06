@@ -4,7 +4,18 @@
 :Status: Unknown
 
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from kazoo.exceptions import CancelledError
+
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+    from typing import Callable, List, Optional
+    from typing_extensions import ParamSpec
+
+    P = ParamSpec("P")
 
 
 class Election(object):
@@ -22,7 +33,9 @@ class Election(object):
 
     """
 
-    def __init__(self, client, path, identifier=None):
+    def __init__(
+        self, client: KazooClient, path: str, identifier: Optional[str] = None
+    ):
         """Create a Kazoo Leader Election
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -34,7 +47,9 @@ class Election(object):
         """
         self.lock = client.Lock(path, identifier)
 
-    def run(self, func, *args, **kwargs):
+    def run(
+        self, func: Callable[P, None], *args: P.args, **kwargs: P.kwargs
+    ) -> None:
         """Contend for the leadership
 
         This call will block until either this contender is cancelled
@@ -57,7 +72,7 @@ class Election(object):
         except CancelledError:
             pass
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Cancel participation in the election
 
         .. note::
@@ -68,7 +83,7 @@ class Election(object):
         """
         self.lock.cancel()
 
-    def contenders(self):
+    def contenders(self) -> List[str]:
         """Return an ordered list of the current contenders in the
         election
 

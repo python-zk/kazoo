@@ -1,10 +1,13 @@
 """Kazoo Zookeeper Client"""
+from __future__ import annotations
+
 from collections import defaultdict, deque
 from functools import partial
 import inspect
 import logging
 from os.path import split
 import re
+from typing import TYPE_CHECKING, overload
 import warnings
 
 from kazoo.exceptions import (
@@ -63,6 +66,20 @@ from kazoo.recipe.party import Party, ShallowParty
 from kazoo.recipe.queue import Queue, LockingQueue
 from kazoo.recipe.watchers import ChildrenWatch, DataWatch
 
+if TYPE_CHECKING:
+    from typing import (
+        Any,
+        List,
+        Optional,
+        Sequence,
+        Tuple,
+        Union,
+        Callable,
+        Literal,
+    )
+    from kazoo.protocol.states import ZnodeStat
+
+    WatchListener = Callable[[WatchedEvent], None]
 
 CLOSED_STATES = (
     KeeperState.EXPIRED_SESSION,
@@ -272,7 +289,7 @@ class KazooClient(object):
         self._stopped.set()
         self._writer_stopped.set()
 
-        self.retry = self._conn_retry = None
+        _retry = self._conn_retry = None
 
         if type(connection_retry) is dict:
             self._conn_retry = KazooRetry(**connection_retry)
@@ -280,9 +297,9 @@ class KazooClient(object):
             self._conn_retry = connection_retry
 
         if type(command_retry) is dict:
-            self.retry = KazooRetry(**command_retry)
+            _retry = KazooRetry(**command_retry)
         elif type(command_retry) is KazooRetry:
-            self.retry = command_retry
+            _retry = command_retry
 
         if type(self._conn_retry) is KazooRetry:
             if self.handler.sleep_func != self._conn_retry.sleep_func:
@@ -291,14 +308,14 @@ class KazooClient(object):
                     " must use the same sleep func"
                 )
 
-        if type(self.retry) is KazooRetry:
-            if self.handler.sleep_func != self.retry.sleep_func:
+        if type(_retry) is KazooRetry:
+            if self.handler.sleep_func != _retry.sleep_func:
                 raise ConfigurationError(
                     "Command retry handler and event handler "
                     "must use the same sleep func"
                 )
 
-        if self.retry is None or self._conn_retry is None:
+        if _retry is None or self._conn_retry is None:
             old_retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
             for key in old_retry_keys:
                 try:
@@ -314,7 +331,7 @@ class KazooClient(object):
                 except KeyError:
                     pass
 
-            retry_keys = {}
+            retry_keys: Any = {}
             for oldname, value in old_retry_keys.items():
                 retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
 
@@ -322,8 +339,8 @@ class KazooClient(object):
                 self._conn_retry = KazooRetry(
                     sleep_func=self.handler.sleep_func, **retry_keys
                 )
-            if self.retry is None:
-                self.retry = KazooRetry(
+            if _retry is None:
+                _retry = KazooRetry(
                     sleep_func=self.handler.sleep_func, **retry_keys
                 )
 
@@ -368,14 +385,7 @@ class KazooClient(object):
             sasl_options=sasl_options,
         )
 
-        # Every retry call should have its own copy of the retry helper
-        # to avoid shared retry counts
-        self._retry = self.retry
-
-        def _retry(*args, **kwargs):
-            return self._retry.copy()(*args, **kwargs)
-
-        self.retry = _retry
+        self._retry = _retry
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
@@ -401,6 +411,12 @@ class KazooClient(object):
                 "__init__() got unexpected keyword arguments: %s"
                 % (kwargs.keys(),)
             )
+
+    @property
+    def retry(self) -> KazooRetry:
+        # Every retry call should have its own copy of the retry helper
+        # to avoid shared retry counts
+        return self._retry.copy()
 
     def _reset(self):
         """Resets a variety of client states for a new connection."""
@@ -917,14 +933,14 @@ class KazooClient(object):
 
     def create(
         self,
-        path,
-        value=b"",
-        acl=None,
-        ephemeral=False,
-        sequence=False,
-        makepath=False,
-        include_data=False,
-    ):
+        path: str,
+        value: bytes = b"",
+        acl: Optional[Sequence[ACL]] = None,
+        ephemeral: bool = False,
+        sequence: bool = False,
+        makepath: bool = False,
+        include_data: bool = False,
+    ) -> Union[str, Tuple[str, ZnodeStat]]:
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
 
@@ -1129,7 +1145,7 @@ class KazooClient(object):
             raise async_result.exception
         return async_result
 
-    def ensure_path(self, path, acl=None):
+    def ensure_path(self, path: str, acl: Optional[List[ACL]] = None) -> bool:
         """Recursively create a path if it doesn't exist.
 
         :param path: Path of node.
@@ -1178,7 +1194,9 @@ class KazooClient(object):
 
         return async_result
 
-    def exists(self, path, watch=None):
+    def exists(
+        self, path: str, watch: Optional[WatchListener] = None
+    ) -> Optional[ZnodeStat]:
         """Check if a node exists.
 
         If a watch is provided, it will be left on the node with the
@@ -1218,7 +1236,9 @@ class KazooClient(object):
         )
         return async_result
 
-    def get(self, path, watch=None):
+    def get(
+        self, path: str, watch: Optional[WatchListener] = None
+    ) -> Tuple[bytes, ZnodeStat]:
         """Get the value of a node.
 
         If a watch is provided, it will be left on the node with the
@@ -1261,7 +1281,53 @@ class KazooClient(object):
         )
         return async_result
 
-    def get_children(self, path, watch=None, include_data=False):
+    @overload
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+        watch: WatchListener,
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+        watch: Optional[WatchListener],
+    ) -> List[str]:
+        ...
+
+    @overload
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+        watch: Optional[WatchListener],
+        include_data: Literal[True],
+    ) -> List[Tuple[str, ZnodeStat]]:
+        ...
+
+    @overload
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+        watch: Optional[WatchListener] = None,
+        include_data: Literal[False] = False,
+    ) -> List[str]:
+        ...
+
+    def get_children(  # noqa: F811
+        self,
+        path: str,
+        watch: Optional[WatchListener] = None,
+        include_data: bool = False,
+    ) -> Union[List[Tuple[str, ZnodeStat]], List[str]]:
         """Get a list of child nodes of a path.
 
         If a watch is provided it will be left on the node with the
@@ -1407,7 +1473,7 @@ class KazooClient(object):
         )
         return async_result
 
-    def set(self, path, value, version=-1):
+    def set(self, path: str, value: bytes, version: int = -1) -> ZnodeStat:
         """Set the value of a node.
 
         If the version of the node being updated is newer than the
@@ -1480,7 +1546,9 @@ class KazooClient(object):
         """
         return TransactionRequest(self)
 
-    def delete(self, path, version=-1, recursive=False):
+    def delete(
+        self, path: str, version: int = -1, recursive: bool = False
+    ) -> Optional[bool]:
         """Delete a node.
 
         The call will succeed if such a node exists, and the given
