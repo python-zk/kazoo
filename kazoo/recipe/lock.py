@@ -193,13 +193,13 @@ class Lock(object):
             except KazooException:
                 # if we did ultimately fail, attempt to clean up
                 if not already_acquired:
-                    self._best_effort_cleanup()
+                    self._cleanup()
                     self.cancelled = False
                 raise
             if gotten:
                 self.is_acquired = gotten
             if not gotten and not already_acquired:
-                self._best_effort_cleanup()
+                self._cleanup()
             return gotten
         finally:
             self._acquire_method_lock.release()
@@ -318,13 +318,18 @@ class Lock(object):
     def _delete_node(self, node):
         self.client.delete(self.path + "/" + node)
 
-    def _best_effort_cleanup(self):
-        try:
-            node = self.node or self._find_node()
-            if node:
+    def _cleanup(self):
+        self._retry(
+            self._inner_cleanup,
+        )
+
+    def _inner_cleanup(self):
+        node = self.node or self._find_node()
+        if node:
+            try:
                 self._delete_node(node)
-        except KazooException:  # pragma: nocover
-            pass
+            except NoNodeError:  # pragma: nocover
+                pass
 
     def release(self):
         """Release the lock immediately."""
