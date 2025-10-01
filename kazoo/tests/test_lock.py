@@ -802,6 +802,46 @@ class TestSemaphore(KazooTestCase):
 class TestSequence(unittest.TestCase):
     def test_get_predecessor(self):
         """Validate selection of predecessors."""
+        pyLock_prefix = "514e5a831836450cb1a56c741e990fd8__lock__"
+        pyLock_predecessor = f"{pyLock_prefix}0000000030"
+        pyLock = f"{pyLock_prefix}0000000031"
+        pyLock_successor = f"{pyLock_prefix}0000000032"
+        children = [
+            "hello",
+            pyLock_predecessor,
+            "world",
+            pyLock,
+            pyLock_successor,
+        ]
+        client = MagicMock()
+        client.get_children.return_value = children
+        lock = Lock(client, "test")
+        assert lock._get_predecessor(pyLock) == pyLock_predecessor
+
+    def test_get_predecessor_with_overflowed_sequence(self):
+        """Validate selection of predecessors with negative sequence.
+
+        This can occur in case of an integer overflow, if the sequence
+        counter is incremented beyond 2147483647.
+        """
+        pyLock_prefix = "514e5a831836450cb1a56c741e990fd8__lock__"
+        pyLock_predecessor = f"{pyLock_prefix}-0000000032"
+        pyLock = f"{pyLock_prefix}-0000000031"
+        pyLock_successor = f"{pyLock_prefix}-0000000030"
+        children = [
+            "hello",
+            pyLock_predecessor,
+            "world",
+            pyLock,
+            pyLock_successor,
+        ]
+        client = MagicMock()
+        client.get_children.return_value = children
+        lock = Lock(client, "test")
+        assert lock._get_predecessor(pyLock) == pyLock_predecessor
+
+    def test_get_predecessor_no_predecessor(self):
+        """Validate selection of predecessors."""
         goLock = "_c_8eb60557ba51e0da67eefc47467d3f34-lock-0000000031"
         pyLock = "514e5a831836450cb1a56c741e990fd8__lock__0000000032"
         children = ["hello", goLock, "world", pyLock]
