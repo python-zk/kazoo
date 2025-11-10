@@ -281,6 +281,107 @@ class TestPersistentWatchEvents:
         assert client._persistent_watchers["/a"] == {w_pers}
         assert client._persistent_recursive_watchers["/"] == [w_rec]
 
+    def test_watch_event_dispatches_zxid(self) -> None:
+        """Test that watch events dispatched via ConnectionHandler include the
+        zxid.
+        """
+        from kazoo.protocol.serialization import int_int_struct, write_string
+
+        client = Mock()
+        client._stopped.is_set.return_value = False
+        client._state = KeeperState.CONNECTED
+        client.unchroot.side_effect = lambda p: p
+        watcher = Mock()
+        client._data_watchers = {"/node": {watcher}}
+        client._persistent_watchers = {}
+        client._persistent_recursive_watchers = {}
+
+        connection = ConnectionHandler(client, KazooRetry())
+        # Watch(type=1 (CREATED_EVENT), state=3, path="/node")
+        buf = int_int_struct.pack(1, 3) + write_string("/node")
+        connection._read_watch_event(buf, 0, zxid=99999)
+
+        assert client.handler.dispatch_callback.call_count == 1
+        cb = client.handler.dispatch_callback.call_args[0][0]
+        ev = cb.args[0]
+        assert ev.path == "/node"
+        assert ev.zxid == 99999
+
+    def test_watch_event_dispatches_zxid_to_persistent_and_recursive_watchers(
+        self,
+    ) -> None:
+        """Test that ConnectionHandler dispatches zxid to persistent and
+        persistent recursive watchers.
+        """
+        from kazoo.protocol.serialization import int_int_struct, write_string
+
+        client = Mock()
+        client._stopped.is_set.return_value = False
+        client._state = KeeperState.CONNECTED
+        client.unchroot.side_effect = lambda p: p
+        w_pers = Mock()
+        w_rec = Mock()
+        client._data_watchers = {}
+        client._persistent_watchers = {"/node": {w_pers}}
+        client._persistent_recursive_watchers = {"/": [w_rec]}
+
+        connection = ConnectionHandler(client, KazooRetry())
+        buf = int_int_struct.pack(3, 3) + write_string("/node")
+        connection._read_watch_event(buf, 0, zxid=88888)
+
+        assert client.handler.dispatch_callback.call_count == 2
+        callbacks = [
+            call.args[0]
+            for call in client.handler.dispatch_callback.call_args_list
+        ]
+        assert {cb.func for cb in callbacks} == {w_pers, w_rec}
+        for cb in callbacks:
+            ev = cb.args[0]
+            assert ev.path == "/node"
+            assert ev.zxid == 88888
+
+    def test_watched_event_no_zxid_default(self) -> None:
+        """Test that WatchedEvent defaults zxid to NO_ZXID (-1)."""
+        from kazoo.protocol.states import EventType, WatchedEvent
+
+        ev = WatchedEvent(EventType.NONE, KeeperState.CONNECTED, None)
+        assert ev.zxid == WatchedEvent.NO_ZXID
+        assert ev.zxid == -1
+
+    def test_watched_event_immutability(self) -> None:
+        """Test that WatchedEvent instances are immutable."""
+        from kazoo.protocol.states import EventType, WatchedEvent
+
+        ev = WatchedEvent(EventType.CREATED, KeeperState.CONNECTED, "/a", 100)
+        with pytest.raises(AttributeError):
+            ev.zxid = 200  # type: ignore[misc]
+
+    def test_watched_event_properties_and_defaults(self) -> None:
+        """Test WatchedEvent attributes, defaults, and tuple unpacking."""
+        from kazoo.protocol.states import EventType, WatchedEvent
+
+        ev = WatchedEvent(EventType.CREATED, KeeperState.CONNECTED, "/a")
+        assert ev.type == EventType.CREATED
+        assert ev.state == KeeperState.CONNECTED
+        assert ev.path == "/a"
+        assert ev.zxid == WatchedEvent.NO_ZXID
+        assert ev.zxid == -1
+
+        ev_with_zxid = WatchedEvent(
+            EventType.CHANGED, KeeperState.CONNECTED, "/b", 42
+        )
+        assert ev_with_zxid.zxid == 42
+        assert ev_with_zxid[0] == EventType.CHANGED
+        assert ev_with_zxid[1] == KeeperState.CONNECTED
+        assert ev_with_zxid[2] == "/b"
+        assert ev_with_zxid[3] == 42
+        assert ev_with_zxid == (
+            EventType.CHANGED,
+            KeeperState.CONNECTED,
+            "/b",
+            42,
+        )
+
 
 class TestConnectionHandlerWatchRegistration:
     """Unit tests for ConnectionHandler registering and removing watchers in

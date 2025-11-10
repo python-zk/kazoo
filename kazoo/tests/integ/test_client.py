@@ -33,6 +33,7 @@ from kazoo.protocol.states import (
     EventType,
     KazooState,
     KeeperState,
+    WatchedEvent,
     WatcherType,
 )
 
@@ -1485,6 +1486,129 @@ class TestClient:
         # Clean up
         client.remove_all_watches("/hier/mid", WatcherType.ANY)
         client.remove_all_watches("/hier", WatcherType.ANY)
+
+    @pytest.mark.zk_version(">=3.9")
+    def test_watch_zxid(self, zkclient):
+        """Test that watch events on ZooKeeper >= 3.9 include the zxid of the
+        transaction that triggered the event for CREATED, CHANGED, CHILD, and
+        DELETED events.
+        """
+        client = zkclient
+        nodepath = "/" + uuid.uuid4().hex
+        childpath = nodepath + "/child"
+        event = client.handler.event_object()
+        watch_events = []
+
+        def w(watch_event):
+            watch_events.append(watch_event)
+            event.set()
+
+        # 1. CREATED
+        client.exists(nodepath, watch=w)
+        client.create(nodepath)
+        event.wait(5)
+        assert len(watch_events) == 1
+        assert watch_events[-1].path == nodepath
+        assert watch_events[-1].type == EventType.CREATED
+        assert watch_events[-1].zxid > -1
+        event.clear()
+
+        # 2. CHANGED
+        client.get(nodepath, watch=w)
+        client.set(nodepath, b"data")
+        event.wait(5)
+        assert len(watch_events) == 2
+        assert watch_events[-1].path == nodepath
+        assert watch_events[-1].type == EventType.CHANGED
+        assert watch_events[-1].zxid > -1
+        event.clear()
+
+        # 3. CHILD
+        client.get_children(nodepath, watch=w)
+        client.create(childpath)
+        event.wait(5)
+        assert len(watch_events) == 3
+        assert watch_events[-1].path == nodepath
+        assert watch_events[-1].type == EventType.CHILD
+        assert watch_events[-1].zxid > -1
+        event.clear()
+
+        # 4. DELETED
+        client.exists(childpath, watch=w)
+        client.delete(childpath)
+        event.wait(5)
+        assert len(watch_events) == 4
+        assert watch_events[-1].path == childpath
+        assert watch_events[-1].type == EventType.DELETED
+        assert watch_events[-1].zxid > -1
+        event.clear()
+
+    @pytest.mark.zk_version(">=3.9")
+    def test_persistent_watch_zxid(self, zkclient):
+        """Test that persistent and persistent recursive watches receive the
+        zxid of the transaction triggering the event on ZooKeeper >= 3.9.
+        """
+        client = zkclient
+        nodepath = "/" + uuid.uuid4().hex
+        childpath = nodepath + "/child"
+        event = client.handler.event_object()
+        pers_events = []
+        rec_events = []
+
+        def pers_w(watch_event):
+            pers_events.append(watch_event)
+            event.set()
+
+        def rec_w(watch_event):
+            rec_events.append(watch_event)
+            event.set()
+
+        client.add_watch(nodepath, pers_w, AddWatchMode.PERSISTENT)
+        client.add_watch(nodepath, rec_w, AddWatchMode.PERSISTENT_RECURSIVE)
+
+        # 1. CREATED
+        client.create(nodepath)
+        event.wait(5)
+        event.clear()
+        time.sleep(0.2)
+        assert len(pers_events) >= 1
+        assert pers_events[-1].type == EventType.CREATED
+        assert pers_events[-1].zxid > -1
+        assert len(rec_events) >= 1
+        assert rec_events[-1].type == EventType.CREATED
+        assert rec_events[-1].zxid > -1
+
+        # 2. CHANGED
+        client.set(nodepath, b"data")
+        event.wait(5)
+        event.clear()
+        time.sleep(0.2)
+        assert pers_events[-1].type == EventType.CHANGED
+        assert pers_events[-1].zxid > -1
+        assert rec_events[-1].type == EventType.CHANGED
+        assert rec_events[-1].zxid > -1
+
+        # 3. CHILD / CREATED on child
+        client.create(childpath)
+        event.wait(5)
+        event.clear()
+        time.sleep(0.2)
+        assert pers_events[-1].type == EventType.CHILD
+        assert pers_events[-1].zxid > -1
+        assert rec_events[-1].path == childpath
+        assert rec_events[-1].type == EventType.CREATED
+        assert rec_events[-1].zxid > -1
+
+        # Clean up
+        client.remove_all_watches(nodepath, WatcherType.ANY)
+        client.delete(childpath)
+        client.delete(nodepath)
+
+    def test_synthetic_event_no_zxid(self, zkclient):
+        """Test that synthetic watch events default zxid to NO_ZXID (-1)."""
+        ev = WatchedEvent(EventType.NONE, zkclient.state, None)
+        assert ev.zxid == WatchedEvent.NO_ZXID
+        assert ev.zxid == -1
 
 
 @pytest.mark.zk_auth("tls")
