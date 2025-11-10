@@ -1346,6 +1346,26 @@ class TestClient:
             client.remove_all_watches("/a", WatcherType.ANY)
 
     @pytest.mark.zk_version(">=3.9")
+    def test_watch_zxid(self, zkclient):
+        client = zkclient
+        nodepath = "/" + uuid.uuid4().hex
+        event = client.handler.event_object()
+
+        def w(watch_event):
+            assert watch_event.path == nodepath
+            assert watch_event.zxid > -1
+            event.set()
+
+        exists = client.exists(nodepath, watch=w)
+        assert exists is None
+
+        client.create(nodepath, ephemeral=True)
+
+        event.wait(1)
+        assert event.is_set() is True
+
+
+    @pytest.mark.zk_version(">=3.9")
     def test_remove_data_watch_leaves_persistent_watch(self, zkclient):
         """Test that removing a data watch leaves a persistent watch intact."""
         events = []
