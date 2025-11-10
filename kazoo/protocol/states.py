@@ -117,7 +117,8 @@ EVENT_TYPE_MAP = {
 }
 
 
-class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
+class WatchedEvent(namedtuple("WatchedEvent",
+                              ("type", "state", "path", "zxid"))):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
     The :class:`WatchedEvent` includes exactly what happened, the
@@ -138,7 +139,22 @@ class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
 
         The path of the node for the watch event.
 
+    .. attribute:: zxid
+
+        The zxid of the transaction that triggered this watch if it is
+        of one of the following types:
+
+        * EventType.CREATED
+        * EventType.DELETED
+        * EventType.CHANGED
+        * EventType.CHILD
+
+        Otherwise, returns WatchedEvent.NO_ZXID. Note that NO_ZXID is also
+        returned by old servers that do not support this feature.
+
     """
+
+    NO_ZXID = -1
 
 
 class Callback(namedtuple("Callback", ("type", "func", "args"))):

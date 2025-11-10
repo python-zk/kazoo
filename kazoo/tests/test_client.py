@@ -1305,6 +1305,24 @@ class TestClient(KazooTestCase):
         with pytest.raises(ValueError):
             client.remove_all_watches("/a", 42)
 
+    def test_watch_zxid(self):
+        self._require_zk_version(3, 9)
+        nodepath = "/" + uuid.uuid4().hex
+        event = self.client.handler.event_object()
+
+        def w(watch_event):
+            assert watch_event.path == nodepath
+            assert watch_event.zxid > -1
+            event.set()
+
+        exists = self.client.exists(nodepath, watch=w)
+        assert exists is None
+
+        self.client.create(nodepath, ephemeral=True)
+
+        event.wait(1)
+        assert event.is_set() is True
+
 
 class TestSSLClient(KazooTestCase):
     def setUp(self):

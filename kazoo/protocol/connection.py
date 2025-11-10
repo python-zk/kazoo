@@ -379,7 +379,7 @@ class ConnectionHandler(object):
             )
         return watchers
 
-    def _read_watch_event(self, buffer, offset):
+    def _read_watch_event(self, buffer, offset, zxid):
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
@@ -405,7 +405,8 @@ class ConnectionHandler(object):
 
         # Strip the chroot if needed
         path = client.unchroot(path)
-        ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path)
+        ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path,
+                          zxid)
 
         # Last check to ignore watches if we've been stopped
         if client._stopped.is_set():
@@ -520,7 +521,7 @@ class ConnectionHandler(object):
             else:
                 async_object.set(True)
         elif header.xid == WATCH_XID:
-            self._read_watch_event(buffer, offset)
+            self._read_watch_event(buffer, offset, header.zxid)
         else:
             self.logger.log(BLATHER, "Reading for header %r", header)
 
