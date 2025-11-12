@@ -55,7 +55,6 @@ test-extras = [
     "objgraph==3.5.0",
     "pyOpenSSL<26.2.0",
     "pyjks",
-    "unittest-parametrize",
 ]
 pytest = [
     "pytest==8.4.2",

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import unittest
-
 from typing import Any
 
 from kazoo.security import ACL, Permissions
 
 
-class TestACL(unittest.TestCase):
+class TestACL:
     def _makeOne(self, *args: Any, **kwargs: Any) -> ACL:
         from kazoo.security import make_acl
 
