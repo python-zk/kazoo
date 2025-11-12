@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import socket
 import threading
-import unittest
 
 from typing import Any, Type
 from unittest.mock import Mock
@@ -13,7 +12,7 @@ from kazoo.handlers.threading import AsyncResult, SequentialThreadingHandler
 from kazoo.handlers.utils import create_tcp_socket
 
 
-class TestThreadingHandler(unittest.TestCase):
+class TestThreadingHandler:
     def _makeOne(self, *args: Any) -> SequentialThreadingHandler:
         return SequentialThreadingHandler(*args)
 
@@ -52,11 +51,11 @@ class TestThreadingHandler(unittest.TestCase):
         try:
             import resource
         except ImportError:
-            self.skipTest("resource module unavailable on this platform")
+            pytest.skip("resource module unavailable on this platform")
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
         except (ValueError, resource.error):
-            self.skipTest("couldn't raise fd limit high enough")
+            pytest.skip("couldn't raise fd limit high enough")
         fd = 0
         socks = []
         while fd < 4000:
@@ -71,7 +70,7 @@ class TestThreadingHandler(unittest.TestCase):
             sock.close()
 
 
-class TestThreadingAsync(unittest.TestCase):
+class TestThreadingAsync:
     def _makeOne(self, *args: Any) -> AsyncResult:
         return AsyncResult(*args)
 
