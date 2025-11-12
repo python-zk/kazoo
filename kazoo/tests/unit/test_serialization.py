@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import struct
-import unittest
+
+import pytest
 
 from kazoo.exceptions import ZookeeperError
 from kazoo.protocol import serialization
 from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL, Id
-
-from unittest_parametrize import ParametrizedTestCase, parametrize, param
 
 _int_struct = struct.Struct("!i")
 _int_int_struct = struct.Struct("!ii")
@@ -41,12 +40,12 @@ def _make_acl_list() -> list[ACL]:
     return [ACL(1, Id("scheme", "identifier"))]
 
 
-class TestUtils(ParametrizedTestCase):
-    @parametrize(
+class TestUtils:
+    @pytest.mark.parametrize(
         ("s",),
         [
-            param("hello-\u03c0", id="non_empty_string"),
-            param(None, id="none_value"),
+            pytest.param("hello-\u03c0", id="non_empty_string"),
+            pytest.param(None, id="none_value"),
         ],
     )
     def test_write_read_string_roundtrip(self, s: str | None) -> None:
@@ -61,12 +60,12 @@ class TestUtils(ParametrizedTestCase):
         assert offset == len(b)
         assert decoded is None
 
-    @parametrize(
+    @pytest.mark.parametrize(
         ("data",),
         [
-            param(b"\x00\xff\x01", id="non_empty_buffer"),
-            param(b"", id="empty_buffer"),
-            param(None, id="none_value"),
+            pytest.param(b"\x00\xff\x01", id="non_empty_buffer"),
+            pytest.param(b"", id="empty_buffer"),
+            pytest.param(None, id="none_value"),
         ],
     )
     def test_write_read_buffer_roundtrip(self, data: bytes | None) -> None:
@@ -92,7 +91,7 @@ class TestUtils(ParametrizedTestCase):
         assert offset == len(b)
 
 
-class TestClose(unittest.TestCase):
+class TestClose:
     def test_type(self) -> None:
         assert serialization.Close.type == -11
 
@@ -101,7 +100,7 @@ class TestClose(unittest.TestCase):
         assert serialization.CloseInstance.serialize() == b""
 
 
-class TestPing(unittest.TestCase):
+class TestPing:
     def test_type(self) -> None:
         assert serialization.Ping.type == 11
 
@@ -110,7 +109,7 @@ class TestPing(unittest.TestCase):
         assert serialization.PingInstance.serialize() == b""
 
 
-class TestConnect(unittest.TestCase):
+class TestConnect:
     def test_serialize(self) -> None:
         obj = serialization.Connect(1, 2, 3, 4, b"pwd", True)
         assert obj.serialize() == (
@@ -130,7 +129,7 @@ class TestConnect(unittest.TestCase):
         assert offset == len(data)
 
 
-class TestCreate(unittest.TestCase):
+class TestCreate:
     def test_type(self) -> None:
         assert serialization.Create.type == 1
 
@@ -153,7 +152,7 @@ class TestCreate(unittest.TestCase):
         )
 
 
-class TestDelete(unittest.TestCase):
+class TestDelete:
     def test_type(self) -> None:
         assert serialization.Delete.type == 2
 
@@ -165,7 +164,7 @@ class TestDelete(unittest.TestCase):
         assert serialization.Delete.deserialize(b"", 0) is True
 
 
-class TestExists(unittest.TestCase):
+class TestExists:
     def test_type(self) -> None:
         assert serialization.Exists.type == 3
 
@@ -178,7 +177,7 @@ class TestExists(unittest.TestCase):
         assert serialization.Exists.deserialize(response, 0) == _make_stat()
 
 
-class TestGetData(unittest.TestCase):
+class TestGetData:
     def test_type(self) -> None:
         assert serialization.GetData.type == 4
 
@@ -195,7 +194,7 @@ class TestGetData(unittest.TestCase):
         assert result_stat == _make_stat()
 
 
-class TestSetData(unittest.TestCase):
+class TestSetData:
     def test_type(self) -> None:
         assert serialization.SetData.type == 5
 
@@ -215,7 +214,7 @@ class TestSetData(unittest.TestCase):
         assert result_stat == _make_stat()
 
 
-class TestGetACL(unittest.TestCase):
+class TestGetACL:
     def test_type(self) -> None:
         assert serialization.GetACL.type == 6
 
@@ -236,7 +235,7 @@ class TestGetACL(unittest.TestCase):
         assert stat == _make_stat()
 
 
-class TestSetACL(unittest.TestCase):
+class TestSetACL:
     def test_type(self) -> None:
         assert serialization.SetACL.type == 7
 
@@ -259,7 +258,7 @@ class TestSetACL(unittest.TestCase):
         assert result_stat == _make_stat()
 
 
-class TestGetChildren(unittest.TestCase):
+class TestGetChildren:
     def test_type(self) -> None:
         assert serialization.GetChildren.type == 8
 
@@ -275,7 +274,7 @@ class TestGetChildren(unittest.TestCase):
         assert children == ["a", "b"]
 
 
-class TestSync(unittest.TestCase):
+class TestSync:
     def test_type(self) -> None:
         assert serialization.Sync.type == 9
 
@@ -290,7 +289,7 @@ class TestSync(unittest.TestCase):
         )
 
 
-class TestGetChildren2(unittest.TestCase):
+class TestGetChildren2:
     def test_type(self) -> None:
         assert serialization.GetChildren2.type == 12
 
@@ -310,7 +309,7 @@ class TestGetChildren2(unittest.TestCase):
         assert stat == _make_stat()
 
 
-class TestCheckVersion(unittest.TestCase):
+class TestCheckVersion:
     def test_type(self) -> None:
         assert serialization.CheckVersion.type == 13
 
@@ -319,7 +318,7 @@ class TestCheckVersion(unittest.TestCase):
         assert obj.serialize() == _write_string("/path") + _int_struct.pack(99)
 
 
-class TestTransaction(unittest.TestCase):
+class TestTransaction:
     def test_type(self) -> None:
         assert serialization.Transaction.type == 14
 
@@ -392,7 +391,7 @@ class TestTransaction(unittest.TestCase):
         assert result == ["/b", True, "/c"]
 
 
-class TestCreate2(unittest.TestCase):
+class TestCreate2:
     def test_type(self) -> None:
         assert serialization.Create2.type == 15
 
@@ -418,7 +417,7 @@ class TestCreate2(unittest.TestCase):
         assert stat == _make_stat()
 
 
-class TestReconfig(unittest.TestCase):
+class TestReconfig:
     def test_type(self) -> None:
         assert serialization.Reconfig.type == 16
 
@@ -441,7 +440,7 @@ class TestReconfig(unittest.TestCase):
         assert stat == _make_stat()
 
 
-class TestAuth(unittest.TestCase):
+class TestAuth:
     def test_type(self) -> None:
         assert serialization.Auth.type == 100
 
@@ -454,7 +453,7 @@ class TestAuth(unittest.TestCase):
         )
 
 
-class TestSASL(unittest.TestCase):
+class TestSASL:
     def test_type(self) -> None:
         assert serialization.SASL.type == 102
 
@@ -470,7 +469,7 @@ class TestSASL(unittest.TestCase):
         assert offset == len(_write_buffer(b"challenge"))
 
 
-class TestWatch(unittest.TestCase):
+class TestWatch:
     def test_deserialize(self) -> None:
         data = _int_int_struct.pack(1, 2) + _write_string("/path")
         decoded, offset = serialization.Watch.deserialize(data, 0)
@@ -480,7 +479,7 @@ class TestWatch(unittest.TestCase):
         assert offset == len(data)
 
 
-class TestReplyHeader(unittest.TestCase):
+class TestReplyHeader:
     def test_deserialize(self) -> None:
         reply = serialization.ReplyHeader(1, 2, 3)
         data = _reply_header_struct.pack(1, 2, 3)
@@ -489,7 +488,7 @@ class TestReplyHeader(unittest.TestCase):
         assert offset == len(data)
 
 
-class TestMultiHeader(unittest.TestCase):
+class TestMultiHeader:
     def test_serialize(self) -> None:
         header = serialization.MultiHeader(1, True, 2)
         assert header.serialize() == _multiheader_struct.pack(1, 1, 2)

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from unittest import TestCase
-
 from kazoo.hosts import collect_hosts
 
 
-class HostsTestCase(TestCase):
+class TestHosts:
     def test_ipv4(self) -> None:
         hosts, chroot = collect_hosts(
             "127.0.0.1:2181, 192.168.1.2:2181, \

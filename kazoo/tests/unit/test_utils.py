@@ -7,7 +7,6 @@ import time
 from kazoo.handlers import utils
 from kazoo.handlers.utils import create_tcp_connection
 
-import unittest
 from unittest.mock import patch
 
 import pytest
@@ -20,7 +19,7 @@ except ImportError:
     EVENTLET_HANDLER_AVAILABLE = False
 
 
-class TestCreateTCPConnection(unittest.TestCase):
+class TestCreateTCPConnection:
     def test_timeout_arg(self) -> None:
         with patch.object(socket, "create_connection") as create_connection:
             with patch.object(utils, "_set_default_tcpsock_options"):
