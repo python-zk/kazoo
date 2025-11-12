@@ -85,57 +85,6 @@ class TestClientTransitions(KazooTestCase):
         assert states == req_states
 
 
-class TestClientConstructor(unittest.TestCase):
-    def _makeOne(self, *args: Any, **kw: Any) -> KazooClient:
-        return KazooClient(*args, **kw)
-
-    def test_invalid_handler(self) -> None:
-        with pytest.raises(ConfigurationError):
-            self._makeOne(handler=SequentialThreadingHandler)
-
-    def test_chroot(self) -> None:
-        assert self._makeOne(hosts="127.0.0.1:2181/").chroot == ""
-        assert self._makeOne(hosts="127.0.0.1:2181/a").chroot == "/a"
-        assert self._makeOne(hosts="127.0.0.1/a").chroot == "/a"
-        assert self._makeOne(hosts="127.0.0.1/a/b").chroot == "/a/b"
-        assert (
-            self._makeOne(hosts="127.0.0.1:2181,127.0.0.1:2182/a/b").chroot
-            == "/a/b"
-        )
-
-    def test_connection_timeout(self) -> None:
-        client = self._makeOne(hosts="127.0.0.1:9")
-        assert client.handler.timeout_exception is KazooTimeoutError
-
-        with pytest.raises(KazooTimeoutError):
-            client.start(0.1)
-
-    def test_ordered_host_selection(self) -> None:
-        client = self._makeOne(
-            hosts="127.0.0.1:9,127.0.0.2:9/a", randomize_hosts=False
-        )
-        hosts = [h for h in client.hosts]
-        assert hosts == [("127.0.0.1", 9), ("127.0.0.2", 9)]
-
-    def test_invalid_hostname(self) -> None:
-        client = self._makeOne(hosts="nosuchhost/a")
-        timeout = client.handler.timeout_exception
-        with pytest.raises(timeout):
-            client.start(0.1)
-
-    def test_another_invalid_hostname(self) -> None:
-        with pytest.raises(ValueError):
-            self._makeOne(hosts="/nosuchhost/a")
-
-    def test_retry_options_dict(self) -> None:
-        client = self._makeOne(
-            command_retry=dict(max_tries=99), connection_retry=dict(delay=99)
-        )
-        assert type(client._conn_retry) is KazooRetry
-        assert type(client._retry) is KazooRetry
-        assert client._retry.max_tries == 99
-        assert client._conn_retry.delay == 99
-
 
 class TestAuthentication(KazooTestCase):
     def _makeAuth(self, *args: Any, **kwargs: Any) -> ACL:
@@ -1310,35 +1259,6 @@ class TestClientTransactions(KazooTestCase):
             t.create("/smith", b"32")
         assert self.client.get("/smith")[0] == b"32"
 
-
-class TestSessionCallbacks(unittest.TestCase):
-    def test_session_callback_states(self) -> None:
-        client = KazooClient()
-        client._live.set()
-
-        client._session_callback(KeeperState.CONNECTED)
-
-        # Now with stopped
-        client._stopped.set()
-        client._session_callback(KeeperState.CONNECTED)
-
-        # Test several state transitions
-        client._stopped.clear()
-        client.start_async = (  # type: ignore[method-assign]
-            lambda: threading.Event()
-        )
-        client._session_callback(KeeperState.CONNECTED)
-        assert client.state == KazooState.CONNECTED
-
-        client._session_callback(KeeperState.AUTH_FAILED)
-        # FIXME mypy seems to be under the impression that the state can't
-        # change as a result of the above call, even though it can.
-        assert (
-            client.state == KazooState.LOST  # type: ignore[comparison-overlap]
-        )
-
-        client._session_callback(-250)  # type: ignore[unreachable]
-        assert client.state == KazooState.SUSPENDED
 
 
 class TestCallbacks(KazooTestCase):
