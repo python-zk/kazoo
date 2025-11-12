@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest import TestCase
 
 import pytest
 
@@ -9,7 +8,7 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 
-class ExceptionsTestCase(TestCase):
+class TestExceptions:
     def _get(self) -> ModuleType:
         from kazoo import exceptions
 
