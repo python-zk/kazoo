@@ -586,7 +586,7 @@ class KazooClient:
         self._persistent_watchers = defaultdict(set)
         self._persistent_recursive_watchers = defaultdict(set)
 
-        ev = WatchedEvent(EventType.NONE, self._state, None)
+        ev = WatchedEvent(EventType.NONE, self._state, None, zxid=WatchedEvent.NO_ZXID)
         for watch in watchers:
             self.handler.dispatch_callback(Callback("watch", watch, (ev,)))
 

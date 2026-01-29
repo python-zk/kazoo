@@ -467,7 +467,9 @@ class ConnectionHandler:
             )
         return watchers
 
-    def _read_watch_event(self, buffer: bytes, offset: int, zxid: int) -> None:
+    def _read_watch_event(
+        self, buffer: bytes, offset: int, zxid: int = WatchedEvent.NO_ZXID
+    ) -> None:
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
