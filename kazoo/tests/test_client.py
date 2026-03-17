@@ -67,6 +67,51 @@ class TestClientTransitions(KazooTestCase):
         assert states == req_states
 
 
+class TestCreateOpcode(unittest.TestCase):
+    """Unit tests for _create_opcode (no ZK required)."""
+
+    def test_create_opcode_returns_create(self):
+        from kazoo.client import _create_opcode
+        from kazoo.protocol.serialization import Create
+        from kazoo.security import OPEN_ACL_UNSAFE
+
+        op = _create_opcode(
+            "/test", b"data", OPEN_ACL_UNSAFE, "", False, False, False, False, 0
+        )
+        assert op.__class__ is Create
+
+    def test_create_opcode_returns_create2_for_include_data(self):
+        from kazoo.client import _create_opcode
+        from kazoo.protocol.serialization import Create2
+        from kazoo.security import OPEN_ACL_UNSAFE
+
+        op = _create_opcode(
+            "/test", b"data", OPEN_ACL_UNSAFE, "", False, False, True, False, 0
+        )
+        assert op.__class__ is Create2
+
+    def test_create_opcode_returns_create_container(self):
+        from kazoo.client import _create_opcode
+        from kazoo.protocol.serialization import CreateContainer
+        from kazoo.security import OPEN_ACL_UNSAFE
+
+        op = _create_opcode(
+            "/test", b"data", OPEN_ACL_UNSAFE, "", False, False, False, True, 0
+        )
+        assert op.__class__ is CreateContainer
+
+    def test_create_opcode_returns_create_ttl(self):
+        from kazoo.client import _create_opcode
+        from kazoo.protocol.serialization import CreateTTL
+        from kazoo.security import OPEN_ACL_UNSAFE
+
+        op = _create_opcode(
+            "/test", b"data", OPEN_ACL_UNSAFE, "", False, False, False, False, 1000
+        )
+        assert op.__class__ is CreateTTL
+        assert op.ttl == 1000
+
+
 class TestClientConstructor(unittest.TestCase):
     def _makeOne(self, *args, **kw):
         from kazoo.client import KazooClient
@@ -578,6 +623,16 @@ class TestClient(KazooTestCase):
             client.create("a", sequence="yes")
         with pytest.raises(TypeError):
             client.create("a", makepath="yes")
+        with pytest.raises(TypeError):
+            client.create("a", container="yes")
+        with pytest.raises(TypeError):
+            client.create("a", ttl="1000")
+        with pytest.raises(TypeError):
+            client.create("a", ttl=-1)
+        with pytest.raises(TypeError):
+            client.create("a", ephemeral=True, ttl=1000)
+        with pytest.raises(TypeError):
+            client.create("a", container=True, ephemeral=True)
 
     def test_create_value(self):
         client = self.client
@@ -719,6 +774,42 @@ class TestClient(KazooTestCase):
         path = client.create("/1")
         with pytest.raises(NodeExistsError):
             client.create(path)
+
+    def test_create_container(self):
+        """Create container node (ZK 3.5+ with extendedTypesEnabled)."""
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
+            pytest.skip("Container nodes require Zookeeper 3.5+")
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 5):
+            pass
+        else:
+            ver = self.client.server_version()
+            if ver < (3, 5):
+                pytest.skip("Container nodes require Zookeeper 3.5+")
+
+        client = self.client
+        path = client.create("/container_test", b"data", container=True)
+        assert path == "/container_test"
+        assert client.exists("/container_test")
+        data, stat = client.get("/container_test")
+        assert data == b"data"
+
+    def test_create_ttl(self):
+        """Create TTL node (ZK 3.5.5+ with extendedTypesEnabled)."""
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
+            pytest.skip("TTL nodes require Zookeeper 3.5+")
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 5):
+            pass
+        else:
+            ver = self.client.server_version()
+            if ver < (3, 5):
+                pytest.skip("TTL nodes require Zookeeper 3.5+")
+
+        client = self.client
+        path = client.create("/ttl_test", b"data", ttl=60000)
+        assert path == "/ttl_test"
+        assert client.exists("/ttl_test")
+        data, stat = client.get("/ttl_test")
+        assert data == b"data"
 
     def test_create_stat(self):
         if CI_ZK_VERSION:
@@ -1373,12 +1464,50 @@ class TestClientTransactions(KazooTestCase):
             ("/smith", b"", "bleh"),
             ("/smith", b"", None, "fred"),
             ("/smith", b"", None, True, "fred"),
+            ("/smith", b"", None, False, False, False, "yes"),
+            ("/smith", b"", None, False, False, False, False, False, "ttl"),
         ]
 
         for args in args_list:
             with pytest.raises(TypeError):
                 t = self.client.transaction()
                 t.create(*args)
+
+    def test_transaction_create_container(self):
+        """Transaction with container node (ZK 3.5+)."""
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
+            pytest.skip("Container nodes require Zookeeper 3.5+")
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 5):
+            pass
+        else:
+            ver = self.client.server_version()
+            if ver < (3, 5):
+                pytest.skip("Container nodes require Zookeeper 3.5+")
+
+        t = self.client.transaction()
+        t.create("/tx_container", b"data", container=True)
+        results = t.commit()
+        assert len(results) == 1
+        assert results[0][0] == "/tx_container"
+        assert self.client.exists("/tx_container")
+
+    def test_transaction_create_ttl(self):
+        """Transaction with TTL node (ZK 3.5+)."""
+        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
+            pytest.skip("TTL nodes require Zookeeper 3.5+")
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 5):
+            pass
+        else:
+            ver = self.client.server_version()
+            if ver < (3, 5):
+                pytest.skip("TTL nodes require Zookeeper 3.5+")
+
+        t = self.client.transaction()
+        t.create("/tx_ttl", b"data", ttl=60000)
+        results = t.commit()
+        assert len(results) == 1
+        assert results[0][0] == "/tx_ttl"
+        assert self.client.exists("/tx_ttl")
 
     def test_default_acl(self):
         from kazoo.security import make_digest_acl

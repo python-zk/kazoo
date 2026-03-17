@@ -75,6 +75,8 @@ def get_global_cluster():
             # in read only test
             "localSessionsEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
             "localSessionsUpgradingEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
+            # enable container and TTL node types (ZK 3.5+)
+            "extendedTypesEnabled=true",
         ]
         # If defined, this sets the superuser password to "test"
         additional_java_system_properties = [
