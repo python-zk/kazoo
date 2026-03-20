@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.10-v7.3.15"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.10-v7.3.15"]
         zk-version: ["3.6.4", "3.7.2", "3.8.3", "3.9.1"]
         include:
           - python-version: "3.8"
@@ -65,6 +65,10 @@ jobs:
             tox-env: py311
           - python-version: "3.12"
             tox-env: py312
+          - python-version: "3.13"
+            tox-env: py313
+          - python-version: "3.14"
+            tox-env: py314
           - python-version: "pypy-3.10-v7.3.15"
             tox-env: pypy3
     steps:
