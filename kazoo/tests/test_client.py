@@ -25,7 +25,13 @@ from kazoo.exceptions import (
     KazooException,
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
-from kazoo.protocol.states import KeeperState, KazooState
+from kazoo.protocol.states import (
+    AddWatchMode,
+    KazooState,
+    KeeperState,
+    WatcherType,
+    EventType,
+)
 from kazoo.tests.util import CI_ZK_VERSION
 
 
@@ -1145,6 +1151,147 @@ class TestClient(KazooTestCase):
                 result.get()
         finally:
             client.stop()
+
+    def _require_zk_version(self, major, minor):
+        skip = False
+        if CI_ZK_VERSION and CI_ZK_VERSION < (major, minor):
+            skip = True
+        elif CI_ZK_VERSION and CI_ZK_VERSION >= (major, minor):
+            skip = False
+        else:
+            ver = self.client.server_version()
+            if ver[1] < minor:
+                skip = True
+        if skip:
+            pytest.skip("Must use Zookeeper %s.%s or above" % (major, minor))
+
+    def test_persistent_recursive_watch(self):
+        # This tests adding and removing a persistent recursive watch.
+        self._require_zk_version(3, 6)
+        events = []
+
+        def callback(event):
+            events.append(dict(type=event.type, path=event.path))
+
+        client = self.client
+        client.add_watch("/a", callback, AddWatchMode.PERSISTENT_RECURSIVE)
+        full_path = client.chroot + "/a"
+        assert len(client._persistent_recursive_watchers[full_path]) == 1
+        client.create("/a")
+        client.create("/a/b")
+        client.create("/a/b/c", value=b"1")
+        client.create("/a/b/d", value=b"1")
+        client.set("/a/b/c", value=b"2")
+        client.set("/a/b/d", value=b"2")
+        client.delete("/a", recursive=True)
+        # Remove the watch
+        client.remove_all_watches("/a", WatcherType.ANY)
+        # Perform one more call that we don't expect to see
+        client.create("/a")
+        # Wait in case the callback does arrive
+        time.sleep(3)
+        assert client._persistent_recursive_watchers[full_path] == set()
+        assert events == [
+            dict(type=EventType.CREATED, path="/a"),
+            dict(type=EventType.CREATED, path="/a/b"),
+            dict(type=EventType.CREATED, path="/a/b/c"),
+            dict(type=EventType.CREATED, path="/a/b/d"),
+            dict(type=EventType.CHANGED, path="/a/b/c"),
+            dict(type=EventType.CHANGED, path="/a/b/d"),
+            dict(type=EventType.DELETED, path="/a/b/c"),
+            dict(type=EventType.DELETED, path="/a/b/d"),
+            dict(type=EventType.DELETED, path="/a/b"),
+            dict(type=EventType.DELETED, path="/a"),
+        ]
+
+    def test_persistent_watch(self):
+        # This tests adding and removing a persistent watch.
+        self._require_zk_version(3, 6)
+        events = []
+
+        def callback(event):
+            events.append(dict(type=event.type, path=event.path))
+
+        client = self.client
+        client.add_watch("/a", callback, AddWatchMode.PERSISTENT)
+        full_path = client.chroot + "/a"
+        assert len(client._persistent_watchers[full_path]) == 1
+        client.create("/a")
+        # This shouldn't appear since the watch is not recursive
+        client.create("/a/b")
+        client.delete("/a", recursive=True)
+        # Remove the watch
+        client.remove_all_watches("/a", WatcherType.ANY)
+        # Perform one more call that we don't expect to see
+        client.create("/a")
+        # Wait in case the callback does arrive
+        time.sleep(3)
+        assert client._persistent_watchers[full_path] == set()
+        assert events == [
+            dict(type=EventType.CREATED, path="/a"),
+            dict(type=EventType.DELETED, path="/a"),
+        ]
+
+    def test_remove_data_watch(self):
+        # Test that removing a data watch leaves a child watch in place.
+        self._require_zk_version(3, 6)
+        callback_event = threading.Event()
+
+        def child_callback(event):
+            callback_event.set()
+
+        def data_callback(event):
+            pass
+
+        client = self.client
+        client.create("/a")
+        client.get("/a", watch=data_callback)
+        client.get_children("/a", watch=child_callback)
+        client.remove_all_watches("/a", WatcherType.DATA)
+        client.create("/a/b")
+        callback_event.wait(30)
+
+    def test_remove_children_watch(self):
+        # Test that removing a children watch leaves a data watch in place.
+        self._require_zk_version(3, 6)
+        callback_event = threading.Event()
+
+        def data_callback(event):
+            callback_event.set()
+
+        def child_callback(event):
+            pass
+
+        client = self.client
+        client.create("/a")
+        client.get("/a", watch=data_callback)
+        client.get_children("/a", watch=child_callback)
+        client.remove_all_watches("/a", WatcherType.CHILDREN)
+        client.set("/a", b"1")
+        callback_event.wait(30)
+
+    def test_invalid_add_watch_values(self):
+        def callback(event):
+            return
+
+        client = self.client
+        with pytest.raises(TypeError):
+            client.add_watch(b"/a", callback, AddWatchMode.PERSISTENT)
+        with pytest.raises(TypeError):
+            client.add_watch("/a", "test", AddWatchMode.PERSISTENT)
+        with pytest.raises(TypeError):
+            client.add_watch("/a", callback, "1")
+        with pytest.raises(ValueError):
+            client.add_watch("/a", callback, 42)
+
+    def test_invalid_remove_all_watch_values(self):
+        client = self.client
+        with pytest.raises(TypeError):
+            client.remove_all_watches(b"/a", WatcherType.ANY)
+        with pytest.raises(TypeError):
+            client.remove_all_watches("/a", "test")
+        with pytest.raises(ValueError):
+            client.remove_all_watches("/a", 42)
 
 
 class TestSSLClient(KazooTestCase):
