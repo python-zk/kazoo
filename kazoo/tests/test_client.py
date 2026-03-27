@@ -726,6 +726,34 @@ class TestClient(KazooTestCase):
         assert data == b"bytes"
         assert stat1 == stat2
 
+    def test_create_container(self):
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 5):
+            pytest.skip("Must use Zookeeper 3.5 or above")
+        client = self.client
+        path, stat1 = client.create("/1_cnt", b"bytes", container=True)
+        data, stat2 = client.get(path)
+        assert path == "/1_cnt"
+        assert data == b"bytes"
+        assert stat1 == stat2
+
+    def test_create_ttl(self):
+        if CI_ZK_VERSION:
+            version = CI_ZK_VERSION
+        else:
+            version = self.client.server_version()
+        if not version or version < (3, 5):
+            pytest.skip("Must use Zookeeper 3.5 or above")
+        client = self.client
+        path, stat1 = client.create("/1_ttl", b"bytes", ttl=1)
+        data, stat2 = client.get(path)
+        assert path == "/1_ttl"
+        assert data == b"bytes"
+        assert stat1 == stat2
+
     def test_create_get_set(self):
         nodepath = "/" + uuid.uuid4().hex
 
