@@ -279,6 +279,82 @@ class KazooDataWatcherTests(KazooTestCase):
         assert b is False
 
 
+class KazooExistingDataWatcherTests(KazooTestCase):
+    def setUp(self):
+        super(KazooExistingDataWatcherTests, self).setUp()
+        self.path = "/" + uuid.uuid4().hex
+        self.client.ensure_path(self.path)
+
+    def test_data_watcher_non_existent_path(self):
+        update = threading.Event()
+        data = [True]
+
+        # Make it a non-existent path
+        self.path += 'f'
+
+        @self.client.ExistingDataWatch(self.path)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data == [None]
+        update.clear()
+
+        # We should not get an update
+        self.client.create(self.path, b'fred')
+        update.wait(0.2)
+        assert data == [None]
+        update.clear()
+
+    def test_data_watcher_existing_path(self):
+        update = threading.Event()
+        data = [True]
+
+        # Make it an existing path
+        self.path += 'f'
+        self.client.create(self.path, b'fred')
+
+        @self.client.ExistingDataWatch(self.path)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b'fred'
+        update.clear()
+
+    def test_data_watcher_delete(self):
+        update = threading.Event()
+        data = [True]
+
+        # Make it an existing path
+        self.path += 'f'
+        self.client.create(self.path, b'fred')
+
+        @self.client.ExistingDataWatch(self.path)
+        def changed(d, stat):
+            data.pop()
+            data.append(d)
+            update.set()
+
+        update.wait(10)
+        assert data[0] == b'fred'
+        update.clear()
+
+        self.client.delete(self.path)
+        update.wait(10)
+        assert data == [None]
+        update.clear()
+
+        self.client.create(self.path, b'ginger')
+        update.wait(0.2)
+        assert data == [None]
+        update.clear()
+
+
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self):
         super(KazooChildrenWatcherTests, self).setUp()
