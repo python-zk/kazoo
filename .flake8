@@ -3,12 +3,18 @@ builtins = _
 exclude =
     .git,
     __pycache__,
-    .venv/,venv/,
+    .venv/,
+    venv*/,
     .tox/,
-    build/,dist/,*egg,
+    build/,
+    dist/,
+    *egg,
     docs/conf.py,
-    zookeeper/
+    zookeeper/,
 # See black's documentation for E203
 max-line-length = 79
-extend-ignore = BLK100,E203
+# I am not sure what version of flake8 hound is using
+# but it gives a lot of undefined names for comments (F821)
+# and redefinition of unused variables (F811)
+extend-ignore = BLK100,E203,F811,F821
 

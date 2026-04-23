@@ -1,4 +1,7 @@
 """Zookeeper Protocol Connection Handler"""
+
+from __future__ import annotations
+
 from binascii import hexlify
 from contextlib import contextmanager
 import copy
@@ -8,6 +11,7 @@ import select
 import socket
 import ssl
 import time
+from typing import Any, Iterator, Literal, Optional, Union, TYPE_CHECKING
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -44,6 +48,10 @@ from kazoo.retry import (
     RetryFailedError,
 )
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient, WatchFunc
+    from kazoo.interfaces import Socket
+
 try:
     import puresasl
     import puresasl.client
@@ -76,7 +84,7 @@ CLOSE_RESPONSE = Close.type
 
 
 # removed from Python3+
-def buffer(obj, offset=0):
+def buffer(obj: Any, offset: int = 0) -> memoryview:
     return memoryview(obj)[offset:]
 
 
@@ -94,22 +102,30 @@ class RWPinger(object):
 
     """
 
-    def __init__(self, hosts, connection_func, socket_handling):
+    def __init__(
+        self,
+        hosts: Any,
+        connection_func: Any,
+        socket_handling: Any,
+    ):
         self.hosts = hosts
         self.connection = connection_func
-        self.last_attempt = None
+        self.last_attempt: Optional[float] = None
         self.socket_handling = socket_handling
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Union[tuple, None, bool]]:
         if not self.last_attempt:
             self.last_attempt = time.monotonic()
         delay = 0.5
         while True:
             yield self._next_server(delay)
 
-    def _next_server(self, delay):
+    def _next_server(self, delay: float) -> Union[tuple, None, bool]:
         jitter = random.randint(0, 100) / 100.0
-        while time.monotonic() < self.last_attempt + delay + jitter:
+        while (
+            time.monotonic()
+            < self.last_attempt + delay + jitter  # type: ignore[operator]
+        ):
             # Skip rw ping checks if its too soon
             return False
         for host, port in self.hosts:
@@ -128,10 +144,17 @@ class RWPinger(object):
             except ConnectionDropped:
                 return False
 
+            # NOTE: This does actually look like it's unreachable but I don't
+            # want to alter the code any more than necessary for the first
+            # pass. See https://github.com/python-zk/kazoo/issues/772
+            # The loop is basically a sleep with jitter that can be
             # Add some jitter between host pings
-            while time.monotonic() < self.last_attempt + jitter:
+            while (  # type: ignore[unreachable]
+                time.monotonic() < self.last_attempt + jitter
+            ):
                 return False
         delay *= 2
+        return None
 
 
 class RWServerAvailable(Exception):
@@ -141,7 +164,13 @@ class RWServerAvailable(Exception):
 class ConnectionHandler(object):
     """Zookeeper connection handler"""
 
-    def __init__(self, client, retry_sleeper, logger=None, sasl_options=None):
+    def __init__(
+        self,
+        client: KazooClient,
+        retry_sleeper: Any,
+        logger: Optional[logging.Logger] = None,
+        sasl_options: Optional[dict] = None,
+    ):
         self.client = client
         self.handler = client.handler
         self.retry_sleeper = retry_sleeper
@@ -154,15 +183,15 @@ class ConnectionHandler(object):
         self.connection_stopped.set()
         self.ping_outstanding = client.handler.event_object()
 
-        self._read_sock = None
-        self._write_sock = None
+        self._read_sock: Optional[Socket] = None
+        self._write_sock: Optional[Socket] = None
 
-        self._socket = None
-        self._xid = None
-        self._rw_server = None
-        self._ro_mode = False
+        self._socket: Optional[Socket] = None
+        self._xid: Optional[int] = None
+        self._rw_server: Optional[tuple] = None
+        self._ro_mode: Optional[Union[Literal[False], Iterator]] = False
 
-        self._connection_routine = None
+        self._connection_routine: Optional[Any] = None
 
         self.sasl_options = sasl_options
         self.sasl_cli = None
@@ -170,14 +199,14 @@ class ConnectionHandler(object):
     # This is instance specific to avoid odd thread bug issues in Python
     # during shutdown global cleanup
     @contextmanager
-    def _socket_error_handling(self):
+    def _socket_error_handling(self) -> Any:
         try:
             yield
         except (socket.error, select.error) as e:
             err = getattr(e, "strerror", e)
             raise ConnectionDropped("socket connection error: %s" % (err,))
 
-    def start(self):
+    def start(self) -> None:
         """Start the connection up"""
         if self.connection_closed.is_set():
             rw_sockets = self.handler.create_socket_pair()
@@ -189,7 +218,7 @@ class ConnectionHandler(object):
             )
         self._connection_routine = self.handler.spawn(self.zk_loop)
 
-    def stop(self, timeout=None):
+    def stop(self, timeout: Optional[float] = None) -> bool:
         """Ensure the writer has stopped, wait to see if it does."""
         self.connection_stopped.wait(timeout)
         if self._connection_routine:
@@ -197,7 +226,7 @@ class ConnectionHandler(object):
             self._connection_routine = None
         return self.connection_stopped.is_set()
 
-    def close(self):
+    def close(self) -> None:
         """Release resources held by the connection
 
         The connection can be restarted afterwards.
@@ -212,7 +241,7 @@ class ConnectionHandler(object):
         if rs is not None:
             rs.close()
 
-    def _server_pinger(self):
+    def _server_pinger(self) -> RWPinger:
         """Returns a server pinger iterable, that will ping the next
         server in the list, and apply a back-off between attempts."""
         return RWPinger(
@@ -221,16 +250,19 @@ class ConnectionHandler(object):
             self._socket_error_handling,
         )
 
-    def _read_header(self, timeout):
+    def _read_header(self, timeout: Optional[float]) -> tuple:
         b = self._read(4, timeout)
         length = int_struct.unpack(b)[0]
         b = self._read(length, timeout)
         header, offset = ReplyHeader.deserialize(b, 0)
         return header, b, offset
 
-    def _read(self, length, timeout):
+    def _read(self, length: int, timeout: Optional[float]) -> bytes:
         msgparts = []
         remaining = length
+        # We know that self._socket is not None here because we only call
+        # this method when we have set up the connection and the read socket.
+        # But mypy doesn't understand that.
         with self._socket_error_handling():
             while remaining > 0:
                 # Because of SSL framing, a select may not return when using
@@ -240,7 +272,7 @@ class ConnectionHandler(object):
                 # data from the underlying socket.
                 if (
                     hasattr(self._socket, "pending")
-                    and self._socket.pending() > 0
+                    and self._socket.pending() > 0  # type: ignore[union-attr]
                 ):
                     pass
                 else:
@@ -252,7 +284,9 @@ class ConnectionHandler(object):
                             "socket time-out during read"
                         )
                 try:
-                    chunk = self._socket.recv(remaining)
+                    chunk = self._socket.recv(  # type: ignore[union-attr]
+                        remaining
+                    )
                 except ssl.SSLError as e:
                     if e.errno in (
                         ssl.SSL_ERROR_WANT_READ,
@@ -267,7 +301,12 @@ class ConnectionHandler(object):
                 remaining -= len(chunk)
             return b"".join(msgparts)
 
-    def _invoke(self, timeout, request, xid=None):
+    def _invoke(
+        self,
+        timeout: Optional[float],
+        request: Any,
+        xid: Optional[int] = None,
+    ) -> Any:
         """A special writer used during connection establishment
         only"""
         self._submit(request, timeout, xid)
@@ -311,7 +350,12 @@ class ConnectionHandler(object):
 
         return zxid
 
-    def _submit(self, request, timeout, xid=None):
+    def _submit(
+        self,
+        request: Any,
+        timeout: Optional[float],
+        xid: Optional[int] = None,
+    ) -> None:
         """Submit a request object with a timeout value and optional
         xid"""
         b = bytearray()
@@ -328,7 +372,7 @@ class ConnectionHandler(object):
         )
         self._write(int_struct.pack(len(b)) + b, timeout)
 
-    def _write(self, msg, timeout):
+    def _write(self, msg: bytes, timeout: Optional[float]) -> None:
         """Write a raw msg to the socket"""
         sent = 0
         msg_length = len(msg)
@@ -343,7 +387,9 @@ class ConnectionHandler(object):
                     )
                 msg_slice = buffer(msg, sent)
                 try:
-                    bytes_sent = self._socket.send(msg_slice)
+                    bytes_sent = self._socket.send(  # type:ignore[union-attr]
+                        msg_slice
+                    )
                 except ssl.SSLError as e:
                     if e.errno in (
                         ssl.SSL_ERROR_WANT_READ,
@@ -356,14 +402,14 @@ class ConnectionHandler(object):
                     raise ConnectionDropped("socket connection broken")
                 sent += bytes_sent
 
-    def _read_watch_event(self, buffer, offset):
+    def _read_watch_event(self, buffer: bytes, offset: int) -> None:
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
 
         self.logger.debug("Received EVENT: %s", watch)
 
-        watchers = []
+        watchers: list[WatchFunc] = []
 
         if watch.type in (CREATED_EVENT, CHANGED_EVENT):
             watchers.extend(client._data_watchers.pop(path, []))
@@ -385,10 +431,15 @@ class ConnectionHandler(object):
             return
 
         # Dump the watchers to the watch thread
-        for watch in watchers:
-            client.handler.dispatch_callback(Callback("watch", watch, (ev,)))
+        for watch1 in watchers:
+            client.handler.dispatch_callback(Callback("watch", watch1, (ev,)))
 
-    def _read_response(self, header, buffer, offset):
+    def _read_response(
+        self,
+        header: Any,
+        buffer: bytes,
+        offset: int,
+    ) -> Optional[object]:
         client = self.client
         request, async_object, xid = client._pending.popleft()
         if header.zxid and header.zxid > 0:
@@ -404,7 +455,11 @@ class ConnectionHandler(object):
 
         # Determine if its an exists request and a no node error
         exists_error = (
-            header.err == NoNodeError.code and request.type == Exists.type
+            # NoNodeError does actually have a code. It's added by a wrapper,
+            # which could possibly be better done via inheritance but this is
+            # less invasive to the existing code.
+            header.err == NoNodeError.code  # type: ignore[attr-defined]
+            and request.type == Exists.type
         )
 
         # Set the exception if its not an exists error
@@ -430,7 +485,7 @@ class ConnectionHandler(object):
                         request,
                     )
                     async_object.set_exception(exc)
-                    return
+                    return None
                 self.logger.debug(
                     "Received response(xid=%s): %r", xid, response
                 )
@@ -452,8 +507,9 @@ class ConnectionHandler(object):
         if isinstance(request, Close):
             self.logger.log(BLATHER, "Read close response")
             return CLOSE_RESPONSE
+        return None
 
-    def _read_socket(self, read_timeout):
+    def _read_socket(self, read_timeout: float) -> Optional[object]:
         """Called when there's something to read on the socket"""
         client = self.client
 
@@ -476,8 +532,13 @@ class ConnectionHandler(object):
             self.logger.log(BLATHER, "Reading for header %r", header)
 
             return self._read_response(header, buffer, offset)
+        return None
 
-    def _send_request(self, read_timeout, connect_timeout):
+    def _send_request(
+        self,
+        read_timeout: float,
+        connect_timeout: float,
+    ) -> None:
         """Called when we have something to send out on the socket"""
         client = self.client
         try:
@@ -489,7 +550,11 @@ class ConnectionHandler(object):
             try:
                 # Clear possible inconsistence (no request in the queue
                 # but have data in the read socket), which causes cpu to spin.
-                self._read_sock.recv(1)
+                #
+                # We know _read_sock is not None because we only call this
+                # method when we have set up the connection and the read
+                # socket, but mypy doesn't understand that.
+                self._read_sock.recv(1)  # type: ignore[union-attr]
             except OSError:
                 pass
             return
@@ -505,15 +570,19 @@ class ConnectionHandler(object):
         if request.type == Auth.type:
             xid = AUTH_XID
         else:
-            self._xid = (self._xid % 2147483647) + 1
+            # We must have initialised the xid counter by now
+            # Might want to consider initialising it to 0 instead of none?
+            self._xid = (self._xid % 2147483647) + 1  # type: ignore[operator]
             xid = self._xid
 
         self._submit(request, connect_timeout, xid)
         client._queue.popleft()
-        self._read_sock.recv(1)
+        # _read_sock should never be None here as we only call this method
+        # when we have set up the connection and the read socket.
+        self._read_sock.recv(1)  # type: ignore[union-attr]
         client._pending.append((request, async_object, xid))
 
-    def _send_ping(self, connect_timeout):
+    def _send_ping(self, connect_timeout: float) -> None:
         self.ping_outstanding.set()
         self._submit(PingInstance, connect_timeout, PING_XID)
 
@@ -524,7 +593,7 @@ class ConnectionHandler(object):
                 self._rw_server = result
                 raise RWServerAvailable()
 
-    def zk_loop(self):
+    def zk_loop(self) -> None:
         """Main Zookeeper handling loop"""
         self.logger.log(BLATHER, "ZK loop started")
 
@@ -546,7 +615,7 @@ class ConnectionHandler(object):
             self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
-    def _expand_client_hosts(self):
+    def _expand_client_hosts(self) -> list:
         # Expand the entire list in advance so we can randomize it if needed
         host_ports = []
         for host, port in self.client.hosts:
@@ -564,7 +633,7 @@ class ConnectionHandler(object):
             random.shuffle(host_ports)
         return host_ports
 
-    def _connect_loop(self, retry):
+    def _connect_loop(self, retry: Any) -> object:
         # Iterate through the hosts a full cycle before starting over
         status = None
         host_ports = self._expand_client_hosts()
@@ -586,7 +655,13 @@ class ConnectionHandler(object):
         else:
             raise ForceRetryError("Reconnecting")
 
-    def _connect_attempt(self, host, hostip, port, retry):
+    def _connect_attempt(
+        self,
+        host: str,
+        hostip: str,
+        port: int,
+        retry: Any,
+    ) -> object:
         client = self.client
         KazooTimeoutError = self.handler.timeout_exception
 
@@ -674,9 +749,18 @@ class ConnectionHandler(object):
             raise
         finally:
             if self._socket is not None:
-                self._socket.close()
+                # I think this is a bug in mypy, as the socket does get set up
+                # in self._connect, but it doesn't seem to be able to track
+                # that.
+                self._socket.close()  # type: ignore[unreachable]
+        return None
 
-    def _connect(self, host, hostip, port):
+    def _connect(
+        self,
+        host: str,
+        hostip: str,
+        port: int,
+    ) -> tuple[float, float]:
         client = self.client
         self.logger.info(
             "Connecting to %s(%s):%s, use_ssl: %r",
@@ -707,7 +791,7 @@ class ConnectionHandler(object):
                 check_hostname=self.client.check_hostname,
             )
 
-        self._socket.setblocking(0)
+        self._socket.setblocking(0)  # type: ignore[arg-type]
 
         connect = Connect(
             0,
@@ -771,23 +855,36 @@ class ConnectionHandler(object):
 
         return read_timeout, connect_timeout
 
-    def _authenticate_with_sasl(self, host, timeout):
+    def _authenticate_with_sasl(self, host: str, timeout: float) -> None:
         """Establish a SASL authenticated connection to the server."""
         if not PURESASL_AVAILABLE:
             raise SASLException("Missing SASL support")
 
-        if "service" not in self.sasl_options:
-            self.sasl_options["service"] = "zookeeper"
+        # Although this can only be called if sasl_options is not None, we
+        # really should just have make self.sasl_options into an empty dict
+        # in the constructor. However, I want to avoid code changes in as
+        # much as possible.
+        if "service" not in self.sasl_options:  # type: ignore[operator]
+            self.sasl_options["service"] = "zookeeper"  # type: ignore[index]
 
         # NOTE: Zookeeper hardcoded the domain for Digest authentication
         # instead of using the hostname. See
         # zookeeper/util/SecurityUtils.java#L74 and Server/Client
         # initializations.
-        if self.sasl_options["mechanism"] == "DIGEST-MD5":
+        if (
+            self.sasl_options["mechanism"]  # type: ignore[index]
+            == "DIGEST-MD5"
+        ):
             host = "zk-sasl-md5"
 
-        sasl_cli = self.client.sasl_cli = puresasl.client.SASLClient(
-            host=host, **self.sasl_options
+        # I don't think the client.sasl_cli attribute is actually used
+        # anywhere else, so not sure why we need to set it on the client,
+        # but again, I want to avoid code changes as much as possible.
+        sasl_cli = (
+            self.client.sasl_cli  # type: ignore[attr-defined]
+        ) = puresasl.client.SASLClient(
+            host=host,
+            **self.sasl_options,  # type: ignore[arg-type]
         )
 
         # Initialize the process with an empty challenge token

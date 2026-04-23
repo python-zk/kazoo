@@ -40,11 +40,11 @@ timeout = 180
 ignore_missing_imports = false
 
 # Disallow dynamic typing
-disallow_any_unimported = true
+disallow_any_unimported = false # true
 disallow_any_expr = false
-disallow_any_decorated = true
-disallow_any_explicit = true
-disallow_any_generics = true
+disallow_any_decorated = false # true
+disallow_any_explicit = false # true
+disallow_any_generics = false # true
 disallow_subclassing_any = true
 
 # Untyped definitions and calls
@@ -90,33 +90,20 @@ verbosity = 0
 # FIXME: As type annotations are introduced, please remove the appropriate
 #        ignore_errors flag below. New modules should NOT be added here!
 
+# no-any-return - We still have some imported modules with no type annotations,
+# and I want to avoid code changes as much as possible.
+
+# unused-ignore This is a temporary workaround for the fact that mypy can
+# produce different errors in 3.8 and 3.14, and I want to avoid code changes
+# as much as possible.
+
+disable_error_code = [ 
+    'no-any-return',
+    'unused-ignore',
+]
+
 [[tool.mypy.overrides]]
 module = [
-    'kazoo.client',
-    'kazoo.exceptions',
-    'kazoo.handlers.eventlet',
-    'kazoo.handlers.gevent',
-    'kazoo.handlers.threading',
-    'kazoo.handlers.utils',
-    'kazoo.hosts',
-    'kazoo.interfaces',
-    'kazoo.loggingsupport',
-    'kazoo.protocol.connection',
-    'kazoo.protocol.paths',
-    'kazoo.protocol.serialization',
-    'kazoo.protocol.states',
-    'kazoo.recipe.barrier',
-    'kazoo.recipe.cache',
-    'kazoo.recipe.counter',
-    'kazoo.recipe.election',
-    'kazoo.recipe.lease',
-    'kazoo.recipe.lock',
-    'kazoo.recipe.partitioner',
-    'kazoo.recipe.party',
-    'kazoo.recipe.queue',
-    'kazoo.recipe.watchers',
-    'kazoo.retry',
-    'kazoo.security',
     'kazoo.testing.common',
     'kazoo.testing.harness',
     'kazoo.tests.conftest',
@@ -146,6 +133,20 @@ module = [
     'kazoo.tests.test_utils',
     'kazoo.tests.test_watchers',
     'kazoo.tests.util',
-    'kazoo.version'
 ]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+    module = ["eventlet.*"]
+    ignore_missing_imports = true
+    #follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["gevent.thread"]
+    ignore_missing_imports = true
+    #follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["puresasl.*"]
+    ignore_missing_imports = true
+    #follow_untyped_imports = true

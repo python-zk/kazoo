@@ -14,9 +14,21 @@ changes and re-act appropriately. In the event that a
 and/or the lease has been lost.
 
 """
+
+from __future__ import annotations
+
 import re
 import time
 import uuid
+from typing import (
+    Any,
+    Iterable,
+    Literal,
+    Optional,
+    Pattern,
+    Union,
+    TYPE_CHECKING,
+)
 
 from kazoo.exceptions import (
     CancelledError,
@@ -31,20 +43,30 @@ from kazoo.retry import (
     RetryFailedError,
 )
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+
 
 class _Watch(object):
-    def __init__(self, duration=None):
+    def __init__(self, duration: Optional[float] = None):
         self.duration = duration
-        self.started_at = None
+        self.started_at: Optional[float] = None
 
-    def start(self):
+    def start(self) -> None:
         self.started_at = time.monotonic()
 
-    def leftover(self):
+    def leftover(self) -> Optional[float]:
         if self.duration is None:
             return None
         else:
-            elapsed = time.monotonic() - self.started_at
+            # We should probably set started_at to either 0 or
+            # time.monotonic() in __init__ to avoid the type ignore
+            # here, but this is a private class and it's pretty clear
+            # that start() should be called before leftover() so I'm
+            # not sure it's worth it.
+            elapsed = (
+                time.monotonic() - self.started_at  # type: ignore[operator]
+            )
             return max(0, self.duration - elapsed)
 
 
@@ -77,7 +99,13 @@ class Lock(object):
     # sequence number. Involved in read/write locks.
     _EXCLUDE_NAMES = ["__lock__"]
 
-    def __init__(self, client, path, identifier=None, extra_lock_patterns=()):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        identifier: Optional[str] = None,
+        extra_lock_patterns: Iterable[str] = (),
+    ):
         """Create a Kazoo lock.
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -97,10 +125,10 @@ class Lock(object):
         """
         self.client = client
         self.path = path
-        self._exclude_names = set(
+        self._exclude_names: set[str] = set(
             self._EXCLUDE_NAMES + list(extra_lock_patterns)
         )
-        self._contenders_re = re.compile(
+        self._contenders_re: Pattern[str] = re.compile(
             r"(?:{patterns})(-?\d{{10}})$".format(
                 patterns="|".join(self._exclude_names)
             )
@@ -109,7 +137,7 @@ class Lock(object):
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "").encode("utf-8")
-        self.node = None
+        self.node: Optional[str] = None
 
         self.wake_event = client.handler.event_object()
 
@@ -129,16 +157,21 @@ class Lock(object):
         )
         self._acquire_method_lock = client.handler.lock_object()
 
-    def _ensure_path(self):
+    def _ensure_path(self) -> None:
         self.client.ensure_path(self.path)
         self.assured_path = True
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Cancel a pending lock acquire."""
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True, timeout=None, ephemeral=True):
+    def acquire(
+        self,
+        blocking: bool = True,
+        timeout: Optional[float] = None,
+        ephemeral: bool = True,
+    ) -> bool:
         """
         Acquire the lock. By defaults blocks and waits forever.
 
@@ -204,11 +237,16 @@ class Lock(object):
         finally:
             self._acquire_method_lock.release()
 
-    def _watch_session(self, state):
+    def _watch_session(self, state: Any) -> bool:
         self.wake_event.set()
         return True
 
-    def _inner_acquire(self, blocking, timeout, ephemeral=True):
+    def _inner_acquire(
+        self,
+        blocking: bool,
+        timeout: Optional[float],
+        ephemeral: bool = True,
+    ) -> bool:
         # wait until it's our chance to get it..
         if self.is_acquired:
             if not blocking:
@@ -219,7 +257,7 @@ class Lock(object):
         if not self.assured_path:
             self._ensure_path()
 
-        node = None
+        node: Optional[str] = None
         if self.create_tried:
             node = self._find_node()
         else:
@@ -265,10 +303,10 @@ class Lock(object):
             finally:
                 self.client.remove_listener(self._watch_session)
 
-    def _watch_predecessor(self, event):
+    def _watch_predecessor(self, event: Any) -> None:
         self.wake_event.set()
 
-    def _get_predecessor(self, node):
+    def _get_predecessor(self, node: str) -> Optional[str]:
         """returns `node`'s predecessor or None
 
         Note: This handle the case where the current lock is not a contender
@@ -277,7 +315,7 @@ class Lock(object):
         """
         node_sequence = node[len(self.prefix) :]
         children = self.client.get_children(self.path)
-        found_self = False
+        found_self: Union[Literal[False], None, re.Match[str]] = False
         # Filter out the contenders using the computed regex
         contender_matches = []
         for child in children:
@@ -308,17 +346,17 @@ class Lock(object):
         sorted_matches = sorted(contender_matches, key=lambda m: m.groups())
         return sorted_matches[-1].string
 
-    def _find_node(self):
+    def _find_node(self) -> Optional[str]:
         children = self.client.get_children(self.path)
         for child in children:
             if child.startswith(self.prefix):
                 return child
         return None
 
-    def _delete_node(self, node):
+    def _delete_node(self, node: str) -> None:
         self.client.delete(self.path + "/" + node)
 
-    def _best_effort_cleanup(self):
+    def _best_effort_cleanup(self) -> None:
         try:
             node = self.node or self._find_node()
             if node:
@@ -326,16 +364,18 @@ class Lock(object):
         except KazooException:  # pragma: nocover
             pass
 
-    def release(self):
+    def release(self) -> bool:
         """Release the lock immediately."""
         return self.client.retry(self._inner_release)
 
-    def _inner_release(self):
+    def _inner_release(self) -> bool:
         if not self.is_acquired:
             return False
 
         try:
-            self._delete_node(self.node)
+            # I don't think it's possible for self.node to be None here if
+            # self.is_acquired is true.
+            self._delete_node(self.node)  # type: ignore[arg-type]
         except NoNodeError:  # pragma: nocover
             pass
 
@@ -343,7 +383,7 @@ class Lock(object):
         self.node = None
         return True
 
-    def contenders(self):
+    def contenders(self) -> list[str]:
         """Return an ordered list of the current contenders for the
         lock.
 
@@ -390,10 +430,15 @@ class Lock(object):
 
         return contenders
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.acquire()
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+        self,
+        exc_type: Any,
+        exc_value: Any,
+        traceback: Any,
+    ) -> None:
         self.release()
 
 
@@ -492,7 +537,13 @@ class Semaphore(object):
 
     """
 
-    def __init__(self, client, path, identifier=None, max_leases=1):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        identifier: Optional[str] = None,
+        max_leases: int = 1,
+    ):
         """Create a Kazoo Lock
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -528,7 +579,7 @@ class Semaphore(object):
         self.cancelled = False
         self._session_expired = False
 
-    def _ensure_path(self):
+    def _ensure_path(self) -> None:
         result = self.client.ensure_path(self.path)
         self.assured_path = True
         if result is True:
@@ -549,12 +600,16 @@ class Semaphore(object):
         else:
             self.client.set(self.path, str(self.max_leases).encode("utf-8"))
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Cancel a pending semaphore acquire."""
         self.cancelled = True
         self.wake_event.set()
 
-    def acquire(self, blocking=True, timeout=None):
+    def acquire(
+        self,
+        blocking: bool = True,
+        timeout: Optional[float] = None,
+    ) -> bool:
         """Acquire the semaphore. By defaults blocks and waits forever.
 
         :param blocking: Block until semaphore is obtained or
@@ -592,7 +647,11 @@ class Semaphore(object):
 
         return self.is_acquired
 
-    def _inner_acquire(self, blocking, timeout=None):
+    def _inner_acquire(
+        self,
+        blocking: bool,
+        timeout: Optional[float] = None,
+    ) -> bool:
         """Inner loop that runs from the top anytime a command hits a
         retryable Zookeeper exception."""
         self._session_expired = False
@@ -607,7 +666,12 @@ class Semaphore(object):
 
         w = _Watch(duration=timeout)
         w.start()
-        lock = self.client.Lock(self.lock_path, self.data)
+        # This is passing bytes data, but self.client.Lock expects a str,
+        # which I think is a bug in this code. However, I don't want to
+        # change any code at this point, so we just ignore the type error here.
+        lock = self.client.Lock(
+            self.lock_path, self.data  # type: ignore[arg-type]
+        )
         try:
             gotten = lock.acquire(blocking=blocking, timeout=w.leftover())
             if not gotten:
@@ -633,10 +697,10 @@ class Semaphore(object):
         finally:
             lock.release()
 
-    def _watch_lease_change(self, event):
+    def _watch_lease_change(self, event: Any) -> None:
         self.wake_event.set()
 
-    def _get_lease(self, data=None):
+    def _get_lease(self, data: Any = None) -> bool:
         # Make sure the session is still valid
         if self._session_expired:
             raise ForceRetryError("Retry on session loss at top")
@@ -665,25 +729,26 @@ class Semaphore(object):
         # Return current state
         return self.is_acquired
 
-    def _watch_session(self, state):
+    def _watch_session(self, state: Any) -> Optional[bool]:
         if state == KazooState.LOST:
             self._session_expired = True
             self.wake_event.set()
 
             # Return true to de-register
             return True
+        return None
 
-    def _best_effort_cleanup(self):
+    def _best_effort_cleanup(self) -> None:
         try:
             self.client.delete(self.create_path)
         except KazooException:  # pragma: nocover
             pass
 
-    def release(self):
+    def release(self) -> bool:
         """Release the lease immediately."""
         return self.client.retry(self._inner_release)
 
-    def _inner_release(self):
+    def _inner_release(self) -> bool:
         if not self.is_acquired:
             return False
         try:
@@ -693,7 +758,7 @@ class Semaphore(object):
         self.is_acquired = False
         return True
 
-    def lease_holders(self):
+    def lease_holders(self) -> list[str]:
         """Return an unordered list of the current lease holders.
 
         .. note::
@@ -716,8 +781,13 @@ class Semaphore(object):
                 pass
         return lease_holders
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.acquire()
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+        self,
+        exc_type: Any,
+        exc_value: Any,
+        traceback: Any,
+    ) -> None:
         self.release()

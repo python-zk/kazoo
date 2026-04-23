@@ -1,5 +1,7 @@
 """Kazoo handler helpers"""
 
+from __future__ import annotations
+
 from collections import defaultdict
 import errno
 import functools
@@ -8,6 +10,13 @@ import selectors
 import ssl
 import socket
 import time
+from types import ModuleType
+from typing import Any, Callable, Optional, Union, TYPE_CHECKING
+
+from kazoo.interfaces import IAsyncResult
+
+if TYPE_CHECKING:
+    from kazoo.interfaces import Socket
 
 HAS_FNCTL = True
 try:
@@ -15,36 +24,51 @@ try:
 except ImportError:  # pragma: nocover
     HAS_FNCTL = False
 
+
 # sentinel objects
+# Note: This needs to be a unique object that is not None, as None is used to
+# indicate a successful result in AsyncResult.
+# This should probably be an Enum, it would certainly be cleaner, but don't
+# want to change the code too much.
 _NONE = object()
 
+CallbackFunc = Callable[..., None]
 
-class AsyncResult(object):
+
+class AsyncResult(IAsyncResult):
     """A one-time event that stores a value or an exception"""
 
-    def __init__(self, handler, condition_factory, timeout_factory):
+    def __init__(
+        self,
+        handler: Any,
+        condition_factory: Callable[[], Any],
+        timeout_factory: Callable[[], Any],
+    ) -> None:
         self._handler = handler
-        self._exception = _NONE
+        self._exception: Union[object, None, Exception] = _NONE
         self._condition = condition_factory()
-        self._callbacks = []
+        self._callbacks: list[CallbackFunc] = []
         self._timeout_factory = timeout_factory
         self.value = None
 
-    def ready(self):
+    def ready(self) -> bool:
         """Return true if and only if it holds a value or an
         exception"""
         return self._exception is not _NONE
 
-    def successful(self):
+    def successful(self) -> bool:
         """Return true if and only if it is ready and holds a value"""
         return self._exception is None
 
     @property
-    def exception(self):
+    def exception(self) -> Optional[Exception]:
         if self._exception is not _NONE:
-            return self._exception
+            # The next line should have return-value, but hound ci
+            # is frankly nothing but a hound dog
+            return self._exception  # type: ignore
+        return None
 
-    def set(self, value=None):
+    def set(self, value: Any = None) -> None:
         """Store the value. Wake up the waiters."""
         with self._condition:
             self.value = value
@@ -52,14 +76,14 @@ class AsyncResult(object):
             self._do_callbacks()
             self._condition.notify_all()
 
-    def set_exception(self, exception):
+    def set_exception(self, exception: Exception) -> None:
         """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
             self._do_callbacks()
             self._condition.notify_all()
 
-    def get(self, block=True, timeout=None):
+    def get(self, block: bool = True, timeout: Optional[float] = None) -> Any:
         """Return the stored value or raise the exception.
 
         If there is no value raises TimeoutError.
@@ -69,18 +93,18 @@ class AsyncResult(object):
             if self._exception is not _NONE:
                 if self._exception is None:
                     return self.value
-                raise self._exception
+                raise self._exception  # type: ignore[misc]
             elif block:
                 self._condition.wait(timeout)
                 if self._exception is not _NONE:
                     if self._exception is None:
                         return self.value
-                    raise self._exception
+                    raise self._exception  # type: ignore[misc]
 
             # if we get to this point we timeout
             raise self._timeout_factory()
 
-    def get_nowait(self):
+    def get_nowait(self) -> Any:
         """Return the value or raise the exception without blocking.
 
         If nothing is available, raises TimeoutError
@@ -88,14 +112,14 @@ class AsyncResult(object):
         """
         return self.get(block=False)
 
-    def wait(self, timeout=None):
+    def wait(self, timeout: Optional[float] = None) -> bool:
         """Block until the instance is ready."""
         with self._condition:
             if not self.ready():
                 self._condition.wait(timeout)
         return self._exception is not _NONE
 
-    def rawlink(self, callback):
+    def rawlink(self, callback: CallbackFunc) -> None:
         """Register a callback to call when a value or an exception is
         set"""
         with self._condition:
@@ -106,7 +130,7 @@ class AsyncResult(object):
             if self.ready():
                 self._do_callbacks()
 
-    def unlink(self, callback):
+    def unlink(self, callback: CallbackFunc) -> None:
         """Remove the callback set by :meth:`rawlink`"""
         with self._condition:
             if self.ready():
@@ -116,7 +140,7 @@ class AsyncResult(object):
             if callback in self._callbacks:
                 self._callbacks.remove(callback)
 
-    def _do_callbacks(self):
+    def _do_callbacks(self) -> None:
         """Execute the callbacks that were registered by :meth:`rawlink`.
         If the handler is in running state this method only schedules
         the calls to be performed by the handler. If it's stopped,
@@ -131,19 +155,21 @@ class AsyncResult(object):
                 functools.partial(callback, self)()
 
 
-def _set_fd_cloexec(fd):
+def _set_fd_cloexec(fd: Socket) -> None:
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
 
 
-def _set_default_tcpsock_options(module, sock):
+def _set_default_tcpsock_options(module: ModuleType, sock: Socket) -> Socket:
     sock.setsockopt(module.IPPROTO_TCP, module.TCP_NODELAY, 1)
     if HAS_FNCTL:
         _set_fd_cloexec(sock)
     return sock
 
 
-def create_socket_pair(module, port=0):
+def create_socket_pair(
+    module: ModuleType, port: int = 0
+) -> tuple[Socket, Socket]:
     """Create socket pair.
 
     If socket.socketpair isn't available, we emulate it.
@@ -182,7 +208,7 @@ def create_socket_pair(module, port=0):
     return client_sock, srv_sock
 
 
-def create_tcp_socket(module):
+def create_tcp_socket(module: ModuleType) -> Socket:
     """Create a TCP socket with the CLOEXEC flag set."""
     type_ = module.SOCK_STREAM
     if hasattr(module, "SOCK_CLOEXEC"):  # pragma: nocover
@@ -194,20 +220,20 @@ def create_tcp_socket(module):
 
 
 def create_tcp_connection(
-    module,
-    address,
-    hostname=None,
-    timeout=None,
-    use_ssl=False,
-    ca=None,
-    certfile=None,
-    keyfile=None,
-    keyfile_password=None,
-    verify_certs=True,
-    check_hostname=False,
-    options=None,
-    ciphers=None,
-):
+    module: ModuleType,
+    address: Any,
+    hostname: Optional[str] = None,
+    timeout: Optional[float] = None,
+    use_ssl: bool = False,
+    ca: Optional[str] = None,
+    certfile: Optional[str] = None,
+    keyfile: Optional[str] = None,
+    keyfile_password: Optional[str] = None,
+    verify_certs: bool = True,
+    check_hostname: bool = False,
+    options: Optional[ssl.Options] = None,
+    ciphers: Optional[str] = None,
+) -> Socket:
     end = None
     if timeout is None:
         # thanks to create_connection() developers for
@@ -215,7 +241,7 @@ def create_tcp_connection(
         timeout = module.getdefaulttimeout()
     if timeout is not None:
         end = time.monotonic() + timeout
-    sock = None
+    sock: Optional[Socket] = None
 
     while True:
         timeout_at = end if end is None else end - time.monotonic()
@@ -279,7 +305,13 @@ def create_tcp_connection(
                 sock = module.create_connection(address, timeout_at)
                 break
             except Exception as ex:
-                errnum = ex.errno if isinstance(ex, OSError) else ex[0]
+                # Seriously WTF? if ex is an exception, how can it be a tuple?
+                # I guess gevent can do this, but really...
+                errnum = (
+                    ex.errno
+                    if isinstance(ex, OSError)
+                    else ex[0]  # type: ignore
+                )
                 if errnum == errno.EINTR:
                     continue
                 raise
@@ -291,7 +323,9 @@ def create_tcp_connection(
     return sock
 
 
-def capture_exceptions(async_result):
+def capture_exceptions(
+    async_result: IAsyncResult,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Return a new decorated function that propagates the exceptions of the
     wrapped function to an async_result.
 
@@ -299,9 +333,9 @@ def capture_exceptions(async_result):
 
     """
 
-    def capture(function):
+    def capture(function: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(function)
-        def captured_function(*args, **kwargs):
+        def captured_function(*args: Any, **kwargs: Any) -> Any:
             try:
                 return function(*args, **kwargs)
             except Exception as exc:
@@ -312,7 +346,9 @@ def capture_exceptions(async_result):
     return capture
 
 
-def wrap(async_result):
+def wrap(
+    async_result: IAsyncResult,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Return a new decorated function that propagates the return value or
     exception of wrapped function to an async_result.  NOTE: Only propagates a
     non-None return value.
@@ -321,9 +357,9 @@ def wrap(async_result):
 
     """
 
-    def capture(function):
+    def capture(function: Callable[..., Any]) -> Callable[..., Any]:
         @capture_exceptions(async_result)
-        def captured_function(*args, **kwargs):
+        def captured_function(*args: Any, **kwargs: Any) -> Any:
             value = function(*args, **kwargs)
             if value is not None:
                 async_result.set(value)
@@ -334,7 +370,7 @@ def wrap(async_result):
     return capture
 
 
-def fileobj_to_fd(fileobj):
+def fileobj_to_fd(fileobj: Any) -> int:
     """Return a file descriptor from a file object.
 
     Parameters:
@@ -359,8 +395,12 @@ def fileobj_to_fd(fileobj):
 
 
 def selector_select(
-    rlist, wlist, xlist, timeout=None, selectors_module=selectors
-):
+    rlist: list[Any],
+    wlist: list[Any],
+    xlist: list[Any],
+    timeout: Optional[float] = None,
+    selectors_module: ModuleType = selectors,
+) -> tuple[list[int], list[int], list[int]]:
     """Selector-based drop-in replacement for select to overcome select
     limitation on a maximum filehandle value.
     """
@@ -374,8 +414,8 @@ def selector_select(
         selectors_module.EVENT_READ: rlist,
         selectors_module.EVENT_WRITE: wlist,
     }
-    fd_events = defaultdict(int)
-    fd_fileobjs = defaultdict(list)
+    fd_events: defaultdict[int, int] = defaultdict(int)
+    fd_fileobjs: defaultdict[int, list[int]] = defaultdict(list)
 
     for event, fileobjs in events_mapping.items():
         for fileobj in fileobjs:
@@ -391,7 +431,9 @@ def selector_select(
             # gevent can raise OSError
             raise ValueError("Invalid event mask or fd") from e
 
-    revents, wevents, xevents = [], [], []
+    revents: list[int] = []
+    wevents: list[int] = []
+    xevents: list[int] = []
     try:
         ready = selector.select(timeout)
     finally:

@@ -1,6 +1,9 @@
 """Kazoo Exceptions"""
 
+from __future__ import annotations
+
 from collections import defaultdict
+from typing import Any, Callable, Type
 
 
 class KazooException(Exception):
@@ -51,15 +54,15 @@ class SASLException(KazooException):
     """
 
 
-def _invalid_error_code():
+def _invalid_error_code() -> Any:
     raise RuntimeError("Invalid error code")
 
 
-EXCEPTIONS = defaultdict(_invalid_error_code)
+EXCEPTIONS: defaultdict = defaultdict(_invalid_error_code)
 
 
-def _zookeeper_exception(code):
-    def decorator(klass):
+def _zookeeper_exception(code: int) -> Callable[[Type[Any]], Type[Any]]:
+    def decorator(klass: Type[Any]) -> Type[Any]:
         EXCEPTIONS[code] = klass
         klass.code = code
         return klass

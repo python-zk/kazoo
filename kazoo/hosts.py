@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import urllib.parse
+from typing import Optional, Union
 
 
-def collect_hosts(hosts):
+def collect_hosts(
+    hosts: Union[str, list[str]],
+) -> tuple[list[tuple[str, int]], Optional[str]]:
     """
     Collect a set of hosts and an optional chroot from
     a string or a list of strings.
@@ -12,8 +17,8 @@ def collect_hosts(hosts):
         else:
             host_ports, chroot = hosts, None
     else:
-        host_ports, chroot = hosts.partition("/")[::2]
-        host_ports = host_ports.split(",")
+        host_ports_1, chroot = hosts.partition("/")[::2]
+        host_ports = host_ports_1.split(",")
         chroot = "/" + chroot if chroot else None
 
     result = []

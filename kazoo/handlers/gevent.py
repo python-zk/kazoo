@@ -1,8 +1,12 @@
 """A gevent based handler."""
+
+from __future__ import annotations
 from __future__ import absolute_import
 
 import atexit
 import logging
+
+from typing import Any, TYPE_CHECKING
 
 import gevent
 from gevent import socket
@@ -17,6 +21,10 @@ from kazoo.handlers.utils import selector_select
 from gevent.lock import Semaphore, RLock
 
 from kazoo.handlers import utils
+
+if TYPE_CHECKING:
+    from gevent import Greenlet
+    from kazoo.interfaces import Socket
 
 _using_libevent = gevent.__version__.startswith("0.")
 
@@ -53,24 +61,24 @@ class SequentialGeventHandler(object):
     queue_empty = gevent.queue.Empty
     sleep_func = staticmethod(gevent.sleep)
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.callback_queue = self.queue_impl()
+        self.callback_queue: gevent.queue.Queue = self.queue_impl()
         self._running = False
         self._async = None
         self._state_change = Semaphore()
-        self._workers = []
+        self._workers: list[Greenlet] = []
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._running
 
     class timeout_exception(gevent.Timeout):
-        def __init__(self, msg):
+        def __init__(self, msg: Any):
             gevent.Timeout.__init__(self, exception=msg)
 
-    def _create_greenlet_worker(self, queue):
-        def greenlet_worker():
+    def _create_greenlet_worker(self, queue: Any) -> gevent.Greenlet:
+        def greenlet_worker() -> None:
             while True:
                 try:
                     func = queue.get()
@@ -88,7 +96,7 @@ class SequentialGeventHandler(object):
 
         return gevent.spawn(greenlet_worker)
 
-    def start(self):
+    def start(self) -> None:
         """Start the greenlet workers."""
         with self._state_change:
             if self._running:
@@ -103,7 +111,7 @@ class SequentialGeventHandler(object):
                 self._workers.append(w)
             atexit.register(self.stop)
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the greenlet workers and empty all queues."""
         with self._state_change:
             if not self._running:
@@ -123,33 +131,37 @@ class SequentialGeventHandler(object):
 
             atexit.unregister(self.stop)
 
-    def select(self, *args, **kwargs):
+    def select(self, *args: Any, **kwargs: Any) -> tuple:
         return selector_select(
-            *args, selectors_module=gevent.selectors, **kwargs
+            # Likely a bug in mypy (see
+            # https://github.com/python/mypy/issues/6799)
+            *args,
+            selectors_module=gevent.selectors,
+            **kwargs,  # type: ignore[misc]
         )
 
-    def socket(self, *args, **kwargs):
+    def socket(self, *args: Any, **kwargs: Any) -> Socket:
         return utils.create_tcp_socket(socket)
 
-    def create_connection(self, *args, **kwargs):
+    def create_connection(self, *args: Any, **kwargs: Any) -> Socket:
         return utils.create_tcp_connection(socket, *args, **kwargs)
 
-    def create_socket_pair(self):
+    def create_socket_pair(self) -> tuple[Socket, Socket]:
         return utils.create_socket_pair(socket)
 
-    def event_object(self):
+    def event_object(self) -> gevent.event.Event:
         """Create an appropriate Event object"""
         return gevent.event.Event()
 
-    def lock_object(self):
+    def lock_object(self) -> Any:
         """Create an appropriate Lock object"""
         return gevent.thread.allocate_lock()
 
-    def rlock_object(self):
+    def rlock_object(self) -> RLock:
         """Create an appropriate RLock object"""
         return RLock()
 
-    def async_result(self):
+    def async_result(self) -> AsyncResult:
         """Create a :class:`AsyncResult` instance
 
         The :class:`AsyncResult` instance will have its completion
@@ -160,11 +172,11 @@ class SequentialGeventHandler(object):
         """
         return AsyncResult()
 
-    def spawn(self, func, *args, **kwargs):
+    def spawn(self, func: Any, *args: Any, **kwargs: Any) -> gevent.Greenlet:
         """Spawn a function to run asynchronously"""
         return gevent.spawn(func, *args, **kwargs)
 
-    def dispatch_callback(self, callback):
+    def dispatch_callback(self, callback: Any) -> None:
         """Dispatch to the callback object
 
         The callback is put on separate queues to run depending on the

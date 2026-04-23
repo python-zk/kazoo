@@ -17,20 +17,30 @@ Example Use-Case
   so that no two workers own the same queue.
 
 """
+
+from __future__ import annotations
+
 from functools import partial
 import logging
 import os
 import socket
+from enum import Enum
+from typing import Any, Callable, Iterator, Optional, Sequence, TYPE_CHECKING
 
 from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
 from kazoo.recipe.watchers import PatientChildrenWatch
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+    from kazoo.interfaces import IAsyncResult
+    from kazoo.recipe.lock import Lock
 
 log = logging.getLogger(__name__)
 
 
-class PartitionState(object):
+# This is a (str, Enum) for backwards compatibility.
+class PartitionState(str, Enum):
     """High level partition state values
 
     .. attribute:: ALLOCATING
@@ -139,14 +149,16 @@ class SetPartitioner(object):
 
     def __init__(
         self,
-        client,
-        path,
-        set,
-        partition_func=None,
-        identifier=None,
-        time_boundary=30,
-        max_reaction_time=1,
-        state_change_event=None,
+        client: KazooClient,
+        path: str,
+        set: Sequence[str],
+        partition_func: Optional[
+            Callable[[str, list[str], Sequence[str]], list[str]]
+        ] = None,
+        identifier: Optional[str] = None,
+        time_boundary: float = 30,
+        max_reaction_time: float = 1,
+        state_change_event: Optional[Any] = None,
     ):
         """Create a :class:`~SetPartitioner` instance
 
@@ -176,13 +188,13 @@ class SetPartitioner(object):
         self._client = client
         self._path = path
         self._set = set
-        self._partition_set = []
+        self._partition_set: list[str] = []
         self._partition_func = partition_func or self._partitioner
         self._identifier = identifier or "%s-%s" % (
             socket.getfqdn(),
             os.getpid(),
         )
-        self._locks = []
+        self._locks: list[Lock] = []
         self._lock_path = "/".join([path, "locks"])
         self._party_path = "/".join([path, "party"])
         self._time_boundary = time_boundary
@@ -208,33 +220,33 @@ class SetPartitioner(object):
         # so we know when we're ready
         self._child_watching(self._allocate_transition, client_handler=True)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Return the partitions in this partition set"""
         for partition in self._partition_set:
             yield partition
 
     @property
-    def failed(self):
+    def failed(self) -> bool:
         """Corresponds to the :attr:`PartitionState.FAILURE` state"""
         return self.state == PartitionState.FAILURE
 
     @property
-    def release(self):
+    def release(self) -> bool:
         """Corresponds to the :attr:`PartitionState.RELEASE` state"""
         return self.state == PartitionState.RELEASE
 
     @property
-    def allocating(self):
+    def allocating(self) -> bool:
         """Corresponds to the :attr:`PartitionState.ALLOCATING`
         state"""
         return self.state == PartitionState.ALLOCATING
 
     @property
-    def acquired(self):
+    def acquired(self) -> bool:
         """Corresponds to the :attr:`PartitionState.ACQUIRED` state"""
         return self.state == PartitionState.ACQUIRED
 
-    def wait_for_acquire(self, timeout=30):
+    def wait_for_acquire(self, timeout: float = 30) -> None:
         """Wait for the set to be partitioned and acquired
 
         :param timeout: How long to wait before returning.
@@ -243,7 +255,7 @@ class SetPartitioner(object):
         """
         self._acquire_event.wait(timeout)
 
-    def release_set(self):
+    def release_set(self) -> None:
         """Call to release the set
 
         This method begins the step of allocating once the set has
@@ -263,12 +275,12 @@ class SetPartitioner(object):
                 self._set_state(PartitionState.ALLOCATING)
         self._child_watching(self._allocate_transition, client_handler=True)
 
-    def finish(self):
+    def finish(self) -> None:
         """Call to release the set and leave the party"""
         self._release_locks()
         self._fail_out()
 
-    def _fail_out(self):
+    def _fail_out(self) -> None:
         with self._state_change:
             self._set_state(PartitionState.FAILURE)
         if self._party.participating:
@@ -277,7 +289,7 @@ class SetPartitioner(object):
             except KazooException:  # pragma: nocover
                 pass
 
-    def _allocate_transition(self, result):
+    def _allocate_transition(self, result: Any) -> None:
         """Called when in allocating mode, and the children settled"""
 
         # Did we get an exception waiting for children to settle?
@@ -288,7 +300,7 @@ class SetPartitioner(object):
         children, async_result = result.get()
         children_changed = self._client.handler.event_object()
 
-        def updated(result):
+        def updated(result: IAsyncResult) -> None:
             with self._state_change:
                 children_changed.set()
                 if self.acquired:
@@ -307,7 +319,7 @@ class SetPartitioner(object):
 
         # Check whether the state has changed during the lock acquisition
         # and abort the process if so.
-        def abort_if_needed():
+        def abort_if_needed() -> bool:
             if self.state_id == state_id:
                 if children_changed.is_set():
                     # The party has changed. Repartitioning...
@@ -365,7 +377,7 @@ class SetPartitioner(object):
             # This mustn't happen. Means a logical error.
             self._fail_out()
 
-    def _release_locks(self):
+    def _release_locks(self) -> None:
         """Attempt to completely remove all the locks"""
         self._acquire_event.clear()
         for lock in self._locks[:]:
@@ -378,7 +390,7 @@ class SetPartitioner(object):
             else:
                 self._locks.remove(lock)
 
-    def _abort_lock_acquisition(self):
+    def _abort_lock_acquisition(self) -> None:
         """Called during lock acquisition if a party change occurs"""
 
         self._release_locks()
@@ -391,7 +403,11 @@ class SetPartitioner(object):
 
         self._child_watching(self._allocate_transition, client_handler=True)
 
-    def _child_watching(self, func=None, client_handler=False):
+    def _child_watching(
+        self,
+        func: Optional[Callable[..., Any]] = None,
+        client_handler: bool = False,
+    ) -> Any:
         """Called when children are being watched to stabilize
 
         This actually returns immediately, child watcher spins up a
@@ -414,7 +430,7 @@ class SetPartitioner(object):
             asy.rawlink(func)
         return asy
 
-    def _establish_sessionwatch(self, state):
+    def _establish_sessionwatch(self, state: Any) -> bool:
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         with self._state_change:
@@ -427,7 +443,12 @@ class SetPartitioner(object):
 
         return state == KazooState.LOST
 
-    def _partitioner(self, identifier, members, partitions):
+    def _partitioner(
+        self,
+        identifier: str,
+        members: list[str],
+        partitions: Sequence[str],
+    ) -> list[str]:
         # Ensure consistent order of partitions/members
         all_partitions = sorted(partitions)
         workers = sorted(members)
@@ -437,7 +458,7 @@ class SetPartitioner(object):
         # skipping the other workers
         return all_partitions[i :: len(workers)]
 
-    def _set_state(self, state):
+    def _set_state(self, state: PartitionState) -> None:
         self.state = state
         self.state_id += 1
         self.state_change_event.set()

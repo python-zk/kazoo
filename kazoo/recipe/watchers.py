@@ -10,15 +10,22 @@
     will result in an exception being thrown.
 
 """
+
+from __future__ import annotations
+
 from functools import partial, wraps
 import logging
 import time
 import warnings
+from typing import Any, List, Callable, Optional, Union, TYPE_CHECKING
 
 from kazoo.exceptions import ConnectionClosedError, NoNodeError, KazooException
-from kazoo.protocol.states import KazooState
+from kazoo.protocol.states import KazooState, WatchedEvent, ZnodeStat
 from kazoo.retry import KazooRetry
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+    from kazoo.interfaces import IAsyncResult
 
 log = logging.getLogger(__name__)
 
@@ -26,15 +33,24 @@ log = logging.getLogger(__name__)
 _STOP_WATCHING = object()
 
 
-def _ignore_closed(func):
+def _ignore_closed(func: Callable[..., None]) -> Callable[..., None]:
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             return func(*args, **kwargs)
         except ConnectionClosedError:
             pass
 
     return wrapper
+
+
+DataWatchFunc = Union[
+    Callable[[Optional[str], Optional[ZnodeStat]], Optional[bool]],
+    Callable[
+        [Optional[str], Optional[ZnodeStat], Optional[WatchedEvent]],
+        Optional[bool],
+    ],
+]
 
 
 class DataWatch(object):
@@ -88,7 +104,14 @@ class DataWatch(object):
 
     """
 
-    def __init__(self, client, path, func=None, *args, **kwargs):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        func: Optional[DataWatchFunc] = None,
+        *args: Any,
+        **kwargs: Any,
+    ):
         """Create a data watcher for a path
 
         :param client: A zookeeper client.
@@ -107,7 +130,7 @@ class DataWatch(object):
         self._func = func
         self._stopped = False
         self._run_lock = client.handler.lock_object()
-        self._version = None
+        self._version: Optional[int] = None
         self._retry = KazooRetry(
             max_tries=None, sleep_func=client.handler.sleep_func
         )
@@ -132,7 +155,7 @@ class DataWatch(object):
             self._client.add_listener(self._session_watcher)
             self._get_data()
 
-    def __call__(self, func):
+    def __call__(self, func: DataWatchFunc) -> DataWatchFunc:
         """Callable version for use as a decorator
 
         :param func: Function to call initially and every time the
@@ -155,16 +178,27 @@ class DataWatch(object):
         self._get_data()
         return func
 
-    def _log_func_exception(self, data, stat, event=None):
+    def _log_func_exception(
+        self,
+        data: Any,
+        stat: Optional[ZnodeStat],
+        event: Optional[WatchedEvent] = None,
+    ) -> None:
         try:
             # For backwards compatibility, don't send event to the
             # callback unless the send_event is set in constructor
             if not self._ever_called:
                 self._ever_called = True
             try:
-                result = self._func(data, stat, event)
+                # The type ignores here are because mypy can't figure out that
+                # 1) self._func can't ever be None (fingers crossed)
+                # 2) the function can be called with 2 arguments or with 3
+                #    arguments
+                result = self._func(  # type: ignore[call-arg, misc]
+                    data, stat, event
+                )
             except TypeError:
-                result = self._func(data, stat)
+                result = self._func(data, stat)  # type: ignore[call-arg, misc]
             if result is False:
                 self._stopped = True
                 self._func = None
@@ -174,7 +208,7 @@ class DataWatch(object):
             raise
 
     @_ignore_closed
-    def _get_data(self, event=None):
+    def _get_data(self, event: Optional[WatchedEvent] = None) -> None:
         # Ensure this runs one at a time, possible because the session
         # watcher may trigger a run
         with self._run_lock:
@@ -183,6 +217,7 @@ class DataWatch(object):
 
             initial_version = self._version
 
+            stat: Optional[ZnodeStat]
             try:
                 data, stat = self._retry(
                     self._client.get, self._path, self._watcher
@@ -210,16 +245,22 @@ class DataWatch(object):
             if initial_version != self._version or not self._ever_called:
                 self._log_func_exception(data, stat, event)
 
-    def _watcher(self, event):
+    def _watcher(self, event: KazooState) -> None:
         self._get_data(event=event)
 
-    def _set_watch(self, state):
+    def _set_watch(self, state: KazooState) -> None:
         with self._run_lock:
             self._watch_established = state
 
-    def _session_watcher(self, state):
+    def _session_watcher(self, state: KazooState) -> None:
         if state == KazooState.CONNECTED:
             self._client.handler.spawn(self._get_data)
+
+
+ChildrenWatchFunc = Union[
+    Callable[[List[str]], Optional[bool]],
+    Callable[[List[str], Optional[WatchedEvent]], Optional[bool]],
+]
 
 
 class ChildrenWatch(object):
@@ -253,11 +294,11 @@ class ChildrenWatch(object):
 
     def __init__(
         self,
-        client,
-        path,
-        func=None,
-        allow_session_lost=True,
-        send_event=False,
+        client: KazooClient,
+        path: str,
+        func: Optional[ChildrenWatchFunc] = None,
+        allow_session_lost: bool = True,
+        send_event: bool = False,
     ):
         """Create a children watcher for a path
 
@@ -290,7 +331,7 @@ class ChildrenWatch(object):
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
         self._run_lock = client.handler.lock_object()
-        self._prior_children = None
+        self._prior_children: Optional[List[str]] = None
         self._used = False
 
         # Register our session listener if we're going to resume
@@ -301,7 +342,7 @@ class ChildrenWatch(object):
                 self._client.add_listener(self._session_watcher)
             self._get_children()
 
-    def __call__(self, func):
+    def __call__(self, func: ChildrenWatchFunc) -> ChildrenWatchFunc:
         """Callable version for use as a decorator
 
         :param func: Function to call initially and every time the
@@ -325,7 +366,7 @@ class ChildrenWatch(object):
         return func
 
     @_ignore_closed
-    def _get_children(self, event=None):
+    def _get_children(self, event: Optional[WatchedEvent] = None) -> None:
         with self._run_lock:  # Ensure this runs one at a time
             if self._stopped:
                 return
@@ -351,9 +392,16 @@ class ChildrenWatch(object):
 
             try:
                 if self._send_event:
-                    result = self._func(children, event)
+                    # See comment about the type ignore here in DataWatch,
+                    # it's the same issue where mypy can't figure out that the
+                    # function can be called with 1 argument or with 2
+                    result = self._func(  # type: ignore[misc]
+                        children, event  # type: ignore[call-arg]
+                    )
                 else:
-                    result = self._func(children)
+                    result = self._func(  # type: ignore[misc]
+                        children  # type: ignore[call-arg]
+                    )
                 if result is False:
                     self._stopped = True
                     self._func = None
@@ -363,11 +411,11 @@ class ChildrenWatch(object):
                 log.exception(exc)
                 raise
 
-    def _watcher(self, event):
+    def _watcher(self, event: WatchedEvent) -> None:
         if event.type != "NONE":
             self._get_children(event)
 
-    def _session_watcher(self, state):
+    def _session_watcher(self, state: KazooState) -> None:
         if state in (KazooState.LOST, KazooState.SUSPENDED):
             self._watch_established = False
         elif (
@@ -408,14 +456,16 @@ class PatientChildrenWatch(object):
 
     """
 
-    def __init__(self, client, path, time_boundary=30):
+    def __init__(
+        self, client: KazooClient, path: str, time_boundary: float = 30
+    ):
         self.client = client
         self.path = path
-        self.children = []
+        self.children: list[str] = []
         self.time_boundary = time_boundary
         self.children_changed = client.handler.event_object()
 
-    def start(self):
+    def start(self) -> IAsyncResult:
         """Begin the watching process asynchronously
 
         :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance
@@ -427,7 +477,7 @@ class PatientChildrenWatch(object):
         self.client.handler.spawn(self._inner_start)
         return asy
 
-    def _inner_start(self):
+    def _inner_start(self) -> None:
         try:
             while True:
                 async_result = self.client.handler.async_result()
@@ -447,6 +497,8 @@ class PatientChildrenWatch(object):
         except Exception as exc:
             self.asy.set_exception(exc)
 
-    def _children_watcher(self, async_result, event):
+    def _children_watcher(
+        self, async_result: IAsyncResult, event: WatchedEvent
+    ) -> None:
         self.children_changed.set()
         async_result.set(time.monotonic())
