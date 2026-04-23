@@ -4,3 +4,8 @@ include =
 omit =
     kazoo/tests/*
     kazoo/testing/*
+
+[report]
+exclude_lines = 
+    pragma: no cover
+    if TYPE_CHECKING:
