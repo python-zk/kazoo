@@ -182,23 +182,23 @@ class DataWatch(object):
         self,
         data: Any,
         stat: Optional[ZnodeStat],
-        event: Optional[WatchedEvent],
+        event: Optional[WatchedEvent] = None,
     ) -> None:
         try:
             # For backwards compatibility, don't send event to the
             # callback unless the send_event is set in constructor
             if not self._ever_called:
                 self._ever_called = True
-            assert self._func is not None
             try:
-                # The type ignores here is because mypy can't figure out that
-                # the function can be called with 2 arguments or with 3
-                # arguments
-                result = self._func(  # type: ignore[call-arg]
+                # The type ignores here are because mypy can't figure out that
+                # 1) self._func can't ever be None (fingers crossed)
+                # 2) the function can be called with 2 arguments or with 3
+                #    arguments
+                result = self._func(  # type: ignore[call-arg, misc]
                     data, stat, event
                 )
             except TypeError:
-                result = self._func(data, stat)  # type: ignore[call-arg]
+                result = self._func(data, stat)  # type: ignore[call-arg, misc]
             if result is False:
                 self._stopped = True
                 self._func = None
@@ -391,16 +391,17 @@ class ChildrenWatch(object):
             self._prior_children = children
 
             try:
-                assert self._func is not None
                 if self._send_event:
                     # See comment about the type ignore here in DataWatch,
                     # it's the same issue where mypy can't figure out that the
                     # function can be called with 1 argument or with 2
-                    result = self._func(  # type: ignore[call-arg]
-                        children, event
+                    result = self._func(  # type: ignore[misc]
+                        children, event  # type: ignore[call-arg]
                     )
                 else:
-                    result = self._func(children)  # type: ignore[call-arg]
+                    result = self._func(  # type: ignore[misc]
+                        children  # type: ignore[call-arg]
+                    )
                 if result is False:
                     self._stopped = True
                     self._func = None

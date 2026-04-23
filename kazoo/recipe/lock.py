@@ -373,11 +373,8 @@ class Lock(object):
             return False
 
         try:
-            # I don't think it's possible for self.node to be None here, but we
-            # assert it to make sure mypy understands that. If it is None, then
-            # I think self.is_acquired should be False, and as we check that at
-            # the top of this method, it would be a bug for self.node to be
-            # None here.
+            # I don't think it's possible for self.node to be None here if
+            # self.is_acquired is true.
             self._delete_node(self.node)  # type: ignore[arg-type]
         except NoNodeError:  # pragma: nocover
             pass

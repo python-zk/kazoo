@@ -5,7 +5,9 @@ omit =
     kazoo/tests/*
     kazoo/testing/*
 
+# Note - this is a copy of the default exclusions from coverage 7.10.1
 [report]
 exclude_lines = 
-    pragma: no cover
-    if TYPE_CHECKING:
+    #\s*(pragma|PRAGMA)[:\s]?\s*(no|NO)\s*(cover|COVER)
+    ^\s*(((async )?def .*?)?\)(\s*->.*?)?:\s*)?\.\.\.\s*(#|$)
+    if (typing\.)?TYPE_CHECKING:
