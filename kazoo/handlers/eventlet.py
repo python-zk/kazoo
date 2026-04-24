@@ -1,9 +1,13 @@
 """A eventlet based handler."""
+
+from __future__ import annotations
 from __future__ import absolute_import
 
 import atexit
 import contextlib
 import logging
+
+from typing import Any, Generator, TYPE_CHECKING
 
 import eventlet
 from eventlet.green import socket as green_socket
@@ -15,6 +19,10 @@ from eventlet import queue as green_queue
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 
+if TYPE_CHECKING:
+    import socket as py_socket
+
+
 LOG = logging.getLogger(__name__)
 
 # sentinel objects
@@ -22,7 +30,7 @@ _STOP = object()
 
 
 @contextlib.contextmanager
-def _yield_before_after():
+def _yield_before_after() -> Generator[None, None, None]:
     # Yield to any other co-routines...
     #
     # See: http://eventlet.net/doc/modules/greenthread.html
@@ -42,7 +50,7 @@ class TimeoutError(Exception):
 class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
-    def __init__(self, handler):
+    def __init__(self, handler: Any):
         super(AsyncResult, self).__init__(
             handler, green_threading.Condition, TimeoutError
         )
@@ -81,24 +89,26 @@ class SequentialEventletHandler(object):
     queue_impl = green_queue.LightQueue
     queue_empty = green_queue.Empty
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a :class:`SequentialEventletHandler` instance"""
         self.callback_queue = self.queue_impl()
         self.completion_queue = self.queue_impl()
-        self._workers = []
+        self._workers: list[
+            tuple[eventlet.GreenThread, green_queue.LightQueue]
+        ] = []
         self._started = False
 
     @staticmethod
-    def sleep_func(wait):
+    def sleep_func(wait: float) -> None:
         green_time.sleep(wait)
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._started
 
     timeout_exception = TimeoutError
 
-    def _process_completion_queue(self):
+    def _process_completion_queue(self) -> None:
         while True:
             cb = self.completion_queue.get()
             if cb is _STOP:
@@ -114,7 +124,7 @@ class SequentialEventletHandler(object):
             finally:
                 del cb  # release before possible idle
 
-    def _process_callback_queue(self):
+    def _process_callback_queue(self) -> None:
         while True:
             cb = self.callback_queue.get()
             if cb is _STOP:
@@ -130,7 +140,7 @@ class SequentialEventletHandler(object):
             finally:
                 del cb  # release before possible idle
 
-    def start(self):
+    def start(self) -> None:
         if not self._started:
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
@@ -142,7 +152,7 @@ class SequentialEventletHandler(object):
             self._started = True
             atexit.register(self.stop)
 
-    def stop(self):
+    def stop(self) -> None:
         while self._workers:
             w, q = self._workers.pop()
             q.put(_STOP)
@@ -150,38 +160,46 @@ class SequentialEventletHandler(object):
         self._started = False
         atexit.unregister(self.stop)
 
-    def socket(self, *args, **kwargs):
+    def socket(self, *args: Any, **kwargs: Any) -> py_socket.socket:
         return utils.create_tcp_socket(green_socket)
 
-    def create_socket_pair(self):
+    def create_socket_pair(self) -> tuple:
         return utils.create_socket_pair(green_socket)
 
-    def event_object(self):
+    def event_object(self) -> green_threading.Event:
         return green_threading.Event()
 
-    def lock_object(self):
+    def lock_object(self) -> green_threading.Lock:
         return green_threading.Lock()
 
-    def rlock_object(self):
+    def rlock_object(self) -> green_threading.RLock:
         return green_threading.RLock()
 
-    def create_connection(self, *args, **kwargs):
+    def create_connection(self, *args: Any, **kwargs: Any) -> py_socket.socket:
         return utils.create_tcp_connection(green_socket, *args, **kwargs)
 
-    def select(self, *args, **kwargs):
+    def select(
+        self, *args: Any, **kwargs: Any
+    ) -> tuple[list[int], list[int], list[int]]:
         with _yield_before_after():
+            # Following appears to be a bug in mypy (see
+            # https://github.com/python/mypy/issues/6799)
             return selector_select(
-                *args, selectors_module=green_selectors, **kwargs
+                *args,
+                selectors_module=green_selectors,  # type: ignore[misc]
+                **kwargs,
             )
 
-    def async_result(self):
+    def async_result(self) -> AsyncResult:
         return AsyncResult(self)
 
-    def spawn(self, func, *args, **kwargs):
+    def spawn(
+        self, func: Any, *args: Any, **kwargs: Any
+    ) -> green_threading.Thread:
         t = green_threading.Thread(target=func, args=args, kwargs=kwargs)
         t.daemon = True
         t.start()
         return t
 
-    def dispatch_callback(self, callback):
+    def dispatch_callback(self, callback: Any) -> None:
         self.callback_queue.put(lambda: callback.func(*callback.args))

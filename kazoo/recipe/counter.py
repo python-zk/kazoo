@@ -4,9 +4,20 @@
 :Status: Unknown
 
 """
+
+from __future__ import annotations
+
+import struct
+from typing import Optional, Union, TYPE_CHECKING
+
 from kazoo.exceptions import BadVersionError
 from kazoo.retry import ForceRetryError
-import struct
+
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+
+
+Number = Union[int, float]
 
 
 class Counter(object):
@@ -58,7 +69,13 @@ class Counter(object):
 
     """
 
-    def __init__(self, client, path, default=0, support_curator=False):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        default: Number = 0,
+        support_curator: bool = False,
+    ):
         """Create a Kazoo Counter
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -74,22 +91,24 @@ class Counter(object):
         self.default_type = type(default)
         self.support_curator = support_curator
         self._ensured_path = False
-        self.pre_value = None
-        self.post_value = None
+        self.pre_value: Optional[Number] = None
+        self.post_value: Optional[Number] = None
         if self.support_curator and not isinstance(self.default, int):
             raise TypeError(
                 "when support_curator is enabled the default "
                 "type must be an int"
             )
 
-    def _ensure_node(self):
+    def _ensure_node(self) -> None:
         if not self._ensured_path:
             # make sure our node exists
             self.client.ensure_path(self.path)
             self._ensured_path = True
 
-    def _value(self):
+    def _value(self) -> tuple[Number, int]:
         self._ensure_node()
+        # This is astonishingly hard to follow...
+        old: Union[bytes, str, Number]
         old, stat = self.client.get(self.path)
         if self.support_curator:
             old = struct.unpack(">i", old)[0] if old != b"" else self.default
@@ -100,16 +119,16 @@ class Counter(object):
         return data, version
 
     @property
-    def value(self):
+    def value(self) -> Number:
         return self._value()[0]
 
-    def _change(self, value):
+    def _change(self, value: Number) -> Counter:
         if not isinstance(value, self.default_type):
             raise TypeError("invalid type for value change")
         self.client.retry(self._inner_change, value)
         return self
 
-    def _inner_change(self, value):
+    def _inner_change(self, value: Number) -> None:
         self.pre_value, version = self._value()
         post_value = self.pre_value + value
         if self.support_curator:
@@ -123,10 +142,10 @@ class Counter(object):
             raise ForceRetryError()
         self.post_value = post_value
 
-    def __add__(self, value):
+    def __add__(self, value: Number) -> Counter:
         """Add value to counter."""
         return self._change(value)
 
-    def __sub__(self, value):
+    def __sub__(self, value: Number) -> Counter:
         """Subtract value from counter."""
         return self._change(-value)
