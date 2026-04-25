@@ -106,10 +106,6 @@ jobs:
         env:
           TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl') }}
           ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
-          # TODO: can be removed once tests for ZK 3.4 are removed
-          ZOOKEEPER_PREFIX: "${{ !contains(matrix.zk-version, '3.4') && 'apache-' || '' }}"
-          ZOOKEEPER_SUFFIX: "${{ !contains(matrix.zk-version, '3.4') && '-bin' || '' }}"
-          ZOOKEEPER_LIB: "${{ !contains(matrix.zk-version, '3.4') && 'lib' || '' }}"
 
       - name: Publish Codecov report
         uses: codecov/codecov-action@v4
@@ -158,7 +154,4 @@ jobs:
         run: tox -e py310
         env:
           ZOOKEEPER_VERSION: 3.9.1
-          ZOOKEEPER_PREFIX: "apache-"
-          ZOOKEEPER_SUFFIX: "-bin"
-          ZOOKEEPER_LIB: "lib"
         shell: bash
