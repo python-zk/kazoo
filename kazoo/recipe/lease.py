@@ -123,11 +123,6 @@ class NonBlockingLease(object):
     def _decode(self, raw: bytes) -> dict[str, Any]:
         return json.loads(raw.decode(self._byte_encoding))
 
-    # Python 2.x
-    def __nonzero__(self) -> bool:
-        return self.obtained
-
-    # Python 3.x
     def __bool__(self) -> bool:
         return self.obtained
 
@@ -174,10 +169,5 @@ class MultiNonBlockingLease(object):
                 self.obtained = True
                 break
 
-    # Python 2.x
-    def __nonzero__(self) -> bool:
-        return self.obtained
-
-    # Python 3.x
     def __bool__(self) -> bool:
         return self.obtained
