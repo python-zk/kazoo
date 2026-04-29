@@ -25,7 +25,7 @@ import logging
 import os
 import socket
 from enum import Enum
-from typing import Any, Callable, Iterator, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Sequence, TYPE_CHECKING
 
 from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
@@ -152,13 +152,12 @@ class SetPartitioner(object):
         client: KazooClient,
         path: str,
         set: Sequence[str],
-        partition_func: Optional[
-            Callable[[str, list[str], Sequence[str]], list[str]]
-        ] = None,
-        identifier: Optional[str] = None,
+        partition_func: Callable[[str, list[str], Sequence[str]], list[str]]
+        | None = None,
+        identifier: str | None = None,
         time_boundary: float = 30,
         max_reaction_time: float = 1,
-        state_change_event: Optional[Any] = None,
+        state_change_event: Any | None = None,
     ):
         """Create a :class:`~SetPartitioner` instance
 
@@ -405,7 +404,7 @@ class SetPartitioner(object):
 
     def _child_watching(
         self,
-        func: Optional[Callable[..., Any]] = None,
+        func: Callable[..., Any] | None = None,
         client_handler: bool = False,
     ) -> Any:
         """Called when children are being watched to stabilize

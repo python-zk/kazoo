@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import struct
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 from kazoo.exceptions import BadVersionError
 from kazoo.retry import ForceRetryError
@@ -91,8 +91,8 @@ class Counter(object):
         self.default_type = type(default)
         self.support_curator = support_curator
         self._ensured_path = False
-        self.pre_value: Optional[Number] = None
-        self.post_value: Optional[Number] = None
+        self.pre_value: Number | None = None
+        self.post_value: Number | None = None
         if self.support_curator and not isinstance(self.default, int):
             raise TypeError(
                 "when support_curator is enabled the default "

@@ -11,7 +11,7 @@ used for determining members of a party.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterator, Optional, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 from kazoo.exceptions import NodeExistsError, NoNodeError
 
@@ -26,7 +26,7 @@ class BaseParty(object):
         self,
         client: KazooClient,
         path: str,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
     ):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -56,7 +56,8 @@ class BaseParty(object):
         try:
             # This and the #type: ignore[attr-defined] below could be removed
             # by setting up create_path in the constructor but trying to avoid
-            # changing the code too much
+            # changing the code too much. It does actually cause later versions
+            # of pylint to error though.
             self.client.create(
                 self.create_path,  # type: ignore[attr-defined]
                 self.data,
@@ -95,7 +96,7 @@ class Party(BaseParty):
     _NODE_NAME = "__party__"
 
     def __init__(
-        self, client: KazooClient, path: str, identifier: Optional[str] = None
+        self, client: KazooClient, path: str, identifier: str | None = None
     ):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = uuid.uuid4().hex + self._NODE_NAME
@@ -134,7 +135,7 @@ class ShallowParty(BaseParty):
         self,
         client: KazooClient,
         path: str,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
     ):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = "-".join([uuid.uuid4().hex, self.data.decode("utf-8")])

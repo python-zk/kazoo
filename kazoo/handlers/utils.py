@@ -11,7 +11,7 @@ import ssl
 import socket
 import time
 from types import ModuleType
-from typing import Any, Callable, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from kazoo.interfaces import IAsyncResult
 
@@ -45,7 +45,7 @@ class AsyncResult(IAsyncResult):
         timeout_factory: Callable[[], Any],
     ) -> None:
         self._handler = handler
-        self._exception: Union[object, None, Exception] = _NONE
+        self._exception: object | Exception | None = _NONE
         self._condition = condition_factory()
         self._callbacks: list[CallbackFunc] = []
         self._timeout_factory = timeout_factory
@@ -61,7 +61,7 @@ class AsyncResult(IAsyncResult):
         return self._exception is None
 
     @property
-    def exception(self) -> Optional[Exception]:
+    def exception(self) -> Exception | None:
         if self._exception is not _NONE:
             # The next line should have return-value, but hound ci
             # is frankly nothing but a hound dog
@@ -83,7 +83,7 @@ class AsyncResult(IAsyncResult):
             self._do_callbacks()
             self._condition.notify_all()
 
-    def get(self, block: bool = True, timeout: Optional[float] = None) -> Any:
+    def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Return the stored value or raise the exception.
 
         If there is no value raises TimeoutError.
@@ -112,7 +112,7 @@ class AsyncResult(IAsyncResult):
         """
         return self.get(block=False)
 
-    def wait(self, timeout: Optional[float] = None) -> bool:
+    def wait(self, timeout: float | None = None) -> bool:
         """Block until the instance is ready."""
         with self._condition:
             if not self.ready():
@@ -222,17 +222,17 @@ def create_tcp_socket(module: ModuleType) -> Socket:
 def create_tcp_connection(
     module: ModuleType,
     address: Any,
-    hostname: Optional[str] = None,
-    timeout: Optional[float] = None,
+    hostname: str | None = None,
+    timeout: float | None = None,
     use_ssl: bool = False,
-    ca: Optional[str] = None,
-    certfile: Optional[str] = None,
-    keyfile: Optional[str] = None,
-    keyfile_password: Optional[str] = None,
+    ca: str | None = None,
+    certfile: str | None = None,
+    keyfile: str | None = None,
+    keyfile_password: str | None = None,
     verify_certs: bool = True,
     check_hostname: bool = False,
-    options: Optional[ssl.Options] = None,
-    ciphers: Optional[str] = None,
+    options: ssl.Options | None = None,
+    ciphers: str | None = None,
 ) -> Socket:
     end = None
     if timeout is None:
@@ -241,7 +241,7 @@ def create_tcp_connection(
         timeout = module.getdefaulttimeout()
     if timeout is not None:
         end = time.monotonic() + timeout
-    sock: Optional[Socket] = None
+    sock: Socket | None = None
 
     while True:
         timeout_at = end if end is None else end - time.monotonic()
@@ -398,7 +398,7 @@ def selector_select(
     rlist: list[Any],
     wlist: list[Any],
     xlist: list[Any],
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
     selectors_module: ModuleType = selectors,
 ) -> tuple[list[int], list[int], list[int]]:
     """Selector-based drop-in replacement for select to overcome select

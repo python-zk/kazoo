@@ -13,7 +13,7 @@ from __future__ import annotations
 import abc
 import queue
 
-from typing import Any, Callable, Optional, Protocol, TYPE_CHECKING
+from typing import Any, Callable, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from kazoo.protocol.states import Callback
@@ -107,7 +107,7 @@ class IHandler(abc.ABC):
         rlist: list,
         wlist: list,
         xlist: list,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> tuple[list, list, list]:
         """A select method that implements Python's select.select
         API"""
@@ -222,7 +222,7 @@ class IAsyncResult(abc.ABC):
         block at all."""
 
     @abc.abstractmethod
-    def get(self, block: bool = True, timeout: Optional[float] = None) -> Any:
+    def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Return the stored value or raise the exception
 
         :param block: Whether this method should block or return
@@ -245,7 +245,7 @@ class IAsyncResult(abc.ABC):
         the associated :class:`IHandler` interface."""
 
     @abc.abstractmethod
-    def wait(self, timeout: Optional[float] = None) -> Any:
+    def wait(self, timeout: float | None = None) -> Any:
         """Block until the instance is ready.
 
         :param timeout: How long to wait for a value when `block` is
@@ -281,6 +281,6 @@ class IAsyncResult(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def exception(self) -> Optional[Exception]:
+    def exception(self) -> Exception | None:
         """The exception set by :meth:`set_exception` or `None` if no
         exception has been set"""

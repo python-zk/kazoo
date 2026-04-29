@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from kazoo.exceptions import NoNodeError, NodeExistsError
 from kazoo.protocol.states import EventType
@@ -81,7 +81,7 @@ class Queue(BaseQueue):
         """Return queue size."""
         return super(Queue, self).__len__()
 
-    def get(self) -> Optional[bytes]:
+    def get(self) -> bytes | None:
         """
         Get item data and remove an item from the queue.
 
@@ -91,7 +91,7 @@ class Queue(BaseQueue):
         self._ensure_paths()
         return self.client.retry(self._inner_get)
 
-    def _inner_get(self) -> Optional[bytes]:
+    def _inner_get(self) -> bytes | None:
         if not self._children:
             self._children = self.client.retry(
                 self.client.get_children, self.path
@@ -164,7 +164,7 @@ class LockingQueue(BaseQueue):
         """
         super(LockingQueue, self).__init__(client, path)
         self.id = uuid.uuid4().hex.encode()
-        self.processing_element: Optional[tuple[str, bytes]] = None
+        self.processing_element: tuple[str, bytes] | None = None
         self._lock_path = self.path + self.lock
         self._entries_path = self.path + self.entries
         self.structure_paths = (self._lock_path, self._entries_path)
@@ -228,7 +228,7 @@ class LockingQueue(BaseQueue):
                     sequence=True,
                 )
 
-    def get(self, timeout: Optional[float] = None) -> Optional[bytes]:
+    def get(self, timeout: float | None = None) -> bytes | None:
         """Locks and gets an entry from the queue. If a previously got entry
         was not consumed, this method will return that entry.
 
@@ -296,13 +296,13 @@ class LockingQueue(BaseQueue):
         else:
             return False
 
-    def _inner_get(self, timeout: Optional[float]) -> Optional[bytes]:
+    def _inner_get(self, timeout: float | None) -> bytes | None:
         flag = self.client.handler.event_object()
         lock = self.client.handler.lock_object()
         canceled = False
         value = []
 
-        def check_for_updates(event: Optional[Any]) -> None:
+        def check_for_updates(event: Any | None) -> None:
             if event is not None and event.type != EventType.CHILD:
                 return
             with lock:
@@ -346,7 +346,7 @@ class LockingQueue(BaseQueue):
             else [x for x in available if x not in taken]
         )
 
-    def _take(self, id_: str) -> Optional[tuple[str, bytes]]:
+    def _take(self, id_: str) -> tuple[str, bytes] | None:
         try:
             self.client.create(
                 "{path}/{id}".format(path=self._lock_path, id=id_),

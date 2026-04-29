@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from kazoo.exceptions import CancelledError
 
@@ -34,7 +34,7 @@ class Election(object):
         self,
         client: KazooClient,
         path: str,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
     ):
         """Create a Kazoo Leader Election
 

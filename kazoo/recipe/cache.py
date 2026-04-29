@@ -18,7 +18,7 @@ import contextlib
 import functools
 import logging
 import operator
-from typing import Any, Callable, Generator, Optional, Protocol, TYPE_CHECKING
+from typing import Any, Callable, Generator, Protocol, TYPE_CHECKING
 
 
 from kazoo.exceptions import NoNodeError, KazooException
@@ -152,8 +152,8 @@ class TreeCache(object):
         return listener
 
     def get_data(
-        self, path: str, default: Optional[NodeData] = None
-    ) -> Optional[NodeData]:
+        self, path: str, default: NodeData | None = None
+    ) -> NodeData | None:
         """Gets data of a node from cache.
 
         :param path: The absolute path string.
@@ -166,8 +166,8 @@ class TreeCache(object):
         return default if node is None else node._data
 
     def get_children(
-        self, path: str, default: Optional[frozenset[str]] = None
-    ) -> Optional[frozenset[str]]:
+        self, path: str, default: frozenset[str] | None = None
+    ) -> frozenset[str] | None:
         """Gets node children list from in-memory snapshot.
 
         :param path: The absolute path string.
@@ -179,7 +179,7 @@ class TreeCache(object):
         node = self._find_node(path)
         return default if node is None else frozenset(node._children)
 
-    def _find_node(self, path: str) -> Optional[TreeNode]:
+    def _find_node(self, path: str) -> TreeNode | None:
         if not path.startswith(self._root._path):
             raise ValueError("outside of tree")
         striped_path = path[len(self._root._path) :].strip("/")
@@ -232,7 +232,7 @@ class TreeCache(object):
 
 
 class AsyncWatcher(Protocol):
-    def __call__(self, path: str, watch: Optional[WatchFunc]) -> IAsyncResult:
+    def __call__(self, path: str, watch: WatchFunc | None) -> IAsyncResult:
         ...
 
 
@@ -258,14 +258,14 @@ class TreeNode(object):
     STATE_LIVE = 1
     STATE_DEAD = 2
 
-    def __init__(self, tree: TreeCache, path: str, parent: Optional[TreeNode]):
+    def __init__(self, tree: TreeCache, path: str, parent: TreeNode | None):
         self._tree = tree
         self._path = path
         self._parent = parent
         self._depth: int = parent._depth + 1 if parent is not None else 0
         self._children: dict[str, TreeNode] = {}
         self._state = self.STATE_PENDING
-        self._data: Optional[NodeData] = None
+        self._data: NodeData | None = None
 
     @classmethod
     def make_root(cls, tree: TreeCache, path: str) -> TreeNode:

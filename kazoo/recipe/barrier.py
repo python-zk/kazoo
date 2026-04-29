@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import socket
 import uuid
-from typing import Any, Literal, Optional, TYPE_CHECKING
+from typing import Any, Literal, TYPE_CHECKING
 
 from kazoo.exceptions import KazooException, NoNodeError, NodeExistsError
 from kazoo.protocol.states import EventType
@@ -61,7 +61,7 @@ class Barrier(object):
         except NoNodeError:
             return False
 
-    def wait(self, timeout: Optional[float] = None) -> bool:
+    def wait(self, timeout: float | None = None) -> bool:
         """Wait on the barrier to be cleared
 
         :returns: True if the barrier has been cleared, otherwise
@@ -105,7 +105,7 @@ class DoubleBarrier(object):
         client: KazooClient,
         path: str,
         num_clients: int,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
     ):
         """Create a Double Barrier
 

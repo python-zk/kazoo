@@ -24,9 +24,7 @@ from typing import (
     Any,
     Iterable,
     Literal,
-    Optional,
     Pattern,
-    Union,
     TYPE_CHECKING,
 )
 
@@ -48,14 +46,14 @@ if TYPE_CHECKING:
 
 
 class _Watch(object):
-    def __init__(self, duration: Optional[float] = None):
+    def __init__(self, duration: float | None = None):
         self.duration = duration
-        self.started_at: Optional[float] = None
+        self.started_at: float | None = None
 
     def start(self) -> None:
         self.started_at = time.monotonic()
 
-    def leftover(self) -> Optional[float]:
+    def leftover(self) -> float | None:
         if self.duration is None:
             return None
         else:
@@ -103,7 +101,7 @@ class Lock(object):
         self,
         client: KazooClient,
         path: str,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
         extra_lock_patterns: Iterable[str] = (),
     ):
         """Create a Kazoo lock.
@@ -137,7 +135,7 @@ class Lock(object):
         # some data is written to the node. this can be queried via
         # contenders() to see who is contending for the lock
         self.data = str(identifier or "").encode("utf-8")
-        self.node: Optional[str] = None
+        self.node: str | None = None
 
         self.wake_event = client.handler.event_object()
 
@@ -169,7 +167,7 @@ class Lock(object):
     def acquire(
         self,
         blocking: bool = True,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         ephemeral: bool = True,
     ) -> bool:
         """
@@ -244,7 +242,7 @@ class Lock(object):
     def _inner_acquire(
         self,
         blocking: bool,
-        timeout: Optional[float],
+        timeout: float | None,
         ephemeral: bool = True,
     ) -> bool:
         # wait until it's our chance to get it..
@@ -257,7 +255,7 @@ class Lock(object):
         if not self.assured_path:
             self._ensure_path()
 
-        node: Optional[str] = None
+        node: str | None = None
         if self.create_tried:
             node = self._find_node()
         else:
@@ -306,7 +304,7 @@ class Lock(object):
     def _watch_predecessor(self, event: Any) -> None:
         self.wake_event.set()
 
-    def _get_predecessor(self, node: str) -> Optional[str]:
+    def _get_predecessor(self, node: str) -> str | None:
         """returns `node`'s predecessor or None
 
         Note: This handle the case where the current lock is not a contender
@@ -315,7 +313,7 @@ class Lock(object):
         """
         node_sequence = node[len(self.prefix) :]
         children = self.client.get_children(self.path)
-        found_self: Union[Literal[False], None, re.Match[str]] = False
+        found_self: Literal[False] | re.Match[str] | None = False
         # Filter out the contenders using the computed regex
         contender_matches = []
         for child in children:
@@ -346,7 +344,7 @@ class Lock(object):
         sorted_matches = sorted(contender_matches, key=lambda m: m.groups())
         return sorted_matches[-1].string
 
-    def _find_node(self) -> Optional[str]:
+    def _find_node(self) -> str | None:
         children = self.client.get_children(self.path)
         for child in children:
             if child.startswith(self.prefix):
@@ -541,7 +539,7 @@ class Semaphore(object):
         self,
         client: KazooClient,
         path: str,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
         max_leases: int = 1,
     ):
         """Create a Kazoo Lock
@@ -608,7 +606,7 @@ class Semaphore(object):
     def acquire(
         self,
         blocking: bool = True,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> bool:
         """Acquire the semaphore. By defaults blocks and waits forever.
 
@@ -650,7 +648,7 @@ class Semaphore(object):
     def _inner_acquire(
         self,
         blocking: bool,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> bool:
         """Inner loop that runs from the top anytime a command hits a
         retryable Zookeeper exception."""
@@ -729,7 +727,7 @@ class Semaphore(object):
         # Return current state
         return self.is_acquired
 
-    def _watch_session(self, state: Any) -> Optional[bool]:
+    def _watch_session(self, state: Any) -> bool | None:
         if state == KazooState.LOST:
             self._session_expired = True
             self.wake_event.set()

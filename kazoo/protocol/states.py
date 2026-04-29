@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Callable, NamedTuple, Optional
+from typing import Callable, NamedTuple
 
 
 # This is a (str, Enum) for backwards compatibility.
@@ -149,7 +149,7 @@ class WatchedEvent(NamedTuple):
 
     type: EventType
     state: KeeperState
-    path: Optional[str]
+    path: str | None
 
 
 class Callback(NamedTuple):
@@ -253,7 +253,7 @@ class ZnodeStat(NamedTuple):
         return self.mtime / 1000.0
 
     @property
-    def owner_session_id(self) -> Optional[int]:
+    def owner_session_id(self) -> int | None:
         return self.ephemeralOwner or None
 
     @property

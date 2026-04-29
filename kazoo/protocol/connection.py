@@ -11,7 +11,7 @@ import select
 import socket
 import ssl
 import time
-from typing import Any, Iterator, Literal, Optional, Union, TYPE_CHECKING
+from typing import Any, Iterator, Literal, TYPE_CHECKING
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -110,17 +110,17 @@ class RWPinger(object):
     ):
         self.hosts = hosts
         self.connection = connection_func
-        self.last_attempt: Optional[float] = None
+        self.last_attempt: float | None = None
         self.socket_handling = socket_handling
 
-    def __iter__(self) -> Iterator[Union[tuple, None, bool]]:
+    def __iter__(self) -> Iterator[tuple | bool | None]:
         if not self.last_attempt:
             self.last_attempt = time.monotonic()
         delay = 0.5
         while True:
             yield self._next_server(delay)
 
-    def _next_server(self, delay: float) -> Union[tuple, None, bool]:
+    def _next_server(self, delay: float) -> tuple | bool | None:
         jitter = random.randint(0, 100) / 100.0
         while (
             time.monotonic()
@@ -168,8 +168,8 @@ class ConnectionHandler(object):
         self,
         client: KazooClient,
         retry_sleeper: Any,
-        logger: Optional[logging.Logger] = None,
-        sasl_options: Optional[dict] = None,
+        logger: logging.Logger | None = None,
+        sasl_options: dict | None = None,
     ):
         self.client = client
         self.handler = client.handler
@@ -183,15 +183,15 @@ class ConnectionHandler(object):
         self.connection_stopped.set()
         self.ping_outstanding = client.handler.event_object()
 
-        self._read_sock: Optional[Socket] = None
-        self._write_sock: Optional[Socket] = None
+        self._read_sock: Socket | None = None
+        self._write_sock: Socket | None = None
 
-        self._socket: Optional[Socket] = None
-        self._xid: Optional[int] = None
-        self._rw_server: Optional[tuple] = None
-        self._ro_mode: Optional[Union[Literal[False], Iterator]] = False
+        self._socket: Socket | None = None
+        self._xid: int | None = None
+        self._rw_server: tuple | None = None
+        self._ro_mode: Literal[False] | Iterator | None = False
 
-        self._connection_routine: Optional[Any] = None
+        self._connection_routine: Any | None = None
 
         self.sasl_options = sasl_options
         self.sasl_cli = None
@@ -218,7 +218,7 @@ class ConnectionHandler(object):
             )
         self._connection_routine = self.handler.spawn(self.zk_loop)
 
-    def stop(self, timeout: Optional[float] = None) -> bool:
+    def stop(self, timeout: float | None = None) -> bool:
         """Ensure the writer has stopped, wait to see if it does."""
         self.connection_stopped.wait(timeout)
         if self._connection_routine:
@@ -250,14 +250,14 @@ class ConnectionHandler(object):
             self._socket_error_handling,
         )
 
-    def _read_header(self, timeout: Optional[float]) -> tuple:
+    def _read_header(self, timeout: float | None) -> tuple:
         b = self._read(4, timeout)
         length = int_struct.unpack(b)[0]
         b = self._read(length, timeout)
         header, offset = ReplyHeader.deserialize(b, 0)
         return header, b, offset
 
-    def _read(self, length: int, timeout: Optional[float]) -> bytes:
+    def _read(self, length: int, timeout: float | None) -> bytes:
         msgparts = []
         remaining = length
         # We know that self._socket is not None here because we only call
@@ -303,9 +303,9 @@ class ConnectionHandler(object):
 
     def _invoke(
         self,
-        timeout: Optional[float],
+        timeout: float | None,
         request: Any,
-        xid: Optional[int] = None,
+        xid: int | None = None,
     ) -> Any:
         """A special writer used during connection establishment
         only"""
@@ -353,8 +353,8 @@ class ConnectionHandler(object):
     def _submit(
         self,
         request: Any,
-        timeout: Optional[float],
-        xid: Optional[int] = None,
+        timeout: float | None,
+        xid: int | None = None,
     ) -> None:
         """Submit a request object with a timeout value and optional
         xid"""
@@ -372,7 +372,7 @@ class ConnectionHandler(object):
         )
         self._write(int_struct.pack(len(b)) + b, timeout)
 
-    def _write(self, msg: bytes, timeout: Optional[float]) -> None:
+    def _write(self, msg: bytes, timeout: float | None) -> None:
         """Write a raw msg to the socket"""
         sent = 0
         msg_length = len(msg)
@@ -439,7 +439,7 @@ class ConnectionHandler(object):
         header: Any,
         buffer: bytes,
         offset: int,
-    ) -> Optional[object]:
+    ) -> object | None:
         client = self.client
         request, async_object, xid = client._pending.popleft()
         if header.zxid and header.zxid > 0:
@@ -509,7 +509,7 @@ class ConnectionHandler(object):
             return CLOSE_RESPONSE
         return None
 
-    def _read_socket(self, read_timeout: float) -> Optional[object]:
+    def _read_socket(self, read_timeout: float) -> object | None:
         """Called when there's something to read on the socket"""
         client = self.client
 

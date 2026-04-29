@@ -16,7 +16,6 @@ from typing import (
     Optional,
     Sequence,
     Set,
-    Union,
     overload,
     TYPE_CHECKING,
 )
@@ -126,22 +125,22 @@ class KazooClient(object):
 
     def __init__(
         self,
-        hosts: Union[str, list[str]] = "127.0.0.1:2181",
+        hosts: str | list[str] = "127.0.0.1:2181",
         timeout: float = 10.0,
-        client_id: Optional[tuple] = None,
-        handler: Optional[IHandler] = None,
-        default_acl: Optional[Sequence[ACL]] = None,
-        auth_data: Optional[set] = None,
-        sasl_options: Optional[dict] = None,
-        read_only: Optional[bool] = None,
+        client_id: tuple | None = None,
+        handler: IHandler | None = None,
+        default_acl: Sequence[ACL] | None = None,
+        auth_data: set | None = None,
+        sasl_options: dict | None = None,
+        read_only: bool | None = None,
         randomize_hosts: bool = True,
-        connection_retry: Optional[Union[KazooRetry, dict]] = None,
-        command_retry: Optional[Union[KazooRetry, dict]] = None,
-        logger: Optional[logging.Logger] = None,
-        keyfile: Optional[str] = None,
-        keyfile_password: Optional[str] = None,
-        certfile: Optional[str] = None,
-        ca: Optional[str] = None,
+        connection_retry: KazooRetry | dict | None = None,
+        command_retry: KazooRetry | dict | None = None,
+        logger: logging.Logger | None = None,
+        keyfile: str | None = None,
+        keyfile_password: str | None = None,
+        certfile: str | None = None,
+        ca: str | None = None,
         use_ssl: bool = False,
         verify_certs: bool = True,
         check_hostname: bool = False,
@@ -498,7 +497,7 @@ class KazooClient(object):
         return self._state
 
     @property
-    def client_id(self) -> Optional[tuple]:
+    def client_id(self) -> tuple | None:
         """Returns the client id for this Zookeeper session if
         connected.
 
@@ -518,8 +517,8 @@ class KazooClient(object):
 
     def set_hosts(
         self,
-        hosts: Union[str, list[str]],
-        randomize_hosts: Optional[bool] = None,
+        hosts: str | list[str],
+        randomize_hosts: bool | None = None,
     ) -> None:
         """sets the list of hosts used by this client.
 
@@ -686,7 +685,7 @@ class KazooClient(object):
 
     def _call(
         self, request: object, async_object: IAsyncResult
-    ) -> Optional[bool]:
+    ) -> bool | None:
         """Ensure the client is in CONNECTED or SUSPENDED state and put the
         request in the queue if it is.
 
@@ -874,7 +873,7 @@ class KazooClient(object):
 
         """
 
-        def _try_fetch() -> Optional[tuple[int, ...]]:
+        def _try_fetch() -> tuple[int, ...] | None:
             data = self.command(b"envi")
             data_parsed = {}
             for line in data.splitlines():
@@ -900,7 +899,7 @@ class KazooClient(object):
             except ValueError:
                 return None
 
-        def _is_valid(version: Optional[tuple[int, ...]]) -> bool:
+        def _is_valid(version: tuple[int, ...] | None) -> bool:
             # All zookeeper versions should have at least major.minor
             # version numbers; if we get one that doesn't it is likely not
             # correct and was truncated...
@@ -1017,7 +1016,7 @@ class KazooClient(object):
         self,
         path: str,
         value: bytes = b"",
-        acl: Optional[Sequence[ACL]] = None,
+        acl: Sequence[ACL] | None = None,
         ephemeral: bool = False,
         sequence: bool = False,
         makepath: bool = False,
@@ -1030,7 +1029,7 @@ class KazooClient(object):
         self,
         path: str,
         value: bytes = b"",
-        acl: Optional[Sequence[ACL]] = None,
+        acl: Sequence[ACL] | None = None,
         ephemeral: bool = False,
         sequence: bool = False,
         makepath: bool = False,
@@ -1042,12 +1041,12 @@ class KazooClient(object):
         self,
         path: str,
         value: bytes = b"",
-        acl: Optional[Sequence[ACL]] = None,
+        acl: Sequence[ACL] | None = None,
         ephemeral: bool = False,
         sequence: bool = False,
         makepath: bool = False,
         include_data: bool = False,
-    ) -> Union[str, tuple[str, ZnodeStat]]:
+    ) -> str | tuple[str, ZnodeStat]:
         """Create a node with the given value as its data. Optionally
         set an ACL on the node.
 
@@ -1140,7 +1139,7 @@ class KazooClient(object):
         self,
         path: str,
         value: bytes = b"",
-        acl: Optional[Sequence[ACL]] = None,
+        acl: Sequence[ACL] | None = None,
         ephemeral: bool = False,
         sequence: bool = False,
         makepath: bool = False,
@@ -1213,7 +1212,7 @@ class KazooClient(object):
         @wrap(async_result)
         def create_completion(
             result: IAsyncResult,
-        ) -> Optional[Union[str, tuple[str, ZnodeStat]]]:
+        ) -> str | tuple[str, ZnodeStat] | None:
             try:
                 if include_data:
                     new_path, stat = result.get()
@@ -1266,9 +1265,7 @@ class KazooClient(object):
             raise async_result.exception  # type: ignore[misc]
         return async_result
 
-    def ensure_path(
-        self, path: str, acl: Optional[Sequence[ACL]] = None
-    ) -> bool:
+    def ensure_path(self, path: str, acl: Sequence[ACL] | None = None) -> bool:
         """Recursively create a path if it doesn't exist.
 
         :param path: Path of node.
@@ -1278,7 +1275,7 @@ class KazooClient(object):
         return self.ensure_path_async(path, acl).get()
 
     def ensure_path_async(
-        self, path: str, acl: Optional[Sequence[ACL]] = None
+        self, path: str, acl: Sequence[ACL] | None = None
     ) -> IAsyncResult:
         """Recursively create a path asynchronously if it doesn't
         exist. Takes the same arguments as :meth:`ensure_path`.
@@ -1306,7 +1303,7 @@ class KazooClient(object):
         @wrap(async_result)
         def exists_completion(
             path: str, result: IAsyncResult
-        ) -> Optional[Literal[True]]:
+        ) -> Literal[True] | None:
             if result.get():
                 return True
             parent, node = split(path)
@@ -1323,8 +1320,8 @@ class KazooClient(object):
         return async_result
 
     def exists(
-        self, path: str, watch: Optional[WatchFunc] = None
-    ) -> Optional[ZnodeStat]:
+        self, path: str, watch: WatchFunc | None = None
+    ) -> ZnodeStat | None:
         """Check if a node exists.
 
         If a watch is provided, it will be left on the node with the
@@ -1347,7 +1344,7 @@ class KazooClient(object):
         return self.exists_async(path, watch=watch).get()
 
     def exists_async(
-        self, path: str, watch: Optional[WatchFunc] = None
+        self, path: str, watch: WatchFunc | None = None
     ) -> IAsyncResult:
         """Asynchronously check if a node exists. Takes the same
         arguments as :meth:`exists`.
@@ -1367,7 +1364,7 @@ class KazooClient(object):
         return async_result
 
     def get(
-        self, path: str, watch: Optional[WatchFunc] = None
+        self, path: str, watch: WatchFunc | None = None
     ) -> tuple[bytes, ZnodeStat]:
         """Get the value of a node.
 
@@ -1394,7 +1391,7 @@ class KazooClient(object):
         return self.get_async(path, watch=watch).get()
 
     def get_async(
-        self, path: str, watch: Optional[WatchFunc] = None
+        self, path: str, watch: WatchFunc | None = None
     ) -> IAsyncResult:
         """Asynchronously get the value of a node. Takes the same
         arguments as :meth:`get`.
@@ -1416,7 +1413,7 @@ class KazooClient(object):
     def get_children(
         self,
         path: str,
-        watch: Optional[WatchFunc] = None,
+        watch: WatchFunc | None = None,
         include_data: bool = False,
     ) -> list[str]:
         """Get a list of child nodes of a path.
@@ -1459,7 +1456,7 @@ class KazooClient(object):
     def get_children_async(
         self,
         path: str,
-        watch: Optional[WatchFunc] = None,
+        watch: WatchFunc | None = None,
         include_data: bool = False,
     ) -> IAsyncResult:
         """Asynchronously get a list of child nodes of a path. Takes
@@ -1476,7 +1473,7 @@ class KazooClient(object):
             raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         async_result = self.handler.async_result()
-        req: Union[GetChildren, GetChildren2]
+        req: GetChildren | GetChildren2
         if include_data:
             req = GetChildren2(_prefix_root(self.chroot, path), watch)
         else:
@@ -1575,7 +1572,7 @@ class KazooClient(object):
         return async_result
 
     def set(
-        self, path: str, value: Optional[bytes], version: int = -1
+        self, path: str, value: bytes | None, version: int = -1
     ) -> ZnodeStat:
         """Set the value of a node.
 
@@ -1612,7 +1609,7 @@ class KazooClient(object):
         return self.set_async(path, value, version).get()
 
     def set_async(
-        self, path: str, value: Optional[bytes], version: int = -1
+        self, path: str, value: bytes | None, version: int = -1
     ) -> IAsyncResult:
         """Set the value of a node. Takes the same arguments as
         :meth:`set`.
@@ -1711,7 +1708,7 @@ class KazooClient(object):
         )
         return async_result
 
-    def _delete_recursive(self, path: str) -> Optional[Literal[True]]:
+    def _delete_recursive(self, path: str) -> Literal[True] | None:
         try:
             children = self.get_children(path)
         except NoNodeError:
@@ -1733,9 +1730,9 @@ class KazooClient(object):
 
     def reconfig(
         self,
-        joining: Optional[str],
-        leaving: Optional[str],
-        new_members: Optional[str],
+        joining: str | None,
+        leaving: str | None,
+        new_members: str | None,
         from_config: int = -1,
     ) -> tuple[bytes, ZnodeStat]:
         """Reconfig a cluster.
@@ -1812,9 +1809,9 @@ class KazooClient(object):
 
     def reconfig_async(
         self,
-        joining: Optional[str],
-        leaving: Optional[str],
-        new_members: Optional[str],
+        joining: str | None,
+        leaving: str | None,
+        new_members: str | None,
         from_config: int,
     ) -> IAsyncResult:
         """Asynchronously reconfig a cluster. Takes the same arguments as
@@ -1872,7 +1869,7 @@ class TransactionRequest(object):
         self,
         path: str,
         value: bytes = b"",
-        acl: Optional[Sequence[ACL]] = None,
+        acl: Sequence[ACL] | None = None,
         ephemeral: bool = False,
         sequence: bool = False,
     ) -> None:
@@ -1990,7 +1987,7 @@ class TransactionRequest(object):
     def _add(
         self,
         request: Any,
-        post_processor: Optional[Callable[[Any], Any]] = None,
+        post_processor: Callable[[Any], Any] | None = None,
     ) -> None:
         self._check_tx_state()
         self.client.logger.log(BLATHER, "Added %r to %r", request, self)

@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime
 import json
 import socket
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from kazoo.exceptions import CancelledError
 
@@ -58,7 +58,7 @@ class NonBlockingLease(object):
         client: KazooClient,
         path: str,
         duration: datetime.timedelta,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
         utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         """Create a non-blocking lease.
@@ -158,7 +158,7 @@ class MultiNonBlockingLease(object):
         count: int,
         path: str,
         duration: datetime.timedelta,
-        identifier: Optional[str] = None,
+        identifier: str | None = None,
         utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         self.obtained = False

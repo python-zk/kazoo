@@ -108,7 +108,7 @@ class DataWatch(object):
         self,
         client: KazooClient,
         path: str,
-        func: Optional[DataWatchFunc] = None,
+        func: DataWatchFunc | None = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -130,7 +130,7 @@ class DataWatch(object):
         self._func = func
         self._stopped = False
         self._run_lock = client.handler.lock_object()
-        self._version: Optional[int] = None
+        self._version: int | None = None
         self._retry = KazooRetry(
             max_tries=None, sleep_func=client.handler.sleep_func
         )
@@ -181,8 +181,8 @@ class DataWatch(object):
     def _log_func_exception(
         self,
         data: Any,
-        stat: Optional[ZnodeStat],
-        event: Optional[WatchedEvent] = None,
+        stat: ZnodeStat | None,
+        event: WatchedEvent | None = None,
     ) -> None:
         try:
             # For backwards compatibility, don't send event to the
@@ -208,7 +208,7 @@ class DataWatch(object):
             raise
 
     @_ignore_closed
-    def _get_data(self, event: Optional[WatchedEvent] = None) -> None:
+    def _get_data(self, event: WatchedEvent | None = None) -> None:
         # Ensure this runs one at a time, possible because the session
         # watcher may trigger a run
         with self._run_lock:
@@ -217,7 +217,7 @@ class DataWatch(object):
 
             initial_version = self._version
 
-            stat: Optional[ZnodeStat]
+            stat: ZnodeStat | None
             try:
                 data, stat = self._retry(
                     self._client.get, self._path, self._watcher
@@ -296,7 +296,7 @@ class ChildrenWatch(object):
         self,
         client: KazooClient,
         path: str,
-        func: Optional[ChildrenWatchFunc] = None,
+        func: ChildrenWatchFunc | None = None,
         allow_session_lost: bool = True,
         send_event: bool = False,
     ):
@@ -331,7 +331,7 @@ class ChildrenWatch(object):
         self._watch_established = False
         self._allow_session_lost = allow_session_lost
         self._run_lock = client.handler.lock_object()
-        self._prior_children: Optional[List[str]] = None
+        self._prior_children: list[str] | None = None
         self._used = False
 
         # Register our session listener if we're going to resume
@@ -366,7 +366,7 @@ class ChildrenWatch(object):
         return func
 
     @_ignore_closed
-    def _get_children(self, event: Optional[WatchedEvent] = None) -> None:
+    def _get_children(self, event: WatchedEvent | None = None) -> None:
         with self._run_lock:  # Ensure this runs one at a time
             if self._stopped:
                 return

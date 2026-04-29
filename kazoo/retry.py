@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -43,15 +43,15 @@ class KazooRetry(object):
 
     def __init__(
         self,
-        max_tries: Optional[int] = 1,
+        max_tries: int | None = 1,
         delay: float = 0.1,
         backoff: int = 2,
         max_jitter: float = 0.4,
         max_delay: float = 60.0,
         ignore_expire: bool = True,
         sleep_func: Callable[[float], None] = time.sleep,
-        deadline: Optional[float] = None,
-        interrupt: Optional[Callable[[], bool]] = None,
+        deadline: float | None = None,
+        interrupt: Callable[[], bool] | None = None,
     ) -> None:
         """Create a :class:`KazooRetry` instance for retrying function
         calls.
@@ -85,7 +85,7 @@ class KazooRetry(object):
         self._attempts = 0
         self._cur_delay = delay
         self.deadline = deadline
-        self._cur_stoptime: Optional[float] = None
+        self._cur_stoptime: float | None = None
         self.sleep_func = sleep_func
         self.retry_exceptions: tuple[
             type[Exception], ...
