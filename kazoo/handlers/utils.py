@@ -214,7 +214,7 @@ def create_tcp_socket(module: ModuleType) -> Socket:
     if hasattr(module, "SOCK_CLOEXEC"):  # pragma: nocover
         # if available, set cloexec flag during socket creation
         type_ |= module.SOCK_CLOEXEC
-    sock = module.socket(module.AF_INET, type_)
+    sock: Socket = module.socket(module.AF_INET, type_)
     _set_default_tcpsock_options(module, sock)
     return sock
 

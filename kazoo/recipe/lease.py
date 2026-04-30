@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime
 import json
 import socket
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING, cast
 
 from kazoo.exceptions import CancelledError
 
@@ -121,7 +121,9 @@ class NonBlockingLease(object):
         return json.dumps(data_dict).encode(self._byte_encoding)
 
     def _decode(self, raw: bytes) -> dict[str, Any]:
-        return json.loads(raw.decode(self._byte_encoding))
+        return cast(
+            "dict[str, Any]", json.loads(raw.decode(self._byte_encoding))
+        )
 
     def __bool__(self) -> bool:
         return self.obtained

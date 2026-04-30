@@ -429,7 +429,7 @@ class SetPartitioner(object):
             asy.rawlink(func)
         return asy
 
-    def _establish_sessionwatch(self, state: Any) -> bool:
+    def _establish_sessionwatch(self, state: KazooState) -> bool:
         """Register ourself to listen for session events, we shut down
         if we become lost"""
         with self._state_change:

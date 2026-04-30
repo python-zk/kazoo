@@ -13,7 +13,13 @@ from __future__ import annotations
 import abc
 import queue
 
-from typing import Any, Callable, Protocol, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Protocol,
+    TYPE_CHECKING,
+)
 
 if TYPE_CHECKING:
     from kazoo.protocol.states import Callback
@@ -21,7 +27,14 @@ if TYPE_CHECKING:
 # public API
 
 
-class Socket(Protocol):
+class HasFileNo(Protocol):
+    """Protocol for things like select"""
+
+    def fileno(self) -> int:
+        ...
+
+
+class Socket(HasFileNo, Protocol):
     """This is for things that provide a socket.socket-like interface.
 
     This is required because:
@@ -49,6 +62,65 @@ class Socket(Protocol):
         ...
 
     def setsockopt(self, level: int, optname: int, value: int) -> None:
+        ...
+
+
+class Lockable(Protocol):
+    """This is what threading.Lock implements.
+
+    In python 3.9+ it's available natively. Though given it has some
+    very odd typing, I wouldn't put money on it.
+    """
+
+    def __enter__(self) -> None:
+        ...
+
+    def __exit__(self, x: Any, y: Any, z: Any) -> None:
+        ...
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        ...
+
+    def release(self) -> int | None:
+        """The gevent release returns an int..."""
+        ...
+
+    def locked(self) -> bool:
+        ...
+
+
+class ReentrantLock(Protocol):
+    """This is what threading.RLock implements.
+
+    In python 3.14+, it's the same as Lock, which adds to the fun.
+    """
+
+    def __enter__(self) -> None:
+        ...
+
+    def __exit__(self, x: Any, y: Any, z: Any) -> None:
+        ...
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        ...
+
+    def release(self) -> None:
+        ...
+
+
+class Event(Protocol):
+    """Protocol for threading.Event"""
+
+    def is_set(self) -> bool:
+        ...
+
+    def set(self) -> None:
+        ...
+
+    def clear(self) -> None:
+        ...
+
+    def wait(self, timeout: float | None = None) -> bool:
         ...
 
 
@@ -90,7 +162,7 @@ class IHandler(abc.ABC):
 
     timeout_exception: type[Exception] = None  # type: ignore[assignment]
     sleep_func: staticmethod[[float], None] = None  # type: ignore[assignment]
-    queue_impl: type[queue.Queue] = None  # type: ignore[assignment]
+    queue_impl: type[queue.Queue[Any]] = None  # type: ignore[assignment]
 
     @abc.abstractmethod
     def start(self) -> None:
@@ -104,11 +176,15 @@ class IHandler(abc.ABC):
     @abc.abstractmethod
     def select(
         self,
-        rlist: list,
-        wlist: list,
-        xlist: list,
+        rlist: Iterable[int | HasFileNo],
+        wlist: Iterable[int | HasFileNo],
+        xlist: Iterable[int | HasFileNo],
         timeout: float | None = None,
-    ) -> tuple[list, list, list]:
+    ) -> tuple[
+        Iterable[int | HasFileNo],
+        Iterable[int | HasFileNo],
+        Iterable[int | HasFileNo],
+    ]:
         """A select method that implements Python's select.select
         API"""
 
@@ -126,17 +202,17 @@ class IHandler(abc.ABC):
         """A socket method that implements Python's socket.socketpair API"""
 
     @abc.abstractmethod
-    def event_object(self) -> Any:
+    def event_object(self) -> Event:
         """Return an appropriate object that implements Python's
         threading.Event API"""
 
     @abc.abstractmethod
-    def lock_object(self) -> Any:
+    def lock_object(self) -> Lockable:
         """Return an appropriate object that implements Python's
         threading.Lock API"""
 
     @abc.abstractmethod
-    def rlock_object(self) -> Any:
+    def rlock_object(self) -> ReentrantLock:
         """Return an appropriate object that implements Python's
         threading.RLock API"""
 

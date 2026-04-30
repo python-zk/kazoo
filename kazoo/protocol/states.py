@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Callable, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 
 # This is a (str, Enum) for backwards compatibility.
@@ -162,8 +162,8 @@ class Callback(NamedTuple):
     """
 
     type: str
-    func: Callable
-    args: tuple
+    func: Callable[..., Any]
+    args: tuple[Any, ...]
 
 
 class ZnodeStat(NamedTuple):

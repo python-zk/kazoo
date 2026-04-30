@@ -1,4 +1,10 @@
-"""Zookeeper Serializers, Deserializers, and NamedTuple objects"""
+"""Zookeeper Serializers, Deserializers, and namedtuple objects
+
+Note: On python3.8, you can't do classvars with NamedTuple.
+
+FIXME As soon as we get off python3.8 we should change the namedtuple objects
+to NamedTuple, as it should get better typechecking.
+"""
 from __future__ import annotations
 
 import struct
@@ -26,20 +32,24 @@ reply_header_struct = struct.Struct("!iqi")
 stat_struct = struct.Struct("!qqqqiiiqiiq")
 
 
-def read_string(buffer: bytes, offset: int) -> tuple:
+def read_string(buffer: bytes, offset: int) -> tuple[str, int]:
     """Reads an int specified buffer into a string and returns the
     string and the new offset in the buffer"""
     length = int_struct.unpack_from(buffer, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return None, offset
+        # A note: write_str sends a length of -1 to indicate a value of None
+        # was passed. Not entirely sure where this happens because none of the
+        # callers of read_string seem to expect a None value.
+        # Should be ignoring return-value but hound cli...
+        return None, offset  # type: ignore
     else:
         index = offset
         offset += length
         return buffer[index : index + length].decode("utf-8"), offset
 
 
-def read_acl(bytes: bytes, offset: int) -> tuple:
+def read_acl(bytes: bytes, offset: int) -> tuple[ACL, int]:
     perms = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     scheme, offset = read_string(bytes, offset)
@@ -62,7 +72,7 @@ def write_buffer(bytes: bytes | None) -> bytes:
         return int_struct.pack(len(bytes)) + bytes
 
 
-def read_buffer(bytes: bytes, offset: int) -> tuple:
+def read_buffer(bytes: bytes, offset: int) -> tuple[bytes | None, int]:
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
@@ -356,7 +366,7 @@ class GetChildren2(namedtuple("GetChildren2", "path watcher")):
         if count == -1:  # pragma: nocover
             return []
 
-        children = []
+        children: list[str] = []
         for c in range(count):
             child, offset = read_string(bytes, offset)
             children.append(child)
@@ -394,7 +404,7 @@ class Transaction(namedtuple("Transaction", "operations")):
     def deserialize(cls, bytes: bytes, offset: int) -> list[Any]:
         header = MultiHeader(None, False, None)
         results = []
-        response = None
+        response: str | bool | ZnodeStat | BaseException | None = None
         while not header.done:
             if header.type == Create.type:
                 response, offset = read_string(bytes, offset)

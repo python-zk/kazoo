@@ -7,7 +7,7 @@ import atexit
 import contextlib
 import logging
 
-from typing import Any, Generator, TYPE_CHECKING
+from typing import cast, Any, Generator, TYPE_CHECKING
 
 import eventlet
 from eventlet.green import socket as green_socket
@@ -20,7 +20,8 @@ from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import Socket
+    from kazoo.interfaces import Event, Lockable, ReentrantLock, Socket
+    from kazoo.protocol.states import Callback
 
 
 LOG = logging.getLogger(__name__)
@@ -36,11 +37,11 @@ def _yield_before_after() -> Generator[None, None, None]:
     # See: http://eventlet.net/doc/modules/greenthread.html
     # for how this zero sleep is really a cooperative yield to other potential
     # co-routines...
-    eventlet.sleep(0)
+    eventlet.sleep(0)  # type: ignore[no-untyped-call]
     try:
         yield
     finally:
-        eventlet.sleep(0)
+        eventlet.sleep(0)  # type: ignore[no-untyped-call]
 
 
 class TimeoutError(Exception):
@@ -52,7 +53,9 @@ class AsyncResult(utils.AsyncResult):
 
     def __init__(self, handler: Any):
         super(AsyncResult, self).__init__(
-            handler, green_threading.Condition, TimeoutError
+            handler,
+            green_threading.Condition,  # type: ignore[attr-defined]
+            TimeoutError,
         )
 
 
@@ -91,16 +94,23 @@ class SequentialEventletHandler(object):
 
     def __init__(self) -> None:
         """Create a :class:`SequentialEventletHandler` instance"""
-        self.callback_queue = self.queue_impl()
-        self.completion_queue = self.queue_impl()
-        self._workers: list[
-            tuple[eventlet.GreenThread, green_queue.LightQueue]
+        self.callback_queue = (
+            self.queue_impl()  # type: ignore[no-untyped-call]
+        )
+        self.completion_queue = (
+            self.queue_impl()  # type: ignore[no-untyped-call]
+        )
+        self._workers: list[  # type: ignore[name-defined]
+            tuple[
+                eventlet.GreenThread,
+                green_queue.LightQueue,
+            ]
         ] = []
         self._started = False
 
     @staticmethod
     def sleep_func(wait: float) -> None:
-        green_time.sleep(wait)
+        green_time.sleep(wait)  # type: ignore[attr-defined, no-untyped-call]
 
     @property
     def running(self) -> bool:
@@ -110,7 +120,7 @@ class SequentialEventletHandler(object):
 
     def _process_completion_queue(self) -> None:
         while True:
-            cb = self.completion_queue.get()
+            cb = self.completion_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -126,7 +136,7 @@ class SequentialEventletHandler(object):
 
     def _process_callback_queue(self) -> None:
         while True:
-            cb = self.callback_queue.get()
+            cb = self.callback_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -145,9 +155,13 @@ class SequentialEventletHandler(object):
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
             # - A completion worker for completion events to be called
-            w = eventlet.spawn(self._process_completion_queue)
+            w = eventlet.spawn(
+                self._process_completion_queue  # type: ignore[no-untyped-call]
+            )
             self._workers.append((w, self.completion_queue))
-            w = eventlet.spawn(self._process_callback_queue)
+            w = eventlet.spawn(
+                self._process_callback_queue  # type: ignore[no-untyped-call]
+            )
             self._workers.append((w, self.callback_queue))
             self._started = True
             atexit.register(self.stop)
@@ -155,7 +169,7 @@ class SequentialEventletHandler(object):
     def stop(self) -> None:
         while self._workers:
             w, q = self._workers.pop()
-            q.put(_STOP)
+            q.put(_STOP)  # type: ignore[no-untyped-call]
             w.wait()
         self._started = False
         atexit.unregister(self.stop)
@@ -166,14 +180,21 @@ class SequentialEventletHandler(object):
     def create_socket_pair(self) -> tuple[Socket, Socket]:
         return utils.create_socket_pair(green_socket)
 
-    def event_object(self) -> green_threading.Event:
-        return green_threading.Event()
+    def event_object(self) -> Event:
+        return cast(
+            "Event", green_threading.Event()  # type: ignore[attr-defined]
+        )
 
-    def lock_object(self) -> green_threading.Lock:
-        return green_threading.Lock()
+    def lock_object(self) -> Lockable:
+        return cast(
+            "Lockable", green_threading.Lock()  # type: ignore[attr-defined]
+        )
 
-    def rlock_object(self) -> green_threading.RLock:
-        return green_threading.RLock()
+    def rlock_object(self) -> ReentrantLock:
+        return cast(
+            "ReentrantLock",
+            green_threading.RLock(),  # type: ignore[attr-defined]
+        )
 
     def create_connection(self, *args: Any, **kwargs: Any) -> Socket:
         return utils.create_tcp_connection(green_socket, *args, **kwargs)
@@ -195,11 +216,15 @@ class SequentialEventletHandler(object):
 
     def spawn(
         self, func: Any, *args: Any, **kwargs: Any
-    ) -> green_threading.Thread:
-        t = green_threading.Thread(target=func, args=args, kwargs=kwargs)
+    ) -> green_threading.Thread:  # type: ignore[name-defined]
+        t = green_threading.Thread(  # type: ignore[attr-defined]
+            target=func, args=args, kwargs=kwargs
+        )
         t.daemon = True
         t.start()
         return t
 
-    def dispatch_callback(self, callback: Any) -> None:
-        self.callback_queue.put(lambda: callback.func(*callback.args))
+    def dispatch_callback(self, callback: Callback) -> None:
+        self.callback_queue.put(  # type: ignore[no-untyped-call]
+            lambda: callback.func(*callback.args)
+        )

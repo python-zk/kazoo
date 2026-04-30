@@ -38,6 +38,6 @@ __pycache__/
 !.gitignore
 !.git-blame-ignore-revs
 
-.vscode/settings.json
+.vscode/
 .*_cache/
 coverage.xml

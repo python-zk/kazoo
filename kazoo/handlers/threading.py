@@ -21,14 +21,22 @@ import socket
 import threading
 import time
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, Iterable, TYPE_CHECKING, cast
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 from kazoo.interfaces import IHandler
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import Socket, SpawnedFunc
+    from kazoo.interfaces import (
+        Event,
+        HasFileNo,
+        Lockable,
+        ReentrantLock,
+        Socket,
+        SpawnedFunc,
+    )
+    from kazoo.protocol.states import Callback
 
 # sentinel objects
 _STOP = object()
@@ -105,8 +113,12 @@ class SequentialThreadingHandler(IHandler):
 
     def __init__(self) -> None:
         """Create a :class:`SequentialThreadingHandler` instance"""
-        self.callback_queue: queue.Queue = self.queue_impl()
-        self.completion_queue: queue.Queue = self.queue_impl()
+        self.callback_queue: queue.Queue[
+            Callable[..., None]
+        ] = self.queue_impl()
+        self.completion_queue: queue.Queue[
+            Callable[..., None]
+        ] = self.queue_impl()
         self._running = False
         self._state_change = threading.Lock()
         self._workers: list[threading.Thread] = []
@@ -116,7 +128,7 @@ class SequentialThreadingHandler(IHandler):
         return self._running
 
     def _create_thread_worker(
-        self, work_queue: queue.Queue
+        self, work_queue: queue.Queue[Callable[..., None]]
     ) -> threading.Thread:
         def _thread_worker() -> None:  # pragma: nocover
             while True:
@@ -161,7 +173,7 @@ class SequentialThreadingHandler(IHandler):
             self._running = False
 
             for work_queue in (self.completion_queue, self.callback_queue):
-                work_queue.put(_STOP)
+                work_queue.put(cast("Callable[..., None]", _STOP))
 
             self._workers.reverse()
             while self._workers:
@@ -173,7 +185,13 @@ class SequentialThreadingHandler(IHandler):
             self.completion_queue = self.queue_impl()
             atexit.unregister(self.stop)
 
-    def select(self, *args: Any, **kwargs: Any) -> tuple:
+    def select(
+        self, *args: Any, **kwargs: Any
+    ) -> tuple[
+        Iterable[int | HasFileNo],
+        Iterable[int | HasFileNo],
+        Iterable[int | HasFileNo],
+    ]:
         return selector_select(*args, **kwargs)
 
     def socket(self) -> Socket:
@@ -185,17 +203,19 @@ class SequentialThreadingHandler(IHandler):
     def create_socket_pair(self) -> tuple[Socket, Socket]:
         return utils.create_socket_pair(socket)
 
-    def event_object(self) -> threading.Event:
+    def event_object(self) -> Event:
         """Create an appropriate Event object"""
         return threading.Event()
 
-    def lock_object(self) -> threading.Lock:
+    def lock_object(self) -> Lockable:
         """Create a lock object"""
-        return threading.Lock()
+        # Note: This is not ideal, but the ContextManager Protocol seems to
+        # think you should return an object of the same type.
+        return cast("Lockable", threading.Lock())
 
-    def rlock_object(self) -> threading.RLock:
+    def rlock_object(self) -> ReentrantLock:
         """Create an appropriate RLock object"""
-        return threading.RLock()
+        return cast("ReentrantLock", threading.RLock())
 
     def async_result(self) -> AsyncResult:
         """Create a :class:`AsyncResult` instance"""
@@ -209,7 +229,7 @@ class SequentialThreadingHandler(IHandler):
         t.start()
         return t
 
-    def dispatch_callback(self, callback: Any) -> None:
+    def dispatch_callback(self, callback: Callback) -> None:
         """Dispatch to the callback object
 
         The callback is put on separate queues to run depending on the

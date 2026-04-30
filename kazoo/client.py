@@ -10,13 +10,15 @@ from os.path import split
 import re
 import warnings
 from typing import (
+    cast,
+    overload,
     Any,
     Callable,
+    Deque,
     Literal,
     Optional,
     Sequence,
     Set,
-    overload,
     TYPE_CHECKING,
 )
 
@@ -127,15 +129,16 @@ class KazooClient(object):
         self,
         hosts: str | list[str] = "127.0.0.1:2181",
         timeout: float = 10.0,
-        client_id: tuple | None = None,
+        client_id: tuple[int | None, bytes] | None = None,
         handler: IHandler | None = None,
         default_acl: Sequence[ACL] | None = None,
-        auth_data: set | None = None,
-        sasl_options: dict | None = None,
+        auth_data: set[tuple[str, str]] | None = None,
+        sasl_options: dict[str, str] | None = None,
         read_only: bool | None = None,
         randomize_hosts: bool = True,
-        connection_retry: KazooRetry | dict | None = None,
-        command_retry: KazooRetry | dict | None = None,
+        # FIXME the dict should be a TypeDict
+        connection_retry: KazooRetry | dict[str, Any] | None = None,
+        command_retry: KazooRetry | dict[str, Any] | None = None,
         logger: logging.Logger | None = None,
         keyfile: str | None = None,
         keyfile_password: str | None = None,
@@ -459,8 +462,8 @@ class KazooClient(object):
 
     def _reset(self) -> None:
         """Resets a variety of client states for a new connection."""
-        self._queue: deque = deque()
-        self._pending: deque = deque()
+        self._queue: Deque[tuple[Any, IAsyncResult]] = deque()
+        self._pending: Deque[tuple[Any, IAsyncResult, int]] = deque()
 
         self._reset_watchers()
         self._reset_session()
@@ -497,7 +500,7 @@ class KazooClient(object):
         return self._state
 
     @property
-    def client_id(self) -> tuple | None:
+    def client_id(self) -> tuple[Any, Any] | None:
         """Returns the client id for this Zookeeper session if
         connected.
 
@@ -790,7 +793,7 @@ class KazooClient(object):
             return
 
         self._stopped.set()
-        self._queue.append((CloseInstance, None))
+        self._queue.append((CloseInstance, cast("IAsyncResult", None)))
         try:
             # This assert should never fail since the connection should
             # have been started but I'm not sure how to persaude mypy of that
@@ -863,7 +866,7 @@ class KazooClient(object):
         sock.close()
         return result.decode("utf-8", "replace")
 
-    def server_version(self, retries: int = 3) -> tuple:
+    def server_version(self, retries: int = 3) -> tuple[int, ...]:
         """Get the version of the currently connected ZK server.
 
         :returns: The server version, for example (3, 4, 3).
@@ -887,8 +890,8 @@ class KazooClient(object):
                     if k:
                         data_parsed[k] = v
             version = data_parsed.get(ENVI_VERSION_KEY, "")
-            # a) if you get an unexpected answer, you'll crash
-            # b) not changing the code, so just ignoring the type error
+            # FIXME If you get an unexpected answer, you'll crash - not
+            # changing the code, so just ignoring the type error
             version_digits = ENVI_VERSION.match(
                 version
             ).group(  # type: ignore[union-attr]
@@ -907,8 +910,9 @@ class KazooClient(object):
                 return True
             return False
 
-        # A better way of doing this would be to put the initial _try_fetch in
-        # the loop and inline _is_valid but I want to minimise code changes
+        # FIXME A better way of doing this would be to put the initial
+        # _try_fetch in the loop and inline _is_valid but I want to minimise
+        # code changes
 
         # Try 1 + retries amount of times to get a version that we know
         # will likely be acceptable...
@@ -943,7 +947,7 @@ class KazooClient(object):
             the session state will be set to AUTH_FAILED as well.
 
         """
-        return self.add_auth_async(scheme, credential).get()
+        return cast("bool", self.add_auth_async(scheme, credential).get())
 
     def add_auth_async(self, scheme: str, credential: str) -> IAsyncResult:
         """Asynchronously send credentials to server. Takes the same
@@ -1009,7 +1013,7 @@ class KazooClient(object):
         .. versionadded:: 0.5
 
         """
-        return self.sync_async(path).get()
+        return cast("str", self.sync_async(path).get())
 
     @overload
     def create(
@@ -1125,15 +1129,18 @@ class KazooClient(object):
             The `include_data` option.
         """
         acl = acl or self.default_acl
-        return self.create_async(
-            path,
-            value,
-            acl=acl,
-            ephemeral=ephemeral,
-            sequence=sequence,
-            makepath=makepath,
-            include_data=include_data,
-        ).get()
+        return cast(
+            "str | tuple[str, ZnodeStat]",
+            self.create_async(
+                path,
+                value,
+                acl=acl,
+                ephemeral=ephemeral,
+                sequence=sequence,
+                makepath=makepath,
+                include_data=include_data,
+            ).get(),
+        )
 
     def create_async(
         self,
@@ -1272,7 +1279,7 @@ class KazooClient(object):
         :param acl: Permissions for node.
 
         """
-        return self.ensure_path_async(path, acl).get()
+        return cast("bool", self.ensure_path_async(path, acl).get())
 
     def ensure_path_async(
         self, path: str, acl: Sequence[ACL] | None = None
@@ -1289,9 +1296,9 @@ class KazooClient(object):
         async_result = self.handler.async_result()
 
         @wrap(async_result)
-        def create_completion(result: Any) -> bool:
+        def create_completion(result: IAsyncResult) -> bool:
             try:
-                return result.get()
+                return cast("bool", result.get())
             except NodeExistsError:
                 return True
 
@@ -1341,7 +1348,9 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        return self.exists_async(path, watch=watch).get()
+        return cast(
+            "ZnodeStat | None", self.exists_async(path, watch=watch).get()
+        )
 
     def exists_async(
         self, path: str, watch: WatchFunc | None = None
@@ -1388,7 +1397,9 @@ class KazooClient(object):
             returns a non-zero error code
 
         """
-        return self.get_async(path, watch=watch).get()
+        return cast(
+            "tuple[bytes, ZnodeStat]", self.get_async(path, watch=watch).get()
+        )
 
     def get_async(
         self, path: str, watch: WatchFunc | None = None
@@ -1449,9 +1460,12 @@ class KazooClient(object):
             The `include_data` option.
 
         """
-        return self.get_children_async(
-            path, watch=watch, include_data=include_data
-        ).get()
+        return cast(
+            "list[str]",
+            self.get_children_async(
+                path, watch=watch, include_data=include_data
+            ).get(),
+        )
 
     def get_children_async(
         self,
@@ -1473,6 +1487,7 @@ class KazooClient(object):
             raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         async_result = self.handler.async_result()
+        # FIXME? Do this as req = getc2 if include_data else getc
         req: GetChildren | GetChildren2
         if include_data:
             req = GetChildren2(_prefix_root(self.chroot, path), watch)
@@ -1499,7 +1514,9 @@ class KazooClient(object):
         .. versionadded:: 0.5
 
         """
-        return self.get_acls_async(path).get()
+        return cast(
+            "tuple[list[ACL], ZnodeStat]", self.get_acls_async(path).get()
+        )
 
     def get_acls_async(self, path: str) -> IAsyncResult:
         """Return the ACL and stat of the node of the given path. Takes
@@ -1544,7 +1561,9 @@ class KazooClient(object):
         .. versionadded:: 0.5
 
         """
-        return self.set_acls_async(path, acls, version).get()
+        return cast(
+            "ZnodeStat", self.set_acls_async(path, acls, version).get()
+        )
 
     def set_acls_async(
         self, path: str, acls: Sequence[ACL], version: int = -1
@@ -1606,7 +1625,7 @@ class KazooClient(object):
             returns a non-zero error code.
 
         """
-        return self.set_async(path, value, version).get()
+        return cast("ZnodeStat", self.set_async(path, value, version).get())
 
     def set_async(
         self, path: str, value: bytes | None, version: int = -1
@@ -1805,7 +1824,7 @@ class KazooClient(object):
         result = self.reconfig_async(
             joining, leaving, new_members, from_config
         )
-        return result.get()
+        return cast("tuple[bytes, ZnodeStat]", result.get())
 
     def reconfig_async(
         self,
@@ -1970,7 +1989,7 @@ class TransactionRequest(object):
                   transaction.
 
         """
-        return self.commit_async().get()
+        return cast("list[Any]", self.commit_async().get())
 
     def __enter__(self) -> TransactionRequest:
         return self

@@ -40,11 +40,11 @@ timeout = 180
 ignore_missing_imports = false
 
 # Disallow dynamic typing
-disallow_any_unimported = false # true
+disallow_any_unimported = true
 disallow_any_expr = false
 disallow_any_decorated = false # true
 disallow_any_explicit = false # true
-disallow_any_generics = false # true
+disallow_any_generics = true
 disallow_subclassing_any = true
 
 # Untyped definitions and calls
@@ -81,7 +81,7 @@ hide_error_codes = false
 pretty = true
 color_output = true
 error_summary = true
-show_absolute_path = true
+show_absolute_path = false
 
 # Miscellaneous
 warn_unused_configs = true
@@ -90,15 +90,11 @@ verbosity = 0
 # FIXME: As type annotations are introduced, please remove the appropriate
 #        ignore_errors flag below. New modules should NOT be added here!
 
-# no-any-return - We still have some imported modules with no type annotations,
-# and I want to avoid code changes as much as possible.
-
 # unused-ignore This is a temporary workaround for the fact that mypy can
 # produce different errors in 3.8 and 3.14, and I want to avoid code changes
 # as much as possible.
 
 disable_error_code = [ 
-    'no-any-return',
     'unused-ignore',
 ]
 
@@ -138,15 +134,12 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
     module = ["eventlet.*"]
-    ignore_missing_imports = true
-    #follow_untyped_imports = true
+    follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
     module = ["gevent.thread"]
-    ignore_missing_imports = true
-    #follow_untyped_imports = true
+    follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
     module = ["puresasl.*"]
-    ignore_missing_imports = true
-    #follow_untyped_imports = true
+    follow_untyped_imports = true

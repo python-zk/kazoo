@@ -18,7 +18,7 @@ import contextlib
 import functools
 import logging
 import operator
-from typing import Any, Callable, Generator, Protocol, TYPE_CHECKING
+from typing import Any, Callable, Generator, Protocol, Tuple, TYPE_CHECKING
 
 
 from kazoo.exceptions import NoNodeError, KazooException
@@ -397,7 +397,7 @@ class TreeNode(object):
             self._publish_event(TreeEvent.INITIALIZED)
 
 
-class TreeEvent(tuple):
+class TreeEvent(Tuple[int, Any]):
     """The immutable event tuple of cache."""
 
     NODE_ADDED = 0
@@ -432,7 +432,7 @@ class TreeEvent(tuple):
         return cls((event_type, event_data))
 
 
-class NodeData(tuple):
+class NodeData(Tuple[str, bytes, Any]):
     """The immutable node data tuple of cache."""
 
     #: The absolute path string of current node.

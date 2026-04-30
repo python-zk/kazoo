@@ -58,13 +58,21 @@ def _invalid_error_code() -> Any:
     raise RuntimeError("Invalid error code")
 
 
-EXCEPTIONS: defaultdict = defaultdict(_invalid_error_code)
+EXCEPTIONS: defaultdict[int, Type[ZookeeperError]] = defaultdict(
+    _invalid_error_code
+)
 
 
-def _zookeeper_exception(code: int) -> Callable[[Type[Any]], Type[Any]]:
-    def decorator(klass: Type[Any]) -> Type[Any]:
+def _zookeeper_exception(
+    code: int,
+) -> Callable[[Type[ZookeeperError]], Type[ZookeeperError]]:
+    def decorator(klass: Type[ZookeeperError]) -> Type[ZookeeperError]:
         EXCEPTIONS[code] = klass
-        klass.code = code
+        # Unfortunately there is currently no good of doing the assignment here
+        # in a way that type checkers would allow. It's a known problem (see
+        # https://discuss.python.org/t/how-to-type-hint-a-class-decorator/63010
+        # )
+        klass.code = code  # type: ignore[attr-defined]
         return klass
 
     return decorator
