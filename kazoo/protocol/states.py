@@ -117,7 +117,8 @@ EVENT_TYPE_MAP = {
 }
 
 
-class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
+class WatchedEvent(namedtuple("WatchedEvent",
+                              ("type", "state", "path", "zxid"))):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
     The :class:`WatchedEvent` includes exactly what happened, the
@@ -138,7 +139,22 @@ class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
 
         The path of the node for the watch event.
 
+    .. attribute:: zxid
+
+        The zxid of the transaction that triggered this watch if it is
+        of one of the following types:
+
+        * EventType.CREATED
+        * EventType.DELETED
+        * EventType.CHANGED
+        * EventType.CHILD
+
+        Otherwise, returns WatchedEvent.NO_ZXID. Note that NO_ZXID is also
+        returned by old servers that do not support this feature.
+
     """
+
+    NO_ZXID = -1
 
 
 class Callback(namedtuple("Callback", ("type", "func", "args"))):
@@ -251,3 +267,44 @@ class ZnodeStat(
     @property
     def children_count(self):
         return self.numChildren
+
+
+class AddWatchMode(object):
+    """Modes for use with :meth:`~kazoo.client.KazooClient.add_watch`
+
+    .. attribute:: PERSISTENT
+
+        The watch is not removed when trigged.
+
+    .. attribute:: PERSISTENT_RECURSIVE
+
+        The watch is not removed when trigged, and applies to all
+        paths underneath the supplied path as well.
+    """
+
+    PERSISTENT = 0
+    PERSISTENT_RECURSIVE = 1
+
+
+class WatcherType(object):
+    """Watcher types for use with
+    :meth:`~kazoo.client.KazooClient.remove_all_watches`
+
+    .. attribute:: CHILDREN
+
+        Child watches.
+
+    .. attribute:: DATA
+
+        Data watches.
+
+    .. attribute:: ANY
+
+        Any type of watch (child, data, persistent, or persistent
+        recursive).
+
+    """
+
+    CHILDREN = 1
+    DATA = 2
+    ANY = 3
