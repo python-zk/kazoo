@@ -5,11 +5,18 @@
 :Status: Beta
 
 """
+
+from __future__ import annotations
+
 import datetime
 import json
 import socket
+from typing import Any, Callable, TYPE_CHECKING, cast
 
 from kazoo.exceptions import CancelledError
+
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
 
 
 class NonBlockingLease(object):
@@ -48,11 +55,11 @@ class NonBlockingLease(object):
 
     def __init__(
         self,
-        client,
-        path,
-        duration,
-        identifier=None,
-        utcnow=datetime.datetime.utcnow,
+        client: KazooClient,
+        path: str,
+        duration: datetime.timedelta,
+        identifier: str | None = None,
+        utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         """Create a non-blocking lease.
 
@@ -71,7 +78,14 @@ class NonBlockingLease(object):
         self.obtained = False
         self._attempt_obtaining(client, path, duration, ident, utcnow)
 
-    def _attempt_obtaining(self, client, path, duration, ident, utcnow):
+    def _attempt_obtaining(
+        self,
+        client: KazooClient,
+        path: str,
+        duration: datetime.timedelta,
+        ident: str,
+        utcnow: Callable[[], datetime.datetime],
+    ) -> None:
         client.ensure_path(path)
         holder_path = path + "/lease_holder"
         lock = client.Lock(path, ident)
@@ -103,18 +117,15 @@ class NonBlockingLease(object):
         except CancelledError:
             pass
 
-    def _encode(self, data_dict):
+    def _encode(self, data_dict: dict[str, Any]) -> bytes:
         return json.dumps(data_dict).encode(self._byte_encoding)
 
-    def _decode(self, raw):
-        return json.loads(raw.decode(self._byte_encoding))
+    def _decode(self, raw: bytes) -> dict[str, Any]:
+        return cast(
+            "dict[str, Any]", json.loads(raw.decode(self._byte_encoding))
+        )
 
-    # Python 2.x
-    def __nonzero__(self):
-        return self.obtained
-
-    # Python 3.x
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.obtained
 
 
@@ -140,12 +151,12 @@ class MultiNonBlockingLease(object):
 
     def __init__(
         self,
-        client,
-        count,
-        path,
-        duration,
-        identifier=None,
-        utcnow=datetime.datetime.utcnow,
+        client: KazooClient,
+        count: int,
+        path: str,
+        duration: datetime.timedelta,
+        identifier: str | None = None,
+        utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         self.obtained = False
         for num in range(count):
@@ -160,10 +171,5 @@ class MultiNonBlockingLease(object):
                 self.obtained = True
                 break
 
-    # Python 2.x
-    def __nonzero__(self):
-        return self.obtained
-
-    # Python 3.x
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.obtained

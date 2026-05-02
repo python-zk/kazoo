@@ -10,18 +10,38 @@ of a subtree in ZooKeeper and keeps it up-to-date.
 
 See also: http://curator.apache.org/curator-recipes/tree-cache.html
 """
+
+from __future__ import annotations
 from __future__ import absolute_import
 
 import contextlib
 import functools
 import logging
 import operator
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Protocol,
+    TypeVar,
+    Tuple,
+    TYPE_CHECKING,
+)
+
 
 from kazoo.exceptions import NoNodeError, KazooException
 from kazoo.protocol.paths import _prefix_root, join as kazoo_join
 from kazoo.protocol.states import KazooState, EventType
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient, WatchFunc
+    from kazoo.interfaces import IAsyncResult
+    from kazoo.protocol.states import WatchedEvent
+
 logger = logging.getLogger(__name__)
+
+
+ReturnValue = TypeVar("ReturnValue")
 
 
 class TreeCache(object):
@@ -37,18 +57,18 @@ class TreeCache(object):
 
     _STOP = object()
 
-    def __init__(self, client, path):
+    def __init__(self, client: KazooClient, path: str):
         self._client = client
         self._root = TreeNode.make_root(self, path)
         self._state = self.STATE_LATENT
         self._outstanding_ops = 0
         self._is_initialized = False
-        self._error_listeners = []
-        self._event_listeners = []
+        self._error_listeners: list[Callable[[Exception], None]] = []
+        self._event_listeners: list[Callable[[TreeEvent], None]] = []
         self._task_queue = client.handler.queue_impl()
         self._task_thread = None
 
-    def start(self):
+    def start(self) -> None:
         """Starts the cache.
 
         The cache is not started automatically. You must call this method.
@@ -85,7 +105,7 @@ class TreeCache(object):
             # without lock.
             self._in_background(self._root.on_created)
 
-    def close(self):
+    def close(self) -> None:
         """Closes the cache.
 
         A closed cache was detached from ZooKeeper's changes. And all nodes
@@ -109,7 +129,9 @@ class TreeCache(object):
                 #    ZooKeeper actually.
                 self._root.on_deleted()
 
-    def listen(self, listener):
+    def listen(
+        self, listener: Callable[[TreeEvent], None]
+    ) -> Callable[[TreeEvent], None]:
         """Registers a function to listen the cache events.
 
         The cache events are changes of local data. They are delivered from
@@ -124,7 +146,9 @@ class TreeCache(object):
         self._event_listeners.append(listener)
         return listener
 
-    def listen_fault(self, listener):
+    def listen_fault(
+        self, listener: Callable[[Exception], None]
+    ) -> Callable[[Exception], None]:
         """Registers a function to listen the exceptions.
 
         It is possible to meet some exceptions during the cache running. You
@@ -138,7 +162,9 @@ class TreeCache(object):
         self._error_listeners.append(listener)
         return listener
 
-    def get_data(self, path, default=None):
+    def get_data(
+        self, path: str, default: NodeData | None = None
+    ) -> NodeData | None:
         """Gets data of a node from cache.
 
         :param path: The absolute path string.
@@ -150,7 +176,9 @@ class TreeCache(object):
         node = self._find_node(path)
         return default if node is None else node._data
 
-    def get_children(self, path, default=None):
+    def get_children(
+        self, path: str, default: frozenset[str] | None = None
+    ) -> frozenset[str] | None:
         """Gets node children list from in-memory snapshot.
 
         :param path: The absolute path string.
@@ -158,11 +186,14 @@ class TreeCache(object):
                         does not exist.
         :raises ValueError: If the path is outside of this subtree.
         :returns: The :class:`frozenset` which including children names.
+
+        # FIXME the default return value should be an empty frozenset,
+        # returning None is confusing.
         """
         node = self._find_node(path)
         return default if node is None else frozenset(node._children)
 
-    def _find_node(self, path):
+    def _find_node(self, path: str) -> TreeNode | None:
         if not path.startswith(self._root._path):
             raise ValueError("outside of tree")
         striped_path = path[len(self._root._path) :].strip("/")
@@ -170,25 +201,29 @@ class TreeCache(object):
         current_node = self._root
         for node_name in splited_path:
             if node_name not in current_node._children:
-                return
+                return None
             current_node = current_node._children[node_name]
         return current_node
 
-    def _publish_event(self, event_type, event_data=None):
+    def _publish_event(
+        self, event_type: int, event_data: int | None = None
+    ) -> None:
         event = TreeEvent.make(event_type, event_data)
         if self._state != self.STATE_CLOSED:
             logger.debug("public event: %r", event)
             self._in_background(self._do_publish_event, event)
 
-    def _do_publish_event(self, event):
+    def _do_publish_event(self, event: TreeEvent) -> None:
         for listener in self._event_listeners:
             with handle_exception(self._error_listeners):
                 listener(event)
 
-    def _in_background(self, func, *args, **kwargs):
+    def _in_background(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> None:
         self._task_queue.put((func, args, kwargs))
 
-    def _do_background(self):
+    def _do_background(self) -> None:
         while True:
             with handle_exception(self._error_listeners):
                 cb = self._task_queue.get()
@@ -200,7 +235,7 @@ class TreeCache(object):
                 # release before possible idle
                 del cb, func, args, kwargs
 
-    def _session_watcher(self, state):
+    def _session_watcher(self, state: KazooState) -> None:
         if state == KazooState.SUSPENDED:
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)
         elif state == KazooState.CONNECTED:
@@ -210,6 +245,11 @@ class TreeCache(object):
         elif state == KazooState.LOST:
             self._is_initialized = False
             self._publish_event(TreeEvent.CONNECTION_LOST)
+
+
+class AsyncWatcher(Protocol):
+    def __call__(self, path: str, watch: WatchFunc | None) -> IAsyncResult:
+        ...
 
 
 class TreeNode(object):
@@ -234,28 +274,28 @@ class TreeNode(object):
     STATE_LIVE = 1
     STATE_DEAD = 2
 
-    def __init__(self, tree, path, parent):
+    def __init__(self, tree: TreeCache, path: str, parent: TreeNode | None):
         self._tree = tree
         self._path = path
         self._parent = parent
-        self._depth = parent._depth + 1 if parent else 0
-        self._children = {}
+        self._depth: int = parent._depth + 1 if parent is not None else 0
+        self._children: dict[str, TreeNode] = {}
         self._state = self.STATE_PENDING
-        self._data = None
+        self._data: NodeData | None = None
 
     @classmethod
-    def make_root(cls, tree, path):
+    def make_root(cls, tree: TreeCache, path: str) -> TreeNode:
         return cls(tree, path, None)
 
-    def on_reconnected(self):
+    def on_reconnected(self) -> None:
         self._refresh()
         for child in self._children.values():
             child.on_reconnected()
 
-    def on_created(self):
+    def on_created(self) -> None:
         self._refresh()
 
-    def on_deleted(self):
+    def on_deleted(self) -> None:
         old_children, self._children = self._children, {}
         old_data, self._data = self._data, None
 
@@ -278,37 +318,41 @@ class TreeNode(object):
                 del self._parent._children[child]
                 self._reset_watchers()
 
-    def _publish_event(self, *args, **kwargs):
+    def _publish_event(self, *args: Any, **kwargs: Any) -> Any:
         return self._tree._publish_event(*args, **kwargs)
 
-    def _reset_watchers(self):
+    def _reset_watchers(self) -> None:
         client = self._tree._client
         for _watchers in (client._data_watchers, client._child_watchers):
             _path = _prefix_root(client.chroot, self._path)
             _watcher = _watchers.get(_path, set())
             _watcher.discard(self._process_watch)
 
-    def _refresh(self):
+    def _refresh(self) -> None:
         self._refresh_data()
         self._refresh_children()
 
-    def _refresh_data(self):
+    def _refresh_data(self) -> None:
         self._call_client("get", self._path)
 
-    def _refresh_children(self):
+    def _refresh_children(self) -> None:
         # TODO max-depth checking support
         self._call_client("get_children", self._path)
 
-    def _call_client(self, method_name, path):
+    def _call_client(self, method_name: str, path: str) -> None:
         assert method_name in ("get", "get_children", "exists")
         self._tree._outstanding_ops += 1
         callback = functools.partial(
             self._tree._in_background, self._process_result, method_name, path
         )
-        method = getattr(self._tree._client, method_name + "_async")
+        # The typing for this is really bad but the type checker can
+        # understand it with a few hacks
+        method: AsyncWatcher = getattr(
+            self._tree._client, method_name + "_async"
+        )
         method(path, watch=self._process_watch).rawlink(callback)
 
-    def _process_watch(self, watched_event):
+    def _process_watch(self, watched_event: WatchedEvent) -> None:
         logger.debug("process_watch: %r", watched_event)
         with handle_exception(self._tree._error_listeners):
             if watched_event.type == EventType.CREATED:
@@ -321,7 +365,9 @@ class TreeNode(object):
             elif watched_event.type == EventType.CHILD:
                 self._refresh_children()
 
-    def _process_result(self, method_name, path, result):
+    def _process_result(
+        self, method_name: str, path: str, result: Any
+    ) -> None:
         logger.debug("process_result: %s %s", method_name, path)
         if method_name == "exists":
             assert self._parent is None, "unexpected EXISTS on non-root"
@@ -332,7 +378,7 @@ class TreeNode(object):
                 self.on_created()
         elif method_name == "get_children":
             if result.successful():
-                children = result.get()
+                children: list[str] = result.get()
                 for child in sorted(children):
                     full_path = kazoo_join(path, child)
                     if child not in self._children:
@@ -367,7 +413,7 @@ class TreeNode(object):
             self._publish_event(TreeEvent.INITIALIZED)
 
 
-class TreeEvent(tuple):
+class TreeEvent(Tuple[int, Any]):
     """The immutable event tuple of cache."""
 
     NODE_ADDED = 0
@@ -385,7 +431,7 @@ class TreeEvent(tuple):
     event_data = property(operator.itemgetter(1))
 
     @classmethod
-    def make(cls, event_type, event_data):
+    def make(cls, event_type: int, event_data: int | None = None) -> TreeEvent:
         """Creates a new TreeEvent tuple.
 
         :returns: A :class:`~kazoo.recipe.cache.TreeEvent` instance.
@@ -402,7 +448,7 @@ class TreeEvent(tuple):
         return cls((event_type, event_data))
 
 
-class NodeData(tuple):
+class NodeData(Tuple[str, bytes, Any]):
     """The immutable node data tuple of cache."""
 
     #: The absolute path string of current node.
@@ -415,7 +461,7 @@ class NodeData(tuple):
     stat = property(operator.itemgetter(2))
 
     @classmethod
-    def make(cls, path, data, stat):
+    def make(cls, path: str, data: bytes, stat: Any) -> NodeData:
         """Creates a new NodeData tuple.
 
         :returns: A :class:`~kazoo.recipe.cache.NodeData` instance.
@@ -424,7 +470,9 @@ class NodeData(tuple):
 
 
 @contextlib.contextmanager
-def handle_exception(listeners):
+def handle_exception(
+    listeners: list[Callable[[Exception], None]],
+) -> Generator[None, None, None]:
     try:
         yield
     except Exception as e:

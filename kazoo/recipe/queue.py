@@ -9,17 +9,24 @@
     See: https://github.com/python-zk/kazoo/issues/175
 
 """
+
+from __future__ import annotations
+
 import uuid
+from typing import Any, TYPE_CHECKING
 
 from kazoo.exceptions import NoNodeError, NodeExistsError
 from kazoo.protocol.states import EventType
 from kazoo.retry import ForceRetryError
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
+
 
 class BaseQueue(object):
     """A common base class for queue implementations."""
 
-    def __init__(self, client, path):
+    def __init__(self, client: KazooClient, path: str):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
@@ -27,10 +34,10 @@ class BaseQueue(object):
         self.client = client
         self.path = path
         self._entries_path = path
-        self.structure_paths = (self.path,)
+        self.structure_paths: tuple[str, ...] = (self.path,)
         self.ensured_path = False
 
-    def _check_put_arguments(self, value, priority=100):
+    def _check_put_arguments(self, value: bytes, priority: int = 100) -> None:
         if not isinstance(value, bytes):
             raise TypeError("value must be a byte string")
         if not isinstance(priority, int):
@@ -38,14 +45,14 @@ class BaseQueue(object):
         elif priority < 0 or priority > 999:
             raise ValueError("priority must be between 0 and 999")
 
-    def _ensure_paths(self):
+    def _ensure_paths(self) -> None:
         if not self.ensured_path:
             # make sure our parent / internal structure nodes exists
             for path in self.structure_paths:
                 self.client.ensure_path(path)
             self.ensured_path = True
 
-    def __len__(self):
+    def __len__(self) -> int:
         self._ensure_paths()
         _, stat = self.client.retry(self.client.get, self._entries_path)
         return stat.children_count
@@ -62,19 +69,19 @@ class Queue(BaseQueue):
 
     prefix = "entry-"
 
-    def __init__(self, client, path):
+    def __init__(self, client: KazooClient, path: str):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
         super(Queue, self).__init__(client, path)
-        self._children = []
+        self._children: list[str] = []
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return queue size."""
         return super(Queue, self).__len__()
 
-    def get(self):
+    def get(self) -> bytes | None:
         """
         Get item data and remove an item from the queue.
 
@@ -84,7 +91,7 @@ class Queue(BaseQueue):
         self._ensure_paths()
         return self.client.retry(self._inner_get)
 
-    def _inner_get(self):
+    def _inner_get(self) -> bytes | None:
         if not self._children:
             self._children = self.client.retry(
                 self.client.get_children, self.path
@@ -105,7 +112,7 @@ class Queue(BaseQueue):
         self._children.pop(0)
         return data
 
-    def put(self, value, priority=100):
+    def put(self, value: bytes, priority: int = 100) -> None:
         """Put an item into the queue.
 
         :param value: Byte string to put into the queue.
@@ -150,26 +157,26 @@ class LockingQueue(BaseQueue):
     entries = "/entries"
     entry = "entry"
 
-    def __init__(self, client, path):
+    def __init__(self, client: KazooClient, path: str):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
         super(LockingQueue, self).__init__(client, path)
         self.id = uuid.uuid4().hex.encode()
-        self.processing_element = None
+        self.processing_element: tuple[str, bytes] | None = None
         self._lock_path = self.path + self.lock
         self._entries_path = self.path + self.entries
         self.structure_paths = (self._lock_path, self._entries_path)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the current length of the queue.
 
         :returns: queue size (includes locked entries count).
         """
         return super(LockingQueue, self).__len__()
 
-    def put(self, value, priority=100):
+    def put(self, value: bytes, priority: int = 100) -> None:
         """Put an entry into the queue.
 
         :param value: Byte string to put into the queue.
@@ -189,7 +196,7 @@ class LockingQueue(BaseQueue):
             sequence=True,
         )
 
-    def put_all(self, values, priority=100):
+    def put_all(self, values: list[bytes], priority: int = 100) -> None:
         """Put several entries into the queue. The action only succeeds
         if all entries where put into the queue.
 
@@ -221,7 +228,7 @@ class LockingQueue(BaseQueue):
                     sequence=True,
                 )
 
-    def get(self, timeout=None):
+    def get(self, timeout: float | None = None) -> bytes | None:
         """Locks and gets an entry from the queue. If a previously got entry
         was not consumed, this method will return that entry.
 
@@ -237,7 +244,7 @@ class LockingQueue(BaseQueue):
         else:
             return self._inner_get(timeout)
 
-    def holds_lock(self):
+    def holds_lock(self) -> bool:
         """Checks if a node still holds the lock.
 
         :returns: True if a node still holds the lock, False otherwise.
@@ -251,7 +258,7 @@ class LockingQueue(BaseQueue):
         value, stat = self.client.retry(self.client.get, lock_path)
         return value == self.id
 
-    def consume(self):
+    def consume(self) -> bool:
         """Removes a currently processing entry from the queue.
 
         :returns: True if element was removed successfully, False otherwise.
@@ -271,7 +278,7 @@ class LockingQueue(BaseQueue):
         else:
             return False
 
-    def release(self):
+    def release(self) -> bool:
         """Removes the lock from currently processed item without consuming it.
 
         :returns: True if the lock was removed successfully, False otherwise.
@@ -289,13 +296,13 @@ class LockingQueue(BaseQueue):
         else:
             return False
 
-    def _inner_get(self, timeout):
+    def _inner_get(self, timeout: float | None) -> bytes | None:
         flag = self.client.handler.event_object()
         lock = self.client.handler.lock_object()
         canceled = False
         value = []
 
-        def check_for_updates(event):
+        def check_for_updates(event: Any | None) -> None:
             if event is not None and event.type != EventType.CHILD:
                 return
             with lock:
@@ -330,8 +337,8 @@ class LockingQueue(BaseQueue):
                 retVal = value[0][1]
         return retVal
 
-    def _filter_locked(self, values, taken):
-        taken = set(taken)
+    def _filter_locked(self, values: list[str], taken: list[str]) -> list[str]:
+        taken = set(taken)  # type: ignore[assignment]
         available = sorted(values)
         return (
             available
@@ -339,7 +346,7 @@ class LockingQueue(BaseQueue):
             else [x for x in available if x not in taken]
         )
 
-    def _take(self, id_):
+    def _take(self, id_: str) -> tuple[str, bytes] | None:
         try:
             self.client.create(
                 "{path}/{id}".format(path=self._lock_path, id=id_),

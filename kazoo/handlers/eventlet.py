@@ -1,9 +1,13 @@
 """A eventlet based handler."""
+
+from __future__ import annotations
 from __future__ import absolute_import
 
 import atexit
 import contextlib
 import logging
+
+from typing import cast, Any, Generator, TYPE_CHECKING
 
 import eventlet
 from eventlet.green import socket as green_socket
@@ -15,6 +19,11 @@ from eventlet import queue as green_queue
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 
+if TYPE_CHECKING:
+    from kazoo.interfaces import Event, FdLike, Lockable, ReentrantLock, Socket
+    from kazoo.protocol.states import Callback
+
+
 LOG = logging.getLogger(__name__)
 
 # sentinel objects
@@ -22,17 +31,17 @@ _STOP = object()
 
 
 @contextlib.contextmanager
-def _yield_before_after():
+def _yield_before_after() -> Generator[None, None, None]:
     # Yield to any other co-routines...
     #
     # See: http://eventlet.net/doc/modules/greenthread.html
     # for how this zero sleep is really a cooperative yield to other potential
     # co-routines...
-    eventlet.sleep(0)
+    eventlet.sleep(0)  # type: ignore[no-untyped-call]
     try:
         yield
     finally:
-        eventlet.sleep(0)
+        eventlet.sleep(0)  # type: ignore[no-untyped-call]
 
 
 class TimeoutError(Exception):
@@ -42,9 +51,11 @@ class TimeoutError(Exception):
 class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
-    def __init__(self, handler):
+    def __init__(self, handler: Any):
         super(AsyncResult, self).__init__(
-            handler, green_threading.Condition, TimeoutError
+            handler,
+            green_threading.Condition,  # type: ignore[attr-defined]
+            TimeoutError,
         )
 
 
@@ -81,26 +92,35 @@ class SequentialEventletHandler(object):
     queue_impl = green_queue.LightQueue
     queue_empty = green_queue.Empty
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a :class:`SequentialEventletHandler` instance"""
-        self.callback_queue = self.queue_impl()
-        self.completion_queue = self.queue_impl()
-        self._workers = []
+        self.callback_queue = (
+            self.queue_impl()  # type: ignore[no-untyped-call]
+        )
+        self.completion_queue = (
+            self.queue_impl()  # type: ignore[no-untyped-call]
+        )
+        self._workers: list[  # type: ignore[name-defined]
+            tuple[
+                eventlet.GreenThread,
+                green_queue.LightQueue,
+            ]
+        ] = []
         self._started = False
 
     @staticmethod
-    def sleep_func(wait):
-        green_time.sleep(wait)
+    def sleep_func(wait: float) -> None:
+        green_time.sleep(wait)  # type: ignore[attr-defined, no-untyped-call]
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._started
 
     timeout_exception = TimeoutError
 
-    def _process_completion_queue(self):
+    def _process_completion_queue(self) -> None:
         while True:
-            cb = self.completion_queue.get()
+            cb = self.completion_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -114,9 +134,9 @@ class SequentialEventletHandler(object):
             finally:
                 del cb  # release before possible idle
 
-    def _process_callback_queue(self):
+    def _process_callback_queue(self) -> None:
         while True:
-            cb = self.callback_queue.get()
+            cb = self.callback_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -130,58 +150,81 @@ class SequentialEventletHandler(object):
             finally:
                 del cb  # release before possible idle
 
-    def start(self):
+    def start(self) -> None:
         if not self._started:
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
             # - A completion worker for completion events to be called
-            w = eventlet.spawn(self._process_completion_queue)
+            w = eventlet.spawn(
+                self._process_completion_queue  # type: ignore[no-untyped-call]
+            )
             self._workers.append((w, self.completion_queue))
-            w = eventlet.spawn(self._process_callback_queue)
+            w = eventlet.spawn(
+                self._process_callback_queue  # type: ignore[no-untyped-call]
+            )
             self._workers.append((w, self.callback_queue))
             self._started = True
             atexit.register(self.stop)
 
-    def stop(self):
+    def stop(self) -> None:
         while self._workers:
             w, q = self._workers.pop()
-            q.put(_STOP)
+            q.put(_STOP)  # type: ignore[no-untyped-call]
             w.wait()
         self._started = False
         atexit.unregister(self.stop)
 
-    def socket(self, *args, **kwargs):
+    def socket(self, *args: Any, **kwargs: Any) -> Socket:
         return utils.create_tcp_socket(green_socket)
 
-    def create_socket_pair(self):
+    def create_socket_pair(self) -> tuple[Socket, Socket]:
         return utils.create_socket_pair(green_socket)
 
-    def event_object(self):
-        return green_threading.Event()
+    def event_object(self) -> Event:
+        return cast(
+            "Event", green_threading.Event()  # type: ignore[attr-defined]
+        )
 
-    def lock_object(self):
-        return green_threading.Lock()
+    def lock_object(self) -> Lockable:
+        return cast(
+            "Lockable", green_threading.Lock()  # type: ignore[attr-defined]
+        )
 
-    def rlock_object(self):
-        return green_threading.RLock()
+    def rlock_object(self) -> ReentrantLock:
+        return cast(
+            "ReentrantLock",
+            green_threading.RLock(),  # type: ignore[attr-defined]
+        )
 
-    def create_connection(self, *args, **kwargs):
+    def create_connection(self, *args: Any, **kwargs: Any) -> Socket:
         return utils.create_tcp_connection(green_socket, *args, **kwargs)
 
-    def select(self, *args, **kwargs):
+    def select(
+        self, *args: Any, **kwargs: Any
+    ) -> tuple[list[FdLike], list[FdLike], list[FdLike]]:
         with _yield_before_after():
+            # Following appears to be a bug in mypy (see
+            # https://github.com/python/mypy/issues/6799)
             return selector_select(
-                *args, selectors_module=green_selectors, **kwargs
+                *args,
+                selectors_module=green_selectors,  # type: ignore[misc]
+                **kwargs,
             )
 
-    def async_result(self):
+    def async_result(self) -> AsyncResult:
         return AsyncResult(self)
 
-    def spawn(self, func, *args, **kwargs):
-        t = green_threading.Thread(target=func, args=args, kwargs=kwargs)
+    def spawn(
+        self, func: Any, *args: Any, **kwargs: Any
+    ) -> green_threading.Thread:  # type: ignore[name-defined]
+        t = green_threading.Thread(  # type: ignore[attr-defined]
+            target=func, args=args, kwargs=kwargs
+        )
         t.daemon = True
         t.start()
         return t
 
-    def dispatch_callback(self, callback):
-        self.callback_queue.put(lambda: callback.func(*callback.args))
+    def dispatch_callback(self, callback: Callback) -> None:
+        self.callback_queue.put(  # type: ignore[no-untyped-call]
+            lambda: callback.func(*callback.args)
+        )

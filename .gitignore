@@ -30,10 +30,14 @@ zookeeper/
 .project
 .pydevproject
 .tox
-venv
+venv*/
 /.settings
 /.metadata
+__pycache__/
 
 !.gitignore
 !.git-blame-ignore-revs
 
+.vscode/
+.*_cache/
+coverage.xml

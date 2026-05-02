@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import random
 import time
+from typing import Any, Callable, TypeVar
 
 from kazoo.exceptions import (
     ConnectionClosedError,
@@ -9,7 +12,6 @@ from kazoo.exceptions import (
     OperationTimeoutError,
     SessionExpiredError,
 )
-
 
 log = logging.getLogger(__name__)
 
@@ -37,18 +39,20 @@ class KazooRetry(object):
 
     EXPIRED_EXCEPTIONS = (SessionExpiredError,)
 
+    RETRY_RETURN = TypeVar("RETRY_RETURN")
+
     def __init__(
         self,
-        max_tries=1,
-        delay=0.1,
-        backoff=2,
-        max_jitter=0.4,
-        max_delay=60.0,
-        ignore_expire=True,
-        sleep_func=time.sleep,
-        deadline=None,
-        interrupt=None,
-    ):
+        max_tries: int | None = 1,
+        delay: float = 0.1,
+        backoff: int = 2,
+        max_jitter: float = 0.4,
+        max_delay: float = 60.0,
+        ignore_expire: bool = True,
+        sleep_func: Callable[[float], None] = time.sleep,
+        deadline: float | None = None,
+        interrupt: Callable[[], bool] | None = None,
+    ) -> None:
         """Create a :class:`KazooRetry` instance for retrying function
         calls.
 
@@ -81,20 +85,22 @@ class KazooRetry(object):
         self._attempts = 0
         self._cur_delay = delay
         self.deadline = deadline
-        self._cur_stoptime = None
+        self._cur_stoptime: float | None = None
         self.sleep_func = sleep_func
-        self.retry_exceptions = self.RETRY_EXCEPTIONS
+        self.retry_exceptions: tuple[
+            type[Exception], ...
+        ] = self.RETRY_EXCEPTIONS
         self.interrupt = interrupt
         if ignore_expire:
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the attempt counter"""
         self._attempts = 0
         self._cur_delay = self.delay
         self._cur_stoptime = None
 
-    def copy(self):
+    def copy(self) -> KazooRetry:
         """Return a clone of this retry manager"""
         obj = KazooRetry(
             max_tries=self.max_tries,
@@ -109,7 +115,9 @@ class KazooRetry(object):
         obj.retry_exceptions = self.retry_exceptions
         return obj
 
-    def __call__(self, func, *args, **kwargs):
+    def __call__(
+        self, func: Callable[..., RETRY_RETURN], *args: Any, **kwargs: Any
+    ) -> RETRY_RETURN:
         """Call a function with arguments until it completes without
         throwing a Kazoo exception
 
