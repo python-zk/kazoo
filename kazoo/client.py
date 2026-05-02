@@ -424,8 +424,12 @@ class KazooClient(object):
 
         # also this should be called with a func that returns nothing as the
         # 1st argument.
-        def _retry(*args: Any, **kwargs: Any) -> Any:
-            return self._retry.copy()(*args, **kwargs)
+        def _retry(
+            func: Callable[..., KazooRetry.RETRY_RETURN],
+            *args: Any,
+            **kwargs: Any,
+        ) -> KazooRetry.RETRY_RETURN:
+            return self._retry.copy()(func, *args, **kwargs)
 
         # (expression has type "Callable[[VarArg(Any), KwArg(Any)], Any]",
         # variable has type "KazooRetry") so basically self.retry needs to be
@@ -500,7 +504,7 @@ class KazooClient(object):
         return self._state
 
     @property
-    def client_id(self) -> tuple[Any, Any] | None:
+    def client_id(self) -> tuple[int | None, bytes] | None:
         """Returns the client id for this Zookeeper session if
         connected.
 

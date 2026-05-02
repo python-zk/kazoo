@@ -24,7 +24,7 @@ from gevent.lock import Semaphore, RLock
 from kazoo.handlers import utils
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import HasFileNo, Lockable, Socket
+    from kazoo.interfaces import FdLike, Lockable, Socket
     from kazoo.protocol.states import Callback
 
 _using_libevent = gevent.__version__.startswith("0.")
@@ -146,11 +146,7 @@ class SequentialGeventHandler(object):
 
     def select(
         self, *args: Any, **kwargs: Any
-    ) -> tuple[
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-    ]:
+    ) -> tuple[Iterable[FdLike], Iterable[FdLike], Iterable[FdLike]]:
         # FIXME use the correct arguments, not *args, *kwargs
         return selector_select(
             # Likely a bug in mypy (see

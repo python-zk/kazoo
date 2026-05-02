@@ -30,7 +30,7 @@ from kazoo.interfaces import IHandler
 if TYPE_CHECKING:
     from kazoo.interfaces import (
         Event,
-        HasFileNo,
+        FdLike,
         Lockable,
         ReentrantLock,
         Socket,
@@ -187,11 +187,7 @@ class SequentialThreadingHandler(IHandler):
 
     def select(
         self, *args: Any, **kwargs: Any
-    ) -> tuple[
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-    ]:
+    ) -> tuple[Iterable[FdLike], Iterable[FdLike], Iterable[FdLike]]:
         return selector_select(*args, **kwargs)
 
     def socket(self) -> Socket:

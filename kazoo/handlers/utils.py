@@ -11,9 +11,10 @@ import ssl
 import socket
 import time
 from types import ModuleType
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, Iterable, TypeVar, TYPE_CHECKING
 
-from kazoo.interfaces import IAsyncResult
+
+from kazoo.interfaces import IAsyncResult, FdLike
 
 if TYPE_CHECKING:
     from kazoo.interfaces import Socket
@@ -323,9 +324,14 @@ def create_tcp_connection(
     return sock
 
 
+CapturedResult = TypeVar("CapturedResult")
+
+
 def capture_exceptions(
     async_result: IAsyncResult,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[
+    [Callable[..., CapturedResult]], Callable[..., CapturedResult | None]
+]:
     """Return a new decorated function that propagates the exceptions of the
     wrapped function to an async_result.
 
@@ -333,13 +339,18 @@ def capture_exceptions(
 
     """
 
-    def capture(function: Callable[..., Any]) -> Callable[..., Any]:
+    def capture(
+        function: Callable[..., CapturedResult]
+    ) -> Callable[..., CapturedResult | None]:
         @functools.wraps(function)
-        def captured_function(*args: Any, **kwargs: Any) -> Any:
+        def captured_function(
+            *args: Any, **kwargs: Any
+        ) -> CapturedResult | None:
             try:
                 return function(*args, **kwargs)
             except Exception as exc:
                 async_result.set_exception(exc)
+                return None
 
         return captured_function
 
@@ -348,7 +359,9 @@ def capture_exceptions(
 
 def wrap(
     async_result: IAsyncResult,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[
+    [Callable[..., CapturedResult]], Callable[..., CapturedResult | None]
+]:
     """Return a new decorated function that propagates the return value or
     exception of wrapped function to an async_result.  NOTE: Only propagates a
     non-None return value.
@@ -357,9 +370,13 @@ def wrap(
 
     """
 
-    def capture(function: Callable[..., Any]) -> Callable[..., Any]:
+    def capture(
+        function: Callable[..., CapturedResult]
+    ) -> Callable[..., CapturedResult | None]:
         @capture_exceptions(async_result)
-        def captured_function(*args: Any, **kwargs: Any) -> Any:
+        def captured_function(
+            *args: Any, **kwargs: Any
+        ) -> CapturedResult | None:
             value = function(*args, **kwargs)
             if value is not None:
                 async_result.set(value)
@@ -370,7 +387,7 @@ def wrap(
     return capture
 
 
-def fileobj_to_fd(fileobj: Any) -> int:
+def fileobj_to_fd(fileobj: FdLike) -> int:
     """Return a file descriptor from a file object.
 
     Parameters:
@@ -385,22 +402,25 @@ def fileobj_to_fd(fileobj: Any) -> int:
     if isinstance(fileobj, int):
         fd = fileobj
     else:
+        # FIXME given the protocol I don't think the try/catch/int are
+        # required.
         try:
             fd = int(fileobj.fileno())
         except (AttributeError, TypeError, ValueError):
             raise TypeError("Invalid file object: " "{!r}".format(fileobj))
+    # FIXME Questionable, just let select deal with it.
     if fd < 0:
         raise TypeError("Invalid file descriptor: {}".format(fd))
     return fd
 
 
 def selector_select(
-    rlist: list[Any],
-    wlist: list[Any],
-    xlist: list[Any],
+    rlist: Iterable[FdLike],
+    wlist: Iterable[FdLike],
+    xlist: Iterable[FdLike],
     timeout: float | None = None,
     selectors_module: ModuleType = selectors,
-) -> tuple[list[int], list[int], list[int]]:
+) -> tuple[list[FdLike], list[FdLike], list[FdLike]]:
     """Selector-based drop-in replacement for select to overcome select
     limitation on a maximum filehandle value.
     """
@@ -415,7 +435,7 @@ def selector_select(
         selectors_module.EVENT_WRITE: wlist,
     }
     fd_events: defaultdict[int, int] = defaultdict(int)
-    fd_fileobjs: defaultdict[int, list[int]] = defaultdict(list)
+    fd_fileobjs: defaultdict[int, list[FdLike]] = defaultdict(list)
 
     for event, fileobjs in events_mapping.items():
         for fileobj in fileobjs:
@@ -431,9 +451,9 @@ def selector_select(
             # gevent can raise OSError
             raise ValueError("Invalid event mask or fd") from e
 
-    revents: list[int] = []
-    wevents: list[int] = []
-    xevents: list[int] = []
+    revents: list[FdLike] = []
+    wevents: list[FdLike] = []
+    xevents: list[FdLike] = []
     try:
         ready = selector.select(timeout)
     finally:

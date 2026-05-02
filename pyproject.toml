@@ -42,7 +42,9 @@ ignore_missing_imports = false
 # Disallow dynamic typing
 disallow_any_unimported = true
 disallow_any_expr = false
-disallow_any_decorated = false # true
+# disallow_any_decorated is disabled because it produces an error for almost
+# every decorated function (at least in python3.8)
+disallow_any_decorated = false
 disallow_any_explicit = false # true
 disallow_any_generics = true
 disallow_subclassing_any = true
@@ -94,9 +96,7 @@ verbosity = 0
 # produce different errors in 3.8 and 3.14, and I want to avoid code changes
 # as much as possible.
 
-disable_error_code = [ 
-    'unused-ignore',
-]
+disable_error_code = [ 'unused-ignore' ]
 
 [[tool.mypy.overrides]]
 module = [

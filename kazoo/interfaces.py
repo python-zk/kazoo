@@ -18,6 +18,7 @@ from typing import (
     Callable,
     Iterable,
     Protocol,
+    Union,
     TYPE_CHECKING,
 )
 
@@ -28,10 +29,13 @@ if TYPE_CHECKING:
 
 
 class HasFileNo(Protocol):
-    """Protocol for things like select"""
+    """Protocol for objects that support a fileno method."""
 
     def fileno(self) -> int:
         ...
+
+
+FdLike = Union[int, HasFileNo]
 
 
 class Socket(HasFileNo, Protocol):
@@ -176,15 +180,11 @@ class IHandler(abc.ABC):
     @abc.abstractmethod
     def select(
         self,
-        rlist: Iterable[int | HasFileNo],
-        wlist: Iterable[int | HasFileNo],
-        xlist: Iterable[int | HasFileNo],
+        rlist: Iterable[FdLike],
+        wlist: Iterable[FdLike],
+        xlist: Iterable[FdLike],
         timeout: float | None = None,
-    ) -> tuple[
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-        Iterable[int | HasFileNo],
-    ]:
+    ) -> tuple[Iterable[FdLike], Iterable[FdLike], Iterable[FdLike]]:
         """A select method that implements Python's select.select
         API"""
 

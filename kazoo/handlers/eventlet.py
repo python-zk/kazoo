@@ -20,7 +20,7 @@ from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import Event, Lockable, ReentrantLock, Socket
+    from kazoo.interfaces import Event, FdLike, Lockable, ReentrantLock, Socket
     from kazoo.protocol.states import Callback
 
 
@@ -201,7 +201,7 @@ class SequentialEventletHandler(object):
 
     def select(
         self, *args: Any, **kwargs: Any
-    ) -> tuple[list[int], list[int], list[int]]:
+    ) -> tuple[list[FdLike], list[FdLike], list[FdLike]]:
         with _yield_before_after():
             # Following appears to be a bug in mypy (see
             # https://github.com/python/mypy/issues/6799)

@@ -18,7 +18,15 @@ import contextlib
 import functools
 import logging
 import operator
-from typing import Any, Callable, Generator, Protocol, Tuple, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Protocol,
+    TypeVar,
+    Tuple,
+    TYPE_CHECKING,
+)
 
 
 from kazoo.exceptions import NoNodeError, KazooException
@@ -31,6 +39,9 @@ if TYPE_CHECKING:
     from kazoo.protocol.states import WatchedEvent
 
 logger = logging.getLogger(__name__)
+
+
+ReturnValue = TypeVar("ReturnValue")
 
 
 class TreeCache(object):
@@ -52,8 +63,8 @@ class TreeCache(object):
         self._state = self.STATE_LATENT
         self._outstanding_ops = 0
         self._is_initialized = False
-        self._error_listeners: list[Callable[[Exception], Any]] = []
-        self._event_listeners: list[Callable[[TreeEvent], Any]] = []
+        self._error_listeners: list[Callable[[Exception], None]] = []
+        self._event_listeners: list[Callable[[TreeEvent], None]] = []
         self._task_queue = client.handler.queue_impl()
         self._task_thread = None
 
@@ -119,8 +130,8 @@ class TreeCache(object):
                 self._root.on_deleted()
 
     def listen(
-        self, listener: Callable[[TreeEvent], Any]
-    ) -> Callable[[TreeEvent], Any]:
+        self, listener: Callable[[TreeEvent], None]
+    ) -> Callable[[TreeEvent], None]:
         """Registers a function to listen the cache events.
 
         The cache events are changes of local data. They are delivered from
@@ -136,8 +147,8 @@ class TreeCache(object):
         return listener
 
     def listen_fault(
-        self, listener: Callable[[Exception], Any]
-    ) -> Callable[[Exception], Any]:
+        self, listener: Callable[[Exception], None]
+    ) -> Callable[[Exception], None]:
         """Registers a function to listen the exceptions.
 
         It is possible to meet some exceptions during the cache running. You
@@ -175,6 +186,9 @@ class TreeCache(object):
                         does not exist.
         :raises ValueError: If the path is outside of this subtree.
         :returns: The :class:`frozenset` which including children names.
+
+        # FIXME the default return value should be an empty frozenset,
+        # returning None is confusing.
         """
         node = self._find_node(path)
         return default if node is None else frozenset(node._children)
@@ -191,7 +205,9 @@ class TreeCache(object):
             current_node = current_node._children[node_name]
         return current_node
 
-    def _publish_event(self, event_type: int, event_data: Any = None) -> None:
+    def _publish_event(
+        self, event_type: int, event_data: int | None = None
+    ) -> None:
         event = TreeEvent.make(event_type, event_data)
         if self._state != self.STATE_CLOSED:
             logger.debug("public event: %r", event)
@@ -219,7 +235,7 @@ class TreeCache(object):
                 # release before possible idle
                 del cb, func, args, kwargs
 
-    def _session_watcher(self, state: Any) -> None:
+    def _session_watcher(self, state: KazooState) -> None:
         if state == KazooState.SUSPENDED:
             self._publish_event(TreeEvent.CONNECTION_SUSPENDED)
         elif state == KazooState.CONNECTED:
@@ -415,7 +431,7 @@ class TreeEvent(Tuple[int, Any]):
     event_data = property(operator.itemgetter(1))
 
     @classmethod
-    def make(cls, event_type: int, event_data: Any) -> TreeEvent:
+    def make(cls, event_type: int, event_data: int | None = None) -> TreeEvent:
         """Creates a new TreeEvent tuple.
 
         :returns: A :class:`~kazoo.recipe.cache.TreeEvent` instance.
@@ -455,7 +471,7 @@ class NodeData(Tuple[str, bytes, Any]):
 
 @contextlib.contextmanager
 def handle_exception(
-    listeners: list[Callable[[Exception], Any]],
+    listeners: list[Callable[[Exception], None]],
 ) -> Generator[None, None, None]:
     try:
         yield

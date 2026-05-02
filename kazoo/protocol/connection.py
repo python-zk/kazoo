@@ -11,7 +11,7 @@ import select
 import socket
 import ssl
 import time
-from typing import Any, Iterator, Literal, TYPE_CHECKING, cast
+from typing import Any, Iterator, Literal, TypeVar, TYPE_CHECKING, cast
 
 from kazoo.exceptions import (
     AuthFailedError,
@@ -163,6 +163,9 @@ class RWServerAvailable(Exception):
     """Thrown if a RW Server becomes available"""
 
 
+ReturnValue = TypeVar("ReturnValue")
+
+
 class ConnectionHandler(object):
     """Zookeeper connection handler"""
 
@@ -203,7 +206,7 @@ class ConnectionHandler(object):
     # This is instance specific to avoid odd thread bug issues in Python
     # during shutdown global cleanup
     @contextmanager
-    def _socket_error_handling(self) -> Any:
+    def _socket_error_handling(self) -> Iterator[None]:
         try:
             yield
         except (socket.error, select.error) as e:
