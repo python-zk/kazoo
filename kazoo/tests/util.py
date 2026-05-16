@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 ##############################################################################
 #
 # Copyright Zope Foundation and Contributors.
@@ -16,46 +18,50 @@ import logging
 import os
 import time
 
+from typing import Any, Callable, Type
+
 CI = os.environ.get("CI", False)
-CI_ZK_VERSION = CI and os.environ.get("ZOOKEEPER_VERSION", None)
-if CI_ZK_VERSION:
-    if "-" in CI_ZK_VERSION:
-        # Ignore pre-release markers like -alpha
-        CI_ZK_VERSION = CI_ZK_VERSION.split("-")[0]
-    CI_ZK_VERSION = tuple([int(n) for n in CI_ZK_VERSION.split(".")])
+CI_ZK_VERSION: tuple[int, ...] = tuple()
+if CI:
+    has_version = os.environ.get("ZOOKEEPER_VERSION", "")
+    if has_version:
+        if "-" in has_version:
+            # Ignore pre-release markers like -alpha
+            has_version = has_version.split("-")[0]
+    CI_ZK_VERSION = tuple([int(n) for n in has_version.split(".")])
 
 
 class Handler(logging.Handler):
-    def __init__(self, *names, **kw):
+    def __init__(self, *names: Any, **kw: Any):
         logging.Handler.__init__(self)
         self.names = names
-        self.records = []
+        self.records: list[Any] = []
         self.setLoggerLevel(**kw)
 
-    def setLoggerLevel(self, level=1):
+    def setLoggerLevel(self, level: int = 1) -> None:
         self.level = level
-        self.oldlevels = {}
+        self.oldlevels: dict[str, int] = {}
 
-    def emit(self, record):
+    def emit(self, record: Any) -> None:
         self.records.append(record)
 
-    def clear(self):
+    def clear(self) -> None:
         del self.records[:]
 
-    def install(self):
+    def install(self) -> None:
         for name in self.names:
             logger = logging.getLogger(name)
             self.oldlevels[name] = logger.level
             logger.setLevel(self.level)
             logger.addHandler(self)
 
-    def uninstall(self):
+    def uninstall(self) -> None:
         for name in self.names:
             logger = logging.getLogger(name)
             logger.setLevel(self.oldlevels[name])
             logger.removeHandler(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join(
             [
                 (
@@ -78,7 +84,7 @@ class Handler(logging.Handler):
 
 
 class InstalledHandler(Handler):
-    def __init__(self, *names, **kw):
+    def __init__(self, *names: Any, **kw: Any):
         Handler.__init__(self, *names, **kw)
         self.install()
 
@@ -92,11 +98,11 @@ class Wait(object):
 
     def __init__(
         self,
-        timeout=None,
-        wait=None,
-        exception=None,
-        getnow=(lambda: time.monotonic),
-        getsleep=(lambda: time.sleep),
+        timeout: int | None = None,
+        wait: float | None = None,
+        exception: Type[Exception] = TimeOutWaitingFor,
+        getnow: Callable[[], Callable[[], float]] = (lambda: time.monotonic),
+        getsleep: Callable[[], Callable[[float], None]] = (lambda: time.sleep),
     ):
         if timeout is not None:
             self.timeout = timeout
@@ -104,15 +110,21 @@ class Wait(object):
         if wait is not None:
             self.wait = wait
 
-        if exception is not None:
-            self.TimeOutWaitingFor = exception
+        self.exception = exception
 
         self.getnow = getnow
         self.getsleep = getsleep
 
-    def __call__(self, func=None, timeout=None, wait=None, message=None):
-        if func is None:
-            return lambda func: self(func, timeout, wait, message)
+    def __call__(
+        self,
+        func: Callable[[], Any],  # | None = None,
+        timeout: float | None = None,
+        wait: float | None = None,
+        message: str | None = None,
+    ) -> None:
+        # if func is None:
+        #    # Seriously WTF?
+        #    return lambda func: self(func, timeout, wait, message)
 
         if func():
             return
@@ -131,9 +143,8 @@ class Wait(object):
             if func():
                 return
             if now() > deadline:
-                raise self.TimeOutWaitingFor(
-                    message or func.__doc__ or func.__name__
-                )
+                # raise self.TimeOutWaitingFor(
+                raise self.exception(message or func.__doc__ or func.__name__)
 
 
 wait = Wait()

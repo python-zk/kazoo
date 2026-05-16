@@ -1,35 +1,37 @@
+from __future__ import annotations
+
 import threading
 
 from kazoo.testing import KazooTestCase
 
 
 class KazooBarrierTests(KazooTestCase):
-    def test_barrier_not_exist(self):
+    def test_barrier_not_exist(self) -> None:
         b = self.client.Barrier("/some/path")
         assert b.wait()
 
-    def test_barrier_exists(self):
+    def test_barrier_exists(self) -> None:
         b = self.client.Barrier("/some/path")
         b.create()
         assert not b.wait(0)
         b.remove()
         assert b.wait()
 
-    def test_remove_nonexistent_barrier(self):
+    def test_remove_nonexistent_barrier(self) -> None:
         b = self.client.Barrier("/some/path")
         assert not b.remove()
 
 
 class KazooDoubleBarrierTests(KazooTestCase):
-    def test_basic_barrier(self):
+    def test_basic_barrier(self) -> None:
         b = self.client.DoubleBarrier("/some/path", 1)
         assert not b.participating
         b.enter()
         assert b.participating
-        b.leave()
+        b.leave()  # type: ignore[unreachable]
         assert not b.participating
 
-    def test_two_barrier(self):
+    def test_two_barrier(self) -> None:
         av = threading.Event()
         ev = threading.Event()
         bv = threading.Event()
@@ -37,14 +39,14 @@ class KazooDoubleBarrierTests(KazooTestCase):
         b1 = self.client.DoubleBarrier("/some/path", 2)
         b2 = self.client.DoubleBarrier("/some/path", 2)
 
-        def make_barrier_one():
+        def make_barrier_one() -> None:
             b1.enter()
             ev.set()
             release_all.wait()
             b1.leave()
             ev.set()
 
-        def make_barrier_two():
+        def make_barrier_two() -> None:
             bv.wait()
             b2.enter()
             av.set()
@@ -65,7 +67,7 @@ class KazooDoubleBarrierTests(KazooTestCase):
         av.wait()
         ev.wait()
         assert b1.participating
-        assert b2.participating
+        assert b2.participating  # type: ignore[unreachable]
 
         av.clear()
         ev.clear()
@@ -78,7 +80,7 @@ class KazooDoubleBarrierTests(KazooTestCase):
         t1.join()
         t2.join()
 
-    def test_three_barrier(self):
+    def test_three_barrier(self) -> None:
         av = threading.Event()
         ev = threading.Event()
         bv = threading.Event()
@@ -87,14 +89,14 @@ class KazooDoubleBarrierTests(KazooTestCase):
         b2 = self.client.DoubleBarrier("/some/path", 3)
         b3 = self.client.DoubleBarrier("/some/path", 3)
 
-        def make_barrier_one():
+        def make_barrier_one() -> None:
             b1.enter()
             ev.set()
             release_all.wait()
             b1.leave()
             ev.set()
 
-        def make_barrier_two():
+        def make_barrier_two() -> None:
             bv.wait()
             b2.enter()
             av.set()
@@ -119,7 +121,7 @@ class KazooDoubleBarrierTests(KazooTestCase):
         av.wait()
 
         assert b1.participating
-        assert b2.participating
+        assert b2.participating  # type: ignore[unreachable]
         assert b3.participating
 
         av.clear()
@@ -135,7 +137,7 @@ class KazooDoubleBarrierTests(KazooTestCase):
         t1.join()
         t2.join()
 
-    def test_barrier_existing_parent_node(self):
+    def test_barrier_existing_parent_node(self) -> None:
         b = self.client.DoubleBarrier("/some/path", 1)
         assert b.participating is False
         self.client.create("/some", ephemeral=True)
@@ -143,7 +145,7 @@ class KazooDoubleBarrierTests(KazooTestCase):
         b.enter()
         assert b.participating is False
 
-    def test_barrier_existing_node(self):
+    def test_barrier_existing_node(self) -> None:
         b = self.client.DoubleBarrier("/some", 1)
         assert b.participating is False
         self.client.ensure_path(b.path)
@@ -151,4 +153,4 @@ class KazooDoubleBarrierTests(KazooTestCase):
         # the barrier will re-use an existing node
         b.enter()
         assert b.participating is True
-        b.leave()
+        b.leave()  # type: ignore[unreachable]

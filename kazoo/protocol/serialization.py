@@ -1,12 +1,23 @@
-"""Zookeeper Serializers, Deserializers, and NamedTuple objects"""
-from collections import namedtuple
-import struct
+"""Zookeeper Serializers, Deserializers, and namedtuple objects
 
-from kazoo.exceptions import EXCEPTIONS
+Note: On python3.8, you can't do classvars with NamedTuple.
+
+FIXME As soon as we get off python3.8 we should change the namedtuple objects
+to NamedTuple, as it should get better typechecking.
+"""
+from __future__ import annotations
+
+import struct
+from collections import namedtuple
+from typing import ClassVar, Sequence, Union, TYPE_CHECKING
+
+from kazoo.exceptions import EXCEPTIONS, ZookeeperError
 from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL
 from kazoo.security import Id
 
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient, WatchFunc
 
 # Struct objects with formats compiled
 bool_struct = struct.Struct("B")
@@ -21,20 +32,24 @@ reply_header_struct = struct.Struct("!iqi")
 stat_struct = struct.Struct("!qqqqiiiqiiq")
 
 
-def read_string(buffer, offset):
+def read_string(buffer: bytes, offset: int) -> tuple[str, int]:
     """Reads an int specified buffer into a string and returns the
     string and the new offset in the buffer"""
     length = int_struct.unpack_from(buffer, offset)[0]
     offset += int_struct.size
     if length < 0:
-        return None, offset
+        # A note: write_str sends a length of -1 to indicate a value of None
+        # was passed. Not entirely sure where this happens because none of the
+        # callers of read_string seem to expect a None value.
+        # Should be ignoring return-value but hound cli...
+        return None, offset  # type: ignore
     else:
         index = offset
         offset += length
         return buffer[index : index + length].decode("utf-8"), offset
 
 
-def read_acl(bytes, offset):
+def read_acl(bytes: bytes, offset: int) -> tuple[ACL, int]:
     perms = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     scheme, offset = read_string(bytes, offset)
@@ -42,7 +57,7 @@ def read_acl(bytes, offset):
     return ACL(perms, Id(scheme, id)), offset
 
 
-def write_string(bytes):
+def write_string(bytes: str | None) -> bytes:
     if not bytes:
         return int_struct.pack(-1)
     else:
@@ -50,14 +65,14 @@ def write_string(bytes):
         return int_struct.pack(len(utf8_str)) + utf8_str
 
 
-def write_buffer(bytes):
+def write_buffer(bytes: bytes | None) -> bytes:
     if bytes is None:
         return int_struct.pack(-1)
     else:
         return int_struct.pack(len(bytes)) + bytes
 
 
-def read_buffer(bytes, offset):
+def read_buffer(bytes: bytes, offset: int) -> tuple[bytes | None, int]:
     length = int_struct.unpack_from(bytes, offset)[0]
     offset += int_struct.size
     if length < 0:
@@ -69,10 +84,10 @@ def read_buffer(bytes, offset):
 
 
 class Close(namedtuple("Close", "")):
-    type = -11
+    type: ClassVar[int] = -11
 
     @classmethod
-    def serialize(cls):
+    def serialize(self) -> bytes:
         return b""
 
 
@@ -80,10 +95,10 @@ CloseInstance = Close()
 
 
 class Ping(namedtuple("Ping", "")):
-    type = 11
+    type: ClassVar[int] = 11
 
     @classmethod
-    def serialize(cls):
+    def serialize(cls) -> bytes:
         return b""
 
 
@@ -97,9 +112,16 @@ class Connect(
         " time_out session_id passwd read_only",
     )
 ):
-    type = None
+    protocol_version: int
+    last_zxid_seen: int
+    time_out: int
+    session_id: int
+    passwd: bytes
+    read_only: bool
 
-    def serialize(self):
+    type: int | None = None  # Note: Not a classvar
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(
             int_long_int_long_struct.pack(
@@ -114,7 +136,7 @@ class Connect(
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[Connect, int]:
         proto_version, timeout, session_id = int_int_long_struct.unpack_from(
             bytes, offset
         )
@@ -133,9 +155,14 @@ class Connect(
 
 
 class Create(namedtuple("Create", "path data acl flags")):
-    type = 1
+    path: str
+    data: bytes | None
+    acl: Sequence[ACL]
+    flags: int
 
-    def serialize(self):
+    type: ClassVar[int] = 1
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(write_buffer(self.data))
@@ -150,59 +177,74 @@ class Create(namedtuple("Create", "path data acl flags")):
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> str:
         return read_string(bytes, offset)[0]
 
 
 class Delete(namedtuple("Delete", "path version")):
-    type = 2
+    path: str
+    version: int
 
-    def serialize(self):
+    type: ClassVar[int] = 2
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(int_struct.pack(self.version))
         return b
 
     @classmethod
-    def deserialize(self, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> bool:
         return True
 
 
 class Exists(namedtuple("Exists", "path watcher")):
-    type = 3
+    path: str
+    watcher: WatchFunc | None
 
-    def serialize(self):
+    type: ClassVar[int] = 3
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend([1 if self.watcher else 0])
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+    def deserialize(cls, bytes: bytes, offset: int) -> ZnodeStat | None:
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return stat if stat.czxid != -1 else None
 
 
 class GetData(namedtuple("GetData", "path watcher")):
-    type = 4
+    path: str
+    watcher: WatchFunc | None
 
-    def serialize(self):
+    type: ClassVar[int] = 4
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend([1 if self.watcher else 0])
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> tuple[bytes | None, ZnodeStat]:
         data, offset = read_buffer(bytes, offset)
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return data, stat
 
 
 class SetData(namedtuple("SetData", "path data version")):
-    type = 5
+    path: str
+    data: bytes | None
+    version: int
 
-    def serialize(self):
+    type: ClassVar[int] = 5
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(write_buffer(self.data))
@@ -210,18 +252,22 @@ class SetData(namedtuple("SetData", "path data version")):
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
-        return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+    def deserialize(cls, bytes: bytes, offset: int) -> ZnodeStat:
+        return ZnodeStat(*stat_struct.unpack_from(bytes, offset))
 
 
 class GetACL(namedtuple("GetACL", "path")):
-    type = 6
+    path: str
 
-    def serialize(self):
+    type: ClassVar[int] = 6
+
+    def serialize(self) -> bytearray:
         return bytearray(write_string(self.path))
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> tuple[list[ACL], ZnodeStat] | list[ACL]:
         count = int_struct.unpack_from(bytes, offset)[0]
         offset += int_struct.size
         if count == -1:  # pragma: nocover
@@ -231,14 +277,18 @@ class GetACL(namedtuple("GetACL", "path")):
         for c in range(count):
             acl, offset = read_acl(bytes, offset)
             acls.append(acl)
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return acls, stat
 
 
 class SetACL(namedtuple("SetACL", "path acls version")):
-    type = 7
+    path: str
+    acls: Sequence[ACL]
+    version: int
 
-    def serialize(self):
+    type: ClassVar[int] = 7
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(int_struct.pack(len(self.acls)))
@@ -252,21 +302,24 @@ class SetACL(namedtuple("SetACL", "path acls version")):
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
-        return ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+    def deserialize(cls, bytes: bytes, offset: int) -> ZnodeStat:
+        return ZnodeStat(*stat_struct.unpack_from(bytes, offset))
 
 
 class GetChildren(namedtuple("GetChildren", "path watcher")):
-    type = 8
+    path: str
+    watcher: WatchFunc | None
 
-    def serialize(self):
+    type: ClassVar[int] = 8
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend([1 if self.watcher else 0])
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> list[str]:
         count = int_struct.unpack_from(bytes, offset)[0]
         offset += int_struct.size
         if count == -1:  # pragma: nocover
@@ -280,54 +333,71 @@ class GetChildren(namedtuple("GetChildren", "path watcher")):
 
 
 class Sync(namedtuple("Sync", "path")):
-    type = 9
+    path: str
 
-    def serialize(self):
+    type: ClassVar[int] = 9
+
+    def serialize(self) -> bytes:
         return write_string(self.path)
 
     @classmethod
-    def deserialize(cls, buffer, offset):
+    def deserialize(cls, buffer: bytes, offset: int) -> str:
         return read_string(buffer, offset)[0]
 
 
 class GetChildren2(namedtuple("GetChildren2", "path watcher")):
-    type = 12
+    path: str
+    watcher: WatchFunc | None
 
-    def serialize(self):
+    type: ClassVar[int] = 12
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend([1 if self.watcher else 0])
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> tuple[list[str], ZnodeStat] | list[str]:
         count = int_struct.unpack_from(bytes, offset)[0]
         offset += int_struct.size
         if count == -1:  # pragma: nocover
             return []
 
-        children = []
+        children: list[str] = []
         for c in range(count):
             child, offset = read_string(bytes, offset)
             children.append(child)
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return children, stat
 
 
 class CheckVersion(namedtuple("CheckVersion", "path version")):
-    type = 13
+    path: str
+    version: int
 
-    def serialize(self):
+    type: ClassVar[int] = 13
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(int_struct.pack(self.version))
         return b
 
 
-class Transaction(namedtuple("Transaction", "operations")):
-    type = 14
+# FIXME Transaction class should move after Create2
+Transaction_Types = Union[Create, "Create2", Delete, SetData, CheckVersion]
+Transaction_Response = Union[str, bool, ZnodeStat, ZookeeperError, None]
 
-    def serialize(self):
+
+class Transaction(namedtuple("Transaction", "operations")):
+    operations: list[Transaction_Types]
+
+    type: ClassVar[int] = 14
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         for op in self.operations:
             b.extend(
@@ -336,19 +406,19 @@ class Transaction(namedtuple("Transaction", "operations")):
         return b + multiheader_struct.pack(-1, True, -1)
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> list[Transaction_Response]:
         header = MultiHeader(None, False, None)
-        results = []
-        response = None
+        results: list[Transaction_Response] = []
+        response: Transaction_Response = None
         while not header.done:
             if header.type == Create.type:
                 response, offset = read_string(bytes, offset)
             elif header.type == Delete.type:
                 response = True
             elif header.type == SetData.type:
-                response = ZnodeStat._make(
-                    stat_struct.unpack_from(bytes, offset)
-                )
+                response = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
                 offset += stat_struct.size
             elif header.type == CheckVersion.type:
                 response = True
@@ -362,8 +432,10 @@ class Transaction(namedtuple("Transaction", "operations")):
         return results
 
     @staticmethod
-    def unchroot(client, response):
-        resp = []
+    def unchroot(
+        client: KazooClient, response: list[Transaction_Response]
+    ) -> list[Transaction_Response]:
+        resp: list[Transaction_Response] = []
         for result in response:
             if isinstance(result, str):
                 resp.append(client.unchroot(result))
@@ -373,9 +445,14 @@ class Transaction(namedtuple("Transaction", "operations")):
 
 
 class Create2(namedtuple("Create2", "path data acl flags")):
-    type = 15
+    path: str
+    data: bytes | None
+    acl: Sequence[ACL]
+    flags: int
 
-    def serialize(self):
+    type: ClassVar[int] = 15
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.path))
         b.extend(write_buffer(self.data))
@@ -390,18 +467,23 @@ class Create2(namedtuple("Create2", "path data acl flags")):
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[str, ZnodeStat]:
         path, offset = read_string(bytes, offset)
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return path, stat
 
 
 class Reconfig(
     namedtuple("Reconfig", "joining leaving new_members config_id")
 ):
-    type = 16
+    joining: str | None
+    leaving: str | None
+    new_members: str | None
+    config_id: int
 
-    def serialize(self):
+    type: ClassVar[int] = 16
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_string(self.joining))
         b.extend(write_string(self.leaving))
@@ -410,16 +492,22 @@ class Reconfig(
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> tuple[bytes | None, ZnodeStat]:
         data, offset = read_buffer(bytes, offset)
-        stat = ZnodeStat._make(stat_struct.unpack_from(bytes, offset))
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
         return data, stat
 
 
 class Auth(namedtuple("Auth", "auth_type scheme auth")):
-    type = 100
+    auth_type: int
+    scheme: str
+    auth: str
 
-    def serialize(self):
+    type: ClassVar[int] = 100
+
+    def serialize(self) -> bytes:
         return (
             int_struct.pack(self.auth_type)
             + write_string(self.scheme)
@@ -428,22 +516,30 @@ class Auth(namedtuple("Auth", "auth_type scheme auth")):
 
 
 class SASL(namedtuple("SASL", "challenge")):
-    type = 102
+    challenge: bytes | None
 
-    def serialize(self):
+    type: ClassVar[int] = 102
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(write_buffer(self.challenge))
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(
+        cls, bytes: bytes, offset: int
+    ) -> tuple[bytes | None, int]:
         challenge, offset = read_buffer(bytes, offset)
         return challenge, offset
 
 
 class Watch(namedtuple("Watch", "type state path")):
+    type: int
+    state: int
+    path: str
+
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[Watch, int]:
         """Given bytes and the current bytes offset, return the
         type, state, path, and new offset"""
         type, state = int_int_struct.unpack_from(bytes, offset)
@@ -453,19 +549,27 @@ class Watch(namedtuple("Watch", "type state path")):
 
 
 class ReplyHeader(namedtuple("ReplyHeader", "xid, zxid, err")):
+    xid: int
+    zxid: int
+    err: int
+
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[ReplyHeader, int]:
         """Given bytes and the current bytes offset, return a
         :class:`ReplyHeader` instance and the new offset"""
         new_offset = offset + reply_header_struct.size
         return (
-            cls._make(reply_header_struct.unpack_from(bytes, offset)),
+            cls(*reply_header_struct.unpack_from(bytes, offset)),
             new_offset,
         )
 
 
-class MultiHeader(namedtuple("MultiHeader", "type done err")):
-    def serialize(self):
+class MultiHeader(namedtuple("MultiHeader", "type, done, err")):
+    type: int | None
+    done: bool
+    err: int | None
+
+    def serialize(self) -> bytearray:
         b = bytearray()
         b.extend(int_struct.pack(self.type))
         b.extend([1 if self.done else 0])
@@ -473,7 +577,7 @@ class MultiHeader(namedtuple("MultiHeader", "type done err")):
         return b
 
     @classmethod
-    def deserialize(cls, bytes, offset):
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[MultiHeader, int]:
         t, done, err = multiheader_struct.unpack_from(bytes, offset)
         offset += multiheader_struct.size
         return cls(t, done == 1, err), offset

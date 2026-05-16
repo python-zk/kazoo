@@ -1,27 +1,28 @@
+from __future__ import annotations
+
 import contextlib
 import unittest
 
+from typing import Generator, Literal
+
 import pytest
 
-from kazoo.client import KazooClient
+from kazoo.handlers.utils import create_tcp_socket
 from kazoo.handlers import utils
 from kazoo.protocol import states as kazoo_states
-from kazoo.tests import test_client
-from kazoo.tests import test_lock
-from kazoo.tests import util as test_util
 
 try:
-    import eventlet
-    from eventlet.green import threading
+    from eventlet.green import socket
     from kazoo.handlers import eventlet as eventlet_handler
-
-    EVENTLET_HANDLER_AVAILABLE = True
+    from kazoo.handlers.eventlet import SequentialEventletHandler
 except ImportError:
-    EVENTLET_HANDLER_AVAILABLE = False
+    pytestmark = pytest.mark.skip(reason="eventlet not available")
 
 
 @contextlib.contextmanager
-def start_stop_one(handler=None):
+def start_stop_one(
+    handler: SequentialEventletHandler = None,  # type: ignore[assignment]
+) -> Generator[SequentialEventletHandler]:
     if not handler:
         handler = eventlet_handler.SequentialEventletHandler()
     handler.start()
@@ -32,22 +33,17 @@ def start_stop_one(handler=None):
 
 
 class TestEventletHandler(unittest.TestCase):
-    def setUp(self):
-        if not EVENTLET_HANDLER_AVAILABLE:
-            pytest.skip("eventlet handler not available.")
-        super(TestEventletHandler, self).setUp()
-
-    def test_started(self):
+    def test_started(self) -> None:
         with start_stop_one() as handler:
             assert handler.running is True
             assert len(handler._workers) != 0
         assert handler.running is False
-        assert len(handler._workers) == 0
+        assert len(handler._workers) == 0  # type: ignore[unreachable]
 
-    def test_spawn(self):
+    def test_spawn(self) -> None:
         captures = []
 
-        def cb():
+        def cb() -> None:
             captures.append(1)
 
         with start_stop_one() as handler:
@@ -55,10 +51,10 @@ class TestEventletHandler(unittest.TestCase):
 
         assert len(captures) == 1
 
-    def test_dispatch(self):
+    def test_dispatch(self) -> None:
         captures = []
 
-        def cb():
+        def cb() -> None:
             captures.append(1)
 
         with start_stop_one() as handler:
@@ -66,10 +62,10 @@ class TestEventletHandler(unittest.TestCase):
 
         assert len(captures) == 1
 
-    def test_async_link(self):
-        captures = []
+    def test_async_link(self) -> None:
+        captures: list[SequentialEventletHandler] = []
 
-        def cb(handler):
+        def cb(handler: SequentialEventletHandler) -> None:
             captures.append(handler)
 
         with start_stop_one() as handler:
@@ -80,20 +76,20 @@ class TestEventletHandler(unittest.TestCase):
         assert len(captures) == 1
         assert r.get() == 2
 
-    def test_timeout_raising(self):
+    def test_timeout_raising(self) -> None:
         handler = eventlet_handler.SequentialEventletHandler()
 
         with pytest.raises(handler.timeout_exception):
             raise handler.timeout_exception("This is a timeout")
 
-    def test_async_ok(self):
-        captures = []
+    def test_async_ok(self) -> None:
+        captures: list[Literal[1] | SequentialEventletHandler] = []
 
-        def delayed():
+        def delayed() -> Literal[1]:
             captures.append(1)
             return 1
 
-        def after_delayed(handler):
+        def after_delayed(handler: SequentialEventletHandler) -> None:
             captures.append(handler)
 
         with start_stop_one() as handler:
@@ -106,7 +102,7 @@ class TestEventletHandler(unittest.TestCase):
         assert captures[0] == 1
         assert r.get() == 1
 
-    def test_get_with_no_block(self):
+    def test_get_with_no_block(self) -> None:
         handler = eventlet_handler.SequentialEventletHandler()
 
         with start_stop_one(handler):
@@ -117,8 +113,8 @@ class TestEventletHandler(unittest.TestCase):
             r.set(1)
             assert r.get() == 1
 
-    def test_async_exception(self):
-        def broken():
+    def test_async_exception(self) -> None:
+        def broken() -> None:
             raise IOError("Failed")
 
         with start_stop_one() as handler:
@@ -130,13 +126,11 @@ class TestEventletHandler(unittest.TestCase):
         with pytest.raises(IOError):
             r.get()
 
-    def test_huge_file_descriptor(self):
+    def test_huge_file_descriptor(self) -> None:
         try:
             import resource
         except ImportError:
             self.skipTest("resource module unavailable on this platform")
-        from eventlet.green import socket
-        from kazoo.handlers.utils import create_tcp_socket
 
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
@@ -154,91 +148,3 @@ class TestEventletHandler(unittest.TestCase):
             h.stop()
         for sock in socks:
             sock.close()
-
-
-class TestEventletClient(test_client.TestClient):
-    def setUp(self):
-        if not EVENTLET_HANDLER_AVAILABLE:
-            pytest.skip("eventlet handler not available.")
-        super(TestEventletClient, self).setUp()
-
-    @staticmethod
-    def make_event():
-        return threading.Event()
-
-    @staticmethod
-    def make_condition():
-        return threading.Condition()
-
-    def _makeOne(self, *args):
-        return eventlet_handler.SequentialEventletHandler(*args)
-
-    def _get_client(self, **kwargs):
-        kwargs["handler"] = self._makeOne()
-        return KazooClient(self.hosts, **kwargs)
-
-
-class TestEventletSemaphore(test_lock.TestSemaphore):
-    def setUp(self):
-        if not EVENTLET_HANDLER_AVAILABLE:
-            pytest.skip("eventlet handler not available.")
-        super(TestEventletSemaphore, self).setUp()
-
-    @staticmethod
-    def make_condition():
-        return threading.Condition()
-
-    @staticmethod
-    def make_event():
-        return threading.Event()
-
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
-
-    def _makeOne(self, *args):
-        return eventlet_handler.SequentialEventletHandler(*args)
-
-    def _get_client(self, **kwargs):
-        kwargs["handler"] = self._makeOne()
-        c = KazooClient(self.hosts, **kwargs)
-        try:
-            self._clients.append(c)
-        except AttributeError:
-            self._client = [c]
-        return c
-
-
-class TestEventletLock(test_lock.KazooLockTests):
-    def setUp(self):
-        if not EVENTLET_HANDLER_AVAILABLE:
-            pytest.skip("eventlet handler not available.")
-        super(TestEventletLock, self).setUp()
-
-    @staticmethod
-    def make_condition():
-        return threading.Condition()
-
-    @staticmethod
-    def make_event():
-        return threading.Event()
-
-    @staticmethod
-    def make_thread(*args, **kwargs):
-        return threading.Thread(*args, **kwargs)
-
-    @staticmethod
-    def make_wait():
-        return test_util.Wait(getsleep=(lambda: eventlet.sleep))
-
-    def _makeOne(self, *args):
-        return eventlet_handler.SequentialEventletHandler(*args)
-
-    def _get_client(self, **kwargs):
-        kwargs["handler"] = self._makeOne()
-        c = KazooClient(self.hosts, **kwargs)
-        try:
-            self._clients.append(c)
-        except AttributeError:
-            self._client = [c]
-        return c

@@ -18,7 +18,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with txzookeeper.  If not, see <http://www.gnu.org/licenses/>.
-
+from __future__ import annotations
 
 import code
 from collections import namedtuple
@@ -37,16 +37,19 @@ import traceback
 import OpenSSL
 import jks
 
+from types import FrameType
+from typing import Any, Iterator
 
 log = logging.getLogger(__name__)
 
 
-def debug(sig, frame):
+def debug(sig: int, frame: FrameType | None) -> None:
     """Interrupt running process, and provide a python prompt for
     interactive debugging."""
     d = {"_frame": frame}  # Allow access to frame object.
-    d.update(frame.f_globals)  # Unless shadowed by global
-    d.update(frame.f_locals)
+    if frame is not None:
+        d.update(frame.f_globals)  # Unless shadowed by global
+        d.update(frame.f_locals)
 
     i = code.InteractiveConsole(d)
     message = "Signal received : entering python shell.\nTraceback:\n"
@@ -54,7 +57,7 @@ def debug(sig, frame):
     i.interact(message)
 
 
-def listen():
+def listen() -> None:
     if os.name != "nt":  # SIGUSR1 is not supported on Windows
         signal.signal(signal.SIGUSR1, debug)  # Register handler
 
@@ -62,7 +65,7 @@ def listen():
 listen()
 
 
-def to_java_compatible_path(path):
+def to_java_compatible_path(path: str) -> str:
     if os.name == "nt":
         path = path.replace("\\", "/")
     return path
@@ -85,14 +88,14 @@ class ManagedZooKeeper(object):
 
     def __init__(
         self,
-        software_path,
-        server_info,
-        peers=(),
-        classpath=None,
-        configuration_entries=(),
-        java_system_properties=(),
-        jaas_config=None,
-        ssl_configuration=None,
+        software_path: str,
+        server_info: ServerInfo,
+        peers: list[ServerInfo],
+        classpath: str,
+        configuration_entries: list[str],
+        java_system_properties: list[str],
+        jaas_config: str | None = None,
+        ssl_configuration: dict[str, Any] | None = None,
     ):
         """Define the ZooKeeper test instance.
 
@@ -104,8 +107,8 @@ class ManagedZooKeeper(object):
         self.server_info = server_info
         self.host = "127.0.0.1"
         self.peers = peers
-        self.working_path = tempfile.mkdtemp()
-        self._running = False
+        self.working_path: str = tempfile.mkdtemp()
+        self._running: bool = False
         self.configuration_entries = configuration_entries
         self.java_system_properties = java_system_properties
         self.jaas_config = jaas_config
@@ -113,7 +116,7 @@ class ManagedZooKeeper(object):
             ssl_configuration if ssl_configuration is not None else {}
         )
 
-    def run(self):
+    def run(self) -> None:
         """Run the ZooKeeper instance under a temporary directory.
 
         Writes ZK log messages to zookeeper.log in the current directory.
@@ -257,7 +260,7 @@ log4j.appender.ROLLINGFILE.File="""
         self._running = True
 
     @property
-    def classpath(self):
+    def classpath(self) -> str:
         """Get the classpath necessary to run ZooKeeper."""
 
         if self._classpath:
@@ -290,28 +293,28 @@ log4j.appender.ROLLINGFILE.File="""
         return os.pathsep.join(jars)
 
     @property
-    def address(self):
+    def address(self) -> str:
         """Get the address of the ZooKeeper instance."""
         return "%s:%s" % (self.host, self.client_port)
 
     @property
-    def secure_address(self):
+    def secure_address(self) -> str:
         """Get the address of the SSL ZooKeeper instance."""
         return "%s:%s" % (self.host, self.secure_client_port)
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self._running
 
     @property
-    def client_port(self):
+    def client_port(self) -> Any:
         return self.server_info.client_port
 
     @property
-    def secure_client_port(self):
+    def secure_client_port(self) -> Any:
         return self.server_info.secure_client_port
 
-    def reset(self):
+    def reset(self) -> None:
         """Stop the zookeeper instance, cleaning out its on disk-data."""
         self.stop()
         shutil.rmtree(os.path.join(self.working_path, "data"), True)
@@ -319,7 +322,7 @@ log4j.appender.ROLLINGFILE.File="""
         with open(os.path.join(self.working_path, "data", "myid"), "w") as fh:
             fh.write(str(self.server_info.server_id))
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the Zookeeper instance, retaining on disk state."""
         if not self.running:
             return
@@ -335,14 +338,14 @@ log4j.appender.ROLLINGFILE.File="""
             )
         self._running = False
 
-    def destroy(self):
+    def destroy(self) -> None:
         """Stop the ZooKeeper instance and destroy its on disk-state"""
         # called by at exit handler, reimport to avoid cleanup race.
         self.stop()
 
         shutil.rmtree(self.working_path, True)
 
-    def get_logs(self, num_lines=100):
+    def get_logs(self, num_lines: int = 100) -> list[str]:
         log_path = pathlib.Path(self.working_path, "zookeeper.log")
         if log_path.exists():
             log_file = log_path.open("r")
@@ -354,24 +357,24 @@ log4j.appender.ROLLINGFILE.File="""
 class ZookeeperCluster(object):
     def __init__(
         self,
-        install_path=None,
-        classpath=None,
-        size=3,
-        port_offset=20000,
-        observer_start_id=-1,
-        configuration_entries=(),
-        java_system_properties=(),
-        jaas_config=None,
+        install_path: str,
+        classpath: str,
+        size: int,
+        port_offset: int,
+        observer_start_id: int,
+        configuration_entries: list[str],
+        java_system_properties: list[str],
+        jaas_config: str | None,
     ):
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
-        self._ssl_configuration = {}
+        self._ssl_configuration: dict[str, Any] = {}
         self.perform_ssl_certs_generation()
 
         # Calculate ports and peer group
         port = port_offset
-        peers = []
+        peers: list[ServerInfo] = []
 
         for i in range(size):
             server_id = i + 1
@@ -408,13 +411,13 @@ class ZookeeperCluster(object):
                 )
             )
 
-    def __getitem__(self, k):
+    def __getitem__(self, k: int) -> ManagedZooKeeper:
         return self._servers[k]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[ManagedZooKeeper]:
         return iter(self._servers)
 
-    def start(self):
+    def start(self) -> None:
         # Zookeeper client expresses a preference for either lower ports or
         # lexicographical ordering of hosts, to ensure that all servers have a
         # chance to startup, start them in reverse order.
@@ -427,26 +430,26 @@ class ZookeeperCluster(object):
 
         time.sleep(2)
 
-    def stop(self):
+    def stop(self) -> None:
         for server in self:
             server.stop()
         self._servers = []
 
-    def terminate(self):
+    def terminate(self) -> None:
         for server in self:
             server.destroy()
 
-    def reset(self):
+    def reset(self) -> None:
         for server in self:
             server.reset()
 
-    def get_logs(self):
+    def get_logs(self) -> list[str]:
         logs = []
         for server in self:
             logs += server.get_logs()
         return logs
 
-    def perform_ssl_certs_generation(self):
+    def perform_ssl_certs_generation(self) -> None:
         if self._ssl_configuration:
             return
 
@@ -542,7 +545,7 @@ class ZookeeperCluster(object):
             "keystore": keystore,
         }
 
-    def get_ssl_client_configuration(self):
+    def get_ssl_client_configuration(self) -> dict[str, Any]:
         if not self._ssl_configuration:
             raise RuntimeError("SSL not configured yet.")
         return {

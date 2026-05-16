@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import uuid
+
+from typing import Any
 
 import pytest
 
+from kazoo.recipe.counter import Counter
 from kazoo.testing import KazooTestCase
 
 
 class KazooCounterTests(KazooTestCase):
-    def _makeOne(self, **kw):
+    def _makeOne(self, **kw: Any) -> Counter:
         path = "/" + uuid.uuid4().hex
         return self.client.Counter(path, **kw)
 
-    def test_int_counter(self):
+    def test_int_counter(self) -> None:
         counter = self._makeOne()
         assert counter.value == 0
         counter += 2
@@ -20,7 +25,7 @@ class KazooCounterTests(KazooTestCase):
         counter - 1
         assert counter.value == -1
 
-    def test_int_curator_counter(self):
+    def test_int_curator_counter(self) -> None:
         counter = self._makeOne(support_curator=True)
         assert counter.value == 0
         counter += 2
@@ -36,7 +41,7 @@ class KazooCounterTests(KazooTestCase):
         counter -= 2147483647
         assert counter.value == -2147483647
 
-    def test_float_counter(self):
+    def test_float_counter(self) -> None:
         counter = self._makeOne(default=0.0)
         assert counter.value == 0.0
         counter += 2.1
@@ -44,16 +49,18 @@ class KazooCounterTests(KazooTestCase):
         counter -= 3.1
         assert counter.value == -1.0
 
-    def test_errors(self):
+    def test_errors(self) -> None:
         counter = self._makeOne()
         with pytest.raises(TypeError):
-            counter.__add__(2.1)
+            counter.__add__(2.1)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            counter.__add__(b"a")
+            counter.__add__(b"a")  # type: ignore[operator]
         with pytest.raises(TypeError):
-            counter = self._makeOne(default=0.0, support_curator=True)
+            counter = self._makeOne(  # type: ignore[arg-type]
+                default=0.0, support_curator=True
+            )
 
-    def test_pre_post_values(self):
+    def test_pre_post_values(self) -> None:
         counter = self._makeOne()
         assert counter.value == 0
         assert counter.pre_value is None
