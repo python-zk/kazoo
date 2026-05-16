@@ -1,8 +1,13 @@
 """Kazoo State and Event objects"""
-from collections import namedtuple
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import Any, Callable, Iterable, NamedTuple
 
 
-class KazooState(object):
+# This is a (str, Enum) for backwards compatibility.
+class KazooState(str, Enum):
     """High level connection state values
 
     States inspired by Netflix Curator.
@@ -33,7 +38,8 @@ class KazooState(object):
     LOST = "LOST"
 
 
-class KeeperState(object):
+# This is a (str, Enum) for backwards compatibility.
+class KeeperState(str, Enum):
     """Zookeeper State
 
     Represents the Zookeeper state. Watch functions will receive a
@@ -70,7 +76,8 @@ class KeeperState(object):
     EXPIRED_SESSION = "EXPIRED_SESSION"
 
 
-class EventType(object):
+# This is a (str, Enum) for backwards compatibility.
+class EventType(str, Enum):
     """Zookeeper Event
 
     Represents a Zookeeper event. Events trigger watch functions which
@@ -117,7 +124,7 @@ EVENT_TYPE_MAP = {
 }
 
 
-class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
+class WatchedEvent(NamedTuple):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
     The :class:`WatchedEvent` includes exactly what happened, the
@@ -140,8 +147,12 @@ class WatchedEvent(namedtuple("WatchedEvent", ("type", "state", "path"))):
 
     """
 
+    type: EventType
+    state: KeeperState
+    path: str | None
 
-class Callback(namedtuple("Callback", ("type", "func", "args"))):
+
+class Callback(NamedTuple):
     """A callback that is handed to a handler for dispatch
 
     :param type: Type of the callback, currently is only 'watch'
@@ -150,15 +161,12 @@ class Callback(namedtuple("Callback", ("type", "func", "args"))):
 
     """
 
+    type: str
+    func: Callable[..., Any]
+    args: Iterable[Any]
 
-class ZnodeStat(
-    namedtuple(
-        "ZnodeStat",
-        "czxid mzxid ctime mtime version"
-        " cversion aversion ephemeralOwner dataLength"
-        " numChildren pzxid",
-    )
-):
+
+class ZnodeStat(NamedTuple):
     """A ZnodeStat structure with convenience properties
 
     When getting the value of a znode from Zookeeper, the properties for
@@ -216,38 +224,50 @@ class ZnodeStat(
 
     """
 
+    czxid: int
+    mzxid: int
+    ctime: int
+    mtime: int
+    version: int
+    cversion: int
+    aversion: int
+    ephemeralOwner: int
+    dataLength: int
+    numChildren: int
+    pzxid: int
+
     @property
-    def acl_version(self):
+    def acl_version(self) -> int:
         return self.aversion
 
     @property
-    def children_version(self):
+    def children_version(self) -> int:
         return self.cversion
 
     @property
-    def created(self):
+    def created(self) -> float:
         return self.ctime / 1000.0
 
     @property
-    def last_modified(self):
+    def last_modified(self) -> float:
         return self.mtime / 1000.0
 
     @property
-    def owner_session_id(self):
+    def owner_session_id(self) -> int | None:
         return self.ephemeralOwner or None
 
     @property
-    def creation_transaction_id(self):
+    def creation_transaction_id(self) -> int:
         return self.czxid
 
     @property
-    def last_modified_transaction_id(self):
+    def last_modified_transaction_id(self) -> int:
         return self.mzxid
 
     @property
-    def data_length(self):
+    def data_length(self) -> int:
         return self.dataLength
 
     @property
-    def children_count(self):
+    def children_count(self) -> int:
         return self.numChildren

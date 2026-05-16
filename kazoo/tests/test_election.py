@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 import uuid
 import sys
 import threading
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from kazoo.recipe.election import Election
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
+
+if TYPE_CHECKING:
+    from types import TracebackType
+    from _typeshed import OptExcInfo
 
 
 class UniqueError(Exception):
@@ -13,7 +21,7 @@ class UniqueError(Exception):
 
 
 class KazooElectionTests(KazooTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super(KazooElectionTests, self).setUp()
         self.path = "/" + uuid.uuid4().hex
 
@@ -21,17 +29,19 @@ class KazooElectionTests(KazooTestCase):
 
         # election contenders set these when elected. The exit event is set by
         # the test to make the leader exit.
-        self.leader_id = None
-        self.exit_event = None
+        self.leader_id: str | None = None
+        self.exit_event: threading.Event | None = None
 
         # tests set this before the event to make the leader raise an error
         self.raise_exception = False
 
         # set by a worker thread when an unexpected error is hit.
         # better way to do this?
-        self.thread_exc_info = None
+        self.thread_exc_info: OptExcInfo | None = None
 
-    def _spawn_contender(self, contender_id, election):
+    def _spawn_contender(
+        self, contender_id: str, election: Election
+    ) -> threading.Thread:
         thread = threading.Thread(
             target=self._election_thread, args=(contender_id, election)
         )
@@ -39,7 +49,7 @@ class KazooElectionTests(KazooTestCase):
         thread.start()
         return thread
 
-    def _election_thread(self, contender_id, election):
+    def _election_thread(self, contender_id: str, election: Election) -> None:
         try:
             election.run(self._leader_func, contender_id)
         except UniqueError:
@@ -50,9 +60,13 @@ class KazooElectionTests(KazooTestCase):
         else:
             if self.raise_exception:
                 e = Exception("expected leader func to raise exception")
-                self.thread_exc_info = (Exception, e, None)
+                self.thread_exc_info = (
+                    Exception,
+                    e,
+                    cast("TracebackType", None),
+                )
 
-    def _leader_func(self, name):
+    def _leader_func(self, name: str) -> None:
         exit_event = threading.Event()
         with self.condition:
             self.exit_event = exit_event
@@ -63,12 +77,13 @@ class KazooElectionTests(KazooTestCase):
         if self.raise_exception:
             raise UniqueError("expected error in the leader function")
 
-    def _check_thread_error(self):
-        if self.thread_exc_info:
+    def _check_thread_error(self) -> None:
+        if self.thread_exc_info is not None:
             t, o, tb = self.thread_exc_info
+            assert t is not None
             raise t(o)
 
-    def test_election(self):
+    def test_election(self) -> None:
         elections = {}
         threads = {}
         for _ in range(3):
@@ -105,6 +120,7 @@ class KazooElectionTests(KazooTestCase):
         elections[contenders[1]].cancel()
 
         # make leader exit. third contender should be elected.
+        assert self.exit_event is not None
         self.exit_event.set()
         with self.condition:
             while self.leader_id == first_leader:
@@ -137,7 +153,8 @@ class KazooElectionTests(KazooTestCase):
             thread.join()
         self._check_thread_error()
 
-    def test_bad_func(self):
+    def test_bad_func(self) -> None:
         election = self.client.Election(self.path)
+        # FIXME If we're using type hints, we don't need to check this.
         with pytest.raises(ValueError):
-            election.run("not a callable")
+            election.run("not a callable")  # type: ignore[arg-type]

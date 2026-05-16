@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import subprocess
 import time
@@ -13,7 +15,7 @@ from kazoo.tests.util import CI_ZK_VERSION
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
-    def setUp(self):
+    def setUp(self) -> None:
         try:
             import puresasl  # NOQA
         except ImportError:
@@ -29,11 +31,11 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
         if not version or version < (3, 4):
             pytest.skip("Must use Zookeeper 3.4 or above")
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.teardown_zookeeper()
         os.environ.pop("ZOOKEEPER_JAAS_AUTH", None)
 
-    def test_connect_sasl_auth(self):
+    def test_connect_sasl_auth(self) -> None:
         from kazoo.security import make_acl
 
         username = "jaasuser"
@@ -56,14 +58,14 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
             client.stop()
             client.close()
 
-    def test_invalid_sasl_auth(self):
+    def test_invalid_sasl_auth(self) -> None:
         client = self._get_client(auth_data=[("sasl", "baduser:badpassword")])
         with pytest.raises(AuthFailedError):
             client.start()
 
 
 class TestSASLDigestAuthentication(KazooTestHarness):
-    def setUp(self):
+    def setUp(self) -> None:
         try:
             import puresasl  # NOQA
         except ImportError:
@@ -79,11 +81,11 @@ class TestSASLDigestAuthentication(KazooTestHarness):
         if not version or version < (3, 4):
             pytest.skip("Must use Zookeeper 3.4 or above")
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.teardown_zookeeper()
         os.environ.pop("ZOOKEEPER_JAAS_AUTH", None)
 
-    def test_connect_sasl_auth(self):
+    def test_connect_sasl_auth(self) -> None:
         from kazoo.security import make_acl
 
         username = "jaasuser"
@@ -110,7 +112,7 @@ class TestSASLDigestAuthentication(KazooTestHarness):
             client.stop()
             client.close()
 
-    def test_invalid_sasl_auth(self):
+    def test_invalid_sasl_auth(self) -> None:
         client = self._get_client(
             sasl_options={
                 "mechanism": "DIGEST-MD5",
@@ -123,13 +125,17 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 
 
 class TestSASLGSSAPIAuthentication(KazooTestHarness):
-    def setUp(self):
+    def setUp(self) -> None:
+        # FIXME Under what circumstances is it ok for these to not be
+        # available? pip install is a thing.
         try:
-            import puresasl  # NOQA
+            import puresasl
         except ImportError:
             pytest.skip("PureSASL not available.")
         try:
-            import kerberos  # NOQA
+            # FIXME Hound objects to import not found as it thinks it's a
+            # syntax error. I don't know why it thinks that.
+            import kerberos  # type: ignore
         except ImportError:
             pytest.skip("Kerberos support not available.")
         if not os.environ.get("KRB5_TEST_ENV"):
@@ -145,11 +151,11 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         if not version or version < (3, 4):
             pytest.skip("Must use Zookeeper 3.4 or above")
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.teardown_zookeeper()
         os.environ.pop("ZOOKEEPER_JAAS_AUTH", None)
 
-    def test_connect_gssapi_auth(self):
+    def test_connect_gssapi_auth(self) -> None:
         from kazoo.security import make_acl
 
         # Ensure we have a client ticket
@@ -177,7 +183,7 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
             client.stop()
             client.close()
 
-    def test_invalid_gssapi_auth(self):
+    def test_invalid_gssapi_auth(self) -> None:
         # Request a post-datated ticket, so that it is currently invalid.
         subprocess.check_call(
             [

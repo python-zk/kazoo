@@ -1,9 +1,16 @@
 """Kazoo testing harnesses"""
+from __future__ import annotations
+
 import atexit
 import logging
 import os
 import uuid
 import unittest
+
+from typing import Any, Callable, Literal, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import kazoo.interfaces
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import KazooException
@@ -13,8 +20,8 @@ from kazoo.testing.common import ZookeeperCluster
 
 log = logging.getLogger(__name__)
 
-CLUSTER = None
-CLUSTER_CONF = None
+CLUSTER: ZookeeperCluster | None = None
+CLUSTER_CONF: dict[str, Any] | None = None
 CLUSTER_DEFAULTS = {
     "ZOOKEEPER_PORT_OFFSET": 20000,
     "ZOOKEEPER_CLUSTER_SIZE": 3,
@@ -24,7 +31,8 @@ CLUSTER_DEFAULTS = {
 MAX_INIT_TRIES = 5
 
 
-def get_global_cluster():
+# FIXME use a typeddict for cluster conf and cluster defaults
+def get_global_cluster() -> ZookeeperCluster:
     global CLUSTER, CLUSTER_CONF
     cluster_conf = {
         k: os.environ.get(k, CLUSTER_DEFAULTS.get(k))
@@ -47,16 +55,22 @@ def get_global_cluster():
             CLUSTER.terminate()
             CLUSTER = None
     # Create a new cluster
-    ZK_HOME = cluster_conf.get("ZOOKEEPER_PATH")
-    ZK_CLASSPATH = cluster_conf.get("ZOOKEEPER_CLASSPATH")
-    ZK_PORT_OFFSET = int(cluster_conf.get("ZOOKEEPER_PORT_OFFSET"))
-    ZK_CLUSTER_SIZE = int(cluster_conf.get("ZOOKEEPER_CLUSTER_SIZE"))
-    ZK_VERSION = cluster_conf.get("ZOOKEEPER_VERSION")
-    if "-" in ZK_VERSION:
+    ZK_HOME = cast(str, cluster_conf.get("ZOOKEEPER_PATH"))
+    ZK_CLASSPATH = cast(str, cluster_conf.get("ZOOKEEPER_CLASSPATH"))
+    ZK_PORT_OFFSET = int(  # type: ignore[call-overload]
+        cluster_conf.get("ZOOKEEPER_PORT_OFFSET")
+    )
+    ZK_CLUSTER_SIZE = int(  # type: ignore[call-overload]
+        cluster_conf.get("ZOOKEEPER_CLUSTER_SIZE")
+    )
+    ZK_VERSION_STR = cast(str, cluster_conf.get("ZOOKEEPER_VERSION"))
+    if "-" in ZK_VERSION_STR:
         # Ignore pre-release markers like -alpha
-        ZK_VERSION = ZK_VERSION.split("-")[0]
-    ZK_VERSION = tuple([int(n) for n in ZK_VERSION.split(".")])
-    ZK_OBSERVER_START_ID = int(cluster_conf.get("ZOOKEEPER_OBSERVER_START_ID"))
+        ZK_VERSION_STR = ZK_VERSION_STR.split("-")[0]
+    ZK_VERSION = tuple([int(n) for n in ZK_VERSION_STR.split(".")])
+    ZK_OBSERVER_START_ID = int(  # type: ignore[call-overload]
+        cluster_conf.get("ZOOKEEPER_OBSERVER_START_ID")
+    )
 
     assert ZK_HOME or ZK_CLASSPATH or ZK_VERSION, (
         "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH or "
@@ -65,8 +79,8 @@ def get_global_cluster():
     )
 
     if ZK_VERSION >= (3, 5):
-        ZOOKEEPER_LOCAL_SESSION_RO = cluster_conf.get(
-            "ZOOKEEPER_LOCAL_SESSION_RO"
+        ZOOKEEPER_LOCAL_SESSION_RO = cast(
+            str, cluster_conf.get("ZOOKEEPER_LOCAL_SESSION_RO")
         )
         additional_configuration_entries = [
             "4lw.commands.whitelist=*",
@@ -140,69 +154,78 @@ class KazooTestHarness(unittest.TestCase):
     Example::
 
         class MyTestCase(KazooTestHarness):
-            def setUp(self):
+            def setUp(self) -> None:
                 self.setup_zookeeper()
 
                 # additional test setup
 
-            def tearDown(self):
+            def tearDown(self)-> None:
                 self.teardown_zookeeper()
 
-            def test_something(self):
+            def test_something(self) -> None:
                 something_that_needs_a_kazoo_client(self.client)
 
-            def test_something_else(self):
+            def test_something_else(self) -> None:
                 something_that_needs_zk_servers(self.servers)
 
     """
 
     DEFAULT_CLIENT_TIMEOUT = 15
 
-    def __init__(self, *args, **kw):
+    def __init__(self, *args: Any, **kw: Any):
         super(KazooTestHarness, self).__init__(*args, **kw)
-        self.client = None
-        self._clients = []
+        self._client: KazooClient | None = None
+        self._clients: list[KazooClient] = []
 
     @property
-    def cluster(self):
+    def cluster(self) -> ZookeeperCluster:
         return get_global_cluster()
 
-    def log(self, level, msg, *args, **kwargs):
+    @property
+    def client(self) -> KazooClient:
+        assert self._client is not None
+        return self._client
+
+    def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         log.log(level, msg, *args, **kwargs)
 
     @property
-    def servers(self):
+    def servers(self) -> str:
         return ",".join([s.address for s in self.cluster])
 
     @property
-    def secure_servers(self):
+    def secure_servers(self) -> str:
         return ",".join([s.secure_address for s in self.cluster])
 
-    def _get_nonchroot_client(self):
+    def _get_nonchroot_client(self) -> KazooClient:
         c = KazooClient(self.servers)
         self._clients.append(c)
         return c
 
-    def _get_client(self, **client_options):
+    def _get_client(self, **client_options: Any) -> KazooClient:
         if "timeout" not in client_options:
             client_options["timeout"] = self.DEFAULT_CLIENT_TIMEOUT
         c = KazooClient(self.hosts, **client_options)
         self._clients.append(c)
         return c
 
-    def lose_connection(self, event_factory):
+    def lose_connection(
+        self, event_factory: Callable[[], kazoo.interfaces.Event]
+    ) -> None:
         """Force client to lose connection with server"""
         self.__break_connection(
             _CONNECTION_DROP, KazooState.SUSPENDED, event_factory
         )
 
-    def expire_session(self, event_factory):
+    def expire_session(
+        self, event_factory: Callable[[], kazoo.interfaces.Event]
+    ) -> None:
         """Force ZK to expire a client session"""
         self.__break_connection(
             _SESSION_EXPIRED, KazooState.LOST, event_factory
         )
 
-    def setup_zookeeper(self, **client_options):
+    def setup_zookeeper(self, **client_options: Any) -> None:
         """Create a ZK cluster and chrooted :class:`KazooClient`
 
         The cluster will only be created on the first invocation and won't be
@@ -242,11 +265,11 @@ class KazooTestHarness(unittest.TestCase):
             self.hosts = self.secure_servers + namespace
         else:
             self.hosts = self.servers + namespace
-        self.client = self._get_client(**client_options)
+        self._client = self._get_client(**client_options)
         self.client.start()
         self.client.ensure_path("/")
 
-    def teardown_zookeeper(self):
+    def teardown_zookeeper(self) -> None:
         """Reset and cleanup the zookeeper cluster that was started."""
         while self._clients:
             c = self._clients.pop()
@@ -256,23 +279,29 @@ class KazooTestHarness(unittest.TestCase):
                 log.exception("Failed stopping client %s", c)
             finally:
                 c.close()
-        self.client = None
+        self._client = None
 
-    def __break_connection(self, break_event, expected_state, event_factory):
+    def __break_connection(
+        self,
+        break_event: object,
+        expected_state: KazooState,
+        event_factory: Callable[[], kazoo.interfaces.Event],
+    ) -> None:
         """Break ZooKeeper connection using the specified event."""
 
         lost = event_factory()
         safe = event_factory()
 
-        def watch_loss(state):
+        def watch_loss(state: KazooState) -> Literal[True] | None:
             if state == expected_state:
                 lost.set()
             elif lost.is_set() and state == KazooState.CONNECTED:
                 safe.set()
                 return True
+            return None
 
         self.client.add_listener(watch_loss)
-        self.client._call(break_event, None)
+        self.client._call(break_event, None)  # type: ignore[arg-type]
 
         lost.wait(5)
         if not lost.is_set():
@@ -286,14 +315,14 @@ class KazooTestHarness(unittest.TestCase):
 
 
 class KazooTestCase(KazooTestHarness):
-    def setUp(self):
+    def setUp(self) -> None:
         self.setup_zookeeper()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.teardown_zookeeper()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cluster = get_global_cluster()
         if cluster is not None:
             cluster.terminate()

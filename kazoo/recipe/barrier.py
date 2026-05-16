@@ -4,12 +4,19 @@
 :Status: Unknown
 
 """
+
+from __future__ import annotations
+
 import os
 import socket
 import uuid
+from typing import Literal, TYPE_CHECKING
 
 from kazoo.exceptions import KazooException, NoNodeError, NodeExistsError
-from kazoo.protocol.states import EventType
+from kazoo.protocol.states import EventType, WatchedEvent
+
+if TYPE_CHECKING:
+    from kazoo.client import KazooClient
 
 
 class Barrier(object):
@@ -27,7 +34,7 @@ class Barrier(object):
 
     """
 
-    def __init__(self, client, path):
+    def __init__(self, client: KazooClient, path: str):
         """Create a Kazoo Barrier
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -37,11 +44,11 @@ class Barrier(object):
         self.client = client
         self.path = path
 
-    def create(self):
+    def create(self) -> None:
         """Establish the barrier if it doesn't exist already"""
         self.client.retry(self.client.ensure_path, self.path)
 
-    def remove(self):
+    def remove(self) -> bool:
         """Remove the barrier
 
         :returns: Whether the barrier actually needed to be removed.
@@ -54,7 +61,7 @@ class Barrier(object):
         except NoNodeError:
             return False
 
-    def wait(self, timeout=None):
+    def wait(self, timeout: float | None = None) -> bool:
         """Wait on the barrier to be cleared
 
         :returns: True if the barrier has been cleared, otherwise
@@ -64,7 +71,7 @@ class Barrier(object):
         """
         cleared = self.client.handler.event_object()
 
-        def wait_for_clear(event):
+        def wait_for_clear(event: WatchedEvent) -> None:
             if event.type == EventType.DELETED:
                 cleared.set()
 
@@ -93,7 +100,13 @@ class DoubleBarrier(object):
 
     """
 
-    def __init__(self, client, path, num_clients, identifier=None):
+    def __init__(
+        self,
+        client: KazooClient,
+        path: str,
+        num_clients: int,
+        identifier: str | None = None,
+    ):
         """Create a Double Barrier
 
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -118,7 +131,7 @@ class DoubleBarrier(object):
         self.node_name = uuid.uuid4().hex
         self.create_path = self.path + "/" + self.node_name
 
-    def enter(self):
+    def enter(self) -> None:
         """Enter the barrier, blocks until all nodes have entered"""
         try:
             self.client.retry(self._inner_enter)
@@ -128,7 +141,7 @@ class DoubleBarrier(object):
             self._best_effort_cleanup()
             self.participating = False
 
-    def _inner_enter(self):
+    def _inner_enter(self) -> Literal[True]:
         # make sure our barrier parent node exists
         if not self.assured_path:
             self.client.ensure_path(self.path)
@@ -145,7 +158,7 @@ class DoubleBarrier(object):
         except NodeExistsError:
             pass
 
-        def created(event):
+        def created(event: WatchedEvent) -> None:
             if event.type == EventType.CREATED:
                 ready.set()
 
@@ -159,7 +172,7 @@ class DoubleBarrier(object):
             self.client.ensure_path(self.path + "/ready")
         return True
 
-    def leave(self):
+    def leave(self) -> None:
         """Leave the barrier, blocks until all nodes have left"""
         try:
             self.client.retry(self._inner_leave)
@@ -168,7 +181,7 @@ class DoubleBarrier(object):
             self._best_effort_cleanup()
         self.participating = False
 
-    def _inner_leave(self):
+    def _inner_leave(self) -> bool:
         # Delete the ready node if its around
         try:
             self.client.delete(self.path + "/ready")
@@ -188,7 +201,7 @@ class DoubleBarrier(object):
 
             ready = self.client.handler.event_object()
 
-            def deleted(event):
+            def deleted(event: WatchedEvent) -> None:
                 if event.type == EventType.DELETED:
                     ready.set()
 
@@ -214,7 +227,7 @@ class DoubleBarrier(object):
             # Wait for the lowest to be deleted
             ready.wait()
 
-    def _best_effort_cleanup(self):
+    def _best_effort_cleanup(self) -> None:
         try:
             self.client.retry(self.client.delete, self.create_path)
         except NoNodeError:

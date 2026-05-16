@@ -8,10 +8,160 @@
 
 """
 
+from __future__ import annotations
+
+import abc
+import queue
+
+from types import TracebackType
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Protocol,
+    Union,
+    TYPE_CHECKING,
+)
+
+if TYPE_CHECKING:
+    from kazoo.protocol.states import Callback
+
 # public API
 
 
-class IHandler(object):
+class HasFileNo(Protocol):
+    """Protocol for objects that support a fileno method."""
+
+    def fileno(self) -> int:
+        ...
+
+
+FdLike = Union[int, HasFileNo]
+
+
+class Socket(HasFileNo, Protocol):
+    """This is for things that provide a socket.socket-like interface.
+
+    This is required because:
+    1. The socket in gevent doesn't inherit from socket.socket
+    2. mypy gets confused if you have a method called socket and
+       subsequently attempt to use socket or socket.socket as a return type
+    """
+
+    def close(self) -> None:
+        ...
+
+    def fileno(self) -> int:
+        ...
+
+    def getpeername(self) -> tuple[str, int]:
+        ...
+
+    def getsockname(self) -> tuple[str, int]:
+        ...
+
+    def recv(self, bufsize: int, flags: int = 0) -> bytes:
+        ...
+
+    def send(self, data: bytes | memoryview, flags: int = 0) -> int:
+        ...
+
+    def sendall(self, data: bytes, flags: int = 0) -> None:
+        ...
+
+    def setblocking(self, flags: bool) -> None:
+        ...
+
+    def setsockopt(self, level: int, optname: int, value: int) -> None:
+        ...
+
+    def shutdown(self, flag: int) -> None:
+        ...
+
+
+class Lockable(Protocol):
+    """This is what threading.Lock implements.
+
+    In python 3.9+ it's available natively. Though given it has some
+    very odd typing, I wouldn't put money on it.
+    """
+
+    def __enter__(self) -> None:
+        ...
+
+    def __exit__(
+        self,
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        ...
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        ...
+
+    def release(self) -> int | None:
+        """The gevent release returns an int..."""
+        ...
+
+    def locked(self) -> bool:
+        ...
+
+
+class ReentrantLock(Protocol):
+    """This is what threading.RLock implements.
+
+    In python 3.14+, it's the same as Lock, which adds to the fun.
+    """
+
+    def __enter__(self) -> None:
+        ...
+
+    def __exit__(
+        self,
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        ...
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        ...
+
+    def release(self) -> None:
+        ...
+
+
+class Event(Protocol):
+    """Protocol for threading.Event"""
+
+    def is_set(self) -> bool:
+        ...
+
+    def set(self) -> None:
+        ...
+
+    def clear(self) -> None:
+        ...
+
+    def wait(self, timeout: float | None = None) -> bool:
+        ...
+
+
+class Threadlike(Protocol):
+    """Protocol for something like a thread."""
+
+    def is_alive(self) -> bool:
+        ...
+
+    def join(self, timeout: float | None = None) -> None:
+        ...
+
+
+SpawnedFunc = Callable[..., None]
+
+
+class IHandler(abc.ABC):
     """A Callback Handler for Zookeeper completion and watch callbacks.
 
     This object must implement several methods responsible for
@@ -44,43 +194,69 @@ class IHandler(object):
 
     """
 
-    def start(self):
+    timeout_exception: type[Exception] = None  # type: ignore[assignment]
+    sleep_func: staticmethod[[float], None] = None  # type: ignore[assignment]
+    queue_impl: type[queue.Queue[Any]] = None  # type: ignore[assignment]
+
+    @abc.abstractmethod
+    def start(self) -> None:
         """Start the handler, used for setting up the handler."""
 
-    def stop(self):
+    @abc.abstractmethod
+    def stop(self) -> None:
         """Stop the handler. Should block until the handler is safely
         stopped."""
 
-    def select(self):
+    @abc.abstractmethod
+    def select(
+        self,
+        rlist: Iterable[FdLike],
+        wlist: Iterable[FdLike],
+        xlist: Iterable[FdLike],
+        timeout: float | None = None,
+    ) -> tuple[Iterable[FdLike], Iterable[FdLike], Iterable[FdLike]]:
         """A select method that implements Python's select.select
         API"""
 
-    def socket(self):
-        """A socket method that implements Python's socket.socket
+    @abc.abstractmethod
+    def socket(self) -> Socket:
+        """A socket method that implements Python's socket.socket API"""
+
+    # FIXME This should have a proper set of parameters.
+    @abc.abstractmethod
+    def create_connection(self, *args: Any, **kwargs: Any) -> Socket:
+        """A socket method that implements Python's socket.create_connection
         API"""
 
-    def create_connection(self):
-        """A socket method that implements Python's
-        socket.create_connection API"""
+    @abc.abstractmethod
+    def create_socket_pair(self) -> tuple[Socket, Socket]:
+        """A socket method that implements Python's socket.socketpair API"""
 
-    def event_object(self):
+    @abc.abstractmethod
+    def event_object(self) -> Event:
         """Return an appropriate object that implements Python's
         threading.Event API"""
 
-    def lock_object(self):
+    @abc.abstractmethod
+    def lock_object(self) -> Lockable:
         """Return an appropriate object that implements Python's
         threading.Lock API"""
 
-    def rlock_object(self):
+    @abc.abstractmethod
+    def rlock_object(self) -> ReentrantLock:
         """Return an appropriate object that implements Python's
         threading.RLock API"""
 
-    def async_result(self):
+    @abc.abstractmethod
+    def async_result(self) -> IAsyncResult:
         """Return an instance that conforms to the
         :class:`~IAsyncResult` interface appropriate for this
         handler"""
 
-    def spawn(self, func, *args, **kwargs):
+    @abc.abstractmethod
+    def spawn(
+        self, func: SpawnedFunc, *args: Any, **kwargs: Any
+    ) -> Threadlike:
         """Spawn a function to run asynchronously
 
         :param args: args to call the function with.
@@ -91,7 +267,8 @@ class IHandler(object):
 
         """
 
-    def dispatch_callback(self, callback):
+    @abc.abstractmethod
+    def dispatch_callback(self, callback: Callback) -> None:
         """Dispatch to the callback object
 
         :param callback: A :class:`~kazoo.protocol.states.Callback`
@@ -100,7 +277,7 @@ class IHandler(object):
         """
 
 
-class IAsyncResult(object):
+class IAsyncResult(abc.ABC):
     """An Async Result object that can be queried for a value that has
     been set asynchronously.
 
@@ -123,15 +300,18 @@ class IAsyncResult(object):
 
     """
 
-    def ready(self):
+    @abc.abstractmethod
+    def ready(self) -> bool:
         """Return `True` if and only if it holds a value or an
         exception"""
 
-    def successful(self):
+    @abc.abstractmethod
+    def successful(self) -> bool:
         """Return `True` if and only if it is ready and holds a
         value"""
 
-    def set(self, value=None):
+    @abc.abstractmethod
+    def set(self, value: Any = None) -> None:
         """Store the value. Wake up the waiters.
 
         :param value: Value to store as the result.
@@ -140,7 +320,8 @@ class IAsyncResult(object):
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
         block at all."""
 
-    def set_exception(self, exception):
+    @abc.abstractmethod
+    def set_exception(self, exception: Exception) -> None:
         """Store the exception. Wake up the waiters.
 
         :param exception: Exception to raise when fetching the value.
@@ -149,7 +330,8 @@ class IAsyncResult(object):
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
         block at all."""
 
-    def get(self, block=True, timeout=None):
+    @abc.abstractmethod
+    def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Return the stored value or raise the exception
 
         :param block: Whether this method should block or return
@@ -164,13 +346,15 @@ class IAsyncResult(object):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def get_nowait(self):
+    @abc.abstractmethod
+    def get_nowait(self) -> Any:
         """Return the value or raise the exception without blocking.
 
         If nothing is available, raise the Timeout exception class on
         the associated :class:`IHandler` interface."""
 
-    def wait(self, timeout=None):
+    @abc.abstractmethod
+    def wait(self, timeout: float | None = None) -> Any:
         """Block until the instance is ready.
 
         :param timeout: How long to wait for a value when `block` is
@@ -182,7 +366,8 @@ class IAsyncResult(object):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def rawlink(self, callback):
+    @abc.abstractmethod
+    def rawlink(self, callback: Callable[[IAsyncResult], Any]) -> None:
         """Register a callback to call when a value or an exception is
         set
 
@@ -194,10 +379,17 @@ class IAsyncResult(object):
 
         """
 
-    def unlink(self, callback):
+    @abc.abstractmethod
+    def unlink(self, callback: Callable[[IAsyncResult], None]) -> None:
         """Remove the callback set by :meth:`rawlink`
 
         :param callback: A callback function to remove.
         :type callback: func
 
         """
+
+    @property
+    @abc.abstractmethod
+    def exception(self) -> Exception | None:
+        """The exception set by :meth:`set_exception` or `None` if no
+        exception has been set"""

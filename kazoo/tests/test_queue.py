@@ -1,36 +1,42 @@
+from __future__ import annotations
+
 import uuid
+
+from typing import Any
 
 import pytest
 
+from kazoo.interfaces import Event
+from kazoo.recipe.queue import LockingQueue, Queue
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import CI_ZK_VERSION
 
 
 class KazooQueueTests(KazooTestCase):
-    def _makeOne(self):
+    def _makeOne(self) -> Queue:
         path = "/" + uuid.uuid4().hex
         return self.client.Queue(path)
 
-    def test_queue_validation(self):
+    def test_queue_validation(self) -> None:
         queue = self._makeOne()
         with pytest.raises(TypeError):
-            queue.put({})
+            queue.put({})  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put(b"one", b"100")
+            queue.put(b"one", b"100")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put(b"one", 10.0)
+            queue.put(b"one", 10.0)  # type: ignore[arg-type]
         with pytest.raises(ValueError):
             queue.put(b"one", -100)
         with pytest.raises(ValueError):
             queue.put(b"one", 100000)
 
-    def test_empty_queue(self):
+    def test_empty_queue(self) -> None:
         queue = self._makeOne()
         assert len(queue) == 0
         assert queue.get() is None
         assert len(queue) == 0
 
-    def test_queue(self):
+    def test_queue(self) -> None:
         queue = self._makeOne()
         queue.put(b"one")
         queue.put(b"two")
@@ -42,7 +48,7 @@ class KazooQueueTests(KazooTestCase):
         assert queue.get() == b"three"
         assert len(queue) == 0
 
-    def test_priority(self):
+    def test_priority(self) -> None:
         queue = self._makeOne()
         queue.put(b"four", priority=101)
         queue.put(b"one", priority=0)
@@ -56,7 +62,7 @@ class KazooQueueTests(KazooTestCase):
 
 
 class KazooLockingQueueTests(KazooTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         KazooTestCase.setUp(self)
         skip = False
         if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
@@ -70,42 +76,42 @@ class KazooLockingQueueTests(KazooTestCase):
         if skip:
             pytest.skip("Must use Zookeeper 3.4 or above")
 
-    def _makeOne(self):
+    def _makeOne(self) -> LockingQueue:
         path = "/" + uuid.uuid4().hex
         return self.client.LockingQueue(path)
 
-    def test_queue_validation(self):
+    def test_queue_validation(self) -> None:
         queue = self._makeOne()
         with pytest.raises(TypeError):
-            queue.put({})
+            queue.put({})  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put(b"one", b"100")
+            queue.put(b"one", b"100")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put(b"one", 10.0)
+            queue.put(b"one", 10.0)  # type: ignore[arg-type]
         with pytest.raises(ValueError):
             queue.put(b"one", -100)
         with pytest.raises(ValueError):
             queue.put(b"one", 100000)
         with pytest.raises(TypeError):
-            queue.put_all({})
+            queue.put_all({})  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put_all([{}])
+            queue.put_all([{}])  # type: ignore[list-item]
         with pytest.raises(TypeError):
-            queue.put_all([b"one"], b"100")
+            queue.put_all([b"one"], b"100")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            queue.put_all([b"one"], 10.0)
+            queue.put_all([b"one"], 10.0)  # type: ignore[arg-type]
         with pytest.raises(ValueError):
             queue.put_all([b"one"], -100)
         with pytest.raises(ValueError):
             queue.put_all([b"one"], 100000)
 
-    def test_empty_queue(self):
+    def test_empty_queue(self) -> None:
         queue = self._makeOne()
         assert len(queue) == 0
         assert queue.get(0) is None
         assert len(queue) == 0
 
-    def test_queue(self):
+    def test_queue(self) -> None:
         queue = self._makeOne()
         queue.put(b"one")
         queue.put_all([b"two", b"three"])
@@ -130,7 +136,7 @@ class KazooLockingQueueTests(KazooTestCase):
         assert not queue.consume()
         assert len(queue) == 0
 
-    def test_consume(self):
+    def test_consume(self) -> None:
         queue = self._makeOne()
 
         queue.put(b"one")
@@ -139,7 +145,7 @@ class KazooLockingQueueTests(KazooTestCase):
         assert queue.consume()
         assert not queue.consume()
 
-    def test_release(self):
+    def test_release(self) -> None:
         queue = self._makeOne()
 
         queue.put(b"one")
@@ -152,7 +158,7 @@ class KazooLockingQueueTests(KazooTestCase):
         assert not queue.release()
         assert len(queue) == 0
 
-    def test_holds_lock(self):
+    def test_holds_lock(self) -> None:
         queue = self._makeOne()
 
         assert not queue.holds_lock()
@@ -162,7 +168,7 @@ class KazooLockingQueueTests(KazooTestCase):
         queue.consume()
         assert not queue.holds_lock()
 
-    def test_priority(self):
+    def test_priority(self) -> None:
         queue = self._makeOne()
         queue.put(b"four", priority=101)
         queue.put(b"one", priority=0)
@@ -178,16 +184,16 @@ class KazooLockingQueueTests(KazooTestCase):
         assert queue.get(1) == b"four"
         assert queue.consume()
 
-    def test_concurrent_execution(self):
+    def test_concurrent_execution(self) -> None:
         queue = self._makeOne()
-        value1 = []
-        value2 = []
-        value3 = []
+        value1: list[bytes | None] = []
+        value2: list[bytes | None] = []
+        value3: list[bytes | None] = []
         event1 = self.client.handler.event_object()
         event2 = self.client.handler.event_object()
         event3 = self.client.handler.event_object()
 
-        def get_concurrently(value, event):
+        def get_concurrently(value: list[Any], event: Event) -> None:
             q = self.client.LockingQueue(queue.path)
             value.append(q.get(0.1))
             event.set()
