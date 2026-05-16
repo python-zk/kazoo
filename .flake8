@@ -1,14 +1,28 @@
 [flake8]
 builtins = _
 exclude =
+    docs/conf.py,
     .git,
     __pycache__,
-    .venv/,venv/,
-    .tox/,
-    build/,dist/,*egg,
-    docs/conf.py,
-    zookeeper/
-# See black's documentation for E203
+    .venv/,
+    venv*/,
+    .tox*/,
+    build/,
+    dist/,
+    *egg,
+    zookeeper/,
+
 max-line-length = 79
-extend-ignore = BLK100,E203
+
+# See black's documentation for E203
+#
+# I am not sure what version of flake8 hound is using but it gives a lot of
+# undefined names for comments (F821) and redefinition of unused variables 
+# (F811).
+#
+# I've also had to supress F401 because you generally also need to specify
+# type: ignore and something gets very upset when you have both in the same
+# comment.
+# 
+extend-ignore = BLK100,E203,F401,F811,F821
 

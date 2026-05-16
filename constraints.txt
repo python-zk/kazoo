@@ -1,8 +1,14 @@
 # Consistent testing environment.
+# requirements.txt
+eventlet>=0.17.1 ; implementation_name!='pypy'
+gevent>=1.2 ; implementation_name!='pypy'
+
+# requirements-dev.txt
 black==22.10.0
 coverage==6.3.2; python_version=="3.8"
 coverage==7.10.7; python_version > "3.8"
 flake8==5.0.2
+mypy==1.14.1
 objgraph==3.5.0
 pytest==6.2.5; python_version=="3.8"
 pytest==8.4.2; python_version > "3.8"

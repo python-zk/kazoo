@@ -1,6 +1,9 @@
 """Kazoo Exceptions"""
 
+from __future__ import annotations
+
 from collections import defaultdict
+from typing import Callable, Type
 
 
 class KazooException(Exception):
@@ -51,17 +54,25 @@ class SASLException(KazooException):
     """
 
 
-def _invalid_error_code():
+def _invalid_error_code() -> Type[ZookeeperError]:
     raise RuntimeError("Invalid error code")
 
 
-EXCEPTIONS = defaultdict(_invalid_error_code)
+EXCEPTIONS: defaultdict[int, Type[ZookeeperError]] = defaultdict(
+    _invalid_error_code
+)
 
 
-def _zookeeper_exception(code):
-    def decorator(klass):
+def _zookeeper_exception(
+    code: int,
+) -> Callable[[Type[ZookeeperError]], Type[ZookeeperError]]:
+    def decorator(klass: Type[ZookeeperError]) -> Type[ZookeeperError]:
         EXCEPTIONS[code] = klass
-        klass.code = code
+        # Unfortunately there is currently no good of doing the assignment here
+        # in a way that type checkers would allow. It's a known problem (see
+        # https://discuss.python.org/t/how-to-type-hint-a-class-decorator/63010
+        # )
+        klass.code = code  # type: ignore[attr-defined]
         return klass
 
     return decorator

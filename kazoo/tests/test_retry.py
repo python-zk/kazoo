@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -6,16 +9,19 @@ from kazoo import exceptions as ke
 from kazoo import retry as kr
 
 
-def _make_retry(*args, **kwargs):
+def _make_retry(*args: Any, **kwargs: Any) -> kr.KazooRetry:
     """Return a KazooRetry instance with a dummy sleep function."""
 
-    def _sleep_func(_time):
+    def _sleep_func(_time: float) -> None:
         pass
 
-    return kr.KazooRetry(*args, sleep_func=_sleep_func, **kwargs)
+    # FIXME better way of doing this? Use TypedDict perhaps?
+    return kr.KazooRetry(
+        *args, sleep_func=_sleep_func, **kwargs  # type: ignore[misc]
+    )
 
 
-def _make_try_func(times=1):
+def _make_try_func(times: int = 1) -> mock.Mock:
     """Returns a function that raises ForceRetryError `times` time before
     returning None.
     """
@@ -25,7 +31,7 @@ def _make_try_func(times=1):
     return callmock
 
 
-def test_call():
+def test_call() -> None:
     retry = _make_retry(delay=0, max_tries=2)
     func = _make_try_func()
     retry(func, "foo", bar="baz")
@@ -35,7 +41,7 @@ def test_call():
     ]
 
 
-def test_reset():
+def test_reset() -> None:
     retry = _make_retry(delay=0, max_tries=2)
     func = _make_try_func()
     retry(func)
@@ -46,7 +52,7 @@ def test_reset():
     assert retry._attempts == 0
 
 
-def test_too_many_tries():
+def test_too_many_tries() -> None:
     retry = _make_retry(delay=0, max_tries=10)
     func = _make_try_func(times=999)
     with pytest.raises(kr.RetryFailedError):
@@ -56,7 +62,7 @@ def test_too_many_tries():
     ), "Called 10 times, failed _attempts 10"
 
 
-def test_maximum_delay():
+def test_maximum_delay() -> None:
     retry = _make_retry(delay=10, max_tries=100, max_jitter=0)
     func = _make_try_func(times=2)
     retry(func)
@@ -71,27 +77,27 @@ def test_maximum_delay():
     assert isinstance(retry._cur_delay, float)
 
 
-def test_copy():
+def test_copy() -> None:
     retry = _make_retry()
     rcopy = retry.copy()
     assert rcopy is not retry
     assert rcopy.sleep_func is retry.sleep_func
 
 
-def test_connection_closed():
+def test_connection_closed() -> None:
     retry = _make_retry()
 
-    def testit():
+    def testit() -> None:
         raise ke.ConnectionClosedError
 
     with pytest.raises(ke.ConnectionClosedError):
         retry(testit)
 
 
-def test_session_expired():
+def test_session_expired() -> None:
     retry = _make_retry(max_tries=1)
 
-    def testit():
+    def testit() -> None:
         raise ke.SessionExpiredError
 
     with pytest.raises(kr.RetryFailedError):

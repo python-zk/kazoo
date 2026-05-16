@@ -1,14 +1,19 @@
 """Kazoo Security"""
+
+from __future__ import annotations
+
 from base64 import b64encode
-from collections import namedtuple
 import hashlib
+from typing import NamedTuple
 
 
 # Represents a Zookeeper ID and ACL object
-Id = namedtuple("Id", "scheme id")
+class Id(NamedTuple):
+    scheme: str
+    id: str
 
 
-class ACL(namedtuple("ACL", "perms id")):
+class ACL(NamedTuple):
     """An ACL for a Zookeeper Node
 
     An ACL object is created by using an :class:`Id` object along with
@@ -17,8 +22,11 @@ class ACL(namedtuple("ACL", "perms id")):
     the desired scheme, id, and permissions.
     """
 
+    perms: int
+    id: Id
+
     @property
-    def acl_list(self):
+    def acl_list(self) -> list[str]:
         perms = []
         if self.perms & Permissions.ALL == Permissions.ALL:
             perms.append("ALL")
@@ -35,7 +43,7 @@ class ACL(namedtuple("ACL", "perms id")):
             perms.append("ADMIN")
         return perms
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "ACL(perms=%r, acl_list=%s, id=%r)" % (
             self.perms,
             self.acl_list,
@@ -62,7 +70,7 @@ CREATOR_ALL_ACL = [ACL(Permissions.ALL, AUTH_IDS)]
 READ_ACL_UNSAFE = [ACL(Permissions.READ, ANYONE_ID_UNSAFE)]
 
 
-def make_digest_acl_credential(username, password):
+def make_digest_acl_credential(username: str, password: str) -> str:
     """Create a SHA1 digest credential.
 
     .. note::
@@ -80,15 +88,15 @@ def make_digest_acl_credential(username, password):
 
 
 def make_acl(
-    scheme,
-    credential,
-    read=False,
-    write=False,
-    create=False,
-    delete=False,
-    admin=False,
-    all=False,
-):
+    scheme: str,
+    credential: str,
+    read: bool = False,
+    write: bool = False,
+    create: bool = False,
+    delete: bool = False,
+    admin: bool = False,
+    all: bool = False,
+) -> ACL:
     """Given a scheme and credential, return an :class:`ACL` object
     appropriate for use with Kazoo.
 
@@ -131,15 +139,15 @@ def make_acl(
 
 
 def make_digest_acl(
-    username,
-    password,
-    read=False,
-    write=False,
-    create=False,
-    delete=False,
-    admin=False,
-    all=False,
-):
+    username: str,
+    password: str,
+    read: bool = False,
+    write: bool = False,
+    create: bool = False,
+    delete: bool = False,
+    admin: bool = False,
+    all: bool = False,
+) -> ACL:
     """Create a digest ACL for Zookeeper with the given permissions
 
     This method combines :meth:`make_digest_acl_credential` and

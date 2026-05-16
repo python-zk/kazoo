@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import uuid
 
@@ -8,18 +10,18 @@ from kazoo.testing import KazooTestCase
 
 
 class MockClock(object):
-    def __init__(self, epoch=0):
+    def __init__(self, epoch: float = 0):
         self.epoch = epoch
 
-    def forward(self, seconds):
+    def forward(self, seconds: float) -> None:
         self.epoch += seconds
 
-    def __call__(self):
+    def __call__(self) -> datetime.datetime:
         return datetime.datetime.utcfromtimestamp(self.epoch)
 
 
 class KazooLeaseTests(KazooTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super(KazooLeaseTests, self).setUp()
         self.client2 = self._get_client(timeout=0.8)
         self.client2.start()
@@ -28,7 +30,7 @@ class KazooLeaseTests(KazooTestCase):
         self.path = "/" + uuid.uuid4().hex
         self.clock = MockClock(10)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         for cl in [self.client2, self.client3]:
             if cl.connected:
                 cl.stop()
@@ -38,7 +40,7 @@ class KazooLeaseTests(KazooTestCase):
 
 
 class NonBlockingLeaseTests(KazooLeaseTests):
-    def test_renew(self):
+    def test_renew(self) -> None:
         # Use client convenience method here to test it at least once.  Use
         # class directly in
         # other tests in order to get better IDE support.
@@ -54,7 +56,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         )
         assert renewed_lease
 
-    def test_busy(self):
+    def test_busy(self) -> None:
         lease = NonBlockingLease(
             self.client,
             self.path,
@@ -74,7 +76,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         assert not foreigner_lease
         assert foreigner_lease.obtained is False
 
-    def test_overtake(self):
+    def test_overtake(self) -> None:
         lease = NonBlockingLease(
             self.client,
             self.path,
@@ -93,7 +95,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         )
         assert foreigner_lease
 
-    def test_renew_no_overtake(self):
+    def test_renew_no_overtake(self) -> None:
         lease = self.client.NonBlockingLease(
             self.path, datetime.timedelta(seconds=3), utcnow=self.clock
         )
@@ -116,7 +118,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         )
         assert not foreigner_lease
 
-    def test_overtaker_renews(self):
+    def test_overtaker_renews(self) -> None:
         lease = NonBlockingLease(
             self.client,
             self.path,
@@ -145,7 +147,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         )
         assert foreigner_renew
 
-    def test_overtake_refuse_first(self):
+    def test_overtake_refuse_first(self) -> None:
         lease = NonBlockingLease(
             self.client,
             self.path,
@@ -173,7 +175,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
         )
         assert not first_again_lease
 
-    def test_old_version(self):
+    def test_old_version(self) -> None:
         # Skip to a future version
         NonBlockingLease._version += 1
         lease = NonBlockingLease(
@@ -199,7 +201,7 @@ class NonBlockingLeaseTests(KazooLeaseTests):
 
 
 class MultiNonBlockingLeaseTest(KazooLeaseTests):
-    def test_1_renew(self):
+    def test_1_renew(self) -> None:
         ls = self.client.MultiNonBlockingLease(
             1, self.path, datetime.timedelta(seconds=4), utcnow=self.clock
         )
@@ -214,7 +216,7 @@ class MultiNonBlockingLeaseTest(KazooLeaseTests):
         )
         assert ls2
 
-    def test_1_reject(self):
+    def test_1_reject(self) -> None:
         ls = MultiNonBlockingLease(
             self.client,
             1,
@@ -234,7 +236,7 @@ class MultiNonBlockingLeaseTest(KazooLeaseTests):
         )
         assert not ls2
 
-    def test_2_renew(self):
+    def test_2_renew(self) -> None:
         ls = MultiNonBlockingLease(
             self.client,
             2,
@@ -273,7 +275,7 @@ class MultiNonBlockingLeaseTest(KazooLeaseTests):
         )
         assert ls4
 
-    def test_2_reject(self):
+    def test_2_reject(self) -> None:
         ls = MultiNonBlockingLease(
             self.client,
             2,
@@ -303,7 +305,7 @@ class MultiNonBlockingLeaseTest(KazooLeaseTests):
         )
         assert not ls3
 
-    def test_2_handover(self):
+    def test_2_handover(self) -> None:
         ls = MultiNonBlockingLease(
             self.client,
             2,

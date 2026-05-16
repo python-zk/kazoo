@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from sys import platform
 
@@ -7,7 +9,7 @@ from kazoo.testing import KazooTestCase
 
 
 class KazooInterruptTests(KazooTestCase):
-    def test_interrupted_systemcall(self):
+    def test_interrupted_systemcall(self) -> None:
         """
         Make sure interrupted system calls don't break the world, since we
         can't control what all signals our connection thread will get
