@@ -113,7 +113,7 @@ jobs:
           ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
 
       - name: Publish Codecov report
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
 
   test_windows:
     needs: [validate]
