@@ -350,7 +350,7 @@ class TestReadOnlyMode(KazooTestCase):
 
 class TestUnorderedXids(KazooTestCase):
     def setUp(self) -> None:
-        super(TestUnorderedXids, self).setUp()
+        super().setUp()
 
         self.connection = self.client._connection
         self.connection_routine = self.connection._connection_routine
@@ -360,7 +360,7 @@ class TestUnorderedXids(KazooTestCase):
 
     def tearDown(self) -> None:
         self.client._pending = self._pending
-        super(TestUnorderedXids, self).tearDown()
+        super().tearDown()
 
     def _get_client(self, **kwargs: Any) -> KazooClient:
         # overrides for patching zk_loop
@@ -406,7 +406,7 @@ class TestUnorderedXids(KazooTestCase):
         ev.wait()
         self.client.remove_listener(listen)
         assert self.client.connected is False
-        assert self.client.state == "LOST"
+        assert self.client.state == KazooState.LOST
         assert self.client.client_state == KeeperState.CLOSED
 
         args, exc_info = error_stack[-1]

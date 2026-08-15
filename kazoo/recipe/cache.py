@@ -12,7 +12,6 @@ See also: http://curator.apache.org/curator-recipes/tree-cache.html
 """
 
 from __future__ import annotations
-from __future__ import absolute_import
 
 import contextlib
 import functools
@@ -46,7 +45,7 @@ logger = logging.getLogger(__name__)
 ReturnValue = TypeVar("ReturnValue")
 
 
-class TreeCache(object):
+class TreeCache:
     """The cache of a ZooKeeper subtree.
 
     :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -274,7 +273,7 @@ class AsyncWatcher(Protocol):
         ...
 
 
-class TreeNode(object):
+class TreeNode:
     """The tree node record.
 
     :param tree: A :class:`~kazoo.recipe.cache.TreeCache` instance.

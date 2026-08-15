@@ -25,7 +25,7 @@ class Lease(TypedDict):
     end: str
 
 
-class NonBlockingLease(object):
+class NonBlockingLease:
     """Exclusive lease that does not block.
 
     An exclusive lease ensures that only one client at a time owns the lease.
@@ -133,7 +133,7 @@ class NonBlockingLease(object):
         return self.obtained
 
 
-class MultiNonBlockingLease(object):
+class MultiNonBlockingLease:
     """Exclusive lease for multiple clients.
 
     This type of lease is useful when a limited set of hosts should run a

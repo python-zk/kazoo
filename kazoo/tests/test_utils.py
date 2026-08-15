@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import ssl
 import socket
 import time
@@ -99,6 +100,20 @@ class TestCreateTCPConnection(unittest.TestCase):
                 for call_args in create_connection.call_args_list:
                     timeout = call_args[0][1]
                     assert timeout >= 0, "socket timeout must be nonnegative"
+
+    def test_interrupted_error_retries(self) -> None:
+        with patch.object(utils, "_set_default_tcpsock_options"):
+            with patch.object(
+                socket,
+                "create_connection",
+                side_effect=[
+                    InterruptedError(errno.EINTR, "interrupted"),
+                    object(),
+                ],
+            ) as create_connection:
+                create_tcp_connection(socket, ("127.0.0.1", 2181))
+
+                assert create_connection.call_count == 2
 
     def test_slow_connect(self) -> None:
         # Currently, create_tcp_connection will raise a socket timeout if it

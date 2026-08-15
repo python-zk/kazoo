@@ -63,7 +63,7 @@ class KazooAdaptiveHandlerTestCase(KazooTestHarness):
 
 class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
     def setUp(self) -> None:
-        super(KazooTreeCacheTests, self).setUp()
+        super().setUp()
         self._event_queue: Queue[TreeEvent] = self.client.handler.queue_impl()
         self._error_queue = self.client.handler.queue_impl()
         self._path: str | None = None
@@ -78,7 +78,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         if self._cache is not None:
             self._cache.close()
             self._cache = None
-        super(KazooTreeCacheTests, self).tearDown()
+        super().tearDown()
 
     def make_cache(self) -> TreeCache:
         if self._cache is None:

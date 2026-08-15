@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient
 
 
-class Barrier(object):
+class Barrier:
     """Kazoo Barrier
 
     Implements a barrier to block processing of a set of nodes until
@@ -83,7 +83,7 @@ class Barrier(object):
         return cleared.is_set()
 
 
-class DoubleBarrier(object):
+class DoubleBarrier:
     """Kazoo Double Barrier
 
     Double barriers are used to synchronize the beginning and end of

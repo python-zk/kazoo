@@ -142,7 +142,7 @@ class KazooRetryParams(TypedDict, total=False):
     interrupt: Callable[[], bool]
 
 
-class KazooClient(object):
+class KazooClient:
     """An Apache Zookeeper Python client supporting alternate callback
     handlers and high-level functionality.
 
@@ -989,7 +989,7 @@ class KazooClient(object):
                 1
             )
             try:
-                return tuple([int(d) for d in version_digits.split(".")])
+                return tuple(int(d) for d in version_digits.split("."))
             except ValueError:
                 return None
 
@@ -1966,7 +1966,7 @@ class KazooClient(object):
         return async_result
 
 
-class TransactionRequest(object):
+class TransactionRequest:
     """A Zookeeper Transaction Request
 
     A Transaction provides a builder object that can be used to

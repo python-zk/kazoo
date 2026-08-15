@@ -1,12 +1,12 @@
-from __future__ import annotations
-
 """
 The official python select function test case copied from python source
  to test the selector_select function.
 """
 
-import os
+from __future__ import annotations
+
 import socket
+import subprocess
 import sys
 import unittest
 
@@ -58,21 +58,32 @@ class SelectTestCase(unittest.TestCase):
 
     def test_select(self) -> None:
         cmd = "for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done"
-        p = os.popen(cmd, "r")
-        for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:
-            rfd, wfd, xfd = select([cast("HasFileNo", p)], [], [], tout)
-            if (rfd, wfd, xfd) == ([], [], []):
-                continue
-            if (rfd, wfd, xfd) == ([cast("HasFileNo", p)], [], []):
-                line = p.readline()
-                if not line:
-                    break
-                continue
-            self.fail(
-                "Unexpected return values from select(): %s %s %s"
-                % (rfd, wfd, xfd)
-            )
-        p.close()
+        with subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            text=True,
+        ) as process:
+            assert process.stdout is not None
+            for tout in (0, 1, 2, 4, 8, 16) + (None,) * 10:
+                rfd, wfd, xfd = select(
+                    [cast("HasFileNo", process.stdout)], [], [], tout
+                )
+                if (rfd, wfd, xfd) == ([], [], []):
+                    continue
+                if (rfd, wfd, xfd) == (
+                    [cast("HasFileNo", process.stdout)],
+                    [],
+                    [],
+                ):
+                    line = process.stdout.readline()
+                    if not line:
+                        break
+                    continue
+                self.fail(
+                    "Unexpected return values from select(): %s %s %s"
+                    % (rfd, wfd, xfd)
+                )
 
     # Issue 16230: Crash on select resized list
     def test_select_mutated(self) -> None:

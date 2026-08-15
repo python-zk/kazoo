@@ -80,7 +80,7 @@ ServerInfo = namedtuple(
 )
 
 
-class ManagedZooKeeper(object):
+class ManagedZooKeeper:
     """Class to manage the running of a ZooKeeper instance for testing.
 
     Note: no attempt is made to probe the ZooKeeper instance is
@@ -350,13 +350,13 @@ log4j.appender.ROLLINGFILE.File="""
     def get_logs(self, num_lines: int = 100) -> list[str]:
         log_path = pathlib.Path(self.working_path, "zookeeper.log")
         if log_path.exists():
-            log_file = log_path.open("r")
-            lines = log_file.readlines()
+            with log_path.open("r") as log_file:
+                lines = log_file.readlines()
             return lines[-num_lines:]
         return []
 
 
-class ZookeeperCluster(object):
+class ZookeeperCluster:
     def __init__(
         self,
         install_path: str,

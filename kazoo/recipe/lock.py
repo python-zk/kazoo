@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient
 
 
-class _Watch(object):
+class _Watch:
     def __init__(self, duration: float | None = None):
         self.duration = duration
         self.started_at: float | None = None
@@ -70,7 +70,7 @@ class _Watch(object):
             return max(0, self.duration - elapsed)
 
 
-class Lock(object):
+class Lock:
     """Kazoo Lock
 
     Example usage with a :class:`~kazoo.client.KazooClient` instance:
@@ -503,7 +503,7 @@ class ReadLock(Lock):
     _EXCLUDE_NAMES = ["__lock__"]
 
 
-class Semaphore(object):
+class Semaphore:
     """A Zookeeper-based Semaphore
 
     This synchronization primitive operates in the same manner as the

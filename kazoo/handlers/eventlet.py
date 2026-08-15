@@ -1,7 +1,6 @@
 """A eventlet based handler."""
 
 from __future__ import annotations
-from __future__ import absolute_import
 
 import atexit
 import contextlib
@@ -59,7 +58,7 @@ class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
     def __init__(self, handler: IHandler):
-        super(AsyncResult, self).__init__(
+        super().__init__(
             handler,
             green_threading.Condition,  # type: ignore[attr-defined]
             TimeoutError,
@@ -67,7 +66,7 @@ class AsyncResult(utils.AsyncResult):
 
 
 # FIXME This should inherit from IHandler
-class SequentialEventletHandler(object):
+class SequentialEventletHandler:
     """Eventlet handler for sequentially executing callbacks.
 
     This handler executes callbacks in a sequential manner. A queue is

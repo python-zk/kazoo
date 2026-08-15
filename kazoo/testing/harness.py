@@ -67,7 +67,7 @@ def get_global_cluster() -> ZookeeperCluster:
     if "-" in ZK_VERSION_STR:
         # Ignore pre-release markers like -alpha
         ZK_VERSION_STR = ZK_VERSION_STR.split("-")[0]
-    ZK_VERSION = tuple([int(n) for n in ZK_VERSION_STR.split(".")])
+    ZK_VERSION = tuple(int(n) for n in ZK_VERSION_STR.split("."))
     ZK_OBSERVER_START_ID = int(  # type: ignore[call-overload]
         cluster_conf.get("ZOOKEEPER_OBSERVER_START_ID")
     )
@@ -173,7 +173,7 @@ class KazooTestHarness(unittest.TestCase):
     DEFAULT_CLIENT_TIMEOUT = 15
 
     def __init__(self, *args: Any, **kw: Any):
-        super(KazooTestHarness, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         self._client: KazooClient | None = None
         self._clients: list[KazooClient] = []
 

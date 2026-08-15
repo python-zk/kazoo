@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 GenericArgs = ParamSpec("GenericArgs")
 
 
-class Election(object):
+class Election:
     """Kazoo Basic Leader Election
 
     Example usage with a :class:`~kazoo.client.KazooClient` instance::

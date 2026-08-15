@@ -1,7 +1,6 @@
 """A gevent based handler."""
 
 from __future__ import annotations
-from __future__ import absolute_import
 
 import atexit
 import logging
@@ -47,7 +46,7 @@ AsyncResult = gevent.event.AsyncResult
 # CallbackQueue = gevent.queue.Queue[Callable[..., None]]
 
 
-class SequentialGeventHandler(object):
+class SequentialGeventHandler:
     """Gevent handler for sequentially executing callbacks.
 
     This handler executes callbacks in a sequential manner. A queue is

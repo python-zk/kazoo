@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient
 
 
-class BaseParty(object):
+class BaseParty:
     """Base implementation of a party."""
 
     def __init__(

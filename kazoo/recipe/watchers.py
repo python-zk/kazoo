@@ -66,7 +66,7 @@ DataWatchFunc = Union[
 ]
 
 
-class DataWatch(object):
+class DataWatch:
     """Watches a node for data updates and calls the specified
     function each time it changes
 
@@ -302,7 +302,7 @@ ChildrenWatchFunc = Union[
 ]
 
 
-class ChildrenWatch(object):
+class ChildrenWatch:
     """Watches a node for children updates and calls the specified
     function each time it changes
 
@@ -465,7 +465,7 @@ class ChildrenWatch(object):
             self._client.handler.spawn(self._get_children)
 
 
-class PatientChildrenWatch(object):
+class PatientChildrenWatch:
     """Patient Children Watch that returns values after the children
     of a node don't change for a period of time
 

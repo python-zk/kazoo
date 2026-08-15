@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 Number = Union[int, float]
 
 
-class Counter(object):
+class Counter:
     """Kazoo Counter
 
     A shared counter of either int or float values. Changes to the

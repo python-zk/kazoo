@@ -63,7 +63,7 @@ class KazooPartitionerTests(KazooTestCase):
         return threading.Event()
 
     def setUp(self) -> None:
-        super(KazooPartitionerTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
         self.__partitioners: list[Partitioner] = []
 

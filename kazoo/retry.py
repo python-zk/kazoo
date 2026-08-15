@@ -31,7 +31,7 @@ class InterruptedError(RetryFailedError):
     function"""
 
 
-class KazooRetry(object):
+class KazooRetry:
     """Helper for retrying a method in the face of retry-able
     exceptions"""
 
