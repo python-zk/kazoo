@@ -22,7 +22,7 @@ class UniqueError(Exception):
 
 class KazooElectionTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooElectionTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
 
         self.condition = threading.Condition()

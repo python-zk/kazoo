@@ -9,7 +9,7 @@ from kazoo.recipe.lease import MultiNonBlockingLease
 from kazoo.testing import KazooTestCase
 
 
-class MockClock(object):
+class MockClock:
     def __init__(self, epoch: float = 0):
         self.epoch = epoch
 
@@ -22,7 +22,7 @@ class MockClock(object):
 
 class KazooLeaseTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooLeaseTests, self).setUp()
+        super().setUp()
         self.client2 = self._get_client(timeout=0.8)
         self.client2.start()
         self.client3 = self._get_client(timeout=0.8)

@@ -7,7 +7,7 @@ from kazoo.testing import KazooTestCase
 
 class KazooPartyTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooPartyTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
 
     def test_party(self) -> None:
@@ -57,7 +57,7 @@ class KazooPartyTests(KazooTestCase):
 
 class KazooShallowPartyTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooShallowPartyTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
 
     def test_party(self) -> None:

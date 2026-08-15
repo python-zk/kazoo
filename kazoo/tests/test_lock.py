@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 
-class SleepBarrier(object):
+class SleepBarrier:
     """A crappy spinning barrier."""
 
     def __init__(self, wait_for: int, sleep_func: Callable[..., None]):
@@ -55,11 +55,11 @@ class KazooLockTests(KazooTestCase):
     thread_count = 20
 
     def __init__(self, *args: None, **kw: None):
-        super(KazooLockTests, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         self.threads_made: list[threading.Thread] = []
 
     def tearDown(self) -> None:
-        super(KazooLockTests, self).tearDown()
+        super().tearDown()
         while self.threads_made:
             t = self.threads_made.pop()
             t.join()
@@ -83,7 +83,7 @@ class KazooLockTests(KazooTestCase):
         return test_util.Wait()
 
     def setUp(self) -> None:
-        super(KazooLockTests, self).setUp()
+        super().setUp()
         self.lockpath = "/" + uuid.uuid4().hex
         self.condition = self.make_condition()
         self.released = self.make_event()
@@ -556,11 +556,11 @@ class KazooLockTests(KazooTestCase):
 
 class TestSemaphore(KazooTestCase):
     def __init__(self, *args: Any, **kw: Any):
-        super(TestSemaphore, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         self.threads_made: list[threading.Thread] = []
 
     def tearDown(self) -> None:
-        super(TestSemaphore, self).tearDown()
+        super().tearDown()
         while self.threads_made:
             t = self.threads_made.pop()
             t.join()
@@ -580,7 +580,7 @@ class TestSemaphore(KazooTestCase):
         return t
 
     def setUp(self) -> None:
-        super(TestSemaphore, self).setUp()
+        super().setUp()
         self.lockpath = "/" + uuid.uuid4().hex
         self.condition = self.make_condition()
         self.released = self.make_event()

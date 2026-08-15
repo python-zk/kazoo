@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient
 
 
-class BaseQueue(object):
+class BaseQueue:
     """A common base class for queue implementations."""
 
     def __init__(self, client: KazooClient, path: str):
@@ -74,12 +74,12 @@ class Queue(BaseQueue):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
-        super(Queue, self).__init__(client, path)
+        super().__init__(client, path)
         self._children: list[str] = []
 
     def __len__(self) -> int:
         """Return queue size."""
-        return super(Queue, self).__len__()
+        return super().__len__()
 
     def get(self) -> bytes | None:
         """
@@ -162,7 +162,7 @@ class LockingQueue(BaseQueue):
         :param client: A :class:`~kazoo.client.KazooClient` instance.
         :param path: The queue path to use in ZooKeeper.
         """
-        super(LockingQueue, self).__init__(client, path)
+        super().__init__(client, path)
         self.id = uuid.uuid4().hex.encode()
         self.processing_element: tuple[str, bytes] | None = None
         self._lock_path = self.path + self.lock
@@ -174,7 +174,7 @@ class LockingQueue(BaseQueue):
 
         :returns: queue size (includes locked entries count).
         """
-        return super(LockingQueue, self).__len__()
+        return super().__len__()
 
     def put(self, value: bytes, priority: int = 100) -> None:
         """Put an entry into the queue.

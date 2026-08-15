@@ -51,7 +51,7 @@ class ACL(NamedTuple):
         )
 
 
-class Permissions(object):
+class Permissions:
     READ = 1
     WRITE = 2
     CREATE = 4

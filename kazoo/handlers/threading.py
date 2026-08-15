@@ -12,7 +12,6 @@ environments that use threads.
 """
 
 from __future__ import annotations
-from __future__ import absolute_import
 
 import atexit
 import logging
@@ -71,9 +70,7 @@ class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
     def __init__(self, handler: Any) -> None:
-        super(AsyncResult, self).__init__(
-            handler, threading.Condition, KazooTimeoutError
-        )
+        super().__init__(handler, threading.Condition, KazooTimeoutError)
 
 
 class SequentialThreadingHandler(IHandler):

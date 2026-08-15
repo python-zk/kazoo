@@ -17,7 +17,7 @@ from kazoo.testing import KazooTestCase
 
 class KazooDataWatcherTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooDataWatcherTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
         self.client.ensure_path(self.path)
 
@@ -295,7 +295,7 @@ class KazooDataWatcherTests(KazooTestCase):
 
 class KazooChildrenWatcherTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooChildrenWatcherTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
         self.client.ensure_path(self.path)
 
@@ -524,7 +524,7 @@ class KazooChildrenWatcherTests(KazooTestCase):
 
 class KazooPatientChildrenWatcherTests(KazooTestCase):
     def setUp(self) -> None:
-        super(KazooPatientChildrenWatcherTests, self).setUp()
+        super().setUp()
         self.path = "/" + uuid.uuid4().hex
 
     def _makeOne(self, *args: Any, **kwargs: Any) -> PatientChildrenWatch:

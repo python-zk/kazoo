@@ -8,7 +8,7 @@ import pytest
 
 from kazoo.exceptions import NoNodeError
 from kazoo.handlers.utils import create_tcp_socket
-from kazoo.protocol.states import Callback, ZnodeStat
+from kazoo.protocol.states import Callback, KazooState, ZnodeStat
 from kazoo.testing import KazooTestCase
 
 try:
@@ -90,13 +90,13 @@ class TestBasicGeventClient(KazooTestCase):
     def test_start(self) -> None:
         client = self._get_client(handler=self._makeOne())
         client.start()
-        assert client.state == "CONNECTED"
+        assert client.state == KazooState.CONNECTED
         client.stop()
 
     def test_start_stop_double(self) -> None:
         client = self._get_client(handler=self._makeOne())
         client.start()
-        assert client.state == "CONNECTED"
+        assert client.state == KazooState.CONNECTED
         client.handler.start()
         client.handler.stop()
         client.stop()
@@ -104,7 +104,7 @@ class TestBasicGeventClient(KazooTestCase):
     def test_basic_commands(self) -> None:
         client = self._get_client(handler=self._makeOne())
         client.start()
-        assert client.state == "CONNECTED"
+        assert client.state == KazooState.CONNECTED
         client.create("/anode", b"fred")
         assert client.get("/anode")[0] == b"fred"
         assert client.delete("/anode")

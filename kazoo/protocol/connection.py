@@ -102,7 +102,7 @@ def buffer(obj: Buffer, offset: int = 0) -> memoryview:
     return memoryview(obj)[offset:]
 
 
-class RWPinger(object):
+class RWPinger:
     """A Read/Write Server Pinger Iterable
 
     This object is initialized with the hosts iterator object and the
@@ -180,7 +180,7 @@ class RWServerAvailable(Exception):
 ReturnValue = TypeVar("ReturnValue")
 
 
-class ConnectionHandler(object):
+class ConnectionHandler:
     """Zookeeper connection handler"""
 
     def __init__(

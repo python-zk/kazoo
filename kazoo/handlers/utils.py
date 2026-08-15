@@ -305,21 +305,11 @@ def create_tcp_connection(
                 # otherwise there is no timeout set and we'll call it as such
                 sock = module.create_connection(address, timeout_at)
                 break
-            except Exception as ex:
-                # FIXME The check for ex[0] is for compatibility with python 2
-                # and should be removed. Instead we should just catch
-                # InterruptedError and continue. Even this is unnecessary, at
-                # least for 'socket', since PEP475 was adopted in python 3.5
-                # but I'm not entirely sure about the gevent and eventlet
-                # libraries.
-                errnum = (
-                    ex.errno
-                    if isinstance(ex, OSError)
-                    else ex[0]  # type: ignore
-                )
-                if errnum == errno.EINTR:
-                    continue
-                raise
+            except InterruptedError:
+                # Retry on an interrupted connect attempt. This is a
+                # standard Python 3 socket behavior and is enough for the
+                # supported Python versions in this project.
+                continue
 
     if sock is None:
         raise module.error
