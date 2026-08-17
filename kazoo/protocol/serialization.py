@@ -416,6 +416,20 @@ class Reconfig(
         return data, stat
 
 
+class RemoveWatches(namedtuple("RemoveWatches", "path watcher_type")):
+    type = 18
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(int_struct.pack(self.watcher_type))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        return None
+
+
 class Auth(namedtuple("Auth", "auth_type scheme auth")):
     type = 100
 
@@ -439,6 +453,20 @@ class SASL(namedtuple("SASL", "challenge")):
     def deserialize(cls, bytes, offset):
         challenge, offset = read_buffer(bytes, offset)
         return challenge, offset
+
+
+class AddWatch(namedtuple("AddWatch", "path watcher mode")):
+    type = 106
+
+    def serialize(self):
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(int_struct.pack(self.mode))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes, offset):
+        return None
 
 
 class Watch(namedtuple("Watch", "type state path")):
