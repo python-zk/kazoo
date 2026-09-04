@@ -1,8 +1,98 @@
 [build-system]
 build-backend = 'setuptools.build_meta'
 requires = [
-    'setuptools >= 46.4.0',
+    'setuptools >= 61.0.0',
 ]
+
+[project]
+name = "kazoo"
+dynamic = ["version", "readme"]
+description = "Higher Level Zookeeper Client"
+requires-python = ">=3.8"
+license = {text = "Apache 2.0"}
+authors = [
+    {name = "Kazoo team", email = "python-zk@googlegroups.com"},
+]
+keywords = ["zookeeper", "lock", "leader", "configuration"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Communications",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: System :: Networking",
+]
+dependencies = ["typing-extensions>=4.13.2"]
+
+[project.urls]
+Homepage = "https://kazoo.readthedocs.io"
+Documentation = "https://kazoo.readthedocs.io"
+Changelog = "https://github.com/python-zk/kazoo/releases"
+Source = "https://github.com/python-zk/kazoo"
+"Bug Tracker" = "https://github.com/python-zk/kazoo/issues"
+
+[project.optional-dependencies]
+eventlet = ["eventlet>=0.17.1; implementation_name != 'pypy'"]
+gevent = ["gevent>=1.2; implementation_name != 'pypy'"]
+sasl = ["pure_sasl>=0.5.1"]
+
+[dependency-groups]
+black = ["black==22.10.0"]
+pep8 = ["flake8==5.0.2"]
+test-extras = [
+    "objgraph==3.5.0",
+    "pyOpenSSL<26.2.0",
+    "pyjks",
+    "unittest-parametrize",
+]
+pytest = [
+    "pytest==7.4.4; python_version == '3.8'",
+    "pytest==8.4.2; python_version > '3.8'",
+]
+test = [
+    "coverage==6.3.2; python_version == '3.8'",
+    "coverage==7.10.7; python_version > '3.8'",
+    {include-group = "pytest"},
+    "pytest-cov==3.0.0; python_version == '3.8'",
+    "pytest-cov==7.0.0; python_version > '3.8'",
+    "pytest-timeout==2.2.0; python_version == '3.8'",
+    "pytest-timeout==2.4.0; python_version > '3.8'",
+    {include-group = "test-extras"},
+]
+mypy = [
+    "mypy==1.14.1",
+    {include-group = "test-extras"},
+    {include-group = "pytest"},
+    "types-gevent",
+    "types-mock",
+    "types-objgraph",
+    "types-pyjks",
+]
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+packages = {find = {}}
+license-files = ["LICENSE"]
+
+[tool.setuptools.package-data]
+kazoo = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "kazoo.version.__version__"}
+readme = {file = ["README.md", "CHANGES.md", "CONTRIBUTING.md"], content-type = "text/markdown"}
 
 [tool.black]
 line-length = 79
