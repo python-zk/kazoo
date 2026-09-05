@@ -176,7 +176,7 @@ ssl.trustStore.password=apassword
                     to_java_compatible_path(truststore_path),
                     "\n".join(self.configuration_entries),
                 )
-            )  # NOQA
+            )
 
         # setup a replicated setup if peers are specified
         if self.peers:
@@ -220,7 +220,7 @@ log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} \
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
 log4j.appender.ROLLINGFILE.File="""
-                + to_java_compatible_path(  # NOQA
+                + to_java_compatible_path(
                     self.working_path + os.sep + "zookeeper.log\n"
                 )
             )
@@ -331,7 +331,7 @@ log4j.appender.ROLLINGFILE.File="""
         self.process.terminate()
         self.process.wait()
         if self.process.returncode != 0:
-            log.warn(
+            log.warning(
                 "Zookeeper process %s failed to terminate with"
                 " non-zero return code (it terminated with %s return"
                 " code instead)",
