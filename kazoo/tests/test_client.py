@@ -36,7 +36,6 @@ from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.protocol.states import KazooState, KeeperState, WatchedEvent
 from kazoo.retry import KazooRetry
 from kazoo.security import (
-    ACL,
     CREATOR_ALL_ACL,
     OPEN_ACL_UNSAFE,
     make_digest_acl,
@@ -81,12 +80,16 @@ class TestClientTransitions(KazooTestCase):
 
 
 class TestClientConstructor(unittest.TestCase):
-    def _makeOne(self, *args: Any, **kw: Any) -> KazooClient:
+    _makeOne = KazooClient
+
+    def _old_makeOne(self, *args: Any, **kw: Any) -> KazooClient:
+        # This is a hack to so that test_invalid_handler doesn't generate a
+        # mypy error.
         return KazooClient(*args, **kw)
 
     def test_invalid_handler(self) -> None:
         with pytest.raises(ConfigurationError):
-            self._makeOne(handler=SequentialThreadingHandler)
+            self._old_makeOne(handler=SequentialThreadingHandler)
 
     def test_chroot(self) -> None:
         assert self._makeOne(hosts="127.0.0.1:2181/").chroot == ""
@@ -123,6 +126,7 @@ class TestClientConstructor(unittest.TestCase):
             self._makeOne(hosts="/nosuchhost/a")
 
     def test_retry_options_dict(self) -> None:
+        # Deprecated API, but still supported for backwards compatibility
         client = self._makeOne(
             command_retry=dict(max_tries=99), connection_retry=dict(delay=99)
         )
@@ -131,17 +135,46 @@ class TestClientConstructor(unittest.TestCase):
         assert client._retry.max_tries == 99
         assert client._conn_retry.delay == 99
 
+    def test_retry_options_one_retry(self) -> None:
+        # Deprecated API, but still supported for backwards compatibility
+        client = self._makeOne(
+            command_retry=KazooRetry(max_tries=98),
+            connection_retry=dict(delay=97),
+        )
+        assert type(client._conn_retry) is KazooRetry
+        assert type(client._retry) is KazooRetry
+        assert client._retry.max_tries == 98
+        assert client._conn_retry.delay == 97
+
+    def test_retry_options_other_retry(self) -> None:
+        # Deprecated API, but still supported for backwards compatibility
+        client = self._makeOne(
+            command_retry=dict(max_tries=88),
+            connection_retry=KazooRetry(delay=87),
+        )
+        assert type(client._conn_retry) is KazooRetry
+        assert type(client._retry) is KazooRetry
+        assert client._retry.max_tries == 88
+        assert client._conn_retry.delay == 87
+
+    def test_retry_options_both_retry(self) -> None:
+        client = self._makeOne(
+            command_retry=KazooRetry(max_tries=96),
+            connection_retry=KazooRetry(delay=95),
+        )
+        assert type(client._conn_retry) is KazooRetry
+        assert type(client._retry) is KazooRetry
+        assert client._retry.max_tries == 96
+        assert client._conn_retry.delay == 95
+
 
 class TestAuthentication(KazooTestCase):
-    def _makeAuth(self, *args: Any, **kwargs: Any) -> ACL:
-        return make_digest_acl(*args, **kwargs)
-
     def test_auth(self) -> None:
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
 
         digest_auth = "%s:%s" % (username, password)
-        acl = self._makeAuth(username, password, all=True)
+        acl = make_digest_acl(username, password, all=True)
 
         client = self._get_client()
         client.start()
@@ -173,12 +206,11 @@ class TestAuthentication(KazooTestCase):
             eve.close()
 
     def test_connect_auth(self) -> None:
-
         username = uuid.uuid4().hex
         password = uuid.uuid4().hex
 
         digest_auth = "%s:%s" % (username, password)
-        acl = self._makeAuth(username, password, all=True)
+        acl = make_digest_acl(username, password, all=True)
 
         client = self._get_client(auth_data=[("digest", digest_auth)])
         client.start()
@@ -202,7 +234,7 @@ class TestAuthentication(KazooTestCase):
         username = r"xe4/\hm"
         password = r"/\xe4hm"
         digest_auth = "%s:%s" % (username, password)
-        acl = self._makeAuth(username, password, all=True)
+        acl = make_digest_acl(username, password, all=True)
 
         client = self._get_client()
         client.start()
@@ -232,6 +264,8 @@ class TestAuthentication(KazooTestCase):
             eve.close()
 
     def test_invalid_auth(self) -> None:
+        # Fixes deprecated warning for add_auth() with a tuple instead of a
+        # string
         client = self._get_client()
         client.start()
 
@@ -336,7 +370,6 @@ class TestConnection(KazooTestCase):
         assert not cv.is_set()
 
     def test_state_listener(self) -> None:
-
         states = []
         condition = self.make_condition()
 
@@ -362,7 +395,6 @@ class TestConnection(KazooTestCase):
             self.client.add_listener(15)  # type: ignore[arg-type]
 
     def test_listener_only_called_on_real_state_change(self) -> None:
-
         assert self.client.state == KazooState.CONNECTED
         called = [False]
         condition = self.make_event()
@@ -475,8 +507,7 @@ class TestConnection(KazooTestCase):
 
 
 class TestClient(KazooTestCase):
-    def _makeOne(self, *args: Any) -> SequentialThreadingHandler:
-        return SequentialThreadingHandler(*args)
+    _makeOne = SequentialThreadingHandler
 
     def test_server_version_retries_fail(self) -> None:
 
@@ -1246,10 +1277,7 @@ class TestClientTransactions(KazooTestCase):
         assert results[0] is True
 
     def test_bad_deletes(self) -> None:
-        args_list = [
-            (True,),
-            ("/smith", "woops"),
-        ]
+        args_list = [(True,), ("/smith", "woops")]
 
         for args in args_list:
             with pytest.raises(TypeError):

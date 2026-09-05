@@ -7,10 +7,6 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, cast
 
-# FIXME This is messy.
-# We don't want to force the user to install gevent, so we need to handle the
-# case where it's not available, but there should be a cleaner we of doing this
-# than by importing all of gevent and ignoring all the import errors.
 import gevent
 import gevent.event
 import gevent.queue
@@ -27,8 +23,6 @@ if TYPE_CHECKING:
 
     from kazoo.interfaces import FdLike, Lockable, Socket
     from kazoo.protocol.states import Callback
-
-_using_libevent = gevent.__version__.startswith("0.")
 
 log = logging.getLogger(__name__)
 

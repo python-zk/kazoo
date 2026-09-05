@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib
+import socket
 import sys
 import unittest
 from typing import Any
@@ -11,21 +13,20 @@ from kazoo.handlers.utils import create_tcp_socket
 from kazoo.protocol.states import Callback, KazooState, ZnodeStat
 from kazoo.testing import KazooTestCase
 
-try:
-    import gevent  # noqa: F401
-    from gevent import socket
+if importlib.util.find_spec("gevent") is None:
+    # The double test here stops complaints about imports not being at the top
+    # of the file.
+    pytest.importorskip("gevent", reason="gevent not available")
+else:
     from gevent.event import Event
     from gevent.queue import Empty
 
     from kazoo.handlers.gevent import AsyncResult, SequentialGeventHandler
-except ImportError:
-    pytestmark = pytest.mark.skip(reason="gevent not available")
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestGeventHandler(unittest.TestCase):
-    def _makeOne(self, *args: Any) -> SequentialGeventHandler:
-        return SequentialGeventHandler(*args)
+    _makeOne = SequentialGeventHandler
 
     def _getAsync(self) -> type[AsyncResult[Any]]:
         return AsyncResult
@@ -79,11 +80,10 @@ class TestGeventHandler(unittest.TestCase):
 
 @pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestBasicGeventClient(KazooTestCase):
+    _makeOne = SequentialGeventHandler
+
     def setUp(self) -> None:
         KazooTestCase.setUp(self)
-
-    def _makeOne(self, *args: Any) -> SequentialGeventHandler:
-        return SequentialGeventHandler(*args)
 
     def _getEvent(self) -> type[Event]:
         return Event
