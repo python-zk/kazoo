@@ -178,7 +178,6 @@ class KazooClient:
     ) -> None:
         ...
 
-    # FIXME This should be deprecated then killed
     @overload
     @deprecated(
         "Passing retry configuration parameters directly to the client"
@@ -348,16 +347,8 @@ class KazooClient:
         self.auth_data = set(auth_data if auth_data else [])
         self.default_acl = default_acl
         self.randomize_hosts = randomize_hosts
-        # FIXME Note: hosts and chroot are set by set_hosts, which also checks
-        # for chroot changes at runtime, so we initialize them to None here to
-        # avoid confusion with the empty string that set_hosts would set them
-        # to. This is massively hacky as set_hosts is only called from here
-        # anyway, but I want to make this change minimally invasive.
-        # we should really do self.hosts, self.chroot = self.set_hosts(hosts)
-        # and have set_hosts return the hosts and chroot
-        self.hosts: list[tuple[str, int]] = None  # type: ignore[assignment]
-        self.chroot: str = None  # type: ignore[assignment]
-        self.set_hosts(hosts)
+
+        self.hosts, self.chroot = self._collect_hosts(hosts)
 
         self.use_ssl = use_ssl
         self.verify_certs = verify_certs
@@ -397,72 +388,52 @@ class KazooClient:
         self._stopped.set()
         self._writer_stopped.set()
 
-        # FIXME This is kind of gross but we need to set these to something so
-        # that the type checker will understand that they are set by the time
-        # they are used and that they have the right type.
-        # We would do better to use a few variables/functions instead of
-        # overloading self.retry but this is a bit less invasive to the code
-        # and the type checker can understand it with a few hacks
-        self.retry: KazooRetry = None  # type: ignore[assignment]
-        self._conn_retry: KazooRetry = None  # type: ignore[assignment]
+        old_retry_keys = dict(_RETRY_COMPAT_DEFAULTS)
+        for key in old_retry_keys:
+            try:
+                old_retry_keys[key] = cast(
+                    "dict[str, float | None]", kwargs
+                ).pop(key)
+                warnings.warn(
+                    "Passing retry configuration param %s to the "
+                    "client directly is deprecated, please pass a "
+                    "configured retry object (using param %s)"
+                    % (key, _RETRY_COMPAT_MAPPING[key]),
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            except KeyError:
+                pass
 
-        if type(connection_retry) is dict:
-            self._conn_retry = KazooRetry(**connection_retry)
-        elif type(connection_retry) is KazooRetry:
-            self._conn_retry = connection_retry
+        retry_keys: dict[str, Any] = {}
+        for oldname, value in old_retry_keys.items():
+            retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
+        retry_keys["sleep_func"] = self.handler.sleep_func
 
-        if type(command_retry) is dict:
-            self.retry = KazooRetry(**command_retry)
-        elif type(command_retry) is KazooRetry:
-            self.retry = command_retry
+        def make_retry(
+            retry: KazooRetry | KazooRetryParams | None,
+        ) -> KazooRetry:
+            if isinstance(retry, dict):
+                return KazooRetry(**retry)
+            if isinstance(retry, KazooRetry):
+                return retry
+            return KazooRetry(**retry_keys)
 
-        if type(self._conn_retry) is KazooRetry:
+        self._conn_retry = make_retry(connection_retry)
+        self._retry = make_retry(command_retry)
+
+        if self._conn_retry is not None:
             if self.handler.sleep_func != self._conn_retry.sleep_func:
                 raise ConfigurationError(
                     "Retry handler and event handler "
                     " must use the same sleep func"
                 )
 
-        if type(self.retry) is KazooRetry:
-            if self.handler.sleep_func != self.retry.sleep_func:
+        if self._retry is not None:
+            if self.handler.sleep_func != self._retry.sleep_func:
                 raise ConfigurationError(
                     "Command retry handler and event handler "
                     "must use the same sleep func"
-                )
-
-        if self.retry is None or self._conn_retry is None:
-            # Note: because of the hacks at line 280, mypy thinks this is
-            # unreachable
-            old_retry_keys = dict(  # type: ignore[unreachable]
-                _RETRY_COMPAT_DEFAULTS
-            )
-            for key in old_retry_keys:
-                try:
-                    old_retry_keys[key] = kwargs.pop(key)
-                    warnings.warn(
-                        "Passing retry configuration param %s to the "
-                        "client directly is deprecated, please pass a "
-                        "configured retry object (using param %s)"
-                        % (key, _RETRY_COMPAT_MAPPING[key]),
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                except KeyError:
-                    pass
-
-            retry_keys = {}
-            for oldname, value in old_retry_keys.items():
-                retry_keys[_RETRY_COMPAT_MAPPING[oldname]] = value
-
-            if self._conn_retry is None:
-                self._conn_retry = KazooRetry(
-                    sleep_func=self.handler.sleep_func,
-                    **retry_keys,
-                )
-            if self.retry is None:
-                self.retry = KazooRetry(
-                    sleep_func=self.handler.sleep_func,
-                    **retry_keys,
                 )
 
         # Managing legacy SASL options
@@ -508,7 +479,6 @@ class KazooClient:
 
         # Every retry call should have its own copy of the retry helper
         # to avoid shared retry counts
-        self._retry = self.retry
 
         def _retry(
             func: Callable[GenericArgs, KazooRetry.RETRY_RETURN],
@@ -517,14 +487,7 @@ class KazooClient:
         ) -> KazooRetry.RETRY_RETURN:
             return self._retry.copy()(func, *args, **kwargs)
 
-        # FIXME
-        # (expression has type "Callable[[VarArg(Any), KwArg(Any)], Any]",
-        # variable has type "KazooRetry") so basically self.retry needs to be
-        # set to that and then the type checker will understand that
-        # self.retry.copy() is a valid call. This is just a mess and needs the
-        # code rearranging to be more mypy friendly but this is the least
-        # invasive way to do it for now
-        self.retry = _retry  # type: ignore[assignment]
+        self.retry = _retry
 
         self.Barrier = partial(Barrier, self)
         self.Counter = partial(Counter, self)
@@ -609,6 +572,12 @@ class KazooClient:
         established."""
         return self._live.is_set()
 
+    def _collect_hosts(
+        self, hosts: str | list[str]
+    ) -> tuple[list[tuple[str, int]], str]:
+        new_hosts, chroot = collect_hosts(hosts)
+        return new_hosts, normpath(chroot)
+
     def set_hosts(
         self,
         hosts: str | list[str],
@@ -637,25 +606,18 @@ class KazooClient:
             zookeeper server cluster has undefined behavior.
 
         """
-
         # Change the client setting for randomization if specified
+        # Randomizing the list will be done at connect time
         if randomize_hosts is not None:
             self.randomize_hosts = randomize_hosts
 
-        # Randomizing the list will be done at connect time
-        self.hosts, chroot = collect_hosts(hosts)
+        self.hosts, chroot = self._collect_hosts(hosts)
 
-        if chroot:
-            new_chroot = normpath(chroot)
-        else:
-            new_chroot = ""
-
-        if self.chroot is not None and new_chroot != self.chroot:
+        if chroot != self.chroot:
             raise ConfigurationError(
-                "Changing chroot at runtime is not " "currently supported"
+                "Changing chroot at runtime is not currently supported"
             )
-
-        self.chroot = new_chroot
+        self.chroot = chroot
 
     def add_listener(self, listener: ListenerFunc) -> None:
         """Add a function to be called for connection state changes.
@@ -993,31 +955,12 @@ class KazooClient:
             except ValueError:
                 return None
 
-        def _is_valid(version: tuple[int, ...] | None) -> bool:
-            # All zookeeper versions should have at least major.minor
-            # version numbers; if we get one that doesn't it is likely not
-            # correct and was truncated...
-            if version and len(version) > 1:
-                return True
-            return False
-
-        # FIXME A better way of doing this would be to put the initial
-        # _try_fetch in the loop and inline _is_valid but I want to minimise
-        # code changes
-
         # Try 1 + retries amount of times to get a version that we know
         # will likely be acceptable...
-        version = _try_fetch()
-        if _is_valid(version):
-            # mypy doesn't recognise that _is_valid guarantees this
-            # and the next 2 suppress should include return-value
-            # but hound is broken
-            return version  # type: ignore
-        for _i in range(0, retries):
+        for _ in range(0, retries + 1):
             version = _try_fetch()
-            if _is_valid(version):
-                # mypy doesn't recognise that _is_valid guarantees this
-                return version  # type: ignore
+            if version is not None and len(version) > 1:
+                return version
         raise KazooException(
             "Unable to fetch useable server"
             " version after trying %s times" % (1 + max(0, retries))
@@ -1596,12 +1539,8 @@ class KazooClient:
             raise TypeError("Invalid type for 'include_data' (bool expected)")
 
         async_result = self.handler.async_result()
-        # FIXME? Do this as req = getc2 if include_data else getc
-        req: GetChildren | GetChildren2
-        if include_data:
-            req = GetChildren2(_prefix_root(self.chroot, path), watch)
-        else:
-            req = GetChildren(_prefix_root(self.chroot, path), watch)
+        func = GetChildren2 if include_data else GetChildren
+        req = func(_prefix_root(self.chroot, path), watch)
         self._call(req, async_result)
         return async_result
 

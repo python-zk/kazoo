@@ -187,9 +187,6 @@ class TreeCache:
                         does not exist.
         :raises ValueError: If the path is outside of this subtree.
         :returns: The :class:`frozenset` which including children names.
-
-        # FIXME the default return value should be an empty frozenset,
-        # returning None is confusing.
         """
         node = self._find_node(path)
         return default if node is None else frozenset(node._children)
