@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import time
@@ -16,9 +17,7 @@ from kazoo.tests.util import CI_ZK_VERSION
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
     def setUp(self) -> None:
-        try:
-            import puresasl  # NOQA
-        except ImportError:
+        if importlib.util.find_spec("puresasl") is None:
             pytest.skip("PureSASL not available.")
 
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
@@ -66,9 +65,7 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
 
 class TestSASLDigestAuthentication(KazooTestHarness):
     def setUp(self) -> None:
-        try:
-            import puresasl  # NOQA
-        except ImportError:
+        if importlib.util.find_spec("puresasl") is None:
             pytest.skip("PureSASL not available.")
 
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
@@ -127,15 +124,9 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 class TestSASLGSSAPIAuthentication(KazooTestHarness):
     def setUp(self) -> None:
         # puresasl isn't available under windows, so we can't do this test.
-        try:
-            import puresasl
-        except ImportError:
+        if importlib.util.find_spec("puresasl") is None:
             pytest.skip("PureSASL not available.")
-        try:
-            # FIXME Hound objects to import not found as it thinks it's a
-            # syntax error. I don't know why it thinks that.
-            import kerberos  # type: ignore
-        except ImportError:
+        if importlib.util.find_spec("kerberos") is None:
             pytest.skip("Kerberos support not available.")
         if not os.environ.get("KRB5_TEST_ENV"):
             pytest.skip("Test Kerberos environ not setup.")
