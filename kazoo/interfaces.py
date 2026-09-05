@@ -10,15 +10,7 @@
 
 from __future__ import annotations
 
-
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Protocol,
-    Union,
-    TYPE_CHECKING,
-)
+from typing import Any, Callable, Iterable, Protocol, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from types import TracebackType

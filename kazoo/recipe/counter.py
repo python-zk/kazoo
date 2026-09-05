@@ -107,25 +107,15 @@ class Counter:
 
     def _value(self) -> tuple[Number, int]:
         self._ensure_node()
-        # FIXME: This is astonishingly hard to follow...
-        # Should probably be refactored to be more clear.
-        # val, state = ...
-        # if val == b"":
-        #     old = self.default
-        # elif self.support_curator:
-        #     old = struct.unpack(">i", val)[0]
-        # else:
-        #     old = val.decode("ascii")
-        # maybe (not sure it does anything for the messy type though)
-        old: Union[bytes, str, Number]
-        old, stat = self.client.get(self.path)
-        if self.support_curator:
-            old = struct.unpack(">i", old)[0] if old != b"" else self.default
+        old: Union[str, Number]
+        val, stat = self.client.get(self.path)
+        if val == b"":
+            old = self.default
+        elif self.support_curator:
+            old = int(struct.unpack(">i", val)[0])
         else:
-            old = old.decode("ascii") if old != b"" else self.default
-        version = stat.version
-        data = self.default_type(old)
-        return data, version
+            old = val.decode("ascii")
+        return self.default_type(old), stat.version
 
     @property
     def value(self) -> Number:
