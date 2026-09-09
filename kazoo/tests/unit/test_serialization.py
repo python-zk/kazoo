@@ -4,8 +4,6 @@ import struct
 
 import pytest
 
-from unittest_parametrize import ParametrizedTestCase, param, parametrize
-
 from kazoo.exceptions import ZookeeperError
 from kazoo.protocol import serialization
 from kazoo.protocol.states import ZnodeStat

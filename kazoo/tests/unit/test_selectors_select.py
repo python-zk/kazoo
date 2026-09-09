@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """
 The official python select function test case copied from python source
  to test the selector_select function.
 """
+
+from __future__ import annotations
 
 import socket
 import subprocess

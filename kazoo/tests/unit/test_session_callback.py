@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+
 import pytest
 
 from kazoo.client import KazooClient
