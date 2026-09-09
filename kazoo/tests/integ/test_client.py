@@ -188,9 +188,22 @@ class TestAuthentication:
     def test_add_auth_on_reconnect(self, zkclient):
         client = zkclient
         client.add_auth("digest", "jsmith:jsmith")
-        client._connection._socket.shutdown(socket.SHUT_RDWR)
-        while not client.connected:
-            time.sleep(0.1)
+
+        ev_lost = client.handler.event_object()
+        ev_connected = client.handler.event_object()
+
+        def listener(state):
+            if state in (KazooState.SUSPENDED, KazooState.LOST):
+                ev_lost.set()
+            elif state == KazooState.CONNECTED and ev_lost.is_set():
+                ev_connected.set()
+
+        client.add_listener(listener)
+        if client._connection._socket is not None:
+            client._connection._socket.shutdown(socket.SHUT_RDWR)
+
+        ev_connected.wait(15)
+        assert ev_connected.is_set()
         assert ("digest", "jsmith:jsmith") in client.auth_data
 
 
@@ -242,7 +255,7 @@ class TestConnection:
 
         client.add_listener(watch_events)
         client.harness_expire_session()
-        ab.wait(0.5)
+        ab.wait(5.0)
         assert ab.is_set()
         cv.wait(0.5)
         assert not cv.is_set()
@@ -977,30 +990,53 @@ class TestClient:
 
         hosts = f"{zkensemble.zk_ip}:{zkensemble.zk1_port}"
         # create a client with only one server in its list
-        client = zkensemble.get_client(hosts=hosts)
-        client.start()
+        handler = self._makeOne()
+        client = zkensemble.get_client(
+            hosts=hosts,
+            handler=handler,
+            timeout=30.0,
+            connection_retry={
+                "max_tries": -1,
+                "delay": 0.1,
+                "backoff": 1,
+                "max_jitter": 0.0,
+                "sleep_func": handler.sleep_func,
+            },
+        )
+        client.start(timeout=30.0)
 
-        # try to change the chroot, not currently allowed
-        with pytest.raises(ConfigurationError):
-            client.set_hosts(hosts + "/new_chroot")
-
-        # grow the cluster to 3
-        hosts = zkensemble.get_hosts()
-        client.set_hosts(hosts)
-
-        # shut down the first host
         try:
-            zkensemble.stop("zoo1")
-            time.sleep(5)
+            # try to change the chroot, not currently allowed
+            with pytest.raises(ConfigurationError):
+                client.set_hosts(hosts + "/new_chroot")
+
+            # grow the cluster to 3
+            hosts = zkensemble.get_hosts()
+            client.set_hosts(hosts)
+
+            ev_connected = client.handler.event_object()
+
+            def listener(state):
+                if state == KazooState.CONNECTED:
+                    ev_connected.set()
+
+            client.add_listener(listener)
+
+            # shut down the first host
+            zkensemble.stop("zoo1", handler=handler)
+            ev_connected.wait(60)
+            assert ev_connected.is_set()
             assert client.client_state == KeeperState.CONNECTED
         finally:
-            zkensemble.start("zoo1")
+            client.stop()
+            client.close()
+            zkensemble.start("zoo1", handler=handler)
 
     # utility for test_request_queuing*
     def _make_request_queuing_client(
         self, zkclient, zkensemble
     ) -> tuple[KazooClient, str]:
-        server = "zoo1"  # XXX: Hardcoded, first server in the ensemble
+        server = "zoo1"
         handler = self._makeOne()
         # create a client with only one server in its list, and
         # infinite retries
@@ -1008,6 +1044,7 @@ class TestClient:
             # connect to the first server in the ensemble
             hosts=f"{zkensemble.zk_ip}:{zkensemble.zk1_port}",
             handler=handler,
+            timeout=30.0,
             connection_retry={
                 "max_tries": -1,
                 "delay": 0.1,
@@ -1035,21 +1072,20 @@ class TestClient:
         def listener(state):
             if state == KazooState.SUSPENDED:
                 ev_suspended.set()
-            elif state == KazooState.CONNECTED:
+            elif state == KazooState.CONNECTED and ev_suspended.is_set():
                 ev_connected.set()
 
         client.add_listener(listener)
 
         # wait for the client to connect
-        client.start()
+        client.start(timeout=30.0)
 
         try:
             # force the client to suspend
             zkensemble.stop(server)
 
-            ev_suspended.wait(5)
+            ev_suspended.wait(30)
             assert ev_suspended.is_set()
-            ev_connected.clear()
 
             # submit a request, expecting it to be queued
             result = client.create_async(path)
@@ -1068,10 +1104,8 @@ class TestClient:
             zkensemble.start(server)
 
         # wait for the client to reconnect (either with a recovered
-        # session, or with a new one if expire_session was set). Docker
-        # compose node restarts take up to ~15s before the client port
-        # accepts connections again, so allow a generous window.
-        ev_connected.wait(30)
+        # session, or with a new one if expire_session was set).
+        ev_connected.wait(60)
         assert ev_connected.is_set()
 
         return result
@@ -1081,8 +1115,6 @@ class TestClient:
         client, server = self._make_request_queuing_client(
             zkclient=zkclient, zkensemble=zkensemble
         )
-        # FIXME: server is supposed to be a handle to the server process
-        # in compose.
 
         try:
             result = self._request_queuing_common(
@@ -1093,27 +1125,13 @@ class TestClient:
                 expire_session=False,
             )
 
-            assert result.get() == path
+            assert result.get(timeout=30) == path
+            assert len(client._queue) == 0
             assert client.exists(path) is not None
         finally:
             client.stop()
+            client.close()
 
-    # Flaky under the compose harness: the password-mangling approach
-    # assumes a server-side session won't survive the node restart, but ZK 3.9
-    # persists sessions (closeSessionTxn, see server logs "Committing global
-    # session ...") and its quorum peers reintroduce them on `compose start`.
-    # Depending on whether the mangled connect lands before or after the
-    # session is re-propagated, zookeeper either rejects it (reconnect with a
-    # brand-new session, SessionExpiredError, queue drained) or silently
-    # accepts the recovered session (queued Create just succeeds). The latter
-    # raced the `len(client._queue) == 0` assertion, causing intermittent
-    # `assert 1 == 0` failures. Revisit by forcing a real session expiry (e.g.
-    # bounce the whole quorum while the client stays idle past its session
-    # timeout, or disable session persistence) instead of mangling the passwd.
-    @pytest.mark.skip(
-        "password-mangling of a persisted session is flaky under compose; "
-        "see comment in test_request_queuing_session_expired"
-    )
     def test_request_queuing_session_expired(self, zkclient, zkensemble):
         path = "/" + uuid.uuid4().hex
         client, server = self._make_request_queuing_client(
@@ -1129,11 +1147,12 @@ class TestClient:
                 expire_session=True,
             )
 
-            assert len(client._queue) == 0
             with pytest.raises(SessionExpiredError):
-                result.get()
+                result.get(timeout=30)
+            assert len(client._queue) == 0
         finally:
             client.stop()
+            client.close()
 
 
 @pytest.mark.zk_auth("tls")

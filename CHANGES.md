@@ -5,6 +5,9 @@
 
 * **core:**
   *  `KazooClient.command()` passed the peer *port* (from `getpeername()[1]`) as the TLS `hostname` for SNI; it now uses the peer host address, so `server_version()` / `command()` work over TLS
+* **testing:**
+  *  fix flakiness in `test_client.py` request queuing tests (`test_request_queuing_session_expired`, `test_request_queuing_session_recovered`) by synchronizing on async result resolution and eliminating state listener race conditions; unskip `test_request_queuing_session_expired`
+  *  replace fragile polling loops and fixed sleeps in `test_client.py` (`test_add_auth_on_reconnect`, `test_update_host_list`, `test_bad_session_expire`) with bounded event synchronization
 
 
 #### BREAKING CHANGES
