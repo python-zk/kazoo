@@ -99,3 +99,16 @@ disable_error_code = [ 'unused-ignore' ]
 [[tool.mypy.overrides]]
     module = ["puresasl.*"]
     follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["testcontainers.*", "backports.*"]
+    ignore_missing_imports = true
+    follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["kazoo.testing.*"]
+    disallow_any_unimported = false
+
+[[tool.mypy.overrides]]
+    module = ["kazoo.tests.*"]
+    ignore_errors = true

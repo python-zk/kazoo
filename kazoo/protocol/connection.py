@@ -28,6 +28,7 @@ from kazoo.exceptions import (
     ConnectionDropped,
     EXCEPTIONS,
     SessionExpiredError,
+    SessionClosedRequireSaslError,
     NoNodeError,
     SASLException,
 )
@@ -799,6 +800,19 @@ class ConnectionHandler:
         except AuthFailedError as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            client._session_callback(KeeperState.AUTH_FAILED)
+            return STOP_CONNECTING
+        except SessionClosedRequireSaslError as err:
+            # ZK 3.7+ returns the -124 error (not -112) when the server
+            # enforces an authentication scheme (e.g. `enforce.auth.*`) and
+            # the client did not authenticate or provided invalid credentials.
+            # Treat it exactly like an authentication failure so the connection
+            # loop stops cleanly and the client transitions to AUTH_FAILED
+            # instead of dying with an unhandled exception.
+            retry.reset()
+            self.logger.warning(
+                "AUTH_FAILED closing (server requires SASL auth): %s", err
+            )
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
