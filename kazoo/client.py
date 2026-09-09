@@ -928,16 +928,10 @@ class KazooClient:
 
         # Need a way of persauding mypy that the connection is live and thus
         # the socket is not None
-        peer = (
-            self._connection._socket.getpeername()[  # type: ignore[union-attr]
-                :2
-            ]
-        )
-        peer_host = (
-            self._connection._socket.getpeername()[  # type: ignore[union-attr]
-                1
-            ]
-        )
+        sock_obj = self._connection._socket
+        assert sock_obj is not None
+        peer = sock_obj.getpeername()[:2]
+        peer_host = peer[0]
         sock = self.handler.create_connection(
             peer,
             hostname=peer_host,

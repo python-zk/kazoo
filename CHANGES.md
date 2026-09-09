@@ -1,6 +1,12 @@
 <a name="unreleased"></a>
 ## Unreleased
 
+#### Bug Fixes
+
+* **core:**
+  *  `KazooClient.command()` passed the peer *port* (from `getpeername()[1]`) as the TLS `hostname` for SNI; it now uses the peer host address, so `server_version()` / `command()` work over TLS
+
+
 #### BREAKING CHANGES
 
 * **testing:**
