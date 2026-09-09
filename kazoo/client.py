@@ -175,8 +175,7 @@ class KazooClient:
         use_ssl: bool = False,
         verify_certs: bool = True,
         check_hostname: bool = False,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # FIXME This should be deprecated then killed
     @overload
@@ -207,8 +206,7 @@ class KazooClient:
         verify_certs: bool = True,
         check_hostname: bool = False,
         **kwargs: Unpack[LegacyRetryParams],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(
         self,
@@ -1116,8 +1114,7 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: Literal[False] = False,
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @overload
     def create(
@@ -1129,8 +1126,7 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: Literal[True] = True,
-    ) -> tuple[str, ZnodeStat]:
-        ...
+    ) -> tuple[str, ZnodeStat]: ...
 
     def create(
         self,
@@ -1518,8 +1514,7 @@ class KazooClient:
         path: str,
         watch: WatchFunc | None = None,
         include_data: Literal[False] = False,
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     @overload
     def get_children(
@@ -1527,8 +1522,7 @@ class KazooClient:
         path: str,
         watch: WatchFunc | None = None,
         include_data: Literal[True] = True,
-    ) -> tuple[list[str], ZnodeStat]:
-        ...
+    ) -> tuple[list[str], ZnodeStat]: ...
 
     def get_children(
         self,

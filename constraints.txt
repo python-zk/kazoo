@@ -4,7 +4,7 @@ eventlet>=0.17.1 ; implementation_name!='pypy'
 gevent>=1.2 ; implementation_name!='pypy'
 
 # requirements-dev.txt
-black==22.10.0
+black==24.10.0
 coverage==6.3.2; python_version=="3.8"
 coverage==7.10.7; python_version > "3.8"
 flake8==5.0.2

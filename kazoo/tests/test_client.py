@@ -85,7 +85,6 @@ class TestClientTransitions(KazooTestCase):
         assert states == req_states
 
 
-
 class TestAuthentication(KazooTestCase):
     def _makeAuth(self, *args: Any, **kwargs: Any) -> ACL:
         return make_digest_acl(*args, **kwargs)
@@ -1258,7 +1257,6 @@ class TestClientTransactions(KazooTestCase):
         with self.client.transaction() as t:
             t.create("/smith", b"32")
         assert self.client.get("/smith")[0] == b"32"
-
 
 
 class TestCallbacks(KazooTestCase):

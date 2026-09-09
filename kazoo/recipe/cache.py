@@ -222,12 +222,10 @@ class TreeCache:
     @overload
     def _in_background(
         self, func: Callable[[TreeEvent], None], event: TreeEvent
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def _in_background(self, func: Callable[[], None]) -> None:
-        ...
+    def _in_background(self, func: Callable[[], None]) -> None: ...
 
     @overload
     def _in_background(
@@ -236,8 +234,7 @@ class TreeCache:
         method_name: str,
         path: str,
         result: IAsyncResult,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def _in_background(  # type: ignore[misc]
         self, func: Callable[..., Any], *args: Any, **kwargs: Any
@@ -269,8 +266,7 @@ class TreeCache:
 
 
 class AsyncWatcher(Protocol):
-    def __call__(self, path: str, watch: WatchFunc | None) -> IAsyncResult:
-        ...
+    def __call__(self, path: str, watch: WatchFunc | None) -> IAsyncResult: ...
 
 
 class TreeNode:

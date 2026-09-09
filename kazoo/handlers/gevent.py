@@ -74,9 +74,9 @@ class SequentialGeventHandler:
 
     def __init__(self) -> None:
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.callback_queue: gevent.queue.Queue[
-            Callable[..., None]
-        ] = self.queue_impl()
+        self.callback_queue: gevent.queue.Queue[Callable[..., None]] = (
+            self.queue_impl()
+        )
         self._running = False
         self._async = None
         self._state_change = Semaphore()

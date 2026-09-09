@@ -123,8 +123,7 @@ class DataWatch:
         client: KazooClient,
         path: str,
         func: DataWatchFunc | None = None,
-    ):
-        ...
+    ): ...
 
     @overload
     @deprecated(
@@ -139,8 +138,7 @@ class DataWatch:
         func: DataWatchFunc | None = None,
         *args: Any,
         **kwargs: Any,
-    ):
-        ...
+    ): ...
 
     def __init__(  # type: ignore[misc]
         self,

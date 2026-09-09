@@ -208,9 +208,11 @@ class ConnectionHandler:
         self._socket: Socket | None = None
         self._xid: int | None = None
         self._rw_server: tuple[str, int] | None = None
-        self._ro_mode: Iterator[
-            Literal[False] | tuple[str, int] | None
-        ] | Literal[False] | None = False
+        self._ro_mode: (
+            Iterator[Literal[False] | tuple[str, int] | None]
+            | Literal[False]
+            | None
+        ) = False
 
         self._connection_routine: Threadlike | None = None
 
@@ -329,14 +331,12 @@ class ConnectionHandler:
     @overload
     def _invoke(
         self, timeout: float | None, request: Connect
-    ) -> tuple[Connect, int | None]:
-        ...
+    ) -> tuple[Connect, int | None]: ...
 
     @overload
     def _invoke(
         self, timeout: float | None, request: Auth, xid: int
-    ) -> int | None:
-        ...
+    ) -> int | None: ...
 
     def _invoke(
         self,
@@ -945,11 +945,11 @@ class ConnectionHandler:
         # I don't think the client.sasl_cli attribute is actually used
         # anywhere else, so not sure why we need to set it on the client,
         # but again, I want to avoid code changes as much as possible.
-        sasl_cli = (
-            self.client.sasl_cli  # type: ignore[attr-defined]
-        ) = puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
-            host=host,
-            **self.sasl_options,  # type: ignore[arg-type]
+        sasl_cli = self.client.sasl_cli = (  # type: ignore[attr-defined]
+            puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
+                host=host,
+                **self.sasl_options,  # type: ignore[arg-type]
+            )
         )
 
         # Initialize the process with an empty challenge token
