@@ -97,19 +97,16 @@ def test_select() -> None:
             )
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("darwin"),
-    reason="skip because deadlocks on macos",
-)
 # Issue 16230: Crash on select resized list
 def test_select_mutated() -> None:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s1, s2 = socket.socketpair()
+    try:
         a: list[Any] = []
 
         class F:
             def fileno(self) -> int:
                 del a[-1]
-                return s.fileno()
+                return s1.fileno()
 
         a[:] = [F()] * 10
         r, w, x = select([], a, [])
@@ -119,3 +116,6 @@ def test_select_mutated() -> None:
         # equal to ([], a[:5], []), where a[:5] is evaluated after 'a'
         # has been mutated (and has 5 items).
         assert (r, w, x) == ([], a[:5], [])
+    finally:
+        s1.close()
+        s2.close()
