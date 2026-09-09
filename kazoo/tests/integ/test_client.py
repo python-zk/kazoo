@@ -1025,7 +1025,13 @@ class TestClient:
             # shut down the first host
             zkensemble.stop("zoo1", handler=handler)
             ev_connected.wait(60)
-            assert ev_connected.is_set()
+            assert ev_connected.is_set(), (
+                f"Failover timed out after 60s: ev_connected not set. "
+                f"client.state={client.state}, "
+                f"client.client_state={client.client_state}, "
+                f"client.connected={client.connected}, "
+                f"hosts={client.hosts}"
+            )
             assert client.client_state == KeeperState.CONNECTED
         finally:
             client.stop()

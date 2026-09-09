@@ -996,8 +996,10 @@ class ConnectionHandler:
             try:
                 header, buffer, offset = self._read_header(timeout)
             except ConnectionDropped as exc:
-                # Zookeeper simply drops connections with failed authentication
-                raise AuthFailedError("Connection dropped in SASL") from exc
+                # If connection dropped during SASL handshake (e.g. server
+                # node died or restart in progress), raise ConnectionDropped
+                # so the connect loop retries other hosts.
+                raise ConnectionDropped("Connection dropped in SASL") from exc
 
             if header.xid != xid:
                 raise RuntimeError(
