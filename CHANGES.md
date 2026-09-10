@@ -1,3 +1,29 @@
+<a name="2.11.0"></a>
+## 2.11.0  (2026-03-21)
+
+
+#### Features
+
+* **testing:**
+  *  bump deps for Python > 3.8 ([43e6f068](https://github.com/python-zk/kazoo/commit/43e6f0682d12893e983213db3bb7927f448ae03d))
+  *  add Python 3.13 & 3.14 ([b385289e](https://github.com/python-zk/kazoo/commit/b385289ed68bf791824379733e9dc80bf26ba5a9))
+  *  be a little more verbose about ZK download URL ([4ed8a304](https://github.com/python-zk/kazoo/commit/4ed8a304118c98cfe6594e441bf9fa09b575a186))
+* **core:**
+  *  removing tiny remaining bits of Python2 hybridation ([0751174](https://github.com/python-zk/kazoo/commit/0751174))
+  *  add support for SNI ([273bd56](https://github.com/python-zk/kazoo/commit/273bd56))
+
+#### Bug Fixes
+
+* **core:**
+  *  Proper retry count in KazooRetry ([73309b2d](https://github.com/python-zk/kazoo/commit/73309b2d456c8e64f4ceb079f98903fc9e45f3b6))
+  *  Revert "Fix possible endless wait in stop() after AUTH_FAILED error (#688)" ([2fb93a87](https://github.com/python-zk/kazoo/commit/2fb93a87d3648e2dece5698cb64b059da5134a57))
+  *  prefer use of `time.monotonic` ([b00d88ff](https://github.com/python-zk/kazoo/commit/b00d88ff1485f1cb175565c49955bf5d7ce96fef), closes [#722](https://github.com/python-zk/kazoo/issues/722))
+  *  Add missing Zookeeper exceptions codes ([4c6bad82](https://github.com/python-zk/kazoo/commit/4c6bad82ebe347b9e51abbf33cef443057dc1c45))
+  *  fix spelling ([686d770](https://github.com/python-zk/kazoo/commit/686d770))
+
+* **test:**  avoid racy reader vs writer contender in `test_rw_lock` ([6540c932](https://github.com/python-zk/kazoo/commit/6540c932505a988ccae3c77c023113d4c4c01947))
+* **testing:**  follow redirect when downloading ZK and use https ([b4155ea0](https://github.com/python-zk/kazoo/commit/b4155ea07ba671ce98bb63cebb8dfcd42748efd3))
+
 <a name="2.10.0"></a>
 ## 2.10.0  (2024-01-28)
 

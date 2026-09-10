@@ -37,10 +37,10 @@ Example:
     from kazoo.testing import KazooTestHarness
 
     class MyTest(KazooTestHarness):
-        def setUp(self):
+        def setUp(self) -> None:
             self.setup_zookeeper()
 
-        def tearDown(self):
+        def tearDown(self)-> None:
             self.teardown_zookeeper()
 
         def testmycode(self):
