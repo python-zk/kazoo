@@ -28,7 +28,9 @@ if CI:
         if "-" in has_version:
             # Ignore pre-release markers like -alpha
             has_version = has_version.split("-")[0]
-    CI_ZK_VERSION = tuple(int(n) for n in has_version.split("."))
+        CI_ZK_VERSION = tuple(
+            [int(n) for n in has_version.split(".") if n.isdigit()]
+        )
 
 
 class Handler(logging.Handler):
@@ -89,7 +91,7 @@ class InstalledHandler(Handler):
         self.install()
 
 
-class Wait:
+class Wait(object):
     class TimeOutWaitingFor(Exception):
         "A test condition timed out"
 

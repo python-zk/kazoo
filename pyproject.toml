@@ -6,8 +6,7 @@ requires = [
 
 [tool.black]
 line-length = 79
-# We need a later version of black for 312-314
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 
 [tool.pytest.ini_options]
@@ -100,3 +99,16 @@ disable_error_code = [ 'unused-ignore' ]
 [[tool.mypy.overrides]]
     module = ["puresasl.*"]
     follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["testcontainers.*", "backports.*"]
+    ignore_missing_imports = true
+    follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+    module = ["kazoo.testing.*"]
+    disallow_any_unimported = false
+
+[[tool.mypy.overrides]]
+    module = ["kazoo.tests.*"]
+    ignore_errors = true

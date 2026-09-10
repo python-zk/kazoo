@@ -17,17 +17,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml', 'setup.cfg', 'tox.ini') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -52,69 +52,249 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11-v7.3.21"]
-        # Friendly note: If you change the minimum zk-version here, update it in
-        # ensure-zookeeper-env.sh. Additionally, if you need to change the way that
-        # zookeeper is installed, do it THERE. Not in the 'test with tox' step here.
-        # That way, people trying to test changes have a reasonable chance of getting
-        # things to work properly before submitting a PR.
-        zk-version: ["3.6.4", "3.7.2", "3.8.3", "3.9.1"]
-        include:
-          - python-version: "3.8"
-            tox-env: py38
-          - python-version: "3.9"
-            tox-env: py39
-          - python-version: "3.10"
-            tox-env: py310
-          - python-version: "3.11"
-            tox-env: py311
-          - python-version: "3.12"
-            tox-env: py312
-          - python-version: "3.13"
-            tox-env: py313
-          - python-version: "3.14"
-            tox-env: py314
-          - python-version: "pypy-3.11-v7.3.21"
-            tox-env: pypy3
+        # Tiered matrix: every supported Python interpreter runs the
+        # full suite (unit + integ) against each supported ZooKeeper version on
+        # the plain auth/feature axis. The auth and feature axes run separately
+        # (test_axes) on the latest Python target to keep the combinatorial
+        # cost bounded.
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11-v7.3.21"]
+        zk-version: ["3.7.2", "3.8.6", "3.9.5"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml', 'setup.cfg', 'tox.ini') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Handle ZK installation cache
-        uses: actions/cache@v4
+      # Docker and the Compose v2 plugin are pre-installed on ubuntu-latest;
+      # the harness needs no ZK/Java/krb5 installation on the host.
+      - name: Verify docker compose
+        run: docker compose version
+
+      # Cross-run Docker image cache: restore the pulled zookeeper image (one
+      # tar per ZK version, shared with test_axes via the same key space) so
+      # the 6 legs of this matrix stop pulling it from Docker Hub on every
+      # run. A separate save step (below) warms the cache up on a miss.
+      - name: Restore docker image cache
+        id: docker-cache-restore
+        uses: actions/cache/restore@v5
         with:
-          path: zookeeper
-          key: ${{ runner.os }}-zookeeper
+          path: /tmp/docker-cache
+          key: docker-zookeeper-${{ matrix.zk-version }}
           restore-keys: |
-            ${{ runner.os }}-zookeeper
+            docker-zookeeper-
+
+      - name: Load cached docker images
+        run: |
+          for f in /tmp/docker-cache/*.tar; do
+            [ -e "$f" ] && docker load -i "$f"
+          done
+          docker pull zookeeper:${{ matrix.zk-version }}
 
       - name: Install required dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get -y install libevent-dev krb5-kdc krb5-admin-server libkrb5-dev
           python3 -m pip install --upgrade pip
-          pip install tox
+          pip install -e '.[test]'
 
-      - name: Test with tox
-        run: tox -e ${TOX_VENV}
+      - name: Test with pytest (plain axis)
+        run: pytest kazoo/tests/ -q --cov-report=xml --cov=kazoo
         env:
-          TOX_VENV: ${{ format('{0}-{1}', matrix.tox-env, 'gevent-eventlet-sasl') }}
+          # KAZOO_TESTING_ZK_* drives the docker-compose harness; ZOOKEEPER_VERSION is
+          # the legacy env for the CI_ZK_VERSION test gates.
+          KAZOO_TESTING_ZK_VERSION: ${{ matrix.zk-version }}
           ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
+          KAZOO_TESTING_ZK_AUTH: plain
+          KAZOO_TESTING_ZK_FEATURES: standard
+
+      # Repopulate the cache path with the current image, then archive it via
+      # actions/cache/save (warm-up). The save is skipped on a primary-key hit
+      # (the entry already exists) and continue-on-error tolerates a matrix
+      # leg racing to save the same key first on a cold run.
+      - name: Save docker image cache
+        if: always()
+        run: |
+          mkdir -p /tmp/docker-cache
+          if docker image inspect zookeeper:${{ matrix.zk-version }} >/dev/null 2>&1; then
+            docker save zookeeper:${{ matrix.zk-version }} -o /tmp/docker-cache/zookeeper.tar
+          fi
+
+      - name: Archive docker image cache
+        if: always() && steps.docker-cache-restore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: /tmp/docker-cache
+          key: ${{ steps.docker-cache-restore.outputs.cache-primary-key }}
 
       - name: Publish Codecov report
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
+
+  test_axes:
+    needs: [validate]
+
+    # Auth (digest, sasl_digest, tls, sasl_gssapi) and feature (ttl, reconfig)
+    # axes on the latest Python target. The SASL axes enforce
+    # auth on the ensemble; the sasl_gssapi leg additionally needs a host
+    # Kerberos client: kinit (krb5-user) plus libkrb5-dev to build the
+    # pykerberos module (no Linux wheels exist for it).
+    name: >
+      Linux - Axis ${{ matrix.axis }}
+      (Python ${{ matrix.python-version }}, ZK ${{ matrix.zk-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - axis: digest
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: digest
+            zk-features: standard
+          - axis: sasl_digest
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: sasl_digest
+            zk-features: standard
+          - axis: tls
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: tls
+            zk-features: standard
+          - axis: sasl_gssapi
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: sasl_gssapi
+            zk-features: standard
+          - axis: ttl
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: plain
+            zk-features: ttl
+          - axis: reconfig
+            python-version: "3.14"
+            zk-version: "3.9.5"
+            zk-auth: plain
+            zk-features: reconfig
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Handle pip cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml', 'setup.cfg', 'tox.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Verify docker compose
+        run: docker compose version
+
+      # Cross-run Docker image cache (shared with the `test` matrix). The
+      # zookeeper tar is restored by every axis; the build-base tar (temurin
+      # + alpine, used by the certgen/KDC sidecar builds) is saved only by the
+      # tls/sasl_gssapi axes, so its key stays content-deterministic.
+      - name: Restore docker image cache
+        id: docker-cache-restore
+        uses: actions/cache/restore@v5
+        with:
+          path: /tmp/docker-cache-zk
+          key: docker-zookeeper-${{ matrix.zk-version }}
+          restore-keys: |
+            docker-zookeeper-
+
+      - name: Restore docker build-base image cache
+        if: matrix.axis == 'tls' || matrix.axis == 'sasl_gssapi'
+        id: docker-base-cache-restore
+        uses: actions/cache/restore@v5
+        with:
+          path: /tmp/docker-cache-base
+          key: docker-build-base
+
+      - name: Load cached docker images
+        run: |
+          for f in /tmp/docker-cache-zk/*.tar; do
+            [ -e "$f" ] && docker load -i "$f"
+          done
+          docker pull zookeeper:${{ matrix.zk-version }}
+          if [ "${{ matrix.axis }}" = "tls" ] || [ "${{ matrix.axis }}" = "sasl_gssapi" ]; then
+            for f in /tmp/docker-cache-base/*.tar; do
+              [ -e "$f" ] && docker load -i "$f"
+            done
+            docker pull eclipse-temurin:17-jre-jammy
+            docker pull alpine:3.20
+          fi
+
+      # Host Kerberos client for the sasl_gssapi axis: kinit must be on PATH
+      # (kazoo.testing invokes it for the KDC sidecar) and libkrb5-dev is
+      # required to compile the `kerberos` python module from sdist.
+      - name: Install Kerberos client tools
+        if: matrix.axis == 'sasl_gssapi'
+        run: |
+          sudo apt-get -y install krb5-user libkrb5-dev
+
+      - name: Install required dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -e '.[test]'
+          if [ "${{ matrix.axis }}" = "sasl_gssapi" ]; then pip install kerberos; fi
+
+      - name: Test with pytest (${{ matrix.axis }} axis)
+        run: pytest kazoo/tests/ -q
+        env:
+          KAZOO_TESTING_ZK_VERSION: ${{ matrix.zk-version }}
+          ZOOKEEPER_VERSION: ${{ matrix.zk-version }}
+          KAZOO_TESTING_ZK_AUTH: ${{ matrix.zk-auth }}
+          KAZOO_TESTING_ZK_FEATURES: ${{ matrix.zk-features }}
+
+      # Repopulate the cache paths, then archive them via actions/cache/save
+      # (warm-up on a primary-key miss). continue-on-error tolerates a matrix
+      # leg racing to save the same key first on a cold run.
+      - name: Save docker image cache
+        if: always()
+        run: |
+          mkdir -p /tmp/docker-cache-zk /tmp/docker-cache-base
+          if docker image inspect zookeeper:${{ matrix.zk-version }} >/dev/null 2>&1; then
+            docker save zookeeper:${{ matrix.zk-version }} -o /tmp/docker-cache-zk/zookeeper.tar
+          fi
+          if [ "${{ matrix.axis }}" = "tls" ] || [ "${{ matrix.axis }}" = "sasl_gssapi" ]; then
+            if docker image inspect eclipse-temurin:17-jre-jammy >/dev/null 2>&1; then
+              docker save eclipse-temurin:17-jre-jammy -o /tmp/docker-cache-base/temurin.tar
+            fi
+            if docker image inspect alpine:3.20 >/dev/null 2>&1; then
+              docker save alpine:3.20 -o /tmp/docker-cache-base/alpine.tar
+            fi
+          fi
+
+      - name: Archive docker image cache
+        if: always() && steps.docker-cache-restore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: /tmp/docker-cache-zk
+          key: ${{ steps.docker-cache-restore.outputs.cache-primary-key }}
+
+      - name: Archive docker build-base image cache
+        if: always() && (matrix.axis == 'tls' || matrix.axis == 'sasl_gssapi') && steps.docker-base-cache-restore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: /tmp/docker-cache-base
+          key: ${{ steps.docker-base-cache-restore.outputs.cache-primary-key }}
 
   test_windows:
     needs: [validate]
@@ -122,42 +302,61 @@ jobs:
 
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml', 'setup.cfg', 'tox.ini') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Handle ZK installation cache
-        uses: actions/cache@v4
-        with:
-          path: zookeeper
-          key: ${{ runner.os }}-zookeeper
-          restore-keys: |
-            ${{ runner.os }}-zookeeper
+      # The hosted Windows runner's own docker engine (Moby) only serves
+      # Windows containers, and the official ZooKeeper image is linux-only. We
+      # therefore stand up a Linux docker daemon inside WSL2 (pre-installed on
+      # this image) and point the Windows docker CLI/SDK at it via DOCKER_HOST;
+      # the harness translates bind-mount sources to the daemon's /mnt/<drive>
+      # layout. The Windows job runs the plain auth/feature axis
+      # against the fixed default ZK version; the tiered auth/feature
+      # matrix runs on the Linux job.
+      #
+      # The bring-up lives in an idempotent script (start-wsl-dockerd.ps1):
+      # it keeps the WSL VM resident between steps (vmIdleTimeout + a keep-alive
+      # sleep) and finds an endpoint the *Windows* docker CLI can actually dial —
+      # the WSL2 localhost relay is unreliable on hosted runners, so it falls
+      # back to the WSL VM's NAT IP, which the Windows host can always route to.
+      # The working host is published via GITHUB_ENV and a file the test step
+      # sources; the step-level env no longer pins DOCKER_HOST (it would
+      # override that export).
+      - name: Verify docker compose
+        shell: pwsh
+        run: docker compose version
 
-      # https://github.com/actions/setup-java
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Set up Linux docker daemon in WSL2
+        shell: pwsh
+        run: pwsh -NoProfile -NonInteractive -File .github/scripts/start-wsl-dockerd.ps1
 
       - name: Install required dependencies
+        shell: bash
         run: |
           python3 -m pip install --upgrade pip
-          pip install tox
+          pip install -e '.[test]'
 
-      - name: Test with tox
-        run: tox -e py310
-        env:
-          ZOOKEEPER_VERSION: 3.9.1
+      - name: Test with pytest (plain axis)
         shell: bash
+        run: |
+          # Re-establish the WSL daemon right before the suite so tests never
+          # race a VM that idled out between steps; no-op if still reachable.
+          pwsh -NoProfile -NonInteractive -File .github/scripts/start-wsl-dockerd.ps1
+          export DOCKER_HOST="$(cat "$GITHUB_WORKSPACE/.start-wsl-dockerd.host" 2>/dev/null || echo tcp://localhost:2375)"
+          pytest kazoo/tests/integ -q
+        env:
+          KAZOO_TESTING_ZK_VERSION: "3.9.5"
+          ZOOKEEPER_VERSION: "3.9.5"
+          KAZOO_TESTING_ZK_AUTH: plain
+          KAZOO_TESTING_ZK_FEATURES: standard

@@ -1,13 +1,13 @@
-# Consistent testing environment.
 # requirements.txt
 eventlet>=0.17.1 ; implementation_name!='pypy'
 gevent>=1.2 ; implementation_name!='pypy'
 
 # requirements-dev.txt
-black==22.10.0
+backports.strenum==1.3.1; python_version < "3.11"
+black==24.10.0
 coverage==6.3.2; python_version=="3.8"
 coverage==7.10.7; python_version > "3.8"
-flake8==5.0.2
+flake8==7.3.0
 mypy==1.14.1
 objgraph==3.5.0
 pytest==6.2.5; python_version=="3.8"
@@ -16,4 +16,3 @@ pytest-cov==3.0.0; python_version=="3.8"
 pytest-cov==7.0.0; python_version > "3.8"
 pytest-timeout==2.2.0; python_version=="3.8"
 pytest-timeout==2.4.0; python_version > "3.8"
-pyOpenSSL<26.2.0

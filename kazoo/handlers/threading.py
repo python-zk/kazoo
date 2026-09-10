@@ -110,12 +110,12 @@ class SequentialThreadingHandler(IHandler):
 
     def __init__(self) -> None:
         """Create a :class:`SequentialThreadingHandler` instance"""
-        self.callback_queue: queue.Queue[
-            Callable[..., None]
-        ] = self.queue_impl()
-        self.completion_queue: queue.Queue[
-            Callable[..., None]
-        ] = self.queue_impl()
+        self.callback_queue: queue.Queue[Callable[..., None]] = (
+            self.queue_impl()
+        )
+        self.completion_queue: queue.Queue[Callable[..., None]] = (
+            self.queue_impl()
+        )
         self._running = False
         self._state_change = threading.Lock()
         self._workers: list[threading.Thread] = []

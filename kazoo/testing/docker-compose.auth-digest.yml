@@ -1,0 +1,15 @@
+# Authentication overlay: digest
+#
+# The `digest` flavor is configured purely through the ZK_AUTH_JVMFLAGS
+# interpolation in docker-compose.base.yml, which renders the superDigest
+# (-Dzookeeper.DigestAuthenticationProvider.superDigest="super:...") into
+# SERVER_JVMFLAGS. The server also has `extendedTypesEnabled` available via
+# the feature axis (ZK_FEATURES_JVMFLAGS).
+#
+# This overlay therefore declares no service overrides: it exists so that
+# `docker_compose_config` resolves a stable per-flavor file and so the auth
+# axis selection is self-documenting. Clients authenticate with
+# auth_data=[("digest", "super:super_secret")].
+#
+# NOTE: never set SERVER_JVMFLAGS here — compose merges environment maps
+# wholesale per key and would silently override the base interpolation.

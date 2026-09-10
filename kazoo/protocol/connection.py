@@ -28,6 +28,7 @@ from kazoo.exceptions import (
     ConnectionDropped,
     EXCEPTIONS,
     SessionExpiredError,
+    SessionClosedRequireSaslError,
     NoNodeError,
     SASLException,
 )
@@ -208,9 +209,11 @@ class ConnectionHandler:
         self._socket: Socket | None = None
         self._xid: int | None = None
         self._rw_server: tuple[str, int] | None = None
-        self._ro_mode: Iterator[
-            Literal[False] | tuple[str, int] | None
-        ] | Literal[False] | None = False
+        self._ro_mode: (
+            Iterator[Literal[False] | tuple[str, int] | None]
+            | Literal[False]
+            | None
+        ) = False
 
         self._connection_routine: Threadlike | None = None
 
@@ -329,14 +332,12 @@ class ConnectionHandler:
     @overload
     def _invoke(
         self, timeout: float | None, request: Connect
-    ) -> tuple[Connect, int | None]:
-        ...
+    ) -> tuple[Connect, int | None]: ...
 
     @overload
     def _invoke(
         self, timeout: float | None, request: Auth, xid: int
-    ) -> int | None:
-        ...
+    ) -> int | None: ...
 
     def _invoke(
         self,
@@ -796,9 +797,22 @@ class ConnectionHandler:
             if client._state != KeeperState.CONNECTING:
                 self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)
-        except AuthFailedError as err:
+        except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            client._session_callback(KeeperState.AUTH_FAILED)
+            return STOP_CONNECTING
+        except SessionClosedRequireSaslError as err:
+            # ZK 3.7+ returns the -124 error (not -112) when the server
+            # enforces an authentication scheme (e.g. `enforce.auth.*`) and
+            # the client did not authenticate or provided invalid credentials.
+            # Treat it exactly like an authentication failure so the connection
+            # loop stops cleanly and the client transitions to AUTH_FAILED
+            # instead of dying with an unhandled exception.
+            retry.reset()
+            self.logger.warning(
+                "AUTH_FAILED closing (server requires SASL auth): %s", err
+            )
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -898,13 +912,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -917,6 +924,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 
@@ -945,11 +959,11 @@ class ConnectionHandler:
         # I don't think the client.sasl_cli attribute is actually used
         # anywhere else, so not sure why we need to set it on the client,
         # but again, I want to avoid code changes as much as possible.
-        sasl_cli = (
-            self.client.sasl_cli  # type: ignore[attr-defined]
-        ) = puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
-            host=host,
-            **self.sasl_options,  # type: ignore[arg-type]
+        sasl_cli = self.client.sasl_cli = (  # type: ignore[attr-defined]
+            puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
+                host=host,
+                **self.sasl_options,  # type: ignore[arg-type]
+            )
         )
 
         # Initialize the process with an empty challenge token
@@ -982,8 +996,10 @@ class ConnectionHandler:
             try:
                 header, buffer, offset = self._read_header(timeout)
             except ConnectionDropped as exc:
-                # Zookeeper simply drops connections with failed authentication
-                raise AuthFailedError("Connection dropped in SASL") from exc
+                # If connection dropped during SASL handshake (e.g. server
+                # node died or restart in progress), raise ConnectionDropped
+                # so the connect loop retries other hosts.
+                raise ConnectionDropped("Connection dropped in SASL") from exc
 
             if header.xid != xid:
                 raise RuntimeError(

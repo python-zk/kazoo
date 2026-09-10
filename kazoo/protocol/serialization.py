@@ -5,6 +5,7 @@ Note: On python3.8, you can't do classvars with NamedTuple.
 FIXME As soon as we get off python3.8 we should change the namedtuple objects
 to NamedTuple, as it should get better typechecking.
 """
+
 from __future__ import annotations
 
 import struct
