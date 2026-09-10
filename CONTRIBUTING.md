@@ -14,34 +14,69 @@ IRC in the
 
 ## Development
 
+### Clone the repo
+
 If you want to work on the code and send us a
 [pull request](https://help.github.com/articles/using-pull-requests),
-first fork the repository on github to your own account. Then clone
-your new repository and run the build scripts:
+first fork the repository on github to your own account, then clone your new repository.
 
-```
+```bash
     git clone git@github.com:<username>/kazoo.git
     cd kazoo
-    make
 ```
 
-You need a supported version of Python installed and available as `python`
-in your shell. To run Zookeeper you also need a Java runtime (JRE or JDK).
-Please refer to the Zookeeper documentation for compatible Java versions for
-each Zookeeper version. To run tests, you need to have `tox`, the Python
-testing tool, installed in your shell.
+### Install required utilities, zookeeper and support libraries
 
-You can run all the tests by calling:
+You'll also need some other libraries and utilities installed in order to run tests.
 
+1. A supported version of python and its -dev package (again, apt install should work).
+2. Zookeeper. 
+3. In order to run Zookeeper, you'll need a Java runtime (JRE or JDK). Please refer to the Zookeeper documentation for compatible Java versions for each Zookeeper version.
+4. libkrb5-dev for kerberos authentication if you're connecting to Zookeeper with sasl (apt install should work for this)
+5. Optionally pypy3. This is a little more complex to install. Something like the following should work
+   - `add-apt-repository ppa:pypy/ppa && sudo apt update && sudo apt install pypy3 pypy3-dev`
+6. tox
+
+### Create a virtual env and populate it
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install --upgrade pip setuptools wheel tox
+pip install -e .
 ```
-    make test
+
+If you want to support eventlet, gevent, or sasl replace the last with (or an appropriate variant)
+
+```bash
+pip install -e ".[eventlet,gevent,sasl]"
+```
+
+If you want to install the tools used by tox so you can use them yourself, also run (for python 3.9 and above only). For python 3.8, sadly, you'll have to read the pyproject.toml file and manually install.
+
+```bash
+pip install --group <toolname>
+```
+
+### Running validations
+
+To run all the validations (tests, formatting checks and so on), run
+
+```bash
+tox
+```
+
+To run all the tests, use
+
+```bash
+tox -e py
 ```
 
 Or to run individual tests:
 
-```
-    export ZOOKEEPER_PATH=/<path to current folder>/bin/zookeeper/
-    bin/pytest -v kazoo/tests/test_client.py::TestClient::test_create
+```bash
+export ZOOKEEPER_PATH=/<path to current folder>/bin/zookeeper/
+bin/pytest -v kazoo/tests/test_client.py::TestClient::test_create
 ```
 
 The pytest test runner allows you to filter by test module, class or
@@ -49,13 +84,12 @@ individual test method.
 
 If you made changes to the documentation, you can build it locally:
 
-```
-    make html
+```bash
+tox -e docs
 ```
 
-And then open `./docs/_build/html/index.html` in a web browser to
+And then open `.tox//docs/_build/html/index.html` in a web browser to
 verify the correct rendering.
-
 
 ## Bug Reports
 
@@ -93,7 +127,6 @@ When submitting a PR:
 - Ensure your changes do not reduce code coverage of the test suite.
 - Please do not include merge commits in pull requests; include only commits
   with the new relevant code.
-
 
 ## Code Review
 
