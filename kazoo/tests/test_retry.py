@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from functools import partial
 from unittest import mock
 
 import pytest
@@ -9,16 +9,7 @@ from kazoo import exceptions as ke
 from kazoo import retry as kr
 
 
-def _make_retry(*args: Any, **kwargs: Any) -> kr.KazooRetry:
-    """Return a KazooRetry instance with a dummy sleep function."""
-
-    def _sleep_func(_time: float) -> None:
-        pass
-
-    # FIXME better way of doing this? Use TypedDict perhaps?
-    return kr.KazooRetry(
-        *args, sleep_func=_sleep_func, **kwargs  # type: ignore[misc]
-    )
+_make_retry = partial(kr.KazooRetry, sleep_func=lambda _time: None)
 
 
 def _make_try_func(times: int = 1) -> mock.Mock:

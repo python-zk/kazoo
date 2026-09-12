@@ -411,7 +411,7 @@ class TestUnorderedXids(KazooTestCase):
 
         args, exc_info = error_stack[-1]
         assert args == ("Unhandled exception in connection loop",)
-        assert exc_info[0] == RuntimeError
+        assert exc_info[0] is RuntimeError
 
         self.client.handler.sleep_func(0.2)
         assert self.connection_routine is not None

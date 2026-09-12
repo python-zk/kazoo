@@ -343,7 +343,7 @@ class KazooLockTests(KazooTestCase):
             attempts.append(int(lock.acquire(blocking=False)))
 
         threads = []
-        for _i in range(0, self.thread_count):
+        for _ in range(0, self.thread_count):
             t = self.make_thread(target=_acquire)
             threads.append(t)
             t.start()
@@ -376,7 +376,7 @@ class KazooLockTests(KazooTestCase):
                     differences.append(end_count - starting_count)
 
         threads = []
-        for _i in range(0, self.thread_count):
+        for _ in range(0, self.thread_count):
             t = self.make_thread(target=_acquire)
             threads.append(t)
             t.start()

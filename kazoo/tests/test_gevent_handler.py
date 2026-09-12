@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import unittest
 import sys
 
@@ -11,20 +12,18 @@ from kazoo.handlers.utils import create_tcp_socket
 from kazoo.protocol.states import Callback, KazooState, ZnodeStat
 from kazoo.testing import KazooTestCase
 
-try:
-    import gevent  # NOQA:
+if importlib.util.find_spec("gevent") is None:
+    pytestmark = pytest.mark.skip(reason="gevent not available")
+else:
     from gevent.event import Event
     from gevent.queue import Empty
     from gevent import socket
     from kazoo.handlers.gevent import AsyncResult, SequentialGeventHandler
-except ImportError:
-    pytestmark = pytest.mark.skip(reason="gevent not available")
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
 class TestGeventHandler(unittest.TestCase):
-    def _makeOne(self, *args: Any) -> SequentialGeventHandler:
-        return SequentialGeventHandler(*args)
+    _makeOne = SequentialGeventHandler
 
     def _getAsync(self) -> Type[AsyncResult[Any]]:
         return AsyncResult
@@ -81,8 +80,7 @@ class TestBasicGeventClient(KazooTestCase):
     def setUp(self) -> None:
         KazooTestCase.setUp(self)
 
-    def _makeOne(self, *args: Any) -> SequentialGeventHandler:
-        return SequentialGeventHandler(*args)
+    _makeOne = SequentialGeventHandler
 
     def _getEvent(self) -> Type[Event]:
         return Event

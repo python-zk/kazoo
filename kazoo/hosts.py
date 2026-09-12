@@ -5,7 +5,7 @@ import urllib.parse
 
 def collect_hosts(
     hosts: str | list[str],
-) -> tuple[list[tuple[str, int]], str | None]:
+) -> tuple[list[tuple[str, int]], str]:
     """
     Collect a set of hosts and an optional chroot from
     a string or a list of strings.
@@ -14,11 +14,12 @@ def collect_hosts(
         if hosts[-1].strip().startswith("/"):
             host_ports, chroot = hosts[:-1], hosts[-1]
         else:
-            host_ports, chroot = hosts, None
+            host_ports, chroot = hosts, ""
     else:
         host_ports_1, chroot = hosts.partition("/")[::2]
         host_ports = host_ports_1.split(",")
-        chroot = "/" + chroot if chroot else None
+        if chroot != "":
+            chroot = "/" + chroot
 
     result = []
     for host_port in host_ports:
@@ -28,7 +29,7 @@ def collect_hosts(
         host = res.hostname
         if host is None:
             raise ValueError("bad hostname")
-        port = int(res.port) if res.port else 2181
+        port = 2181 if res.port is None else res.port
         result.append((host.strip(), port))
 
     return result, chroot
