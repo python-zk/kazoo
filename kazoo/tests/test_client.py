@@ -1202,6 +1202,7 @@ class TestClientTransactions(KazooTestCase):
         results = t.commit()
         assert len(results) == 3
         assert results[0] == "/freddy"
+        assert isinstance(results[2], str)
         assert results[2].startswith("/smith0") is True
 
     def test_bad_creates(self) -> None:

@@ -17,8 +17,10 @@ from typing import (
     Iterable,
     Protocol,
     Union,
+    overload,
     TYPE_CHECKING,
 )
+from typing_extensions import TypeVar
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -158,6 +160,7 @@ class Threadlike(Protocol):
 
 
 SpawnedFunc = Callable[..., None]
+_ResultT = TypeVar("_ResultT", default=Any)
 
 
 class IHandler(Protocol):
@@ -239,10 +242,8 @@ class IHandler(Protocol):
         """Return an appropriate object that implements Python's
         threading.RLock API"""
 
-    def async_result(self) -> IAsyncResult:
-        """Return an instance that conforms to the
-        :class:`~IAsyncResult` interface appropriate for this
-        handler"""
+    def async_result(self) -> IAsyncResult[_ResultT]:
+        """Return a typed asynchronous result for this handler."""
 
     def spawn(
         self, func: SpawnedFunc, *args: Any, **kwargs: Any
@@ -266,7 +267,7 @@ class IHandler(Protocol):
         """
 
 
-class IAsyncResult(Protocol):
+class IAsyncResult(Protocol[_ResultT]):
     """An Async Result object that can be queried for a value that has
     been set asynchronously.
 
@@ -297,7 +298,12 @@ class IAsyncResult(Protocol):
         """Return `True` if and only if it is ready and holds a
         value"""
 
-    def set(self, value: Any = None) -> None:
+    @overload
+    def set(self: IAsyncResult[None]) -> None:
+        ...
+
+    @overload
+    def set(self, value: _ResultT) -> None:
         """Store the value. Wake up the waiters.
 
         :param value: Value to store as the result.
@@ -315,7 +321,9 @@ class IAsyncResult(Protocol):
         up. Sequential calls to :meth:`wait` and :meth:`get` will not
         block at all."""
 
-    def get(self, block: bool = True, timeout: float | None = None) -> Any:
+    def get(
+        self, block: bool = True, timeout: float | None = None
+    ) -> _ResultT:
         """Return the stored value or raise the exception
 
         :param block: Whether this method should block or return
@@ -330,14 +338,17 @@ class IAsyncResult(Protocol):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def get_nowait(self) -> Any:
+    def get_nowait(self) -> _ResultT:
         """Return the value or raise the exception without blocking.
 
         If nothing is available, raise the Timeout exception class on
         the associated :class:`IHandler` interface."""
 
-    def wait(self, timeout: float | None = None) -> Any:
+    def wait(self, timeout: float | None = None) -> object:
         """Block until the instance is ready.
+
+        Handler implementations differ in what ``wait`` returns; use
+        :meth:`get` when the typed result value is needed.
 
         :param timeout: How long to wait for a value when `block` is
                         `True`.
@@ -348,7 +359,10 @@ class IAsyncResult(Protocol):
         :meth:`set_exception` has been called or until the optional
         timeout occurs."""
 
-    def rawlink(self, callback: Callable[[IAsyncResult], Any]) -> None:
+    def rawlink(
+        self,
+        callback: Callable[[IAsyncResult[_ResultT]], object],
+    ) -> None:
         """Register a callback to call when a value or an exception is
         set
 
@@ -360,7 +374,10 @@ class IAsyncResult(Protocol):
 
         """
 
-    def unlink(self, callback: Callable[[IAsyncResult], None]) -> None:
+    def unlink(
+        self,
+        callback: Callable[[IAsyncResult[_ResultT]], object],
+    ) -> None:
         """Remove the callback set by :meth:`rawlink`
 
         :param callback: A callback function to remove.
