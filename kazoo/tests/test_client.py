@@ -47,7 +47,6 @@ from kazoo.security import (
 )
 
 from kazoo.testing import KazooTestCase
-from kazoo.tests.util import CI_ZK_VERSION
 
 if TYPE_CHECKING:
     from kazoo.testing.common import ManagedZooKeeper
@@ -618,9 +617,7 @@ class TestClient(KazooTestCase):
         client = self.client
         client.create("/1", acl=[single_acl, single_acl])
         acls, stat = client.get_acls("/1")
-        # ZK >3.4 removes duplicate ACL entries
-        version = CI_ZK_VERSION if CI_ZK_VERSION else client.server_version()
-        assert len(acls) == 1 if version > (3, 4) else 2
+        assert len(acls) == 1
 
     def test_create_acl_empty_list(self) -> None:
         client = self.client
@@ -722,12 +719,6 @@ class TestClient(KazooTestCase):
             client.create(path)
 
     def test_create_stat(self) -> None:
-        if CI_ZK_VERSION:
-            version = CI_ZK_VERSION
-        else:
-            version = self.client.server_version()
-        if not version or version < (3, 5):
-            pytest.skip("Must use Zookeeper 3.5 or above")
         client = self.client
         path, stat1 = client.create("/1", b"bytes", include_data=True)
         data, stat2 = client.get("/1")
@@ -1165,8 +1156,6 @@ class TestClient(KazooTestCase):
 
 class TestSSLClient(KazooTestCase):
     def setUp(self) -> None:
-        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 5):
-            pytest.skip("Must use Zookeeper 3.5 or above")
         ssl_path = tempfile.mkdtemp()
         key_path = os.path.join(ssl_path, "key.pem")
         cert_path = os.path.join(ssl_path, "cert.pem")
@@ -1212,17 +1201,6 @@ dummy_dict = {
 class TestClientTransactions(KazooTestCase):
     def setUp(self) -> None:
         KazooTestCase.setUp(self)
-        skip = False
-        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
-            skip = True
-        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
-            skip = False
-        else:
-            ver = self.client.server_version()
-            if ver[1] < 4:
-                skip = True
-        if skip:
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def test_basic_create(self) -> None:
         t = self.client.transaction()
@@ -1416,13 +1394,6 @@ class TestNonChrootClient(KazooTestCase):
 class TestReconfig(KazooTestCase):
     def setUp(self) -> None:
         KazooTestCase.setUp(self)
-
-        if CI_ZK_VERSION:
-            version = CI_ZK_VERSION
-        else:
-            version = self.client.server_version()
-        if not version or version < (3, 5):
-            pytest.skip("Must use Zookeeper 3.5 or above")
 
     def test_no_super_auth(self) -> None:
         with pytest.raises(NoAuthError):

@@ -2,9 +2,33 @@
 
 set -e
 
-HERE=`pwd`
+HERE=$(pwd)
 ZOO_BASE_DIR="$HERE/zookeeper"
-export ZOOKEEPER_VERSION=${ZOOKEEPER_VERSION:-3.6.4}
+
+# Supported Zookeeper versions. NB Must match the versions in the build matrix in 
+# .github/workflows/testing.yml
+ZOOKEEPER_VERSIONS=(3.6.4 3.7.2 3.8.3 3.9.1)
+
+if [ -z "$ZOOKEEPER_VERSION" ]; then
+    ZOOKEEPER_VERSION=${ZOOKEEPER_VERSIONS[3]}
+    echo "No ZOOKEEPER_VERSION specified, using default: ${ZOOKEEPER_VERSION}"
+else
+    found=false
+
+    for item in "${ZOOKEEPER_VERSIONS[@]}"; do
+        if [[ "$ZOOKEEPER_VERSION" == "$item" ]]; then
+            found=true
+            break
+        fi
+    done
+
+    if [ "$found" = false ]; then
+        echo "Unsupported Zookeeper version: $ZOOKEEPER_VERSION"
+        echo "Supported versions: ${ZOOKEEPER_VERSIONS[*]}"
+        exit 1
+    fi
+fi
+
 ZOOKEEPER_PATH="$ZOO_BASE_DIR/$ZOOKEEPER_VERSION"
 ZOOKEEPER_PREFIX=${ZOOKEEPER_PREFIX:-apache-}
 ZOOKEEPER_SUFFIX=${ZOOKEEPER_SUFFIX:--bin}
@@ -31,6 +55,7 @@ fi
 
 # Used as install_path when starting ZK
 export ZOOKEEPER_PATH="${ZOOKEEPER_PATH}/${ZOOKEEPER_LIB}"
+
 cd $HERE
 
 # Yield execution to venv command

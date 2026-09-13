@@ -15,20 +15,9 @@ from __future__ import annotations
 ##############################################################################
 
 import logging
-import os
 import time
 
 from typing import Any, Callable, Type
-
-CI = os.environ.get("CI", False)
-CI_ZK_VERSION: tuple[int, ...] = tuple()
-if CI:
-    has_version = os.environ.get("ZOOKEEPER_VERSION", "")
-    if has_version:
-        if "-" in has_version:
-            # Ignore pre-release markers like -alpha
-            has_version = has_version.split("-")[0]
-    CI_ZK_VERSION = tuple(int(n) for n in has_version.split("."))
 
 
 class Handler(logging.Handler):

@@ -42,7 +42,6 @@ def get_global_cluster() -> ZookeeperCluster:
             "ZOOKEEPER_CLASSPATH",
             "ZOOKEEPER_PORT_OFFSET",
             "ZOOKEEPER_CLUSTER_SIZE",
-            "ZOOKEEPER_VERSION",
             "ZOOKEEPER_OBSERVER_START_ID",
             "ZOOKEEPER_JAAS_AUTH",
             "ZOOKEEPER_LOCAL_SESSION_RO",
@@ -64,41 +63,32 @@ def get_global_cluster() -> ZookeeperCluster:
     ZK_CLUSTER_SIZE = int(  # type: ignore[call-overload]
         cluster_conf.get("ZOOKEEPER_CLUSTER_SIZE")
     )
-    ZK_VERSION_STR = cast("str", cluster_conf.get("ZOOKEEPER_VERSION"))
-    if "-" in ZK_VERSION_STR:
-        # Ignore pre-release markers like -alpha
-        ZK_VERSION_STR = ZK_VERSION_STR.split("-")[0]
-    ZK_VERSION = tuple(int(n) for n in ZK_VERSION_STR.split("."))
     ZK_OBSERVER_START_ID = int(  # type: ignore[call-overload]
         cluster_conf.get("ZOOKEEPER_OBSERVER_START_ID")
     )
 
-    assert ZK_HOME or ZK_CLASSPATH or ZK_VERSION, (
-        "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH or "
-        "ZOOKEEPER_VERSION environment variable must be defined.\n"
+    assert ZK_HOME or ZK_CLASSPATH, (
+        "Either ZOOKEEPER_PATH or ZOOKEEPER_CLASSPATH environment variable "
+        "must be defined.\n"
         "For deb package installations this is /usr/share/java"
     )
 
-    if ZK_VERSION >= (3, 5):
-        ZOOKEEPER_LOCAL_SESSION_RO = cast(
-            "str", cluster_conf.get("ZOOKEEPER_LOCAL_SESSION_RO")
-        )
-        additional_configuration_entries = [
-            "4lw.commands.whitelist=*",
-            "reconfigEnabled=true",
-            # required to avoid session validation error
-            # in read only test
-            "localSessionsEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
-            "localSessionsUpgradingEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
-        ]
-        # If defined, this sets the superuser password to "test"
-        additional_java_system_properties = [
-            "-Dzookeeper.DigestAuthenticationProvider.superDigest="
-            "super:D/InIHSb7yEEbrWz8b9l71RjZJU="
-        ]
-    else:
-        additional_configuration_entries = []
-        additional_java_system_properties = []
+    ZOOKEEPER_LOCAL_SESSION_RO = cast(
+        "str", cluster_conf.get("ZOOKEEPER_LOCAL_SESSION_RO")
+    )
+    additional_configuration_entries = [
+        "4lw.commands.whitelist=*",
+        "reconfigEnabled=true",
+        # required to avoid session validation error in read only test
+        "localSessionsEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
+        "localSessionsUpgradingEnabled=" + ZOOKEEPER_LOCAL_SESSION_RO,
+    ]
+    # This sets the superuser password to "test"
+    additional_java_system_properties = [
+        "-Dzookeeper.DigestAuthenticationProvider.superDigest="
+        "super:D/InIHSb7yEEbrWz8b9l71RjZJU="
+    ]
+
     ZOOKEEPER_JAAS_AUTH = cluster_conf.get("ZOOKEEPER_JAAS_AUTH")
     if ZOOKEEPER_JAAS_AUTH == "digest":
         jaas_config = """
