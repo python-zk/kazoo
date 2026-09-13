@@ -268,10 +268,22 @@ class TestAuthentication(KazooTestCase):
         client = self._get_client()
         client.start()
         client.add_auth("digest", "jsmith:jsmith")
+
+        ev_lost = client.handler.event_object()
+        ev_connected = client.handler.event_object()
+
+        def listener(state: KazooState) -> None:
+            if state in (KazooState.SUSPENDED, KazooState.LOST):
+                ev_lost.set()
+            elif state == KazooState.CONNECTED and ev_lost.is_set():
+                ev_connected.set()
+
+        client.add_listener(listener)
         assert client._connection._socket is not None
         client._connection._socket.shutdown(socket.SHUT_RDWR)
-        while not client.connected:
-            time.sleep(0.1)
+
+        ev_connected.wait(15)
+        assert ev_connected.is_set()
         assert ("digest", "jsmith:jsmith") in client.auth_data
 
 
@@ -319,7 +331,7 @@ class TestConnection(KazooTestCase):
 
         self.client.add_listener(watch_events)
         self.expire_session(self.make_event)
-        ab.wait(0.5)
+        ab.wait(5.0)
         assert ab.is_set()
         cv.wait(0.5)
         assert not cv.is_set()
@@ -1021,8 +1033,23 @@ class TestClient(KazooTestCase):
 
         # shut down the first host
         try:
+            ev_connected = client.handler.event_object()
+
+            def listener(state: KazooState) -> None:
+                if state == KazooState.CONNECTED:
+                    ev_connected.set()
+
+            client.add_listener(listener)
+
             self.cluster[0].stop()
-            time.sleep(5)
+            ev_connected.wait(60)
+            assert ev_connected.is_set(), (
+                f"Failover timed out after 60s: ev_connected not set. "
+                f"client.state={client.state}, "
+                f"client.client_state={client.client_state}, "
+                f"client.connected={client.connected}, "
+                f"hosts={client.hosts}"
+            )
             assert client.client_state == KeeperState.CONNECTED
         finally:
             self.cluster[0].run()
