@@ -30,12 +30,21 @@ first fork the repository on github to your own account, then clone your new rep
 You'll also need some other libraries and utilities installed in order to run tests.
 
 1. A supported version of python and its -dev package (again, apt install should work).
-2. Zookeeper. 
+2. Zookeeper (see below).
 3. In order to run Zookeeper, you'll need a Java runtime (JRE or JDK). Please refer to the Zookeeper documentation for compatible Java versions for each Zookeeper version.
-4. libkrb5-dev for kerberos authentication if you're connecting to Zookeeper with sasl (apt install should work for this)
+4. libkrb5-dev or similar for kerberos authentication if you're connecting to Zookeeper with sasl (apt install should work for this)
 5. Optionally pypy3. This is a little more complex to install. Something like the following should work
    - `add-apt-repository ppa:pypy/ppa && sudo apt update && sudo apt install pypy3 pypy3-dev`
 6. tox
+
+#### Installing zookeeper.
+
+You don't need to install zookeeper if you're running `tox`.
+- You can optionally specify a version by setting the `ZOOKEEPER_VERSION`. However, note that this needs to be one of the versions specified in the `ensure-zookeeper-env.sh` script, so you might need to update that and possibly also the matrix in the github testing workflow.
+
+If you want to run your tests outside `tox`, you can do one of the following:
+- Run `./ensure-zookeeper-env.sh env | grep ^ZOOKEEPER_PATH=` or `ZOOKEEPER_VERSION=<version> ./ensure-zookeeper-env.sh env | grep ^ZOOKEEPER_PATH=`. This will download the specified version if necessary and use it.
+- Download a version of zookeeper and set `ZOOKEEPER_PATH` to the full path of the `lib` directory in the downloaded location.
 
 ### Create a virtual env and populate it
 
@@ -75,8 +84,7 @@ tox -e py
 Or to run individual tests:
 
 ```bash
-export ZOOKEEPER_PATH=/<path to current folder>/bin/zookeeper/
-bin/pytest -v kazoo/tests/test_client.py::TestClient::test_create
+ZOOKEEPER_PATH=/<path-to-zookeeper-folder>/lib/ pytest -v kazoo/tests/test_client.py::TestClient::test_create
 ```
 
 The pytest test runner allows you to filter by test module, class or

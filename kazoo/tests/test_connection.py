@@ -22,7 +22,7 @@ from kazoo.protocol.serialization import (
 from kazoo.protocol.states import KazooState, KeeperState
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
-from kazoo.tests.util import wait, CI_ZK_VERSION, CI
+from kazoo.tests.util import wait
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient
@@ -275,29 +275,17 @@ class TestReadOnlyMode(KazooTestCase):
     def setUp(self) -> None:
         os.environ["ZOOKEEPER_LOCAL_SESSION_RO"] = "true"
         self.setup_zookeeper()
-        skip = False
-        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
-            skip = True
-        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
-            skip = False
-        else:
-            ver = self.client.server_version()
-            if ver[1] < 4:
-                skip = True
-        if skip:
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def tearDown(self) -> None:
         self.client.stop()
         os.environ.pop("ZOOKEEPER_LOCAL_SESSION_RO", None)
 
     def test_read_only(self) -> None:
-        if CI:
-            # force some wait to make sure the data produced during the
-            # `setUp()` step are replicated to all zk members
-            # if not done the `get_children()` test may fail because the
-            # node does not exist on the node that we will keep alive
-            time.sleep(15)
+        # force some wait to make sure the data produced during the
+        # `setUp()` step are replicated to all zk members
+        # if not done the `get_children()` test may fail because the
+        # node does not exist on the node that we will keep alive
+        time.sleep(15)
         # do not keep the client started in the `setUp` step alive
         self.client.stop()
         client = self._get_client(connection_retry=None, read_only=True)

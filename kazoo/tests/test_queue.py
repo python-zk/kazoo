@@ -7,7 +7,6 @@ from typing import Any, TYPE_CHECKING
 import pytest
 
 from kazoo.testing import KazooTestCase
-from kazoo.tests.util import CI_ZK_VERSION
 
 if TYPE_CHECKING:
     from kazoo.recipe.queue import LockingQueue, Queue
@@ -66,17 +65,6 @@ class KazooQueueTests(KazooTestCase):
 class KazooLockingQueueTests(KazooTestCase):
     def setUp(self) -> None:
         KazooTestCase.setUp(self)
-        skip = False
-        if CI_ZK_VERSION and CI_ZK_VERSION < (3, 4):
-            skip = True
-        elif CI_ZK_VERSION and CI_ZK_VERSION >= (3, 4):
-            skip = False
-        else:
-            ver = self.client.server_version()
-            if ver[1] < 4:
-                skip = True
-        if skip:
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def _makeOne(self) -> LockingQueue:
         path = "/" + uuid.uuid4().hex
