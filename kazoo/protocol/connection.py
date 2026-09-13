@@ -28,6 +28,7 @@ from kazoo.exceptions import (
     ConnectionDropped,
     EXCEPTIONS,
     SessionExpiredError,
+    SessionClosedRequireSaslError,
     NoNodeError,
     SASLException,
 )
@@ -798,9 +799,16 @@ class ConnectionHandler:
             if client._state != KeeperState.CONNECTING:
                 self.logger.warning("Transition to CONNECTING")
                 client._session_callback(KeeperState.CONNECTING)
-        except AuthFailedError as err:
+        except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            client._session_callback(KeeperState.AUTH_FAILED)
+            return STOP_CONNECTING
+        except SessionClosedRequireSaslError as err:
+            retry.reset()
+            self.logger.warning(
+                "AUTH_FAILED closing (server requires SASL auth): %s", err
+            )
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:

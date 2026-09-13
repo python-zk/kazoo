@@ -1,3 +1,12 @@
+<a name="unreleased"></a>
+## Unreleased
+
+#### Bug Fixes
+
+* **protocol:**
+  * handle `SASLException` and `SessionClosedRequireSaslError` cleanly as `AUTH_FAILED` in `_connect_attempt` (addresses #594)
+
+
 <a name="2.11.0"></a>
 ## 2.11.0  (2026-03-21)
 
