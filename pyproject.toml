@@ -8,7 +8,7 @@ requires = [
 name = "kazoo"
 dynamic = ["version", "readme"]
 description = "Higher Level Zookeeper Client"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "Apache 2.0"}
 authors = [
     {name = "Kazoo team", email = "python-zk@googlegroups.com"},
@@ -21,7 +21,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -61,17 +60,13 @@ test-extras = [
     "unittest-parametrize",
 ]
 pytest = [
-    "pytest==7.4.4; python_version == '3.8'",
-    "pytest==8.4.2; python_version > '3.8'",
+    "pytest==8.4.2",
 ]
 test = [
-    "coverage==6.3.2; python_version == '3.8'",
-    "coverage==7.10.7; python_version > '3.8'",
+    "coverage==7.10.7",
     {include-group = "pytest"},
-    "pytest-cov==3.0.0; python_version == '3.8'",
-    "pytest-cov==7.0.0; python_version > '3.8'",
-    "pytest-timeout==2.2.0; python_version == '3.8'",
-    "pytest-timeout==2.4.0; python_version > '3.8'",
+    "pytest-cov==7.0.0",
+    "pytest-timeout==2.4.0",
     {include-group = "test-extras"},
 ]
 typing = [
@@ -103,7 +98,6 @@ readme = {file = ["README.md", "CHANGES.md", "CONTRIBUTING.md"], content-type = 
 [tool.black]
 line-length = 79
 target-version = [
-    'py38',
     'py39',
     'py310',
     'py311',
@@ -188,7 +182,7 @@ warn_unused_configs = true
 verbosity = 0
 
 # This is a temporary workaround for the fact that mypy can
-# produce different errors in 3.8 and 3.14, and I want to avoid code changes
+# produce different errors in 3.9 and 3.14, and I want to avoid code changes
 # as much as possible.
 disable_error_code = [ 'unused-ignore' ]
 
