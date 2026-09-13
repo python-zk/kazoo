@@ -209,9 +209,11 @@ class ConnectionHandler:
         self._socket: Socket | None = None
         self._xid: int | None = None
         self._rw_server: tuple[str, int] | None = None
-        self._ro_mode: Iterator[
-            Literal[False] | tuple[str, int] | None
-        ] | Literal[False] | None = False
+        self._ro_mode: (
+            Iterator[Literal[False] | tuple[str, int] | None]
+            | Literal[False]
+            | None
+        ) = False
 
         self._connection_routine: Threadlike | None = None
 
@@ -330,14 +332,12 @@ class ConnectionHandler:
     @overload
     def _invoke(
         self, timeout: float | None, request: Connect
-    ) -> tuple[Connect, int | None]:
-        ...
+    ) -> tuple[Connect, int | None]: ...
 
     @overload
     def _invoke(
         self, timeout: float | None, request: Auth, xid: int
-    ) -> int | None:
-        ...
+    ) -> int | None: ...
 
     def _invoke(
         self,
@@ -375,7 +375,9 @@ class ConnectionHandler:
             try:
                 # This is a bit of an annoying ignore as I've just done a
                 # hasattr...
-                obj, _ = request.deserialize(msg, 0)  # type:ignore[union-attr]
+                obj, _ = request.deserialize(  # type: ignore[union-attr]
+                    msg, 0
+                )
             except Exception:
                 self.logger.exception(
                     "Exception raised during deserialization "
@@ -431,7 +433,7 @@ class ConnectionHandler:
                     )
                 msg_slice = buffer(msg, sent)
                 try:
-                    bytes_sent = self._socket.send(  # type:ignore[union-attr]
+                    bytes_sent = self._socket.send(  # type: ignore[union-attr]
                         msg_slice
                     )
                 except ssl.SSLError as e:
@@ -953,11 +955,11 @@ class ConnectionHandler:
         # I don't think the client.sasl_cli attribute is actually used
         # anywhere else, so not sure why we need to set it on the client,
         # but again, I want to avoid code changes as much as possible.
-        sasl_cli = (
-            self.client.sasl_cli  # type: ignore[attr-defined]
-        ) = puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
-            host=host,
-            **self.sasl_options,  # type: ignore[arg-type]
+        sasl_cli = self.client.sasl_cli = (  # type: ignore[attr-defined]
+            puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
+                host=host,
+                **self.sasl_options,  # type: ignore[arg-type]
+            )
         )
 
         # Initialize the process with an empty challenge token

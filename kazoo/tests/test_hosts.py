@@ -7,10 +7,8 @@ from kazoo.hosts import collect_hosts
 
 class HostsTestCase(TestCase):
     def test_ipv4(self) -> None:
-        hosts, chroot = collect_hosts(
-            "127.0.0.1:2181, 192.168.1.2:2181, \
-                                       132.254.111.10:2181"
-        )
+        hosts, chroot = collect_hosts("127.0.0.1:2181, 192.168.1.2:2181, \
+                                       132.254.111.10:2181")
         assert hosts == [
             ("127.0.0.1", 2181),
             ("192.168.1.2", 2181),

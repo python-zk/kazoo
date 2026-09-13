@@ -49,7 +49,10 @@ gevent = ["gevent>=1.2; implementation_name != 'pypy'"]
 sasl = ["pure_sasl>=0.5.1"]
 
 [dependency-groups]
-black = ["black==22.10.0"]
+black = [
+    "black==26.5.1; python_version >= '3.10'",
+    "black==22.10.0; python_version < '3.10'",
+]
 pep8 = ["flake8==5.0.2"]
 test-extras = [
     "objgraph==3.5.0",
@@ -99,8 +102,15 @@ readme = {file = ["README.md", "CHANGES.md", "CONTRIBUTING.md"], content-type = 
 
 [tool.black]
 line-length = 79
-# We need a later version of black for 312-314
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = [
+    'py38',
+    'py39',
+    'py310',
+    'py311',
+    'py312',
+    'py313',
+    'py314',
+]
 include = '\.pyi?$'
 
 [tool.pytest.ini_options]

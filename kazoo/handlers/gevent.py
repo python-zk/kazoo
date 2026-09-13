@@ -24,7 +24,6 @@ import gevent.thread  # type: ignore[import]
 import gevent.selectors  # type: ignore[import]
 from gevent.lock import Semaphore, RLock  # type: ignore[import]
 
-
 if TYPE_CHECKING:
     from kazoo.interfaces import FdLike, Lockable, Socket
     from kazoo.protocol.states import Callback
@@ -74,9 +73,9 @@ class SequentialGeventHandler:
 
     def __init__(self) -> None:
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.callback_queue: gevent.queue.Queue[
-            Callable[..., None]
-        ] = self.queue_impl()
+        self.callback_queue: gevent.queue.Queue[Callable[..., None]] = (
+            self.queue_impl()
+        )
         self._running = False
         self._async = None
         self._state_change = Semaphore()

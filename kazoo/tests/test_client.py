@@ -552,7 +552,7 @@ class TestClient(KazooTestCase):
     def test_create_invalid_path(self) -> None:
         client = self.client
         with pytest.raises(TypeError):
-            client.create(("a",))  # type:ignore[call-overload]
+            client.create(("a",))  # type: ignore[call-overload]
         with pytest.raises(ValueError):
             client.create(".")
         with pytest.raises(ValueError):
