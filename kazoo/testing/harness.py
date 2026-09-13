@@ -1,4 +1,5 @@
 """Kazoo testing harnesses"""
+
 from __future__ import annotations
 
 import atexit
@@ -123,9 +124,7 @@ Server {
   storeKey=true
   useTicketCache=false
   principal="zookeeper/127.0.0.1@KAZOOTEST.ORG";
-};""" % os.path.expandvars(
-            "${KRB5_TEST_ENV}/server.keytab"
-        )
+};""" % os.path.expandvars("${KRB5_TEST_ENV}/server.keytab")
     else:
         jaas_config = None
 

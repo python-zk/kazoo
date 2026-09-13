@@ -87,9 +87,9 @@ class KazooRetry:
         self.deadline = deadline
         self._cur_stoptime: float | None = None
         self.sleep_func = sleep_func
-        self.retry_exceptions: tuple[
-            type[Exception], ...
-        ] = self.RETRY_EXCEPTIONS
+        self.retry_exceptions: tuple[type[Exception], ...] = (
+            self.RETRY_EXCEPTIONS
+        )
         self.interrupt = interrupt
         if ignore_expire:
             self.retry_exceptions += self.EXPIRED_EXCEPTIONS
