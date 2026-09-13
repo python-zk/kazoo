@@ -62,6 +62,7 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import (
     Callback,
+    CLOSED_STATES,
     EventType,
     KazooState,
     KeeperState,
@@ -88,11 +89,6 @@ if TYPE_CHECKING:
     from kazoo.handlers.gevent import SequentialGeventHandler
 
 
-CLOSED_STATES = (
-    KeeperState.EXPIRED_SESSION,
-    KeeperState.AUTH_FAILED,
-    KeeperState.CLOSED,
-)
 ENVI_VERSION = re.compile(r"([\d\.]*).*", re.DOTALL)
 ENVI_VERSION_KEY = "zookeeper.version"
 log = logging.getLogger(__name__)
@@ -394,6 +390,8 @@ class KazooClient:
         self._stopped = self.handler.event_object()
         self._stopped.set()
         self._writer_stopped.set()
+        self._conn_result: IAsyncResult | None = None
+        self._auth_error: Exception | None = None
 
         # FIXME This is kind of gross but we need to set these to something so
         # that the type checker will understand that they are set by the time
@@ -722,10 +720,26 @@ class KazooClient:
                 "Zookeeper connection established, " "state: %s", state
             )
             self._live.set()
+            if self._conn_result is not None and not self._conn_result.ready():
+                self._conn_result.set(True)
             self._make_state_change(KazooState.CONNECTED)
         elif state in CLOSED_STATES:
             self.logger.info("Zookeeper session closed, state: %s", state)
             self._live.clear()
+            if self._conn_result is not None and not self._conn_result.ready():
+                if state == KeeperState.AUTH_FAILED:
+                    if isinstance(self._auth_error, AuthFailedError):
+                        err: Exception = self._auth_error
+                    elif self._auth_error is not None:
+                        err = AuthFailedError("Authentication failed")
+                        err.__cause__ = self._auth_error
+                    else:
+                        err = AuthFailedError("Authentication failed")
+                    self._conn_result.set_exception(err)
+                elif state == KeeperState.CLOSED:
+                    self._conn_result.set_exception(
+                        ConnectionClosedError("Connection closed")
+                    )
             self._make_state_change(KazooState.LOST)
             self._notify_pending(state)
             self._reset()
@@ -766,6 +780,10 @@ class KazooClient:
 
     def _safe_close(self) -> None:
         self.handler.stop()
+        if self._conn_result is not None and not self._conn_result.ready():
+            self._conn_result.set_exception(
+                ConnectionClosedError("Connection closed")
+            )
         timeout = self._session_timeout // 1000
         if timeout < 10:
             timeout = 10
@@ -823,15 +841,20 @@ class KazooClient:
         :raises: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
                  if the connection wasn't established within `timeout`
                  seconds.
+        :raises: :exc:`~kazoo.exceptions.AuthFailedError` if authentication
+                 failed during connection establishment.
 
         """
-        event = self.start_async()
-        event.wait(timeout=timeout)
-        if not self.connected:
-            # We time-out, ensure we are disconnected
+        if self._live.is_set():
+            return
+
+        async_result = self.start_async()
+        try:
+            async_result.get(timeout=timeout)
+        except Exception:
             self.stop()
             self.close()
-            raise self.handler.timeout_exception("Connection time-out")
+            raise
 
         if self.chroot and not self.exists("/"):
             warnings.warn(
@@ -839,17 +862,28 @@ class KazooClient:
                 "should be created before normal use."
             )
 
-    def start_async(self) -> Event:
+    def start_async(self) -> IAsyncResult:
         """Asynchronously initiate connection to ZK.
 
-        :returns: An event object that can be checked to see if the
-                  connection is alive.
-        :rtype: :class:`~threading.Event` compatible object.
+        :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance that
+                  resolves to `True` when connected or fails with an
+                  exception on terminal failure.
 
         """
-        # If we're already connected, ignore
+        # If we're already connected, return an already-completed result
         if self._live.is_set():
-            return self._live
+            if self._conn_result is None:
+                # Defensive fallback to catch poor mocking in KazooClient
+                # internals (tests or mocks that manually set self._live.set()
+                # without going through start_async()). In production,
+                # self._conn_result is always initialized during start_async()
+                # and should *never* be None while self._live is set.
+                self._conn_result = self.handler.async_result()
+                self._conn_result.set(True)
+            return self._conn_result
+
+        if self._conn_result is not None and not self._conn_result.ready():
+            return self._conn_result
 
         # Make sure we're safely closed
         self._safe_close()
@@ -858,13 +892,14 @@ class KazooClient:
         # thread indicator
         self._stopped.clear()
         self._writer_stopped.clear()
+        self._conn_result = self.handler.async_result()
 
         # Start the handler
         self.handler.start()
 
         # Start the connection
         self._connection.start()
-        return self._live
+        return self._conn_result
 
     def stop(self) -> None:
         """Gracefully stop this Zookeeper session.
@@ -884,11 +919,8 @@ class KazooClient:
         self._stopped.set()
         self._queue.append((CloseInstance, cast("IAsyncResult", None)))
         try:
-            # This assert should never fail since the connection should
-            # have been started but I'm not sure how to persaude mypy of that
-            self._connection._write_sock.send(  # type: ignore[union-attr]
-                b"\0"
-            )
+            if self._connection._write_sock is not None:
+                self._connection._write_sock.send(b"\0")
         finally:
             self._safe_close()
 
