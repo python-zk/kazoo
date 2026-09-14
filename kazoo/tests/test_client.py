@@ -189,8 +189,11 @@ class TestAuthentication(KazooTestCase):
         client.start()
         try:
             client.create("/1", acl=(acl,))
-            # give ZK a chance to copy data to other node
-            time.sleep(0.1)
+            # Give ZK a chance to copy data to other ensemble nodes.
+            # Follower reads are sequentially consistent, but may briefly lag
+            # the leader until the commit is applied locally; sync flushes
+            # the channel between client's connected server and the leader.
+            self.client.sync("/1")
 
             with pytest.raises(NoAuthError):
                 self.client.get("/1")
