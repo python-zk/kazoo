@@ -52,7 +52,7 @@ If you want to support eventlet, gevent, or sasl replace the last with (or an ap
 pip install -e ".[eventlet,gevent,sasl]"
 ```
 
-If you want to install the tools used by tox so you can use them yourself, also run (for python 3.9 and above only). For python 3.8, sadly, you'll have to read the pyproject.toml file and manually install.
+If you want to install the tools used by tox so you can use them yourself, also run:
 
 ```bash
 pip install --group <toolname>
