@@ -671,7 +671,8 @@ class Semaphore:
         # which I think is a bug in this code. However, I don't want to
         # change any code at this point, so we just ignore the type error here.
         lock = self.client.Lock(
-            self.lock_path, self.data  # type: ignore[arg-type]
+            self.lock_path,
+            self.data,  # type: ignore[arg-type]
         )
         try:
             gotten = lock.acquire(blocking=blocking, timeout=w.leftover())

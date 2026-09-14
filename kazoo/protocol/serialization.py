@@ -115,8 +115,7 @@ PingInstance = Ping()
 class Connect(
     namedtuple(
         "Connect",
-        "protocol_version last_zxid_seen"
-        " time_out session_id passwd read_only",
+        "protocol_version last_zxid_seen time_out session_id passwd read_only",
     )
 ):
     protocol_version: int

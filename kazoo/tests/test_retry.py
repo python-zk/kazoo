@@ -17,7 +17,9 @@ def _make_retry(*args: Any, **kwargs: Any) -> kr.KazooRetry:
 
     # FIXME better way of doing this? Use TypedDict perhaps?
     return kr.KazooRetry(
-        *args, sleep_func=_sleep_func, **kwargs  # type: ignore[misc]
+        *args,
+        sleep_func=_sleep_func,
+        **kwargs,  # type: ignore[misc]
     )
 
 
@@ -45,9 +47,9 @@ def test_reset() -> None:
     retry = _make_retry(delay=0, max_tries=2)
     func = _make_try_func()
     retry(func)
-    assert (
-        func.call_count == retry._attempts + 1 == 2
-    ), "Called 2 times, failed _attempts 1, succeeded 1"
+    assert func.call_count == retry._attempts + 1 == 2, (
+        "Called 2 times, failed _attempts 1, succeeded 1"
+    )
     retry.reset()
     assert retry._attempts == 0
 
@@ -57,9 +59,9 @@ def test_too_many_tries() -> None:
     func = _make_try_func(times=999)
     with pytest.raises(kr.RetryFailedError):
         retry(func)
-    assert (
-        func.call_count == retry._attempts == 10
-    ), "Called 10 times, failed _attempts 10"
+    assert func.call_count == retry._attempts == 10, (
+        "Called 10 times, failed _attempts 10"
+    )
 
 
 def test_maximum_delay() -> None:
