@@ -66,10 +66,9 @@ if TYPE_CHECKING:
 
 # FIXME This is NOT pretty, but we don't want to force users to have to
 # install puresasl. Can we avoid some of the type: ignore stuff?
-# NB Those should be ignore import but I don't trust hound.
 try:
-    import puresasl  # type: ignore
-    import puresasl.client  # type: ignore
+    import puresasl  # type: ignore[import-untyped,import-not-found]
+    import puresasl.client  # type: ignore[import-untyped,import-not-found]
 
     PURESASL_AVAILABLE = True
 except ImportError:

@@ -64,9 +64,7 @@ class AsyncResult(IAsyncResult):
     @property
     def exception(self) -> Exception | None:
         if self._exception is not _NONE:
-            # The next line should have return-value, but hound ci
-            # is frankly nothing but a hound dog
-            return self._exception  # type: ignore
+            return self._exception  # type: ignore[return-value]
         return None
 
     def set(self, value: Any = None) -> None:

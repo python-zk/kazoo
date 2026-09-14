@@ -56,8 +56,7 @@ class KazooAdaptiveHandlerTestCase(KazooTestHarness):
             except ImportError:
                 continue
             else:
-                # FIXME Should be no-any-return but hound is a dog
-                return cls()  # type: ignore
+                return cls()  # type: ignore[no-any-return]
         raise ImportError("No available handler")
 
 

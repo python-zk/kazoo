@@ -12,7 +12,7 @@ from kazoo.protocol.states import Callback, KazooState, ZnodeStat
 from kazoo.testing import KazooTestCase
 
 try:
-    import gevent  # NOQA:
+    import gevent  # noqa: F401
     from gevent.event import Event
     from gevent.queue import Empty
     from gevent import socket

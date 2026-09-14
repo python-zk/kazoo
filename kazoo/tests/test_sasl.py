@@ -117,9 +117,7 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         except ImportError:
             pytest.skip("PureSASL not available.")
         try:
-            # FIXME Hound objects to import not found as it thinks it's a
-            # syntax error. I don't know why it thinks that.
-            import kerberos  # type: ignore
+            import kerberos  # type: ignore[import-not-found,import-untyped]
         except ImportError:
             pytest.skip("Kerberos support not available.")
         if not os.environ.get("KRB5_TEST_ENV"):

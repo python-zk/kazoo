@@ -998,14 +998,12 @@ class KazooClient:
         version = _try_fetch()
         if _is_valid(version):
             # mypy doesn't recognise that _is_valid guarantees this
-            # and the next 2 suppress should include return-value
-            # but hound is broken
-            return version  # type: ignore
+            return version  # type: ignore[return-value]
         for _i in range(0, retries):
             version = _try_fetch()
             if _is_valid(version):
                 # mypy doesn't recognise that _is_valid guarantees this
-                return version  # type: ignore
+                return version  # type: ignore[return-value]
         raise KazooException(
             "Unable to fetch useable server"
             " version after trying %s times" % (1 + max(0, retries))
