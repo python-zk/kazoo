@@ -1,4 +1,0 @@
-fail_on_violations: true
-python:
-  enabled: true
-  config_file: .flake8

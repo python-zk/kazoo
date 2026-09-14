@@ -433,7 +433,8 @@ class ChildrenWatch:
                     # it's the same issue where mypy can't figure out that the
                     # function can be called with 1 argument or with 2
                     result = self._func(  # type: ignore[misc]
-                        children, event  # type: ignore[call-arg]
+                        children,
+                        event,  # type: ignore[call-arg]
                     )
                 else:
                     result = self._func(  # type: ignore[misc]

@@ -239,7 +239,8 @@ class TestAuthentication(KazooTestCase):
 
         with pytest.raises(TypeError):
             client.add_auth(
-                "digest", ("user", "pass")  # type: ignore[arg-type]
+                "digest",
+                ("user", "pass"),  # type: ignore[arg-type]
             )
 
         with pytest.raises(TypeError):

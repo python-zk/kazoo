@@ -15,6 +15,9 @@ jobs:
     name: Code Validation
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -34,12 +37,29 @@ jobs:
       - name: Install required dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install tox
+          pip install tox ruff==0.16.7
+
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1
+        if: github.event_name == 'pull_request'
+        with:
+          reviewdog_version: latest
+
+      - name: Run reviewdog (ruff)
+        if: github.event_name == 'pull_request'
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ruff check --output-format=rdjson kazoo | reviewdog -f=rdjson \
+            -name="ruff" \
+            -reporter=github-pr-review \
+            -filter-mode=added \
+            -fail-level=error
 
       - name: Code check
         run: tox -e ${TOX_VENV}
         env:
-          TOX_VENV: black,pep8,mypy
+          TOX_VENV: ruff,mypy
 
   test:
     needs: [validate]
@@ -52,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11-v7.3.21"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11-v7.3.21"]
         # Friendly note: If you change the minimum zk-version here, update it in
         # ensure-zookeeper-env.sh. Additionally, if you need to change the way that
         # zookeeper is installed, do it THERE. Not in the 'test with tox' step here.
@@ -60,8 +80,6 @@ jobs:
         # things to work properly before submitting a PR.
         zk-version: ["3.6.4", "3.7.2", "3.8.3", "3.9.1"]
         include:
-          - python-version: "3.8"
-            tox-env: py38
           - python-version: "3.9"
             tox-env: py39
           - python-version: "3.10"
