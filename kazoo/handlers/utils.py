@@ -203,7 +203,7 @@ def create_socket_pair(
     readable = select.select([temp_srv_sock], [], [], timeout)[0]
     if temp_srv_sock not in readable:
         raise Exception(
-            "Client socket not connected in %s" " second(s)" % (timeout)
+            "Client socket not connected in %s second(s)" % (timeout)
         )
     srv_sock, _ = temp_srv_sock.accept()
     return client_sock, srv_sock
@@ -404,7 +404,7 @@ def fileobj_to_fd(fileobj: FdLike) -> int:
         try:
             fd = int(fileobj.fileno())
         except (AttributeError, TypeError, ValueError):
-            raise TypeError("Invalid file object: " "{!r}".format(fileobj))
+            raise TypeError("Invalid file object: {!r}".format(fileobj))
     # FIXME Questionable, just let select deal with it.
     if fd < 0:
         raise TypeError("Invalid file descriptor: {}".format(fd))

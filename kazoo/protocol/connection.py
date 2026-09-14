@@ -50,6 +50,7 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import (
     Callback,
+    CLOSED_STATES,
     KeeperState,
     WatchedEvent,
     EVENT_TYPE_MAP,
@@ -140,8 +141,7 @@ class RWPinger:
     ) -> tuple[str, int] | Literal[False] | None:
         jitter = random.randint(0, 100) / 100.0
         while (
-            time.monotonic()
-            < self.last_attempt + delay + jitter  # type: ignore[operator]
+            time.monotonic() < self.last_attempt + delay + jitter  # type: ignore[operator]
         ):
             # Skip rw ping checks if its too soon
             return False
@@ -238,7 +238,7 @@ class ConnectionHandler:
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception(
-                "Unable to start, connection routine already " "active."
+                "Unable to start, connection routine already active."
             )
         self._connection_routine = self.handler.spawn(self.zk_loop)
 
@@ -353,7 +353,7 @@ class ConnectionHandler:
             header, buffer, offset = self._read_header(timeout)
             if header.xid != xid:
                 raise RuntimeError(
-                    "xids do not match, expected %r " "received %r",
+                    "xids do not match, expected %r received %r",
                     xid,
                     header.xid,
                 )
@@ -380,8 +380,7 @@ class ConnectionHandler:
                 )
             except Exception:
                 self.logger.exception(
-                    "Exception raised during deserialization "
-                    "of request: %s",
+                    "Exception raised during deserialization of request: %s",
                     request,
                 )
 
@@ -429,7 +428,7 @@ class ConnectionHandler:
                     # If the write list is empty, we got a timeout. We don't
                     # have to check rlist and xlist as we don't set any
                     raise self.handler.timeout_exception(
-                        "socket time-out" " during write"
+                        "socket time-out during write"
                     )
                 msg_slice = buffer(msg, sent)
                 try:
@@ -492,7 +491,7 @@ class ConnectionHandler:
             client.last_zxid = header.zxid
         if header.xid != xid:
             exc = RuntimeError(
-                "xids do not match, expected %r " "received %r",
+                "xids do not match, expected %r received %r",
                 xid,
                 header.xid,
             )
@@ -658,7 +657,8 @@ class ConnectionHandler:
             )
         finally:
             self.connection_stopped.set()
-            self.client._session_callback(KeeperState.CLOSED)
+            if self.client._state not in CLOSED_STATES:
+                self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
@@ -738,7 +738,9 @@ class ConnectionHandler:
 
         try:
             self._xid = 0
-            read_timeout, connect_timeout = self._connect(host, hostip, port)
+            read_timeout, connect_timeout = self._connect(
+                host, hostip, port, timeout=retry.cur_delay
+            )
             # I think the above implies self._socket can't be none, and
             # self._read_sock is set up in start but mypy can't tell that.
             # Hence the casting.
@@ -754,12 +756,16 @@ class ConnectionHandler:
                     deadline = last_send + read_timeout / 2.0 - jitter_time
                     # Ensure our timeout is positive
                     timeout = max([deadline - time.monotonic(), jitter_time])
+                    read_list = [cast("Socket", self._socket)]
+                    if (
+                        self.client.concurrent_request_limit is None
+                        or len(self.client._pending)
+                        < self.client.concurrent_request_limit
+                    ):
+                        read_list.append(cast("Socket", self._read_sock))
+
                     s = self.handler.select(
-                        [
-                            # FIXME we should know these aren't None
-                            cast("Socket", self._socket),
-                            cast("Socket", self._read_sock),
-                        ],
+                        read_list,
                         [],
                         [],
                         timeout,
@@ -802,6 +808,7 @@ class ConnectionHandler:
         except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionClosedRequireSaslError as err:
@@ -809,6 +816,7 @@ class ConnectionHandler:
             self.logger.warning(
                 "AUTH_FAILED closing (server requires SASL auth): %s", err
             )
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -835,6 +843,7 @@ class ConnectionHandler:
         host: str,
         hostip: str,
         port: int,
+        timeout: float | None = None,
     ) -> tuple[float, float]:
         client = self.client
         self.logger.info(
@@ -856,7 +865,11 @@ class ConnectionHandler:
             self._socket = self.handler.create_connection(
                 address=(hostip, port),
                 hostname=host,
-                timeout=client._session_timeout / 1000.0,
+                timeout=(
+                    client._session_timeout / 1000.0
+                    if timeout is None
+                    else timeout
+                ),
                 use_ssl=self.client.use_ssl,
                 keyfile=self.client.keyfile,
                 certfile=self.client.certfile,
@@ -908,13 +921,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -927,6 +933,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 
@@ -992,12 +1005,14 @@ class ConnectionHandler:
             try:
                 header, buffer, offset = self._read_header(timeout)
             except ConnectionDropped as exc:
-                # Zookeeper simply drops connections with failed authentication
-                raise AuthFailedError("Connection dropped in SASL") from exc
+                # If connection dropped during SASL handshake (e.g. server
+                # node died or restart in progress), raise ConnectionDropped
+                # so the connect loop retries other hosts.
+                raise ConnectionDropped("Connection dropped in SASL") from exc
 
             if header.xid != xid:
                 raise RuntimeError(
-                    "xids do not match, expected %r " "received %r",
+                    "xids do not match, expected %r received %r",
                     xid,
                     header.xid,
                 )
