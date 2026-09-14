@@ -11,7 +11,6 @@ from kazoo.exceptions import (
     AuthFailedError,
     NoAuthError,
 )
-from kazoo.tests.util import CI_ZK_VERSION
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
@@ -23,13 +22,6 @@ class TestLegacySASLDigestAuthentication(KazooTestHarness):
 
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
-
-        if CI_ZK_VERSION:
-            version = CI_ZK_VERSION
-        else:
-            version = self.client.server_version()
-        if not version or version < (3, 4):
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def tearDown(self) -> None:
         self.teardown_zookeeper()
@@ -73,13 +65,6 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "digest"
         self.setup_zookeeper()
-
-        if CI_ZK_VERSION:
-            version = CI_ZK_VERSION
-        else:
-            version = self.client.server_version()
-        if not version or version < (3, 4):
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def tearDown(self) -> None:
         self.teardown_zookeeper()
@@ -142,13 +127,6 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
 
         os.environ["ZOOKEEPER_JAAS_AUTH"] = "gssapi"
         self.setup_zookeeper()
-
-        if CI_ZK_VERSION:
-            version = CI_ZK_VERSION
-        else:
-            version = self.client.server_version()
-        if not version or version < (3, 4):
-            pytest.skip("Must use Zookeeper 3.4 or above")
 
     def tearDown(self) -> None:
         self.teardown_zookeeper()
