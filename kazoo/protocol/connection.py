@@ -754,12 +754,16 @@ class ConnectionHandler:
                     deadline = last_send + read_timeout / 2.0 - jitter_time
                     # Ensure our timeout is positive
                     timeout = max([deadline - time.monotonic(), jitter_time])
+                    read_list = [cast("Socket", self._socket)]
+                    if (
+                        self.client.concurrent_request_limit is None
+                        or len(self.client._pending)
+                        < self.client.concurrent_request_limit
+                    ):
+                        read_list.append(cast("Socket", self._read_sock))
+
                     s = self.handler.select(
-                        [
-                            # FIXME we should know these aren't None
-                            cast("Socket", self._socket),
-                            cast("Socket", self._read_sock),
-                        ],
+                        read_list,
                         [],
                         [],
                         timeout,
