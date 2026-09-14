@@ -384,33 +384,6 @@ def wrap(
     return capture
 
 
-def fileobj_to_fd(fileobj: FdLike) -> int:
-    """Return a file descriptor from a file object.
-
-    Parameters:
-    fileobj -- file object or file descriptor
-
-    Returns:
-    corresponding file descriptor
-
-    Raises:
-    TypeError if the object is invalid
-    """
-    if isinstance(fileobj, int):
-        fd = fileobj
-    else:
-        # FIXME given the protocol I don't think the try/catch/int are
-        # required.
-        try:
-            fd = int(fileobj.fileno())
-        except (AttributeError, TypeError, ValueError):
-            raise TypeError("Invalid file object: " "{!r}".format(fileobj))
-    # FIXME Questionable, just let select deal with it.
-    if fd < 0:
-        raise TypeError("Invalid file descriptor: {}".format(fd))
-    return fd
-
-
 def selector_select(
     rlist: Iterable[FdLike],
     wlist: Iterable[FdLike],
@@ -436,7 +409,7 @@ def selector_select(
 
     for event, fileobjs in events_mapping.items():
         for fileobj in fileobjs:
-            fd = fileobj_to_fd(fileobj)
+            fd = fileobj if isinstance(fileobj, int) else fileobj.fileno()
             fd_events[fd] |= event
             fd_fileobjs[fd].append(fileobj)
 
