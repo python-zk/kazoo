@@ -5,7 +5,8 @@ import os
 import threading
 import time
 import uuid
-from unittest.mock import patch
+import unittest
+from unittest.mock import Mock, patch
 import struct
 import sys
 
@@ -424,3 +425,63 @@ class _naughty_deque(Deque[Tuple[Any, Any, int]]):
     def append(self, s: Tuple[Any, Any, int]) -> None:
         request, async_object, xid = s
         deque.append(self, (request, async_object, xid + 1))  # +1s
+
+
+class TestConnectionAuthExceptions(unittest.TestCase):
+    def test_connect_attempt_sasl_exception(self) -> None:
+        from kazoo.exceptions import SASLException
+        from kazoo.protocol.connection import (
+            ConnectionHandler,
+            STOP_CONNECTING,
+        )
+        from kazoo.retry import KazooRetry
+
+        client = Mock()
+        handler = Mock()
+        handler.timeout_exception = TimeoutError
+        client.handler = handler
+        client._state = KeeperState.CONNECTING
+        retry = KazooRetry()
+        connection = ConnectionHandler(client, retry)
+
+        with patch.object(
+            connection, "_connect", side_effect=SASLException("library error")
+        ):
+            result = connection._connect_attempt(
+                "127.0.0.1", "127.0.0.1", 2181, retry
+            )
+            self.assertIs(result, STOP_CONNECTING)
+            client._session_callback.assert_called_with(
+                KeeperState.AUTH_FAILED
+            )
+
+    def test_connect_attempt_session_closed_require_sasl(self) -> None:
+        from kazoo.exceptions import SessionClosedRequireSaslError
+        from kazoo.protocol.connection import (
+            ConnectionHandler,
+            STOP_CONNECTING,
+        )
+        from kazoo.retry import KazooRetry
+
+        client = Mock()
+        handler = Mock()
+        handler.timeout_exception = TimeoutError
+        client.handler = handler
+        client._state = KeeperState.CONNECTING
+        retry = KazooRetry()
+        connection = ConnectionHandler(client, retry)
+
+        with patch.object(
+            connection,
+            "_connect",
+            side_effect=SessionClosedRequireSaslError(
+                "session closed require sasl"
+            ),
+        ):
+            result = connection._connect_attempt(
+                "127.0.0.1", "127.0.0.1", 2181, retry
+            )
+            self.assertIs(result, STOP_CONNECTING)
+            client._session_callback.assert_called_with(
+                KeeperState.AUTH_FAILED
+            )

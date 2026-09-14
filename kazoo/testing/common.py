@@ -193,15 +193,12 @@ ssl.trustStore.password=apassword
                 )
 
             with open(config_path, "a") as config:
-                config.write(
-                    """
+                config.write("""
 initLimit=4
 syncLimit=2
 %s
 peerType=%s
-"""
-                    % ("\n".join(servers_cfg), self.server_info.peer_type)
-                )
+""" % ("\n".join(servers_cfg), self.server_info.peer_type))
 
         # Write server ids into datadir
         with open(os.path.join(data_path, "myid"), "w") as myid_file:

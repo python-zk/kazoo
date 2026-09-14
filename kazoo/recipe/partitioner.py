@@ -88,7 +88,7 @@ if TYPE_CHECKING:
     # typechecking on.
     PartitionDataT = TypeVar(
         "PartitionDataT",
-        bound=SupportsRichComparisonT,  # type:ignore[valid-type]
+        bound=SupportsRichComparisonT,  # type: ignore[valid-type]
     )
 else:
     PartitionDataT = TypeVar("PartitionDataT")
@@ -173,11 +173,13 @@ class SetPartitioner(Generic[PartitionDataT]):
         client: KazooClient,
         path: str,
         set: Iterable[PartitionDataT],
-        partition_func: Callable[
-            [str, Iterable[str], Iterable[PartitionDataT]],
-            list[PartitionDataT],
-        ]
-        | None = None,
+        partition_func: (
+            Callable[
+                [str, Iterable[str], Iterable[PartitionDataT]],
+                list[PartitionDataT],
+            ]
+            | None
+        ) = None,
         identifier: str | None = None,
         time_boundary: float = 30,
         max_reaction_time: float = 1,
