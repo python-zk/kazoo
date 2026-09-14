@@ -738,7 +738,9 @@ class ConnectionHandler:
 
         try:
             self._xid = 0
-            read_timeout, connect_timeout = self._connect(host, hostip, port)
+            read_timeout, connect_timeout = self._connect(
+                host, hostip, port, timeout=retry.cur_delay
+            )
             # I think the above implies self._socket can't be none, and
             # self._read_sock is set up in start but mypy can't tell that.
             # Hence the casting.
@@ -837,6 +839,7 @@ class ConnectionHandler:
         host: str,
         hostip: str,
         port: int,
+        timeout: float | None = None,
     ) -> tuple[float, float]:
         client = self.client
         self.logger.info(
@@ -858,7 +861,11 @@ class ConnectionHandler:
             self._socket = self.handler.create_connection(
                 address=(hostip, port),
                 hostname=host,
-                timeout=client._session_timeout / 1000.0,
+                timeout=(
+                    client._session_timeout / 1000.0
+                    if timeout is None
+                    else timeout
+                ),
                 use_ssl=self.client.use_ssl,
                 keyfile=self.client.keyfile,
                 certfile=self.client.certfile,
