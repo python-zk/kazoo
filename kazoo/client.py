@@ -926,11 +926,10 @@ class KazooClient:
         if not self._live.is_set():
             raise ConnectionLoss("No connection to server")
 
-        # Need a way of persauding mypy that the connection is live and thus
-        # the socket is not None
-        conn_sock = self._connection._socket
-        peer = conn_sock.getpeername()[:2]  # type: ignore[union-attr]
-        peer_host = conn_sock.getpeername()[1]  # type: ignore[union-attr]
+        sock_obj = self._connection._socket
+        assert sock_obj is not None
+        peer = sock_obj.getpeername()[:2]
+        peer_host = peer[0]
         sock = self.handler.create_connection(
             peer,
             hostname=peer_host,
