@@ -189,12 +189,14 @@ class SequentialEventletHandler:
 
     def event_object(self) -> Event:
         return cast(
-            "Event", green_threading.Event()  # type: ignore[attr-defined]
+            "Event",
+            green_threading.Event(),  # type: ignore[attr-defined]
         )
 
     def lock_object(self) -> Lockable:
         return cast(
-            "Lockable", green_threading.Lock()  # type: ignore[attr-defined]
+            "Lockable",
+            green_threading.Lock(),  # type: ignore[attr-defined]
         )
 
     def rlock_object(self) -> ReentrantLock:

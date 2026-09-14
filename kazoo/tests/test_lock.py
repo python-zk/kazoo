@@ -265,8 +265,7 @@ class KazooLockTests(KazooTestCase):
             if not self.active_thread:
                 self.condition.wait(5)
                 assert (
-                    self.active_thread
-                    == "one"  # type: ignore[comparison-overlap]
+                    self.active_thread == "one"  # type: ignore[comparison-overlap]
                 )
         assert lock1.contenders() == ["one"]
         event1.set()
@@ -286,8 +285,7 @@ class KazooLockTests(KazooTestCase):
             if not self.active_thread:
                 self.condition.wait(5)
                 assert (
-                    self.active_thread
-                    == "one"  # type: ignore[comparison-overlap]
+                    self.active_thread == "one"  # type: ignore[comparison-overlap]
                 )
 
         client2 = self._get_client()

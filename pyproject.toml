@@ -48,11 +48,9 @@ gevent = ["gevent>=1.2; implementation_name != 'pypy'"]
 sasl = ["pure_sasl>=0.5.1"]
 
 [dependency-groups]
-black = [
-    "black==26.5.1; python_version >= '3.10'",
-    "black==22.10.0; python_version < '3.10'",
+ruff = [
+    "ruff==0.16.7",
 ]
-pep8 = ["flake8==5.0.2"]
 test-extras = [
     "objgraph==3.5.0",
     "pyOpenSSL<26.2.0",
@@ -95,17 +93,36 @@ kazoo = ["py.typed"]
 version = {attr = "kazoo.version.__version__"}
 readme = {file = ["README.md", "CHANGES.md", "CONTRIBUTING.md"], content-type = "text/markdown"}
 
-[tool.black]
+[tool.ruff]
 line-length = 79
-target-version = [
-    'py39',
-    'py310',
-    'py311',
-    'py312',
-    'py313',
-    'py314',
+target-version = "py39"
+builtins = ["_"]
+exclude = [
+    "docs/conf.py",
+    ".git",
+    "__pycache__",
+    ".venv",
+    ".tox",
+    "build",
+    "dist",
+    "zookeeper",
 ]
-include = '\.pyi?$'
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E203",  # whitespace before ':' (black compatibility)
+    "E721",  # do not compare types, use 'isinstance()'
+    "F401",  # module imported but unused
+    "F811",  # redefinition of unused name
+    "F821",  # undefined name
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
 
 [tool.pytest.ini_options]
 addopts = "-ra -v --color=yes"
