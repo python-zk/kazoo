@@ -104,7 +104,7 @@ class SequentialThreadingHandler(IHandler):
 
     name = "sequential_threading_handler"
     timeout_exception = KazooTimeoutError
-    sleep_func = staticmethod(time.sleep)
+    sleep_func = staticmethod(time.sleep)  # type: ignore[assignment]
     queue_impl = queue.Queue
     queue_empty = queue.Empty
 
