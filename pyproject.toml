@@ -55,31 +55,31 @@ black = [
 ]
 pep8 = ["flake8==5.0.2"]
 test-extras = [
-    "objgraph==3.5.0",
+    "objgraph==3.6.2",
     "pyOpenSSL<26.2.0",
-    "pyjks",
-    "unittest-parametrize",
+    "pyjks==20.0.0",
+    "unittest-parametrize==1.4.0",
 ]
 pytest = [
-    "pytest==7.4.4; python_version == '3.8'",
+    "pytest==8.3.5; python_version == '3.8'",
     "pytest==8.4.2; python_version > '3.8'",
 ]
 test = [
-    "coverage==6.3.2; python_version == '3.8'",
+    "coverage==7.6.1; python_version == '3.8'",
     "coverage==7.10.7; python_version > '3.8'",
     {include-group = "pytest"},
-    "pytest-cov==3.0.0; python_version == '3.8'",
-    "pytest-cov==7.0.0; python_version > '3.8'",
-    "pytest-timeout==2.2.0; python_version == '3.8'",
+    "pytest-cov==5.0.0; python_version == '3.8'",
+    "pytest-cov==7.1.0; python_version > '3.8'",
+    "pytest-timeout==2.4.0; python_version == '3.8'",
     "pytest-timeout==2.4.0; python_version > '3.8'",
     {include-group = "test-extras"},
 ]
 typing = [
-    "mypy==1.14.1",
-    "types-gevent",
-    "types-mock",
-    "types-objgraph",
-    "types-pyjks",
+    "mypy==1.19.1",
+    "types-gevent==25.9.0.20251228",
+    "types-mock==5.2.0.20250924",
+    "types-objgraph==3.6.0.20240907",
+    "types-pyjks==20.0.0.20240310",
 ]
 mypy = [
     {include-group = "typing"},
