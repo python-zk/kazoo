@@ -84,9 +84,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: zookeeper
-          key: ${{ runner.os }}-zookeeper
-          restore-keys: |
-            ${{ runner.os }}-zookeeper
+          key: zookeeper-${{ matrix.zk-version }}
+          enableCrossOsArchive: true
 
       - name: Install required dependencies
         run: |
@@ -108,22 +107,25 @@ jobs:
     name: Windows - Sanity test using a single version of Python and ZK
 
     runs-on: windows-latest
+    env:
+      ZOOKEEPER_VERSION: "3.9.1"
+      PYTHON_VERSION: "3.12"
+      TOX_ENV: "py312"
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
           pip-version: "25.1" # Minimum version required for PEP 735 --group support
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Handle ZK installation cache
         uses: actions/cache@v6
         with:
           path: zookeeper
-          key: ${{ runner.os }}-zookeeper
-          restore-keys: |
-            ${{ runner.os }}-zookeeper
+          key: zookeeper-${{ env.ZOOKEEPER_VERSION }}
+          enableCrossOsArchive: true
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -136,7 +138,5 @@ jobs:
           pip install 'tox>=4.22' # Match the requirement in tox.ini
 
       - name: Test with tox
-        run: tox -e py310
-        env:
-          ZOOKEEPER_VERSION: 3.9.1
+        run: tox -e ${{ env.TOX_ENV }}
         shell: bash
