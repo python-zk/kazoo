@@ -87,16 +87,20 @@ class SelectTestCase(unittest.TestCase):
 
     # Issue 16230: Crash on select resized list
     def test_select_mutated(self) -> None:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s1, s2 = socket.socketpair()
+        try:
             a: list[HasFileNo] = []
 
             class F:
                 def fileno(self) -> int:
                     del a[-1]
-                    return s.fileno()
+                    return s1.fileno()
 
             a[:] = [F()] * 10
             self.assertEqual(select([], a, []), ([], a[:5], []))
+        finally:
+            s1.close()
+            s2.close()
 
 
 if __name__ == "__main__":
