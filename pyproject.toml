@@ -52,10 +52,11 @@ ruff = [
     "ruff==0.16.7",
 ]
 test-extras = [
+    "cryptography==50.0.1",
     "objgraph==3.6.2",
-    "pyOpenSSL<26.2.0",
+    "pyOpenSSL==26.4.0",
     "pyjks==20.0.0",
-    "unittest-parametrize==1.4.0",
+    "unittest-parametrize==1.8.0",
 ]
 pytest = [
     "pytest==8.4.2",
@@ -177,7 +178,8 @@ warn_unreachable = true
 # Miscellaneous strictness flags
 allow_untyped_globals = false
 allow_redefinition = false
-# FIXME Disabled for now as we need to fix the X509 import.
+# FIXME Disabled for now - there's a few things to clean up (mostly using 
+# deprecated APIs in tests) before we can enable this.
 #enable_error_code = ["deprecated"]
 local_partial_types = true
 implicit_reexport = false
