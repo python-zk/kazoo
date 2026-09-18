@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
@@ -83,7 +83,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
@@ -91,7 +91,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Handle ZK installation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: zookeeper
           key: ${{ runner.os }}-zookeeper
@@ -127,7 +127,7 @@ jobs:
           python-version: "3.12"
 
       - name: Handle pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
@@ -135,7 +135,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Handle ZK installation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: zookeeper
           key: ${{ runner.os }}-zookeeper
