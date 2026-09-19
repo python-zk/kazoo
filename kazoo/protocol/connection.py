@@ -34,6 +34,7 @@ from kazoo.exceptions import (
 )
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
+    AddWatch,
     Auth,
     Close,
     Connect,
@@ -42,6 +43,7 @@ from kazoo.protocol.serialization import (
     GetChildren2,
     Ping,
     PingInstance,
+    RemoveWatches,
     ReplyHeader,
     SASL,
     Transaction,
@@ -49,10 +51,13 @@ from kazoo.protocol.serialization import (
     int_struct,
 )
 from kazoo.protocol.states import (
+    AddWatchMode,
     Callback,
+    CLOSED_STATES,
     KeeperState,
     WatchedEvent,
     EVENT_TYPE_MAP,
+    WatcherType,
 )
 from kazoo.retry import (
     ForceRetryError,
@@ -445,7 +450,29 @@ class ConnectionHandler:
                     raise ConnectionDropped("socket connection broken")
                 sent += bytes_sent
 
-    def _read_watch_event(self, buffer: bytes, offset: int) -> None:
+    def _find_persistent_recursive_watchers(
+        self, path: str
+    ) -> list[WatchFunc]:
+        watchers: list[WatchFunc] = []
+        candidates = ["/"]
+        stripped = path.strip("/")
+        if stripped:
+            parts = stripped.split("/")
+            candidates.extend(
+                "/" + "/".join(parts[: i + 1]) for i in range(len(parts))
+            )
+        for candidate in candidates:
+            watchers.extend(
+                self.client._persistent_recursive_watchers.get(candidate, [])
+            )
+        return watchers
+
+    def _read_watch_event(
+        self,
+        buffer: bytes,
+        offset: int,
+        zxid: int = WatchedEvent.NO_ZXID,
+    ) -> None:
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
@@ -456,18 +483,25 @@ class ConnectionHandler:
 
         if watch.type in (CREATED_EVENT, CHANGED_EVENT):
             watchers.extend(client._data_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
+            watchers.extend(self._find_persistent_recursive_watchers(path))
         elif watch.type == DELETED_EVENT:
             watchers.extend(client._data_watchers.pop(path, []))
             watchers.extend(client._child_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
+            watchers.extend(self._find_persistent_recursive_watchers(path))
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
+            watchers.extend(client._persistent_watchers.get(path, []))
         else:
             self.logger.warn("Received unknown event %r", watch.type)
             return
 
         # Strip the chroot if needed
         path = client.unchroot(path)
-        ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path)
+        ev = WatchedEvent(
+            EVENT_TYPE_MAP[watch.type], client._state, path, zxid
+        )
 
         # Last check to ignore watches if we've been stopped
         if client._stopped.is_set():
@@ -517,7 +551,7 @@ class ConnectionHandler:
             if exists_error:
                 # It's a NoNodeError, which is fine for an exists
                 # request
-                async_object.set(None)
+                response = None
             else:
                 try:
                     response = request.deserialize(buffer, offset)
@@ -537,15 +571,45 @@ class ConnectionHandler:
                 if request.type == Transaction.type:
                     response = Transaction.unchroot(client, response)
 
-                async_object.set(response)
+            # Determine if watchers should be registered or unregistered
+            if not client._stopped.is_set():
+                watcher = getattr(request, "watcher", None)
+                if watcher:
+                    if isinstance(request, AddWatch):
+                        if request.mode == AddWatchMode.PERSISTENT:
+                            client._persistent_watchers[request.path].add(
+                                watcher
+                            )
+                        elif request.mode == AddWatchMode.PERSISTENT_RECURSIVE:
+                            client._persistent_recursive_watchers[
+                                request.path
+                            ].add(watcher)
+                        else:
+                            raise ValueError(
+                                f"Unexpected AddWatchMode: {request.mode}"
+                            )
+                    elif isinstance(request, (GetChildren, GetChildren2)):
+                        client._child_watchers[request.path].add(watcher)
+                    else:
+                        client._data_watchers[request.path].add(watcher)
+                if isinstance(request, RemoveWatches):
+                    if request.watcher_type == WatcherType.CHILDREN:
+                        client._child_watchers.pop(request.path, None)
+                    elif request.watcher_type == WatcherType.DATA:
+                        client._data_watchers.pop(request.path, None)
+                    elif request.watcher_type == WatcherType.ANY:
+                        client._child_watchers.pop(request.path, None)
+                        client._data_watchers.pop(request.path, None)
+                        client._persistent_watchers.pop(request.path, None)
+                        client._persistent_recursive_watchers.pop(
+                            request.path, None
+                        )
+                    else:
+                        raise ValueError(
+                            f"Unexpected WatcherType: {request.watcher_type}"
+                        )
 
-            # Determine if watchers should be registered
-            watcher = getattr(request, "watcher", None)
-            if not client._stopped.is_set() and watcher:
-                if isinstance(request, (GetChildren, GetChildren2)):
-                    client._child_watchers[request.path].add(watcher)
-                else:
-                    client._data_watchers[request.path].add(watcher)
+            async_object.set(response)
 
         if isinstance(request, Close):
             self.logger.log(BLATHER, "Read close response")
@@ -570,7 +634,7 @@ class ConnectionHandler:
             else:
                 async_object.set(True)
         elif header.xid == WATCH_XID:
-            self._read_watch_event(buffer, offset)
+            self._read_watch_event(buffer, offset, header.zxid)
         else:
             self.logger.log(BLATHER, "Reading for header %r", header)
 
@@ -655,7 +719,8 @@ class ConnectionHandler:
             )
         finally:
             self.connection_stopped.set()
-            self.client._session_callback(KeeperState.CLOSED)
+            if self.client._state not in CLOSED_STATES:
+                self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
@@ -799,6 +864,7 @@ class ConnectionHandler:
         except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionClosedRequireSaslError as err:
@@ -806,6 +872,7 @@ class ConnectionHandler:
             self.logger.warning(
                 "AUTH_FAILED closing (server requires SASL auth): %s", err
             )
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -905,13 +972,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -924,6 +984,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 
