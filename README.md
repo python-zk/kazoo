@@ -4,6 +4,7 @@ Kazoo
 [![Kazoo Awesome Testing](https://github.com/python-zk/kazoo/actions/workflows/testing.yml/badge.svg?branch=master)](https://github.com/python-zk/kazoo/actions/workflows/testing.yml?query=branch%3Amaster)
 [![Latest Version](https://img.shields.io/pypi/v/kazoo.svg)](https://pypi.org/project/kazoo/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![codecov](https://codecov.io/gh/python-zk/kazoo/branch/master/graph/badge.svg)](https://codecov.io/gh/python-zk/kazoo)
 
 `kazoo` implements a higher level API to [Apache
 ZooKeeper](http://zookeeper.apache.org/) for Python clients.
