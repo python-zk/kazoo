@@ -650,7 +650,7 @@ class KazooClient:
 
         if self.chroot is not None and new_chroot != self.chroot:
             raise ConfigurationError(
-                "Changing chroot at runtime is not " "currently supported"
+                "Changing chroot at runtime is not currently supported"
             )
 
         self.chroot = new_chroot
@@ -719,7 +719,7 @@ class KazooClient:
 
         if state in (KeeperState.CONNECTED, KeeperState.CONNECTED_RO):
             self.logger.info(
-                "Zookeeper connection established, " "state: %s", state
+                "Zookeeper connection established, state: %s", state
             )
             self._live.set()
             self._make_state_change(KazooState.CONNECTED)
@@ -973,9 +973,7 @@ class KazooClient:
             version = data_parsed.get(ENVI_VERSION_KEY, "")
             # FIXME If you get an unexpected answer, you'll crash - not
             # changing the code, so just ignoring the type error
-            version_digits = ENVI_VERSION.match(
-                version
-            ).group(  # type: ignore[union-attr]
+            version_digits = ENVI_VERSION.match(version).group(  # type: ignore[union-attr]
                 1
             )
             try:
@@ -1000,14 +998,12 @@ class KazooClient:
         version = _try_fetch()
         if _is_valid(version):
             # mypy doesn't recognise that _is_valid guarantees this
-            # and the next 2 suppress should include return-value
-            # but hound is broken
-            return version  # type: ignore
+            return version  # type: ignore[return-value]
         for _i in range(0, retries):
             version = _try_fetch()
             if _is_valid(version):
                 # mypy doesn't recognise that _is_valid guarantees this
-                return version  # type: ignore
+                return version  # type: ignore[return-value]
         raise KazooException(
             "Unable to fetch useable server"
             " version after trying %s times" % (1 + max(0, retries))
@@ -1250,7 +1246,7 @@ class KazooClient:
             isinstance(acl, ACL) or not isinstance(acl, (tuple, list))
         ):
             raise TypeError(
-                "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
+                "Invalid type for 'acl' (acl must be a tuple/list of ACL's"
             )
         if value is not None and not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")
@@ -1673,7 +1669,7 @@ class KazooClient:
             raise TypeError("Invalid type for 'path' (string expected)")
         if isinstance(acls, ACL) or not isinstance(acls, (tuple, list)):
             raise TypeError(
-                "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's)"
+                "Invalid type for 'acl' (acl must be a tuple/list of ACL's)"
             )
         if not isinstance(version, int):
             raise TypeError("Invalid type for 'version' (int expected)")
@@ -1939,9 +1935,7 @@ class KazooClient:
         if leaving and not isinstance(leaving, str):
             raise TypeError("Invalid type for 'leaving' (string expected)")
         if new_members and not isinstance(new_members, str):
-            raise TypeError(
-                "Invalid type for 'new_members' (string " "expected)"
-            )
+            raise TypeError("Invalid type for 'new_members' (string expected)")
         if not isinstance(from_config, int):
             raise TypeError("Invalid type for 'from_config' (int expected)")
 
@@ -2001,7 +1995,7 @@ class TransactionRequest:
             raise TypeError("Invalid type for 'path' (string expected)")
         if acl and not isinstance(acl, (tuple, list)):
             raise TypeError(
-                "Invalid type for 'acl' (acl must be a tuple/list" " of ACL's"
+                "Invalid type for 'acl' (acl must be a tuple/list of ACL's"
             )
         if not isinstance(value, bytes):
             raise TypeError("Invalid type for 'value' (must be a byte string)")

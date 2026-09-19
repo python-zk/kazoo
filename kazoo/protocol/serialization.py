@@ -42,8 +42,7 @@ def read_string(buffer: bytes, offset: int) -> tuple[str, int]:
         # A note: write_str sends a length of -1 to indicate a value of None
         # was passed. Not entirely sure where this happens because none of the
         # callers of read_string seem to expect a None value.
-        # Should be ignoring return-value but hound cli...
-        return None, offset  # type: ignore
+        return None, offset  # type: ignore[return-value]
     else:
         index = offset
         offset += length
@@ -115,8 +114,7 @@ PingInstance = Ping()
 class Connect(
     namedtuple(
         "Connect",
-        "protocol_version last_zxid_seen"
-        " time_out session_id passwd read_only",
+        "protocol_version last_zxid_seen time_out session_id passwd read_only",
     )
 ):
     protocol_version: int

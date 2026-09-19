@@ -66,10 +66,9 @@ if TYPE_CHECKING:
 
 # FIXME This is NOT pretty, but we don't want to force users to have to
 # install puresasl. Can we avoid some of the type: ignore stuff?
-# NB Those should be ignore import but I don't trust hound.
 try:
-    import puresasl  # type: ignore
-    import puresasl.client  # type: ignore
+    import puresasl  # type: ignore[import-untyped,import-not-found]
+    import puresasl.client  # type: ignore[import-untyped,import-not-found]
 
     PURESASL_AVAILABLE = True
 except ImportError:
@@ -140,8 +139,7 @@ class RWPinger:
     ) -> tuple[str, int] | Literal[False] | None:
         jitter = random.randint(0, 100) / 100.0
         while (
-            time.monotonic()
-            < self.last_attempt + delay + jitter  # type: ignore[operator]
+            time.monotonic() < self.last_attempt + delay + jitter  # type: ignore[operator]
         ):
             # Skip rw ping checks if its too soon
             return False
@@ -238,7 +236,7 @@ class ConnectionHandler:
             self.connection_closed.clear()
         if self._connection_routine:
             raise Exception(
-                "Unable to start, connection routine already " "active."
+                "Unable to start, connection routine already active."
             )
         self._connection_routine = self.handler.spawn(self.zk_loop)
 
@@ -353,7 +351,7 @@ class ConnectionHandler:
             header, buffer, offset = self._read_header(timeout)
             if header.xid != xid:
                 raise RuntimeError(
-                    "xids do not match, expected %r " "received %r",
+                    "xids do not match, expected %r received %r",
                     xid,
                     header.xid,
                 )
@@ -380,8 +378,7 @@ class ConnectionHandler:
                 )
             except Exception:
                 self.logger.exception(
-                    "Exception raised during deserialization "
-                    "of request: %s",
+                    "Exception raised during deserialization of request: %s",
                     request,
                 )
 
@@ -429,7 +426,7 @@ class ConnectionHandler:
                     # If the write list is empty, we got a timeout. We don't
                     # have to check rlist and xlist as we don't set any
                     raise self.handler.timeout_exception(
-                        "socket time-out" " during write"
+                        "socket time-out during write"
                     )
                 msg_slice = buffer(msg, sent)
                 try:
@@ -492,7 +489,7 @@ class ConnectionHandler:
             client.last_zxid = header.zxid
         if header.xid != xid:
             exc = RuntimeError(
-                "xids do not match, expected %r " "received %r",
+                "xids do not match, expected %r received %r",
                 xid,
                 header.xid,
             )
@@ -999,7 +996,7 @@ class ConnectionHandler:
 
             if header.xid != xid:
                 raise RuntimeError(
-                    "xids do not match, expected %r " "received %r",
+                    "xids do not match, expected %r received %r",
                     xid,
                     header.xid,
                 )
