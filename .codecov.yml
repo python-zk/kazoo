@@ -1,0 +1,40 @@
+# Codecov configuration for python-zk/kazoo
+# Reference: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  # Wait for all 21 test matrix jobs (7 Python versions x 3 ZooKeeper versions)
+  # to upload their coverage reports before calculating the final coverage status.
+  # NOTE: If the test matrix in .github/workflows/testing.yml changes (e.g. adding
+  # or removing Python or ZooKeeper versions), this number must be updated to match
+  # the new total: len(python-version) * len(zk-version).
+  after_n_builds: 21
+
+coverage:
+  status:
+    # Project coverage measures overall repository coverage against the base branch.
+    project:
+      default:
+        # 'auto' uses the coverage percentage of the base commit as the target.
+        target: auto
+        # Allow up to a 1% decrease in overall coverage to account for minor
+        # fluctuations, refactoring, or platform-specific code.
+        threshold: 1%
+        # Mark status as informational so minor drops do not block or fail PR CI checks.
+        informational: true
+
+    # Patch coverage measures test coverage specifically on the lines modified in the PR.
+    patch:
+      default:
+        # Require 80% coverage on new/changed lines rather than strict 100%,
+        # allowing for defensive error handling, deprecation warnings, or unreachable branches.
+        target: 80%
+        # Allow up to 5% variance below the target.
+        threshold: 5%
+        # Mark status as informational so uncovered edge-case branches do not fail PR CI checks.
+        informational: true
+
+comment:
+  layout: "diff, flags, files"
+  behavior: default
+  # Only post or update the PR comment once all builds are complete.
+  require_changes: false
