@@ -3,7 +3,6 @@ include =
     kazoo/*
 omit =
     kazoo/tests/*
-    kazoo/testing/*
 
 # Note - this is a copy of the default exclusions from coverage 7.10.1
 [report]

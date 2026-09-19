@@ -76,6 +76,13 @@ class KeeperState(str, Enum):
     EXPIRED_SESSION = "EXPIRED_SESSION"
 
 
+CLOSED_STATES = (
+    KeeperState.EXPIRED_SESSION,
+    KeeperState.AUTH_FAILED,
+    KeeperState.CLOSED,
+)
+
+
 # This is a (str, Enum) for backwards compatibility.
 class EventType(str, Enum):
     """Zookeeper Event
