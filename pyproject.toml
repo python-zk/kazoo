@@ -52,10 +52,12 @@ ruff = [
     "ruff==0.16.7",
 ]
 test-extras = [
+    "cryptography==50.0.1",
+    "freezegun==1.5.5",
     "objgraph==3.6.2",
-    "pyOpenSSL<26.2.0",
+    "pyOpenSSL==26.4.0",
     "pyjks==20.0.0",
-    "unittest-parametrize==1.4.0",
+    "unittest-parametrize==1.8.0",
 ]
 pytest = [
     "pytest==8.4.2",
@@ -177,8 +179,7 @@ warn_unreachable = true
 # Miscellaneous strictness flags
 allow_untyped_globals = false
 allow_redefinition = false
-# FIXME Disabled for now as we need to fix the X509 import.
-#enable_error_code = ["deprecated"]
+enable_error_code = ["deprecated"]
 local_partial_types = true
 implicit_reexport = false
 strict_concatenate = true

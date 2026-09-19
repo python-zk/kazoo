@@ -21,9 +21,7 @@
 from __future__ import annotations
 
 import code
-from collections import namedtuple
-from glob import glob
-from itertools import chain
+import datetime
 import logging
 import os
 import os.path
@@ -33,13 +31,18 @@ import signal
 import subprocess
 import tempfile
 import traceback
+from collections import namedtuple
+from glob import glob
+from itertools import chain
+from typing import TYPE_CHECKING, Any, TypedDict
 
-import OpenSSL
 import jks
-
-from typing import Any, Iterator, TYPE_CHECKING
+from cryptography import x509
+from cryptography.hazmat.primitives import asymmetric, hashes, serialization
+from cryptography.x509.oid import NameOID
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from types import FrameType
 
 log = logging.getLogger(__name__)
@@ -73,11 +76,39 @@ def to_java_compatible_path(path: str) -> str:
     return path
 
 
+def _x509_common_name(value: str) -> x509.Name:
+    return x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, value)])
+
+
 ServerInfo = namedtuple(
     "ServerInfo",
     "server_id client_port secure_client_port "
     "election_port leader_port admin_port peer_type",
 )
+
+
+class SSLCerts(TypedDict):
+    """TypedDict for SSL certificate information."""
+
+    ca_cert: x509.Certificate
+    ca_key: asymmetric.rsa.RSAPrivateKey
+    ca_cert_pem: bytes
+    server_cert: x509.Certificate
+    server_key: asymmetric.rsa.RSAPrivateKey
+    client_cert: x509.Certificate
+    client_key: asymmetric.rsa.RSAPrivateKey
+    client_cert_pem: bytes
+    client_key_pem: bytes
+    truststore: jks.KeyStore
+    keystore: jks.KeyStore
+
+
+class SSLClientConfiguration(TypedDict):
+    """TypedDict for SSL Client configuration."""
+
+    client_key: bytes
+    client_cert: bytes
+    ca_cert: bytes
 
 
 class ManagedZooKeeper:
@@ -93,11 +124,12 @@ class ManagedZooKeeper:
         software_path: str,
         server_info: ServerInfo,
         peers: list[ServerInfo],
+        *,
         classpath: str,
         configuration_entries: list[str],
         java_system_properties: list[str],
         jaas_config: str | None = None,
-        ssl_configuration: dict[str, Any] | None = None,
+        ssl_configuration: SSLCerts,
     ):
         """Define the ZooKeeper test instance.
 
@@ -114,9 +146,7 @@ class ManagedZooKeeper:
         self.configuration_entries = configuration_entries
         self.java_system_properties = java_system_properties
         self.jaas_config = jaas_config
-        self.ssl_configuration = (
-            ssl_configuration if ssl_configuration is not None else {}
-        )
+        self.ssl_configuration = ssl_configuration
 
     def run(self) -> None:
         """Run the ZooKeeper instance under a temporary directory.
@@ -176,7 +206,7 @@ ssl.trustStore.password=apassword
                     to_java_compatible_path(truststore_path),
                     "\n".join(self.configuration_entries),
                 )
-            )  # NOQA
+            )
 
         # setup a replicated setup if peers are specified
         if self.peers:
@@ -220,7 +250,7 @@ log4j.appender.ROLLINGFILE.layout.ConversionPattern=%d{ISO8601} \
 log4j.appender.ROLLINGFILE=org.apache.log4j.RollingFileAppender
 log4j.appender.ROLLINGFILE.Threshold=DEBUG
 log4j.appender.ROLLINGFILE.File="""
-                + to_java_compatible_path(  # NOQA
+                + to_java_compatible_path(
                     self.working_path + os.sep + "zookeeper.log\n"
                 )
             )
@@ -270,7 +300,7 @@ log4j.appender.ROLLINGFILE.File="""
 
         # Two possibilities, as seen in zkEnv.sh:
         # Check for a release - top-level zookeeper-*.jar?
-        jars = glob((os.path.join(self.install_path, "zookeeper-*.jar")))
+        jars = glob(os.path.join(self.install_path, "zookeeper-*.jar"))
         if jars:
             # Release build (`ant package`)
             jars.extend(glob(os.path.join(self.install_path, "lib", "*.jar")))
@@ -286,7 +316,7 @@ log4j.appender.ROLLINGFILE.File="""
         else:
             # Development build (plain `ant`)
             jars = glob(
-                (os.path.join(self.install_path, "build", "zookeeper-*.jar"))
+                os.path.join(self.install_path, "build", "zookeeper-*.jar")
             )
             jars.extend(
                 glob(os.path.join(self.install_path, "build", "lib", "*.jar"))
@@ -331,7 +361,7 @@ log4j.appender.ROLLINGFILE.File="""
         self.process.terminate()
         self.process.wait()
         if self.process.returncode != 0:
-            log.warn(
+            log.warning(
                 "Zookeeper process %s failed to terminate with"
                 " non-zero return code (it terminated with %s return"
                 " code instead)",
@@ -371,8 +401,7 @@ class ZookeeperCluster:
         self._install_path = install_path
         self._classpath = classpath
         self._servers = []
-        self._ssl_configuration: dict[str, Any] = {}
-        self.perform_ssl_certs_generation()
+        self._ssl_configuration = self._perform_ssl_certs_generation()
 
         # Calculate ports and peer group
         port = port_offset
@@ -409,7 +438,7 @@ class ZookeeperCluster:
                     configuration_entries=configuration_entries,
                     java_system_properties=java_system_properties,
                     jaas_config=jaas_config,
-                    ssl_configuration=dict(self._ssl_configuration),
+                    ssl_configuration=self._ssl_configuration,
                 )
             )
 
@@ -451,74 +480,94 @@ class ZookeeperCluster:
             logs += server.get_logs()
         return logs
 
-    def perform_ssl_certs_generation(self) -> None:
-        if self._ssl_configuration:
-            return
-
-        # generate CA key
-        ca_key = OpenSSL.crypto.PKey()
-        ca_key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
-
-        # generate CA
-        ca_cert = OpenSSL.crypto.X509()
-        ca_cert.set_version(2)
-        ca_cert.set_serial_number(1)
-        ca_cert.get_subject().CN = "ca.kazoo.org"
-        ca_cert.gmtime_adj_notBefore(0)
-        ca_cert.gmtime_adj_notAfter(24 * 60 * 60)
-        ca_cert.set_issuer(ca_cert.get_subject())
-        ca_cert.set_pubkey(ca_key)
-        ca_cert.add_extensions(
-            [
-                OpenSSL.crypto.X509Extension(
-                    b"basicConstraints", True, b"CA:TRUE, pathlen:0"
-                ),
-                OpenSSL.crypto.X509Extension(
-                    b"keyUsage", True, b"keyCertSign, cRLSign"
-                ),
-                OpenSSL.crypto.X509Extension(
-                    b"subjectKeyIdentifier", False, b"hash", subject=ca_cert
-                ),
-            ]
+    def _perform_ssl_certs_generation(self) -> SSLCerts:
+        ca_private_key = asymmetric.rsa.generate_private_key(
+            public_exponent=65537, key_size=2048
         )
-        ca_cert.sign(ca_key, "sha256")
+        ca_name = _x509_common_name("ca.kazoo.org")
+        ca_public_key = ca_private_key.public_key()
+        not_valid_before = datetime.datetime.now(tz=datetime.timezone.utc)
+        not_valid_after = not_valid_before + datetime.timedelta(days=1)
+        ca_cert = x509.CertificateBuilder(
+            issuer_name=ca_name,
+            subject_name=ca_name,
+            public_key=ca_public_key,
+            serial_number=1,
+            not_valid_before=not_valid_before,
+            not_valid_after=not_valid_after,
+            extensions=[
+                x509.Extension(
+                    x509.BasicConstraints.oid,
+                    critical=True,
+                    value=x509.BasicConstraints(ca=True, path_length=0),
+                ),
+                x509.Extension(
+                    x509.KeyUsage.oid,
+                    critical=True,
+                    value=x509.KeyUsage(
+                        digital_signature=False,
+                        content_commitment=False,
+                        key_encipherment=False,
+                        data_encipherment=False,
+                        key_agreement=False,
+                        key_cert_sign=True,
+                        crl_sign=True,
+                        encipher_only=False,
+                        decipher_only=False,
+                    ),
+                ),
+                x509.Extension(
+                    x509.SubjectKeyIdentifier.oid,
+                    critical=False,
+                    value=x509.SubjectKeyIdentifier.from_public_key(
+                        ca_public_key
+                    ),
+                ),
+            ],
+        ).sign(ca_private_key, hashes.SHA256())
 
         # generate server cert
-        server_key = OpenSSL.crypto.PKey()
-        server_key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
-        server_cert = OpenSSL.crypto.X509()
-        server_cert.get_subject().CN = "localhost"
-        server_cert.set_serial_number(2)
-        server_cert.gmtime_adj_notBefore(0)
-        server_cert.gmtime_adj_notAfter(24 * 60 * 60)
-        server_cert.set_issuer(ca_cert.get_subject())
-        server_cert.set_pubkey(server_key)
-        server_cert.sign(ca_key, "sha256")
+        server_private_key = asymmetric.rsa.generate_private_key(
+            public_exponent=65537, key_size=2048
+        )
+        server_public_key = server_private_key.public_key()
+
+        server_cert = x509.CertificateBuilder(
+            issuer_name=ca_name,
+            subject_name=_x509_common_name("localhost"),
+            public_key=server_public_key,
+            serial_number=2,
+            not_valid_before=not_valid_before,
+            not_valid_after=not_valid_after,
+        ).sign(ca_private_key, hashes.SHA256())
 
         # generate client cert
-        client_key = OpenSSL.crypto.PKey()
-        client_key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
-        client_cert = OpenSSL.crypto.X509()
-        client_cert.get_subject().CN = "client"
-        client_cert.set_serial_number(3)
-        client_cert.gmtime_adj_notBefore(0)
-        client_cert.gmtime_adj_notAfter(24 * 60 * 60)
-        client_cert.set_issuer(ca_cert.get_subject())
-        client_cert.set_pubkey(client_key)
-        client_cert.sign(ca_key, "sha256")
-
-        dumped_ca_cert = OpenSSL.crypto.dump_certificate(
-            OpenSSL.crypto.FILETYPE_ASN1, ca_cert
+        client_private_key = asymmetric.rsa.generate_private_key(
+            public_exponent=65537, key_size=2048
         )
+        client_public_key = client_private_key.public_key()
+
+        client_cert = x509.CertificateBuilder(
+            issuer_name=ca_name,
+            subject_name=_x509_common_name("client"),
+            public_key=client_public_key,
+            serial_number=3,
+            not_valid_before=not_valid_before,
+            not_valid_after=not_valid_after,
+        ).sign(ca_private_key, hashes.SHA256())
+
+        dumped_ca_cert = ca_cert.public_bytes(serialization.Encoding.DER)
 
         tce = jks.TrustedCertEntry.new("kazoo ca", dumped_ca_cert)
         truststore = jks.KeyStore.new("jks", [tce])
 
-        dumped_server_cert = OpenSSL.crypto.dump_certificate(
-            OpenSSL.crypto.FILETYPE_ASN1, server_cert
+        dumped_server_cert = server_cert.public_bytes(
+            serialization.Encoding.DER
         )
-        dumped_server_key = OpenSSL.crypto.dump_privatekey(
-            OpenSSL.crypto.FILETYPE_ASN1, server_key
+        dumped_server_key = server_private_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
         )
 
         server_pke = jks.PrivateKeyEntry.new(
@@ -527,29 +576,27 @@ class ZookeeperCluster:
 
         keystore = jks.KeyStore.new("jks", [server_pke])
 
-        self._ssl_configuration = {
+        return {
             "ca_cert": ca_cert,
-            "ca_key": ca_key,
-            "ca_cert_pem": OpenSSL.crypto.dump_certificate(
-                OpenSSL.crypto.FILETYPE_PEM, ca_cert
-            ),
+            "ca_key": ca_private_key,
+            "ca_cert_pem": ca_cert.public_bytes(serialization.Encoding.PEM),
             "server_cert": server_cert,
-            "server_key": server_key,
+            "server_key": server_private_key,
             "client_cert": client_cert,
-            "client_key": client_key,
-            "client_cert_pem": OpenSSL.crypto.dump_certificate(
-                OpenSSL.crypto.FILETYPE_PEM, client_cert
+            "client_key": client_private_key,
+            "client_cert_pem": client_cert.public_bytes(
+                serialization.Encoding.PEM
             ),
-            "client_key_pem": OpenSSL.crypto.dump_privatekey(
-                OpenSSL.crypto.FILETYPE_PEM, client_key
+            "client_key_pem": client_private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
             ),
             "truststore": truststore,
             "keystore": keystore,
         }
 
-    def get_ssl_client_configuration(self) -> dict[str, Any]:
-        if not self._ssl_configuration:
-            raise RuntimeError("SSL not configured yet.")
+    def get_ssl_client_configuration(self) -> SSLClientConfiguration:
         return {
             "client_key": self._ssl_configuration["client_key_pem"],
             "client_cert": self._ssl_configuration["client_cert_pem"],
