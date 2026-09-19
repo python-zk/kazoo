@@ -461,8 +461,12 @@ class ConnectionHandler:
             watchers.extend(client._child_watchers.pop(path, []))
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
-        else:
-            self.logger.warn("Received unknown event %r", watch.type)
+        else:  # pragma: no cover
+            # No coverage here because because it'd require an unknown event
+            # type to be sent from the server. We could do a unit test that
+            # calls this method directly with a fake event, but that would be
+            # fragile and not really test the code in a meaningful way.
+            self.logger.warning("Received unknown event %r", watch.type)
             return
 
         # Strip the chroot if needed
