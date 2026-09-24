@@ -430,41 +430,48 @@ class TestChildrenWatcher:
         self, zkclient: KazooClient
     ) -> None:
         update = zkclient.handler.event_object()
-        all_children = ["fred"]
         path = "/" + uuid.uuid4().hex
         zkclient.ensure_path(path)
 
-        fail_through: list[bool] = []
+        current_children: list[str] = []
+        should_stop = False
 
         def changed(children: list[str] | None) -> bool | None:
-            while all_children:
-                all_children.pop()
+            nonlocal current_children
             assert children is not None
-            all_children.extend(children)
+            current_children = list(children)
             update.set()
-            if fail_through:
-                return False
-            return None  # ?
+            if should_stop:
+                return False  # Disables watcher and removes session listener
+            return None
 
+        # 1. Initial watch registration
         children_watch = zkclient.ChildrenWatch(path, changed)
         session_watcher = children_watch._session_watcher
 
-        update.wait(10)
+        assert update.wait(10), "Initial watch callback did not trigger"
         assert session_watcher in zkclient.state_listeners
-        assert all_children == []
+        assert current_children == []
         update.clear()
 
-        fail_through.append(True)
-        zkclient.create(path + "/" + "smith")
-        update.wait(10)
+        # 2. Trigger node creation and tell watcher to return False (stop)
+        should_stop = True
+        zkclient.create(path + "/smith")
+        assert update.wait(10), "Update callback did not trigger"
+
+        # Synchronize with _get_children to ensure remove_listener finished
+        with children_watch._run_lock:
+            pass
+
         assert session_watcher not in zkclient.state_listeners
-        assert all_children == ["smith"]
+        assert current_children == ["smith"]
         update.clear()
 
-        zkclient.create(path + "/" + "george")
-        update.wait(10)
+        # 3. Verify watcher is stopped and receives no further events
+        zkclient.create(path + "/george")
+        assert not update.wait(1.0), "Stopped watcher unexpectedly triggered"
         assert session_watcher not in zkclient.state_listeners
-        assert all_children == ["smith"]
+        assert current_children == ["smith"]
 
     def test_child_watch_session_loss(self, zkclient: KazooClient) -> None:
         update = zkclient.handler.event_object()
