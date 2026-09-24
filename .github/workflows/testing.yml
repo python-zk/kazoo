@@ -48,6 +48,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # NOTE: If you add or remove Python versions or ZooKeeper versions from this
+        # matrix, you MUST update `codecov.after_n_builds` in .codecov.yml to match
+        # len(python-version) * len(zk-version) so Codecov waits for all matrix builds
+        # before evaluating coverage status checks.
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11-v7.3.21"]
         # Friendly note: If you change the minimum zk-version here, update it in
         # ensure-zookeeper-env.sh. Additionally, if you need to change the way that

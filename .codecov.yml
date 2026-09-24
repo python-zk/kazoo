@@ -2,12 +2,12 @@
 # Reference: https://docs.codecov.com/docs/codecov-yaml
 
 codecov:
-  # Wait for all 21 test matrix jobs (7 Python versions x 3 ZooKeeper versions)
+  # Wait for all 28 test matrix jobs (7 Python versions x 4 ZooKeeper versions)
   # to upload their coverage reports before calculating the final coverage status.
   # NOTE: If the test matrix in .github/workflows/testing.yml changes (e.g. adding
   # or removing Python or ZooKeeper versions), this number must be updated to match
   # the new total: len(python-version) * len(zk-version).
-  after_n_builds: 21
+  after_n_builds: 28
 
 coverage:
   status:
