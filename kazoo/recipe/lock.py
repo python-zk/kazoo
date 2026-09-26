@@ -313,7 +313,7 @@ class Lock:
         (e.g. rlock), this and also edge cases where the lock's ephemeral node
         is gone.
         """
-        node_sequence = node[len(self.prefix) :]
+        node_sequence = int(node[len(self.prefix) :])
         children = self.client.get_children(self.path)
         found_self: Literal[False] | re.Match[str] | None = False
         # Filter out the contenders using the computed regex
@@ -321,7 +321,7 @@ class Lock:
         for child in children:
             match = self._contenders_re.search(child)
             if match is not None:
-                contender_sequence = match.group(1)
+                contender_sequence = int(match.group(1))
                 # Only consider contenders with a smaller sequence number.
                 # A contender with a smaller sequence number has a higher
                 # priority.
