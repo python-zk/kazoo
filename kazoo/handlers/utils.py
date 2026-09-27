@@ -33,7 +33,7 @@ except ImportError:  # pragma: nocover
 # want to change the code too much.
 _NONE = object()
 
-CallbackFunc = Callable[..., None]
+CallbackFunc = Callable[..., object]
 
 
 class AsyncResult(IAsyncResult):
