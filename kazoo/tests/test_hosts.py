@@ -16,7 +16,7 @@ class HostsTestCase(TestCase):
             ("192.168.1.2", 2181),
             ("132.254.111.10", 2181),
         ]
-        assert chroot is None
+        assert chroot == ""
 
         hosts, chroot = collect_hosts(
             ["127.0.0.1:2181", "192.168.1.2:2181", "132.254.111.10:2181"]
@@ -26,26 +26,26 @@ class HostsTestCase(TestCase):
             ("192.168.1.2", 2181),
             ("132.254.111.10", 2181),
         ]
-        assert chroot is None
+        assert chroot == ""
 
     def test_ipv6(self) -> None:
         hosts, chroot = collect_hosts("[fe80::200:5aee:feaa:20a2]:2181")
         assert hosts == [("fe80::200:5aee:feaa:20a2", 2181)]
-        assert chroot is None
+        assert chroot == ""
 
         hosts, chroot = collect_hosts(["[fe80::200:5aee:feaa:20a2]:2181"])
         assert hosts == [("fe80::200:5aee:feaa:20a2", 2181)]
-        assert chroot is None
+        assert chroot == ""
 
     def test_hosts_list(self) -> None:
         hosts, chroot = collect_hosts("zk01:2181, zk02:2181, zk03:2181")
         expected1 = [("zk01", 2181), ("zk02", 2181), ("zk03", 2181)]
         assert hosts == expected1
-        assert chroot is None
+        assert chroot == ""
 
         hosts, chroot = collect_hosts(["zk01:2181", "zk02:2181", "zk03:2181"])
         assert hosts == expected1
-        assert chroot is None
+        assert chroot == ""
 
         expected2 = "/test"
         hosts, chroot = collect_hosts("zk01:2181, zk02:2181, zk03:2181/test")

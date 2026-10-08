@@ -14,11 +14,7 @@ from typing import Any, Iterable, Deque, Tuple, TYPE_CHECKING
 import pytest
 
 from kazoo.exceptions import ConnectionLoss, NotReadOnlyCallError
-from kazoo.protocol.serialization import (
-    Connect,
-    int_struct,
-    write_string,
-)
+from kazoo.protocol.serialization import Connect, int_struct, write_string
 from kazoo.protocol.states import KazooState, KeeperState
 from kazoo.protocol.connection import _CONNECTION_DROP
 from kazoo.testing import KazooTestCase
@@ -400,7 +396,7 @@ class TestUnorderedXids(KazooTestCase):
 
         args, exc_info = error_stack[-1]
         assert args == ("Unhandled exception in connection loop",)
-        assert exc_info[0] == RuntimeError
+        assert exc_info[0] is RuntimeError
 
         self.client.handler.sleep_func(0.2)
         assert self.connection_routine is not None
