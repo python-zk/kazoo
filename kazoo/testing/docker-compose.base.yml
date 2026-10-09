@@ -1,0 +1,199 @@
+# Base docker-compose overlay for the kazoo integration-test ZooKeeper
+# ensemble.
+#
+# This file defines a fixed 3-node ZooKeeper ensemble using the official
+# `zookeeper` image (hub.docker.com/_/zookeeper), configured exclusively
+# through the image's public environment-variable interface:
+#
+#   * ZOO_MY_ID / ZOO_SERVERS          -> ensemble membership
+#   * SERVER_JVMFLAGS / ZOO_LOG4J_PROP -> JVM/server logging configuration
+#   * ZOO_LOG_DIR                      -> log output location (mounted to host)
+#
+# Authentication/feature overlays are applied on top of this base file via
+# docker-compose multi-file support (`docker compose -f base.yml -f overlay.yml`).
+# Feature JVM flags (ttl/readonly/reconfig) and auth JVM flags (e.g. the digest
+# superDigest) are interpolated into SERVER_JVMFLAGS **here**, in the base file,
+# from the host-computed environment variables
+# KAZOO_TESTING_ZK_FEATURES_JVMFLAGS and KAZOO_TESTING_ZK_AUTH_JVMFLAGS.
+# This deliberately avoids composing SERVER_JVMFLAGS across overlay files,
+# where docker-compose's wholesale environment-merge would silently override
+# the base value.
+#
+# The host side (see kazoo.testing) sets:
+#   * KAZOO_TESTING_ZK_VERSION            -> image tag (e.g. "3.9.5")
+#   * KAZOO_TESTING_ZK_WORK_DIR           -> host directory mounted at /logs (per node)
+#   * KAZOO_TESTING_ZK_FEATURES_JVMFLAGS  -> space-separated feature JVM flags ("" for plain)
+#   * KAZOO_TESTING_ZK_AUTH_JVMFLAGS      -> space-separated auth JVM flags ("" for plain)
+#   * KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS   -> -javaagent keylog flag ("" unless capture+tls)
+#   * COMPOSE_PROJECT_NAME                -> unique per-session project name (isolation)
+#
+# NETWORK-Namespace HOLDER PATTERN (the Kubernetes "pause container" model):
+#
+# Each ensemble member is split into a *network holder* service (zoo1/zoo2/zoo3)
+# plus a *zookeeper process* service (zoo1-service/zoo2-service/zoo3-service)
+# that joins the holder's network namespace via `network_mode: service:zooN`:
+#
+#   * zooN (holder)          -> a container that OWNS the network namespace and
+#     publishes the client ports (2181, and 2281 via the tls/gssapi overlays).
+#     It reuses the `zookeeper:${KAZOO_TESTING_ZK_VERSION}` image — which the -service
+#     containers pull anyway — with its ENTRYPOINT command overridden to
+#     `sleep infinity`, so it runs no JVM and adds no new image to the stack.
+#     The compose-network DNS name `zooN` resolves to this container, so
+#     `ZOO_SERVERS` and client connections are unchanged.
+#   * zooN-service (process) -> the actual ZooKeeper JVM, joined into the
+#     holder's netns. It binds 0.0.0.0:{2181,2888,3888,2281} inside that shared
+#     namespace, exactly where the holder's published ports and the DNS name
+#     point.
+#
+# The split exists so that stopping/restarting the ZooKeeper *process*
+# (failure-injection tests) never tears down the network namespace: the
+# holder keeps running, and the capture sidecar (`zooN-capture`, layered by
+# docker-compose.features-capture.yml) keeps its tap on the member's interface
+# across a member restart. Without the holder, `docker compose stop zoo1` would
+# also destroy the namespace the sidecar lives in (see
+# docker-compose.features-capture.yml ARCHITECTURE NOTE).
+#
+# Service names are stable: zoo1, zoo2, zoo3 are the network holders
+# (hostnames/DNS names); zoo1-service/zoo2-service/zoo3-service are the
+# ZooKeeper JVM processes.
+
+volumes:
+  zoo1_data_vol:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+  zoo2_data_vol:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+  zoo3_data_vol:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+x-zoo-environment: &zoo_env
+  ZOO_4LW_COMMANDS_WHITELIST: "*"
+  ZOO_CFG_EXTRA: "${KAZOO_TESTING_ZK_CFG_EXTRA:-}"
+  # Zk 3.8+ Logback uses ZOO_LOG_DIR and JVMFLAGS for configuration
+  ZOO_LOG_DIR: "/logs"
+  # Feature flags (KAZOO_TESTING_ZK_FEATURES_JVMFLAGS), auth flags
+  # (KAZOO_TESTING_ZK_AUTH_JVMFLAGS) and the capture keylog flag
+  # (KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS) are interpolated here from the
+  # host environment; never override SERVER_JVMFLAGS from an overlay file.
+  # KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS is set to the -javaagent: keylog flag
+  # only when `capture` is active on the tls flavor.
+  SERVER_JVMFLAGS: >-
+    -Dzookeeper.root.logger=INFO,CONSOLE,ROLLINGFILE
+    -Dzookeeper.DigestAuthenticationProvider.superDigest=super:HcbGs+jJ8JjI2ael1YQNB+dUYF4=
+    ${KAZOO_TESTING_ZK_FEATURES_JVMFLAGS}
+    ${KAZOO_TESTING_ZK_AUTH_JVMFLAGS}
+    ${KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS}
+  # Zk 3.7 LOG4J writes logs to /logs/zookeeper.log
+  ZOO_LOG4J_PROP: "DEBUG,ROLLINGFILE"
+
+x-zoo-healthcheck: &zoo_healthcheck
+  test:
+    [
+      "CMD-SHELL",
+      "echo 'srvr' | nc localhost 2181 | grep -q 'Zookeeper version'",
+    ]
+  # Aggressive timing so `docker compose up --wait` completes quickly even when
+  # several ZooKeeper nodes must all become healthy before tests start.
+  interval: 3s
+  timeout: 3s
+  retries: 20
+  start_period: 15s
+
+services:
+  # --- Member 1: network holder + ZooKeeper process ---
+
+  zoo1:
+    # Network-namespace holder: keeps the member's netns (and therefore the
+    # published client ports) alive across `zoo1-service` stop/start cycles.
+    # Reuses the zookeeper image (already pulled for the -service containers),
+    # overriding ENTRYPOINT's command so the container just sleeps instead of
+    # starting a JVM — no extra image is pulled for the holder.
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    hostname: zoo1
+    command: ["sleep", "infinity"]
+    ports:
+      - 2181
+
+  zoo1-service:
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    # Join the holder's network namespace (see header comment). DNS name
+    # `zoo1` resolves to the holder, whose published ports terminate here.
+    network_mode: service:zoo1
+    depends_on:
+      zoo1:
+        condition: service_started
+    healthcheck: *zoo_healthcheck
+    environment:
+      <<: *zoo_env
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=zoo3:2888:3888;2181
+    volumes:
+      - zoo1_data_vol:/data
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/logs/zk1:/logs
+    tmpfs:
+      - "/datalog"
+
+  # --- Member 2: network holder + ZooKeeper process ---
+
+  zoo2:
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    hostname: zoo2
+    command: ["sleep", "infinity"]
+    ports:
+      - 2181
+
+  zoo2-service:
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    network_mode: service:zoo2
+    depends_on:
+      zoo2:
+        condition: service_started
+    healthcheck: *zoo_healthcheck
+    environment:
+      <<: *zoo_env
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=zoo3:2888:3888;2181
+    volumes:
+      - zoo2_data_vol:/data
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/logs/zk2:/logs
+    tmpfs:
+      - "/datalog"
+
+  # --- Member 3: network holder + ZooKeeper process ---
+
+  zoo3:
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    hostname: zoo3
+    command: ["sleep", "infinity"]
+    ports:
+      - 2181
+
+  zoo3-service:
+    image: zookeeper:${KAZOO_TESTING_ZK_VERSION}
+    restart: always
+    network_mode: service:zoo3
+    depends_on:
+      zoo3:
+        condition: service_started
+    healthcheck: *zoo_healthcheck
+    environment:
+      <<: *zoo_env
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=zoo3:2888:3888;2181
+    volumes:
+      - zoo3_data_vol:/data
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/logs/zk3:/logs
+    tmpfs:
+      - "/datalog"

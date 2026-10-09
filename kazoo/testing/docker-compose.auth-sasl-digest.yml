@@ -1,0 +1,50 @@
+# Authentication overlay: sasl_digest
+#
+# Enables SASL DIGEST-MD5 client authentication via the official image's
+# public interfaces:
+#   * JVMFLAGS            -> -Djava.security.auth.login.config=<JAAS file>
+#   * ZOO_CFG_EXTRA       -> SASLAuthenticationProvider (fully-qualified) +
+#     enforce.auth.enabled + enforce.auth.schemes=sasl
+#   * a read-only bind of the JAAS config (${ZK_COMPOSE_DIR}/jaas/
+#     sasl-digest.conf) at /conf/jaas.conf — interpolated so the source can
+#     be translated to a daemon-visible mount path on Windows-remote setups
+#     
+#
+# The JAAS config registers the DigestLoginModule users
+# (user_super / user_jaasuser); clients authenticate with
+# sasl_options={"mechanism": "DIGEST-MD5", "username": "jaasuser",
+# "password": "jaas_password"}.
+#
+# These overrides target the *process* services (zoo1-service/zoo2-service/
+# zoo3-service): the JVM environment and /conf mounts belong to the container
+# running ZooKeeper, not the network-namespace holder (see
+# docker-compose.base.yml header). No ports are published here — they live on
+# the holders in the base file.
+#
+# NOTE: never set SERVER_JVMFLAGS here — compose merges environment maps
+# wholesale per key and would silently override the base interpolation.
+
+x-sasl-digest-environment: &sasl_digest_environment
+  JVMFLAGS: "-Djava.security.auth.login.config=/conf/jaas.conf"
+  ZOO_CFG_EXTRA: |
+    authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+    enforce.auth.enabled=true
+    enforce.auth.schemes=sasl
+    ${KAZOO_TESTING_ZK_CFG_EXTRA:-}
+
+services:
+  zoo1-service:
+    environment:
+      <<: *sasl_digest_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-digest.conf:/conf/jaas.conf:ro
+  zoo2-service:
+    environment:
+      <<: *sasl_digest_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-digest.conf:/conf/jaas.conf:ro
+  zoo3-service:
+    environment:
+      <<: *sasl_digest_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-digest.conf:/conf/jaas.conf:ro
