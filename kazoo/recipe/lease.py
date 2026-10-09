@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime
 import json
 import socket
-from typing import Callable, TypedDict, TYPE_CHECKING, cast
+from typing import TypedDict, TYPE_CHECKING, cast
 
 from kazoo.exceptions import CancelledError
 
@@ -55,8 +55,8 @@ class NonBlockingLease:
     """
 
     # Bump when storage format changes
-    _version = 1
-    _date_format = "%Y-%m-%dT%H:%M:%S"
+    _version = 2
+    _date_format = "%Y-%m-%dT%H:%M:%S%z"
     _byte_encoding = "utf-8"
 
     def __init__(
@@ -65,7 +65,6 @@ class NonBlockingLease:
         path: str,
         duration: datetime.timedelta,
         identifier: str | None = None,
-        utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         """Create a non-blocking lease.
 
@@ -76,13 +75,11 @@ class NonBlockingLease:
         :param identifier: Unique name to use for this lease holder. Reuse in
                            order to renew the lease. Defaults to
                            :meth:`socket.gethostname()`.
-        :param utcnow: Clock function, by default returning
-                       :meth:`datetime.datetime.utcnow()`. Used for testing.
-
         """
+
         ident = identifier or socket.gethostname()
         self.obtained = False
-        self._attempt_obtaining(client, path, duration, ident, utcnow)
+        self._attempt_obtaining(client, path, duration, ident)
 
     def _attempt_obtaining(
         self,
@@ -90,14 +87,13 @@ class NonBlockingLease:
         path: str,
         duration: datetime.timedelta,
         ident: str,
-        utcnow: Callable[[], datetime.datetime],
     ) -> None:
         client.ensure_path(path)
         holder_path = path + "/lease_holder"
         lock = client.Lock(path, ident)
         try:
             with lock:
-                now = utcnow()
+                now = datetime.datetime.now(datetime.timezone.utc)
                 if client.exists(holder_path):
                     raw, _ = client.get(holder_path)
                     data = self._decode(raw)
@@ -148,8 +144,6 @@ class MultiNonBlockingLease:
     :param identifier: Unique name to use for this lease holder. Reuse in order
                        to renew the lease.
            Defaults do :meth:`socket.gethostname()`.
-    :param utcnow: Clock function, by default returning
-                   :meth:`datetime.datetime.utcnow()`.  Used for testing.
 
     """
 
@@ -160,7 +154,6 @@ class MultiNonBlockingLease:
         path: str,
         duration: datetime.timedelta,
         identifier: str | None = None,
-        utcnow: Callable[[], datetime.datetime] = datetime.datetime.utcnow,
     ):
         self.obtained = False
         for num in range(count):
@@ -169,7 +162,6 @@ class MultiNonBlockingLease:
                 "%s/%d" % (path, num),
                 duration,
                 identifier=identifier,
-                utcnow=utcnow,
             )
             if ls:
                 self.obtained = True
