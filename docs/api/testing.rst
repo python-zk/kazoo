@@ -1,12 +1,18 @@
-.. _testing_harness_module:
+.. _testing_module:
 
-:mod:`kazoo.testing.harness`
-----------------------------
+:mod:`kazoo.testing`
+--------------------
 
-.. automodule:: kazoo.testing.harness
+.. automodule:: kazoo.testing
 
-Public API
-++++++++++
+The harness business logic
+++++++++++++++++++++++++++
 
-    .. autoclass:: KazooTestHarness
-    .. autoclass:: KazooTestCase
+.. automodule:: kazoo.testing.common
+    :members:
+
+The pytest fixtures
++++++++++++++++++++
+
+.. automodule:: kazoo.testing.fixtures
+    :members:
