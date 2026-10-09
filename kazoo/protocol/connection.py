@@ -50,6 +50,7 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import (
     Callback,
+    CLOSED_STATES,
     KeeperState,
     WatchedEvent,
     EVENT_TYPE_MAP,
@@ -655,7 +656,8 @@ class ConnectionHandler:
             )
         finally:
             self.connection_stopped.set()
-            self.client._session_callback(KeeperState.CLOSED)
+            if self.client._state not in CLOSED_STATES:
+                self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
@@ -735,7 +737,9 @@ class ConnectionHandler:
 
         try:
             self._xid = 0
-            read_timeout, connect_timeout = self._connect(host, hostip, port)
+            read_timeout, connect_timeout = self._connect(
+                host, hostip, port, timeout=retry.cur_delay
+            )
             # I think the above implies self._socket can't be none, and
             # self._read_sock is set up in start but mypy can't tell that.
             # Hence the casting.
@@ -799,6 +803,7 @@ class ConnectionHandler:
         except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionClosedRequireSaslError as err:
@@ -806,6 +811,7 @@ class ConnectionHandler:
             self.logger.warning(
                 "AUTH_FAILED closing (server requires SASL auth): %s", err
             )
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -832,6 +838,7 @@ class ConnectionHandler:
         host: str,
         hostip: str,
         port: int,
+        timeout: float | None = None,
     ) -> tuple[float, float]:
         client = self.client
         self.logger.info(
@@ -853,7 +860,11 @@ class ConnectionHandler:
             self._socket = self.handler.create_connection(
                 address=(hostip, port),
                 hostname=host,
-                timeout=client._session_timeout / 1000.0,
+                timeout=(
+                    client._session_timeout / 1000.0
+                    if timeout is None
+                    else timeout
+                ),
                 use_ssl=self.client.use_ssl,
                 keyfile=self.client.keyfile,
                 certfile=self.client.certfile,
@@ -905,13 +916,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -924,6 +928,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 
