@@ -1,0 +1,145 @@
+# Authentication overlay: sasl_gssapi
+#
+# GSSAPI (Kerberos) client authentication tunneled over TLS, configured
+# entirely through the official image's public interfaces:
+#
+#   * kdc sidecar (build ./dockerfiles/kdc) provisions a throwaway realm
+#     (EXAMPLE.ORG), per-SPN keytabs and a combined server.keytab into the
+#     shared ${KAZOO_TESTING_ZK_WORK_DIR} bind mount (/kdc-data); healthcheck = keytabs
+#     exported.
+#   * JVMFLAGS -> -Djava.security.auth.login.config=/conf/jaas.conf (the
+#     Krb5LoginModule config) and -Djava.security.krb5.conf=/conf/krb5.conf
+#   * ZOO_CFG_EXTRA -> SASLAuthenticationProvider (fully-qualified) +
+#     enforce.auth.enabled + enforce.auth.schemes=sasl
+#     + TLS transport (secureClientPort 2281, Netty factory, ssl.*, clientAuth)
+#   * certgen sidecar (from the tls flavor) produces the PKI the TLS tunnel
+#     and the client certs are built on; zoo *process* services depend on BOTH
+#     sidecars becoming healthy before starting.
+#
+# Clients connect with use_ssl=True (cert from ${KAZOO_TESTING_ZK_WORK_DIR}/certs) and
+# sasl_options={"mechanism": "GSSAPI"}; the fixture exports KRB5_CONFIG
+# (host-view krb5.conf) and KRB5_CLIENT_KTNAME (client.keytab) for the client
+# process.
+#
+# Under the network-holder split (docker-compose.base.yml header), the secure
+# port 2281 is published on the *holder* services (zoo1/zoo2/zoo3 — the netns
+# owners carry `ports:`), while the JAAS/krb5/TLS configuration and the
+# kdc/certgen dependencies live on the *process* services
+# (zoo1-service/zoo2-service/zoo3-service).
+#
+# NOTE: never set SERVER_JVMFLAGS here — compose merges environment maps
+# wholesale per key and would silently override the base interpolation.
+#
+# NOTE: volumes/ports are plain lists — docker-compose concatenates them with
+# the base file's lists across files, so no anchor merge is needed (and the
+# YAML `<<` merge key only accepts maps, so sequences must be literal).
+
+x-sasl-gssapi-environment: &sasl_gssapi_environment
+  JVMFLAGS: >-
+    -Djava.security.auth.login.config=/conf/jaas.conf
+    -Djava.security.krb5.conf=/conf/krb5.conf
+  ZOO_CFG_EXTRA: |
+    secureClientPort=2281
+    serverCnxnFactory=org.apache.zookeeper.server.NettyServerCnxnFactory
+    ssl.keyStore.location=/conf/keystore.p12
+    ssl.keyStore.password=changeit
+    ssl.trustStore.location=/conf/truststore.p12
+    ssl.trustStore.password=changeit
+    ssl.clientAuth=need
+    authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+    enforce.auth.enabled=true
+    enforce.auth.schemes=sasl
+    ${KAZOO_TESTING_ZK_CFG_EXTRA:-}
+
+x-sasl-gssapi-depends-on: &sasl_gssapi_depends_on
+  kdc:
+    condition: service_healthy
+  certgen:
+    condition: service_healthy
+
+services:
+  kdc:
+    build: ./dockerfiles/kdc
+    environment:
+      SPNS: "client server/zoo1 server/zoo2 server/zoo3"
+      REALM: "EXAMPLE.ORG"
+      KDC_PORT: "1088"
+      KDC_SERVICE: "kdc"
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}:/kdc-data
+    # Publish BOTH tcp and udp: MIT krb5 clients attempt the KDC over UDP
+    # first and fall back to TCP, so a TCP-only mapping makes host-side
+    # kinit report "unable to reach any KDC".
+    ports:
+      - "0:1088"
+      - "0:1088/udp"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /kdc-data/keytabs/server.keytab && test -f /kdc-data/keytabs/client.keytab",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  certgen:
+    build: ./dockerfiles/certgen
+    environment:
+      CERTS_DIR: /certs
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs:/certs
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /certs/.ready"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  zoo1:
+    # Holder: publishes the secure client port (netns owner carries ports).
+    ports:
+      - 2281
+
+  zoo1-service:
+    depends_on:
+      <<: *sasl_gssapi_depends_on
+    environment:
+      <<: *sasl_gssapi_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/keystore.p12:/conf/keystore.p12:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/truststore.p12:/conf/truststore.p12:ro
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-gssapi.conf:/conf/jaas.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/krb5.conf:/conf/krb5.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/keytabs/server.keytab:/conf/server.keytab:ro
+
+  zoo2:
+    ports:
+      - 2281
+
+  zoo2-service:
+    depends_on:
+      <<: *sasl_gssapi_depends_on
+    environment:
+      <<: *sasl_gssapi_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/keystore.p12:/conf/keystore.p12:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/truststore.p12:/conf/truststore.p12:ro
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-gssapi.conf:/conf/jaas.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/krb5.conf:/conf/krb5.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/keytabs/server.keytab:/conf/server.keytab:ro
+
+  zoo3:
+    ports:
+      - 2281
+
+  zoo3-service:
+    depends_on:
+      <<: *sasl_gssapi_depends_on
+    environment:
+      <<: *sasl_gssapi_environment
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/keystore.p12:/conf/keystore.p12:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/certs/server/truststore.p12:/conf/truststore.p12:ro
+      - ${KAZOO_TESTING_ZK_COMPOSE_DIR}/jaas/sasl-gssapi.conf:/conf/jaas.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/krb5.conf:/conf/krb5.conf:ro
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/keytabs/server.keytab:/conf/server.keytab:ro

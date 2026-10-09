@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any, Callable, Iterable, NamedTuple
 
 
@@ -76,6 +76,13 @@ class KeeperState(str, Enum):
     EXPIRED_SESSION = "EXPIRED_SESSION"
 
 
+CLOSED_STATES = (
+    KeeperState.EXPIRED_SESSION,
+    KeeperState.AUTH_FAILED,
+    KeeperState.CLOSED,
+)
+
+
 # This is a (str, Enum) for backwards compatibility.
 class EventType(str, Enum):
     """Zookeeper Event
@@ -124,7 +131,14 @@ EVENT_TYPE_MAP = {
 }
 
 
-class WatchedEvent(NamedTuple):
+class _WatchedEvent(NamedTuple):
+    type: EventType
+    state: KeeperState
+    path: str | None
+    zxid: int = -1
+
+
+class WatchedEvent(_WatchedEvent):
     """A change on ZooKeeper that a Watcher is able to respond to.
 
     The :class:`WatchedEvent` includes exactly what happened, the
@@ -145,11 +159,22 @@ class WatchedEvent(NamedTuple):
 
         The path of the node for the watch event.
 
+    .. attribute:: zxid
+
+        The zxid of the transaction that triggered this watch if it is
+        of one of the following types:
+
+        * EventType.CREATED
+        * EventType.DELETED
+        * EventType.CHANGED
+        * EventType.CHILD
+
+        Otherwise, returns WatchedEvent.NO_ZXID. Note that NO_ZXID is also
+        returned by old servers that do not support this feature.
+
     """
 
-    type: EventType
-    state: KeeperState
-    path: str | None
+    NO_ZXID: int = -1
 
 
 class Callback(NamedTuple):
@@ -271,3 +296,44 @@ class ZnodeStat(NamedTuple):
     @property
     def children_count(self) -> int:
         return self.numChildren
+
+
+class AddWatchMode(IntEnum):
+    """Modes for use with :meth:`~kazoo.client.KazooClient.add_watch`
+
+    .. attribute:: PERSISTENT
+
+        The watch is not removed when triggered.
+
+    .. attribute:: PERSISTENT_RECURSIVE
+
+        The watch is not removed when triggered, and applies to all
+        paths underneath the supplied path as well.
+    """
+
+    PERSISTENT = 0
+    PERSISTENT_RECURSIVE = 1
+
+
+class WatcherType(IntEnum):
+    """Watcher types for use with
+    :meth:`~kazoo.client.KazooClient.remove_all_watches`
+
+    .. attribute:: CHILDREN
+
+        Child watches.
+
+    .. attribute:: DATA
+
+        Data watches.
+
+    .. attribute:: ANY
+
+        Any type of watch (child, data, persistent, or persistent
+        recursive).
+
+    """
+
+    CHILDREN = 1
+    DATA = 2
+    ANY = 3
