@@ -43,6 +43,7 @@ from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.connection import ConnectionHandler
 from kazoo.protocol.paths import _prefix_root, normpath
 from kazoo.protocol.serialization import (
+    AddWatch,
     Auth,
     CheckVersion,
     CloseInstance,
@@ -56,16 +57,20 @@ from kazoo.protocol.serialization import (
     SetACL,
     GetData,
     Reconfig,
+    RemoveWatches,
     SetData,
     Sync,
     Transaction,
 )
 from kazoo.protocol.states import (
     Callback,
+    CLOSED_STATES,
     EventType,
     KazooState,
     KeeperState,
     WatchedEvent,
+    AddWatchMode,
+    WatcherType,
 )
 from kazoo.retry import KazooRetry
 from kazoo.security import ACL, OPEN_ACL_UNSAFE
@@ -88,11 +93,6 @@ if TYPE_CHECKING:
     from kazoo.handlers.gevent import SequentialGeventHandler
 
 
-CLOSED_STATES = (
-    KeeperState.EXPIRED_SESSION,
-    KeeperState.AUTH_FAILED,
-    KeeperState.CLOSED,
-)
 ENVI_VERSION = re.compile(r"([\d\.]*).*", re.DOTALL)
 ENVI_VERSION_KEY = "zookeeper.version"
 log = logging.getLogger(__name__)
@@ -375,6 +375,12 @@ class KazooClient:
         self._data_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
             set
         )
+        self._persistent_watchers: defaultdict[str, Set[WatchFunc]] = (
+            defaultdict(set)
+        )
+        self._persistent_recursive_watchers: defaultdict[
+            str, Set[WatchFunc]
+        ] = defaultdict(set)
         self._reset()
         self.read_only = read_only
 
@@ -394,6 +400,8 @@ class KazooClient:
         self._stopped = self.handler.event_object()
         self._stopped.set()
         self._writer_stopped.set()
+        self._conn_result: IAsyncResult | None = None
+        self._auth_error: Exception | None = None
 
         # FIXME This is kind of gross but we need to set these to something so
         # that the type checker will understand that they are set by the time
@@ -567,8 +575,16 @@ class KazooClient:
         for data_watchers in self._data_watchers.values():
             watchers.extend(data_watchers)
 
+        for persistent_watchers in self._persistent_watchers.values():
+            watchers.extend(persistent_watchers)
+
+        for pr_watchers in self._persistent_recursive_watchers.values():
+            watchers.extend(pr_watchers)
+
         self._child_watchers = defaultdict(set)
         self._data_watchers = defaultdict(set)
+        self._persistent_watchers = defaultdict(set)
+        self._persistent_recursive_watchers = defaultdict(set)
 
         ev = WatchedEvent(EventType.NONE, self._state, None)
         for watch in watchers:
@@ -722,10 +738,26 @@ class KazooClient:
                 "Zookeeper connection established, state: %s", state
             )
             self._live.set()
+            if self._conn_result is not None and not self._conn_result.ready():
+                self._conn_result.set(True)
             self._make_state_change(KazooState.CONNECTED)
         elif state in CLOSED_STATES:
             self.logger.info("Zookeeper session closed, state: %s", state)
             self._live.clear()
+            if self._conn_result is not None and not self._conn_result.ready():
+                if state == KeeperState.AUTH_FAILED:
+                    if isinstance(self._auth_error, AuthFailedError):
+                        err: Exception = self._auth_error
+                    elif self._auth_error is not None:
+                        err = AuthFailedError("Authentication failed")
+                        err.__cause__ = self._auth_error
+                    else:
+                        err = AuthFailedError("Authentication failed")
+                    self._conn_result.set_exception(err)
+                elif state == KeeperState.CLOSED:
+                    self._conn_result.set_exception(
+                        ConnectionClosedError("Connection closed")
+                    )
             self._make_state_change(KazooState.LOST)
             self._notify_pending(state)
             self._reset()
@@ -766,6 +798,10 @@ class KazooClient:
 
     def _safe_close(self) -> None:
         self.handler.stop()
+        if self._conn_result is not None and not self._conn_result.ready():
+            self._conn_result.set_exception(
+                ConnectionClosedError("Connection closed")
+            )
         timeout = self._session_timeout // 1000
         if timeout < 10:
             timeout = 10
@@ -823,15 +859,20 @@ class KazooClient:
         :raises: :attr:`~kazoo.interfaces.IHandler.timeout_exception`
                  if the connection wasn't established within `timeout`
                  seconds.
+        :raises: :exc:`~kazoo.exceptions.AuthFailedError` if authentication
+                 failed during connection establishment.
 
         """
-        event = self.start_async()
-        event.wait(timeout=timeout)
-        if not self.connected:
-            # We time-out, ensure we are disconnected
+        if self._live.is_set():
+            return
+
+        async_result = self.start_async()
+        try:
+            async_result.get(timeout=timeout)
+        except Exception:
             self.stop()
             self.close()
-            raise self.handler.timeout_exception("Connection time-out")
+            raise
 
         if self.chroot and not self.exists("/"):
             warnings.warn(
@@ -839,17 +880,28 @@ class KazooClient:
                 "should be created before normal use."
             )
 
-    def start_async(self) -> Event:
+    def start_async(self) -> IAsyncResult:
         """Asynchronously initiate connection to ZK.
 
-        :returns: An event object that can be checked to see if the
-                  connection is alive.
-        :rtype: :class:`~threading.Event` compatible object.
+        :returns: An :class:`~kazoo.interfaces.IAsyncResult` instance that
+                  resolves to `True` when connected or fails with an
+                  exception on terminal failure.
 
         """
-        # If we're already connected, ignore
+        # If we're already connected, return an already-completed result
         if self._live.is_set():
-            return self._live
+            if self._conn_result is None:
+                # Defensive fallback to catch poor mocking in KazooClient
+                # internals (tests or mocks that manually set self._live.set()
+                # without going through start_async()). In production,
+                # self._conn_result is always initialized during start_async()
+                # and should *never* be None while self._live is set.
+                self._conn_result = self.handler.async_result()
+                self._conn_result.set(True)
+            return self._conn_result
+
+        if self._conn_result is not None and not self._conn_result.ready():
+            return self._conn_result
 
         # Make sure we're safely closed
         self._safe_close()
@@ -858,13 +910,14 @@ class KazooClient:
         # thread indicator
         self._stopped.clear()
         self._writer_stopped.clear()
+        self._conn_result = self.handler.async_result()
 
         # Start the handler
         self.handler.start()
 
         # Start the connection
         self._connection.start()
-        return self._live
+        return self._conn_result
 
     def stop(self) -> None:
         """Gracefully stop this Zookeeper session.
@@ -884,11 +937,8 @@ class KazooClient:
         self._stopped.set()
         self._queue.append((CloseInstance, cast("IAsyncResult", None)))
         try:
-            # This assert should never fail since the connection should
-            # have been started but I'm not sure how to persaude mypy of that
-            self._connection._write_sock.send(  # type: ignore[union-attr]
-                b"\0"
-            )
+            if self._connection._write_sock is not None:
+                self._connection._write_sock.send(b"\0")
         finally:
             self._safe_close()
 
@@ -1943,6 +1993,153 @@ class KazooClient:
         reconfig = Reconfig(joining, leaving, new_members, from_config)
         self._call(reconfig, async_result)
 
+        return async_result
+
+    def add_watch(
+        self,
+        path: str,
+        watch: WatchFunc,
+        mode: AddWatchMode | int,
+    ) -> None:
+        """Add a watch.
+
+        This method adds persistent watches.  Unlike the data and
+        child watches which may be set by calls to
+        :meth:`KazooClient.exists`, :meth:`KazooClient.get`, and
+        :meth:`KazooClient.get_children`, persistent watches are not
+        removed after being triggered.
+
+        To remove a persistent watch, use
+        :meth:`KazooClient.remove_all_watches` with an argument of
+        :attr:`~kazoo.protocol.states.WatcherType.ANY`.
+
+        The `mode` argument determines whether or not the watch is
+        recursive.  To set a persistent watch, use
+        :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT`.  To set a
+        persistent recursive watch, use
+        :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT_RECURSIVE`.
+
+        :param path: Path of node to watch.
+        :param watch: Watch callback to set for future changes
+        :param mode: The mode to use
+                      (:class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT`
+                      or
+                      :class:`~kazoo.protocol.states.AddWatchMode.PERSISTENT_RECURSIVE`).
+        :type mode: :class:`~kazoo.protocol.states.AddWatchMode` | int
+
+        :raises:
+            :exc:`TypeError` if arguments have invalid types.
+
+            :exc:`ValueError` if mode is not a valid
+            :class:`~kazoo.protocol.states.AddWatchMode`.
+
+            :exc:`~kazoo.exceptions.UnimplementedError` if the connected
+            ZooKeeper server does not support persistent watches
+            (requires ZooKeeper 3.6.0+).
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+        """
+        self.add_watch_async(path, watch, mode).get()
+
+    def add_watch_async(
+        self,
+        path: str,
+        watch: WatchFunc,
+        mode: AddWatchMode | int,
+    ) -> IAsyncResult:
+        """Asynchronously add a watch. Takes the same arguments as
+        :meth:`add_watch`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        """
+        if not isinstance(path, str):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if not callable(watch):
+            raise TypeError("Invalid type for 'watch' (must be a callable)")
+        if not isinstance(mode, int):
+            raise TypeError("Invalid type for 'mode' (int expected)")
+        if mode not in (
+            AddWatchMode.PERSISTENT,
+            AddWatchMode.PERSISTENT_RECURSIVE,
+        ):
+            raise ValueError("Invalid value for 'mode'")
+
+        async_result = self.handler.async_result()
+        self._call(
+            AddWatch(_prefix_root(self.chroot, path), watch, mode),
+            async_result,
+        )
+        return async_result
+
+    def remove_all_watches(
+        self,
+        path: str,
+        watcher_type: WatcherType | int,
+    ) -> None:
+        """Remove watches from a path.
+
+        This removes all watches of a specified type (data, child,
+        any) from a given path.
+
+        The `watcher_type` argument specifies which type to use.  It
+        may be one of:
+
+        * :attr:`~kazoo.protocol.states.WatcherType.DATA`
+        * :attr:`~kazoo.protocol.states.WatcherType.CHILDREN`
+        * :attr:`~kazoo.protocol.states.WatcherType.ANY`
+
+        To remove persistent watches, specify a watcher type of
+        :attr:`~kazoo.protocol.states.WatcherType.ANY`.
+
+        :param path: Path of watch to remove.
+        :param watcher_type: The type of watch to remove.
+        :type watcher_type: :class:`~kazoo.protocol.states.WatcherType` | int
+
+        :raises:
+            :exc:`TypeError` if arguments have invalid types.
+
+            :exc:`ValueError` if watcher_type is not a valid
+            :class:`~kazoo.protocol.states.WatcherType`.
+
+            :exc:`~kazoo.exceptions.NoWatcherError` if no watcher exists
+            matching the criteria.
+
+            :exc:`~kazoo.exceptions.UnimplementedError` if the connected
+            ZooKeeper server does not support removing watches
+            (requires ZooKeeper 3.5.0+).
+
+            :exc:`~kazoo.exceptions.ZookeeperError` if the server
+            returns a non-zero error code.
+        """
+        self.remove_all_watches_async(path, watcher_type).get()
+
+    def remove_all_watches_async(
+        self,
+        path: str,
+        watcher_type: WatcherType | int,
+    ) -> IAsyncResult:
+        """Asynchronously remove watches. Takes the same arguments as
+        :meth:`remove_all_watches`.
+
+        :rtype: :class:`~kazoo.interfaces.IAsyncResult`
+        """
+        if not isinstance(path, str):
+            raise TypeError("Invalid type for 'path' (string expected)")
+        if not isinstance(watcher_type, int):
+            raise TypeError("Invalid type for 'watcher_type' (int expected)")
+        if watcher_type not in (
+            WatcherType.ANY,
+            WatcherType.CHILDREN,
+            WatcherType.DATA,
+        ):
+            raise ValueError("Invalid value for 'watcher_type'")
+
+        async_result = self.handler.async_result()
+        self._call(
+            RemoveWatches(_prefix_root(self.chroot, path), watcher_type),
+            async_result,
+        )
         return async_result
 
 

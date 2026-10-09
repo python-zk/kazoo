@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any, Callable, Iterable, NamedTuple
 
 
@@ -74,6 +74,13 @@ class KeeperState(str, Enum):
     CONNECTING = "CONNECTING"
     CLOSED = "CLOSED"
     EXPIRED_SESSION = "EXPIRED_SESSION"
+
+
+CLOSED_STATES = (
+    KeeperState.EXPIRED_SESSION,
+    KeeperState.AUTH_FAILED,
+    KeeperState.CLOSED,
+)
 
 
 # This is a (str, Enum) for backwards compatibility.
@@ -271,3 +278,44 @@ class ZnodeStat(NamedTuple):
     @property
     def children_count(self) -> int:
         return self.numChildren
+
+
+class AddWatchMode(IntEnum):
+    """Modes for use with :meth:`~kazoo.client.KazooClient.add_watch`
+
+    .. attribute:: PERSISTENT
+
+        The watch is not removed when triggered.
+
+    .. attribute:: PERSISTENT_RECURSIVE
+
+        The watch is not removed when triggered, and applies to all
+        paths underneath the supplied path as well.
+    """
+
+    PERSISTENT = 0
+    PERSISTENT_RECURSIVE = 1
+
+
+class WatcherType(IntEnum):
+    """Watcher types for use with
+    :meth:`~kazoo.client.KazooClient.remove_all_watches`
+
+    .. attribute:: CHILDREN
+
+        Child watches.
+
+    .. attribute:: DATA
+
+        Data watches.
+
+    .. attribute:: ANY
+
+        Any type of watch (child, data, persistent, or persistent
+        recursive).
+
+    """
+
+    CHILDREN = 1
+    DATA = 2
+    ANY = 3
