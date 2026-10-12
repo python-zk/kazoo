@@ -59,6 +59,7 @@ from kazoo.protocol.serialization import (
     SetData,
     Sync,
     Transaction,
+    Transaction_Response,
 )
 from kazoo.protocol.states import (
     Callback,
@@ -1024,9 +1025,11 @@ class KazooClient:
             the session state will be set to AUTH_FAILED as well.
 
         """
-        return cast("bool", self.add_auth_async(scheme, credential).get())
+        return self.add_auth_async(scheme, credential).get()
 
-    def add_auth_async(self, scheme: str, credential: str) -> IAsyncResult:
+    def add_auth_async(
+        self, scheme: str, credential: str
+    ) -> IAsyncResult[bool]:
         """Asynchronously send credentials to server. Takes the same
         arguments as :meth:`add_auth`.
 
@@ -1056,7 +1059,7 @@ class KazooClient:
         else:
             return path
 
-    def sync_async(self, path: str) -> IAsyncResult:
+    def sync_async(self, path: str) -> IAsyncResult[str]:
         """Asynchronous sync.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -1090,7 +1093,7 @@ class KazooClient:
         .. versionadded:: 0.5
 
         """
-        return cast("str", self.sync_async(path).get())
+        return self.sync_async(path).get()
 
     @overload
     def create(
@@ -1204,18 +1207,15 @@ class KazooClient:
             The `include_data` option.
         """
         acl = acl or self.default_acl
-        return cast(
-            "str | tuple[str, ZnodeStat]",
-            self.create_async(
-                path,
-                value,
-                acl=acl,
-                ephemeral=ephemeral,
-                sequence=sequence,
-                makepath=makepath,
-                include_data=include_data,
-            ).get(),
-        )
+        return self.create_async(
+            path,
+            value,
+            acl=acl,
+            ephemeral=ephemeral,
+            sequence=sequence,
+            makepath=makepath,
+            include_data=include_data,
+        ).get()
 
     def create_async(
         self,
@@ -1226,7 +1226,7 @@ class KazooClient:
         sequence: bool = False,
         makepath: bool = False,
         include_data: bool = False,
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[str | tuple[str, ZnodeStat]]:
         """Asynchronously create a ZNode. Takes the same arguments as
         :meth:`create`.
 
@@ -1322,7 +1322,7 @@ class KazooClient:
         flags: int,
         trailing: bool = False,
         include_data: bool = False,
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[str | tuple[str, ZnodeStat]]:
         async_result = self.handler.async_result()
         opcode = Create2 if include_data else Create
 
@@ -1354,11 +1354,11 @@ class KazooClient:
         :param acl: Permissions for node.
 
         """
-        return cast("bool", self.ensure_path_async(path, acl).get())
+        return self.ensure_path_async(path, acl).get()
 
     def ensure_path_async(
         self, path: str, acl: Sequence[ACL] | None = None
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[bool]:
         """Recursively create a path asynchronously if it doesn't
         exist. Takes the same arguments as :meth:`ensure_path`.
 
@@ -1423,13 +1423,11 @@ class KazooClient:
             returns a non-zero error code.
 
         """
-        return cast(
-            "ZnodeStat | None", self.exists_async(path, watch=watch).get()
-        )
+        return self.exists_async(path, watch=watch).get()
 
     def exists_async(
         self, path: str, watch: WatchFunc | None = None
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[ZnodeStat | None]:
         """Asynchronously check if a node exists. Takes the same
         arguments as :meth:`exists`.
 
@@ -1472,13 +1470,11 @@ class KazooClient:
             returns a non-zero error code
 
         """
-        return cast(
-            "tuple[bytes, ZnodeStat]", self.get_async(path, watch=watch).get()
-        )
+        return self.get_async(path, watch=watch).get()
 
     def get_async(
         self, path: str, watch: WatchFunc | None = None
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[tuple[bytes, ZnodeStat]]:
         """Asynchronously get the value of a node. Takes the same
         arguments as :meth:`get`.
 
@@ -1551,19 +1547,16 @@ class KazooClient:
             The `include_data` option.
 
         """
-        return cast(
-            "list[str] | tuple[list[str], ZnodeStat]",
-            self.get_children_async(
-                path, watch=watch, include_data=include_data
-            ).get(),
-        )
+        return self.get_children_async(
+            path, watch=watch, include_data=include_data
+        ).get()
 
     def get_children_async(
         self,
         path: str,
         watch: WatchFunc | None = None,
         include_data: bool = False,
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[list[str] | tuple[list[str], ZnodeStat]]:
         """Asynchronously get a list of child nodes of a path. Takes
         the same arguments as :meth:`get_children`.
 
@@ -1605,11 +1598,11 @@ class KazooClient:
         .. versionadded:: 0.5
 
         """
-        return cast(
-            "tuple[list[ACL], ZnodeStat]", self.get_acls_async(path).get()
-        )
+        return self.get_acls_async(path).get()
 
-    def get_acls_async(self, path: str) -> IAsyncResult:
+    def get_acls_async(
+        self, path: str
+    ) -> IAsyncResult[tuple[list[ACL], ZnodeStat]]:
         """Return the ACL and stat of the node of the given path. Takes
         the same arguments as :meth:`get_acls`.
 
@@ -1652,13 +1645,11 @@ class KazooClient:
         .. versionadded:: 0.5
 
         """
-        return cast(
-            "ZnodeStat", self.set_acls_async(path, acls, version).get()
-        )
+        return self.set_acls_async(path, acls, version).get()
 
     def set_acls_async(
         self, path: str, acls: Sequence[ACL], version: int = -1
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[ZnodeStat]:
         """Set the ACL for the node of the given path. Takes the same
         arguments as :meth:`set_acls`.
 
@@ -1716,11 +1707,11 @@ class KazooClient:
             returns a non-zero error code.
 
         """
-        return cast("ZnodeStat", self.set_async(path, value, version).get())
+        return self.set_async(path, value, version).get()
 
     def set_async(
         self, path: str, value: bytes | None, version: int = -1
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[ZnodeStat]:
         """Set the value of a node. Takes the same arguments as
         :meth:`set`.
 
@@ -1801,7 +1792,7 @@ class KazooClient:
         else:
             return self.delete_async(path, version).get()
 
-    def delete_async(self, path: str, version: int = -1) -> IAsyncResult:
+    def delete_async(self, path: str, version: int = -1) -> IAsyncResult[bool]:
         """Asynchronously delete a node. Takes the same arguments as
         :meth:`delete`, with the exception of `recursive`.
 
@@ -1915,7 +1906,7 @@ class KazooClient:
         result = self.reconfig_async(
             joining, leaving, new_members, from_config
         )
-        return cast("tuple[bytes, ZnodeStat]", result.get())
+        return result.get()
 
     def reconfig_async(
         self,
@@ -1923,7 +1914,7 @@ class KazooClient:
         leaving: str | None,
         new_members: str | None,
         from_config: int,
-    ) -> IAsyncResult:
+    ) -> IAsyncResult[tuple[bytes, ZnodeStat]]:
         """Asynchronously reconfig a cluster. Takes the same arguments as
         :meth:`reconfig`.
 
@@ -2059,7 +2050,7 @@ class TransactionRequest:
             CheckVersion(_prefix_root(self.client.chroot, path), version)
         )
 
-    def commit_async(self) -> IAsyncResult:
+    def commit_async(self) -> IAsyncResult[list[Transaction_Response]]:
         """Commit the transaction asynchronously.
 
         :rtype: :class:`~kazoo.interfaces.IAsyncResult`
@@ -2071,14 +2062,14 @@ class TransactionRequest:
         self.client._call(Transaction(self.operations), async_object)
         return async_object
 
-    def commit(self) -> list[Any]:
+    def commit(self) -> list[Transaction_Response]:
         """Commit the transaction.
 
         :returns: A list of the results for each operation in the
                   transaction.
 
         """
-        return cast("list[Any]", self.commit_async().get())
+        return self.commit_async().get()
 
     def __enter__(self) -> TransactionRequest:
         return self
