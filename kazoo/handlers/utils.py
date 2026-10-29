@@ -50,7 +50,7 @@ class AsyncResult(IAsyncResult):
         self._condition = condition_factory()
         self._callbacks: list[CallbackFunc] = []
         self._timeout_factory = timeout_factory
-        self.value = None
+        self.value: Any = None
 
     def ready(self) -> bool:
         """Return true if and only if it holds a value or an

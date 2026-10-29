@@ -107,11 +107,8 @@ class SequentialEventletHandler:
         self.completion_queue = (
             self.queue_impl()  # type: ignore[no-untyped-call]
         )
-        self._workers: list[  # type: ignore[name-defined]
-            tuple[
-                eventlet.GreenThread,
-                green_queue.LightQueue,
-            ]
+        self._workers: list[
+            tuple[eventlet.greenthread.GreenThread, green_queue.LightQueue]
         ] = []
         self._started = False
 
@@ -177,7 +174,7 @@ class SequentialEventletHandler:
         while self._workers:
             w, q = self._workers.pop()
             q.put(_STOP)  # type: ignore[no-untyped-call]
-            w.wait()
+            w.wait()  # type: ignore[no-untyped-call]
         self._started = False
         atexit.unregister(self.stop)
 
