@@ -15,14 +15,14 @@ from kazoo.handlers import utils
 # We don't want to force the user to install gevent, so we need to handle the
 # case where it's not available, but there should be a cleaner we of doing this
 # than by importing all of gevent and ignoring all the import errors.
-import gevent  # type: ignore[import]
-from gevent import socket  # type: ignore[import]
-import gevent.event  # type: ignore[import]
-import gevent.queue  # type: ignore[import]
+import gevent
+from gevent import socket
+import gevent.event
+import gevent.queue
 
-import gevent.thread  # type: ignore[import]
-import gevent.selectors  # type: ignore[import]
-from gevent.lock import Semaphore, RLock  # type: ignore[import]
+import gevent.thread
+import gevent.selectors
+from gevent.lock import Semaphore, RLock
 
 if TYPE_CHECKING:
     from kazoo.interfaces import FdLike, Lockable, Socket

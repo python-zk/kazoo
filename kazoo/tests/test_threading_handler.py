@@ -23,9 +23,7 @@ class TestThreadingHandler(unittest.TestCase):
     def test_proper_threading(self) -> None:
         h = self._makeOne()
         h.start()
-        # In Python 3.3 _Event is gone, before Event is function
-        event_class = getattr(threading, "_Event", threading.Event)
-        assert isinstance(h.event_object(), event_class)
+        assert isinstance(h.event_object(), threading.Event)
 
     def test_matching_async(self) -> None:
         h = self._makeOne()

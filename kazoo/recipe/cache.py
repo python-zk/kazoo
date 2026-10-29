@@ -236,7 +236,7 @@ class TreeCache:
         result: IAsyncResult,
     ) -> None: ...
 
-    def _in_background(  # type: ignore[misc]
+    def _in_background(
         self, func: Callable[..., Any], *args: Any, **kwargs: Any
     ) -> None:
         self._task_queue.put((func, args, kwargs))

@@ -54,13 +54,11 @@ class KazooCounterTests(KazooTestCase):
     def test_errors(self) -> None:
         counter = self._makeOne()
         with pytest.raises(TypeError):
-            counter.__add__(2.1)  # type: ignore[arg-type]
+            counter.__add__(2.1)
         with pytest.raises(TypeError):
             counter.__add__(b"a")  # type: ignore[operator]
         with pytest.raises(TypeError):
-            counter = self._makeOne(  # type: ignore[arg-type]
-                default=0.0, support_curator=True
-            )
+            counter = self._makeOne(default=0.0, support_curator=True)
 
     def test_pre_post_values(self) -> None:
         counter = self._makeOne()

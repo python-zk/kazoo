@@ -1279,7 +1279,7 @@ class KazooClient:
                 # above ensures that if acl is None, it gets set to
                 # OPEN_ACL_UNSAFE, so we ignore the type error here.
                 # behaves differently in python3.8 and python3.14, sigh.
-                acl,  # type: ignore[arg-type]
+                acl,
                 flags,
                 trailing=sequence,
                 include_data=include_data,

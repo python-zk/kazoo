@@ -117,7 +117,7 @@ class TestSASLGSSAPIAuthentication(KazooTestHarness):
         except ImportError:
             pytest.skip("PureSASL not available.")
         try:
-            import kerberos  # type: ignore[import-not-found,import-untyped]
+            import kerberos  # type: ignore[import-not-found]
         except ImportError:
             pytest.skip("Kerberos support not available.")
         if not os.environ.get("KRB5_TEST_ENV"):

@@ -198,11 +198,6 @@ show_absolute_path = false
 warn_unused_configs = true
 verbosity = 0
 
-# This is a temporary workaround for the fact that mypy can
-# produce different errors in 3.9 and 3.14, and I want to avoid code changes
-# as much as possible.
-disable_error_code = [ 'unused-ignore' ]
-
 [[tool.mypy.overrides]]
     module = ["eventlet.*"]
     follow_untyped_imports = true

@@ -131,7 +131,7 @@ class DataWatch:
         "ignore_missing_node is now assumed to be True by default, and the "
         "event will be sent if the function can handle receiving it"
     )
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         client: KazooClient,
         path: str,
@@ -140,7 +140,7 @@ class DataWatch:
         **kwargs: Any,
     ): ...
 
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         client: KazooClient,
         path: str,

@@ -67,8 +67,8 @@ if TYPE_CHECKING:
 # FIXME This is NOT pretty, but we don't want to force users to have to
 # install puresasl. Can we avoid some of the type: ignore stuff?
 try:
-    import puresasl  # type: ignore[import-untyped,import-not-found]
-    import puresasl.client  # type: ignore[import-untyped,import-not-found]
+    import puresasl
+    import puresasl.client
 
     PURESASL_AVAILABLE = True
 except ImportError:
@@ -667,17 +667,11 @@ class ConnectionHandler:
                 for rhost in socket.getaddrinfo(
                     host, port, 0, 0, socket.IPPROTO_TCP
                 ):
-                    # FIXME These casts seem to be unnecessary on later
-                    # versions of mypy/python
                     host_ports.append(
                         (
                             host,
-                            cast(  # type: ignore[redundant-cast]
-                                "str", rhost[4][0]
-                            ),
-                            cast(  # type: ignore[redundant-cast]
-                                "int", rhost[4][1]
-                            ),
+                            cast("str", rhost[4][0]),
+                            cast("int", rhost[4][1]),
                         )
                     )
             except socket.gaierror as e:
