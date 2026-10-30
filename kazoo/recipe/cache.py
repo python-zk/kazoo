@@ -17,14 +17,13 @@ import contextlib
 import functools
 import logging
 import operator
-from typing import Any, Protocol, TypeVar, TYPE_CHECKING, Union, overload
-from collections.abc import Callable
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, Union, overload
 
-
-from kazoo.exceptions import NoNodeError, KazooException
-from kazoo.protocol.paths import _prefix_root, join as kazoo_join
-from kazoo.protocol.states import KazooState, EventType, ZnodeStat
+from kazoo.exceptions import KazooException, NoNodeError
+from kazoo.protocol.paths import _prefix_root
+from kazoo.protocol.paths import join as kazoo_join
+from kazoo.protocol.states import EventType, KazooState, ZnodeStat
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient, WatchFunc

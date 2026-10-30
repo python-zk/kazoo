@@ -9,8 +9,7 @@ import socket
 import subprocess
 import sys
 import unittest
-
-from typing import cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from kazoo.handlers.utils import selector_select
 

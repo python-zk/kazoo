@@ -1,27 +1,23 @@
 from __future__ import annotations
 
-from collections import namedtuple, deque
 import os
-import threading
-import time
-import uuid
-import unittest
-from unittest.mock import Mock, patch
 import struct
 import sys
-
-from typing import Any, TYPE_CHECKING
+import threading
+import time
+import unittest
+import uuid
+from collections import deque, namedtuple
 from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
+from unittest.mock import Mock, patch
+
 import pytest
 
 from kazoo.exceptions import ConnectionLoss, NotReadOnlyCallError
-from kazoo.protocol.serialization import (
-    Connect,
-    int_struct,
-    write_string,
-)
-from kazoo.protocol.states import KazooState, KeeperState
 from kazoo.protocol.connection import _CONNECTION_DROP
+from kazoo.protocol.serialization import Connect, int_struct, write_string
+from kazoo.protocol.states import KazooState, KeeperState
 from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
 
@@ -420,8 +416,8 @@ class TestConnectionAuthExceptions(unittest.TestCase):
     def test_connect_attempt_sasl_exception(self) -> None:
         from kazoo.exceptions import SASLException
         from kazoo.protocol.connection import (
-            ConnectionHandler,
             STOP_CONNECTING,
+            ConnectionHandler,
         )
         from kazoo.retry import KazooRetry
 
@@ -447,8 +443,8 @@ class TestConnectionAuthExceptions(unittest.TestCase):
     def test_connect_attempt_session_closed_require_sasl(self) -> None:
         from kazoo.exceptions import SessionClosedRequireSaslError
         from kazoo.protocol.connection import (
-            ConnectionHandler,
             STOP_CONNECTING,
+            ConnectionHandler,
         )
         from kazoo.retry import KazooRetry
 

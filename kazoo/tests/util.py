@@ -13,12 +13,10 @@ from __future__ import annotations
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-
 import logging
 import time
-
-from typing import Any
 from collections.abc import Callable
+from typing import Any
 
 
 class Handler(logging.Handler):

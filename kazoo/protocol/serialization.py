@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import struct
 from collections import namedtuple
-from typing import ClassVar, Union, TYPE_CHECKING
 from collections.abc import Sequence
+from typing import TYPE_CHECKING, ClassVar, Union
 
 from kazoo.exceptions import EXCEPTIONS, ZookeeperError
 from kazoo.protocol.states import ZnodeStat
-from kazoo.security import ACL
-from kazoo.security import Id
+from kazoo.security import ACL, Id
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient, WatchFunc

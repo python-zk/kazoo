@@ -5,11 +5,10 @@ from __future__ import annotations
 import atexit
 import logging
 import os
-import uuid
 import unittest
-
-from typing import Any, Literal, cast, TYPE_CHECKING
+import uuid
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:
     import kazoo.interfaces

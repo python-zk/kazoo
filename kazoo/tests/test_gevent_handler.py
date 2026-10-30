@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import unittest
 import sys
-
+import unittest
 from typing import Any
+
 import pytest
 
 from kazoo.exceptions import NoNodeError
@@ -13,9 +13,10 @@ from kazoo.testing import KazooTestCase
 
 try:
     import gevent  # noqa: F401
+    from gevent import socket
     from gevent.event import Event
     from gevent.queue import Empty
-    from gevent import socket
+
     from kazoo.handlers.gevent import AsyncResult, SequentialGeventHandler
 except ImportError:
     pytestmark = pytest.mark.skip(reason="gevent not available")

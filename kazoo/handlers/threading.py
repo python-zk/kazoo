@@ -19,10 +19,8 @@ import queue
 import socket
 import threading
 import time
-
-from typing import Any, TYPE_CHECKING, cast
-from collections.abc import Callable
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select

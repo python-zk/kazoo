@@ -3,9 +3,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from kazoo.recipe.lease import NonBlockingLease
-from kazoo.recipe.lease import MultiNonBlockingLease
-
+from kazoo.recipe.lease import MultiNonBlockingLease, NonBlockingLease
 from kazoo.testing import KazooTestCase
 
 

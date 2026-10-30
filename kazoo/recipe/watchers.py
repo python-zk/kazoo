@@ -13,15 +13,16 @@
 
 from __future__ import annotations
 
-from functools import partial, wraps
 import logging
 import time
 import warnings
-from typing import Any, Optional, Union, TYPE_CHECKING, overload
 from collections.abc import Callable
+from functools import partial, wraps
+from typing import TYPE_CHECKING, Any, overload
+
 from typing_extensions import ParamSpec, deprecated
 
-from kazoo.exceptions import ConnectionClosedError, NoNodeError, KazooException
+from kazoo.exceptions import ConnectionClosedError, KazooException, NoNodeError
 from kazoo.protocol.states import KazooState, WatchedEvent, ZnodeStat
 from kazoo.retry import KazooRetry
 

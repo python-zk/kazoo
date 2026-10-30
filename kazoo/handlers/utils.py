@@ -2,23 +2,24 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 import errno
 import functools
 import select
 import selectors
-import ssl
 import socket
+import ssl
 import time
-from typing import Any, TypeVar, TYPE_CHECKING
-from collections.abc import Callable
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, TypeVar
+
 from typing_extensions import ParamSpec
 
-from kazoo.interfaces import IAsyncResult, FdLike
+from kazoo.interfaces import FdLike, IAsyncResult
 
 if TYPE_CHECKING:
     from types import ModuleType
+
     from kazoo.interfaces import Socket
 
 HAS_FNCTL = True

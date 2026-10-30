@@ -20,24 +20,24 @@ Example Use-Case
 
 from __future__ import annotations
 
-from functools import partial
 import logging
 import os
 import socket
+from collections.abc import Callable, Iterable, Iterator
 from enum import Enum
-from typing import Generic, TYPE_CHECKING, TypeVar
-from collections.abc import Callable
-from collections.abc import Iterator, Iterable
+from functools import partial
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
 from kazoo.recipe.watchers import PatientChildrenWatch
 
 if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparisonT
+
     from kazoo.client import KazooClient
     from kazoo.interfaces import Event, IAsyncResult
     from kazoo.recipe.lock import Lock
-    from _typeshed import SupportsRichComparisonT
 
 log = logging.getLogger(__name__)
 

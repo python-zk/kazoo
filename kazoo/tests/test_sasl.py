@@ -6,8 +6,8 @@ import time
 
 import pytest
 
-from kazoo.testing import KazooTestHarness
 from kazoo.exceptions import AuthFailedError, NoAuthError
+from kazoo.testing import KazooTestHarness
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
@@ -109,6 +109,7 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 class TestSASLGSSAPIAuthentication(KazooTestHarness):
     def setUp(self) -> None:
         # puresasl isn't available under windows, so we can't do this test.
+        # ruff: noqa: F401
         try:
             import puresasl
         except ImportError:

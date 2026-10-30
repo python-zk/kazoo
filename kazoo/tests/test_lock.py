@@ -3,18 +3,15 @@ from __future__ import annotations
 import collections
 import threading
 import unittest
-from unittest.mock import MagicMock
 import uuid
-
-from typing import Any, TYPE_CHECKING
 from collections.abc import Callable
 from threading import Thread
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 
 import pytest
 
-from kazoo.exceptions import CancelledError
-from kazoo.exceptions import LockTimeout
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import CancelledError, LockTimeout, NoNodeError
 from kazoo.recipe.lock import Lock, Semaphore
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import time
 import threading
+import time
 import uuid
-
 from typing import Any, Literal
 
 import pytest
@@ -11,7 +10,6 @@ import pytest
 from kazoo.exceptions import KazooException
 from kazoo.protocol.states import EventType, WatchedEvent, ZnodeStat
 from kazoo.recipe.watchers import PatientChildrenWatch
-
 from kazoo.testing import KazooTestCase
 
 

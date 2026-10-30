@@ -11,8 +11,8 @@ from __future__ import annotations
 import datetime
 import json
 import socket
-from typing import TypedDict, TYPE_CHECKING, cast
 from collections.abc import Callable
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from kazoo.exceptions import CancelledError
 

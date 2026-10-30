@@ -10,14 +10,13 @@
 
 from __future__ import annotations
 
-
-from typing import Any, Protocol, Union, TYPE_CHECKING
-from collections.abc import Callable
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from types import TracebackType
     import queue
+    from types import TracebackType
+
     from kazoo.protocol.states import Callback
 
 # public API

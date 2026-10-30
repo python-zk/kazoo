@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import struct
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from kazoo.exceptions import BadVersionError
 from kazoo.retry import ForceRetryError

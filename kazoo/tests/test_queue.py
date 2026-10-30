@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import uuid
-
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from kazoo.testing import KazooTestCase
 
 if TYPE_CHECKING:
-    from kazoo.recipe.queue import LockingQueue, Queue
     from kazoo.interfaces import Event
+    from kazoo.recipe.queue import LockingQueue, Queue
 
 
 class KazooQueueTests(KazooTestCase):

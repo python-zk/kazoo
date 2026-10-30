@@ -108,11 +108,17 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "U"]
+select = [
+    "E",  # Python codestyle errors
+    "F",  # pyflake errors
+    "I",  # import-related errors
+    "T",  # flake8-tidy-imports errors
+    "W",  # Python codestyle warnings
+    "U"   # upgrade errors
+]
 ignore = [
     "E203",  # whitespace before ':' (black compatibility)
     "E721",  # do not compare types, use 'isinstance()'
-    "F401",  # module imported but unused
     "UP031", # using format specifiers
     "UP032", # use f-string instead of format
 ]
