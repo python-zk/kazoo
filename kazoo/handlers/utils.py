@@ -10,7 +10,9 @@ import selectors
 import ssl
 import socket
 import time
-from typing import Any, Callable, Iterable, TypeVar, TYPE_CHECKING
+from typing import Any, TypeVar, TYPE_CHECKING
+from collections.abc import Callable
+from collections.abc import Iterable
 from typing_extensions import ParamSpec
 
 from kazoo.interfaces import IAsyncResult, FdLike

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from binascii import hexlify
-from contextlib import contextmanager
+from contextlib import contextmanager, AbstractContextManager
 import copy
 import logging
 import random
@@ -11,16 +11,9 @@ import select
 import socket
 import ssl
 import time
-from typing import (
-    Callable,
-    ContextManager,
-    Iterator,
-    Literal,
-    TypeVar,
-    TYPE_CHECKING,
-    cast,
-    overload,
-)
+from typing import Literal, TypeVar, TYPE_CHECKING, cast, overload
+from collections.abc import Callable
+from collections.abc import Iterator
 from typing_extensions import Buffer
 
 from kazoo.exceptions import (
@@ -54,11 +47,7 @@ from kazoo.protocol.states import (
     WatchedEvent,
     EVENT_TYPE_MAP,
 )
-from kazoo.retry import (
-    ForceRetryError,
-    KazooRetry,
-    RetryFailedError,
-)
+from kazoo.retry import ForceRetryError, KazooRetry, RetryFailedError
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient, WatchFunc
@@ -120,7 +109,7 @@ class RWPinger:
         self,
         hosts: list[tuple[str, int]],
         connection_func: Callable[[tuple[str, int]], Socket],
-        socket_handling: Callable[[], ContextManager[None]],
+        socket_handling: Callable[[], AbstractContextManager[None]],
     ):
         self.hosts = hosts
         self.connection = connection_func
@@ -224,7 +213,7 @@ class ConnectionHandler:
     def _socket_error_handling(self) -> Iterator[None]:
         try:
             yield
-        except (socket.error, select.error) as e:
+        except OSError as e:
             err = getattr(e, "strerror", e)
             raise ConnectionDropped("socket connection error: %s" % (err,))
 

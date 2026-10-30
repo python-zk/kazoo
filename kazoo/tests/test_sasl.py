@@ -7,10 +7,7 @@ import time
 import pytest
 
 from kazoo.testing import KazooTestHarness
-from kazoo.exceptions import (
-    AuthFailedError,
-    NoAuthError,
-)
+from kazoo.exceptions import AuthFailedError, NoAuthError
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):

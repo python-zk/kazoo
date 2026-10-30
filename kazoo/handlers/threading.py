@@ -20,7 +20,9 @@ import socket
 import threading
 import time
 
-from typing import Any, Callable, Iterable, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING, cast
+from collections.abc import Callable
+from collections.abc import Iterable
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select

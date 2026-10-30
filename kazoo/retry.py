@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 
 from kazoo.exceptions import (
     ConnectionClosedError,

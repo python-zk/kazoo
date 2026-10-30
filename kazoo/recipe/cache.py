@@ -17,17 +17,9 @@ import contextlib
 import functools
 import logging
 import operator
-from typing import (
-    Any,
-    Callable,
-    Generator,
-    Protocol,
-    TypeVar,
-    Tuple,
-    TYPE_CHECKING,
-    Union,
-    overload,
-)
+from typing import Any, Protocol, TypeVar, TYPE_CHECKING, Union, overload
+from collections.abc import Callable
+from collections.abc import Generator
 
 
 from kazoo.exceptions import NoNodeError, KazooException
@@ -434,7 +426,7 @@ class TreeNode:
 
 # FIXME these Tuple-based classes would look a lot better using NamedTuple
 # though the event_type in TreeEvent needs sorting.
-class TreeEvent(Tuple[int, Union["NodeData", None]]):
+class TreeEvent(tuple[int, Union["NodeData", None]]):
     """The immutable event tuple of cache."""
 
     # FIXME These should be an enum.
@@ -472,7 +464,7 @@ class TreeEvent(Tuple[int, Union["NodeData", None]]):
         return cls((event_type, event_data))
 
 
-class NodeData(Tuple[str, bytes, ZnodeStat]):
+class NodeData(tuple[str, bytes, ZnodeStat]):
     """The immutable node data tuple of cache."""
 
     #: The absolute path string of current node.

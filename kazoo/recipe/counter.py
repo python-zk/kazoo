@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient
 
 
-Number = Union[int, float]
+Number = int | float
 
 
 class Counter:
@@ -117,7 +117,7 @@ class Counter:
         # else:
         #     old = val.decode("ascii")
         # maybe (not sure it does anything for the messy type though)
-        old: Union[bytes, str, Number]
+        old: bytes | str | Number
         old, stat = self.client.get(self.path)
         if self.support_curator:
             old = struct.unpack(">i", old)[0] if old != b"" else self.default

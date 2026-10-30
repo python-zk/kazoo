@@ -11,14 +11,9 @@
 from __future__ import annotations
 
 
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Protocol,
-    Union,
-    TYPE_CHECKING,
-)
+from typing import Any, Protocol, Union, TYPE_CHECKING
+from collections.abc import Callable
+from collections.abc import Iterable
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -34,7 +29,7 @@ class HasFileNo(Protocol):
     def fileno(self) -> int: ...
 
 
-FdLike = Union[int, HasFileNo]
+FdLike = int | HasFileNo
 
 
 class Socket(HasFileNo, Protocol):
@@ -70,7 +65,7 @@ class Socket(HasFileNo, Protocol):
 class Lockable(Protocol):
     """This is what threading.Lock implements.
 
-    In python 3.9+ it's available natively. Though given it has some
+    In python 3.10+ it's available natively. Though given it has some
     very odd typing, I wouldn't put money on it.
     """
 

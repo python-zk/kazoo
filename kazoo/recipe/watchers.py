@@ -17,15 +17,8 @@ from functools import partial, wraps
 import logging
 import time
 import warnings
-from typing import (
-    Any,
-    List,
-    Callable,
-    Optional,
-    Union,
-    TYPE_CHECKING,
-    overload,
-)
+from typing import Any, Optional, Union, TYPE_CHECKING, overload
+from collections.abc import Callable
 from typing_extensions import ParamSpec, deprecated
 
 from kazoo.exceptions import ConnectionClosedError, NoNodeError, KazooException
@@ -57,13 +50,12 @@ def _ignore_closed(
     return wrapper
 
 
-DataWatchFunc = Union[
-    Callable[[Optional[bytes], Optional[ZnodeStat]], Optional[bool]],
-    Callable[
-        [Optional[bytes], Optional[ZnodeStat], Optional[WatchedEvent]],
-        Optional[bool],
-    ],
-]
+DataWatchFunc = (
+    Callable[[bytes | None, ZnodeStat | None], bool | None]
+    | Callable[
+        [bytes | None, ZnodeStat | None, WatchedEvent | None], bool | None
+    ]
+)
 
 
 class DataWatch:
@@ -119,10 +111,7 @@ class DataWatch:
 
     @overload
     def __init__(
-        self,
-        client: KazooClient,
-        path: str,
-        func: DataWatchFunc | None = None,
+        self, client: KazooClient, path: str, func: DataWatchFunc | None = None
     ): ...
 
     @overload
@@ -294,10 +283,10 @@ class DataWatch:
             self._client.handler.spawn(self._get_data)
 
 
-ChildrenWatchFunc = Union[
-    Callable[[List[str]], Optional[bool]],
-    Callable[[List[str], Optional[WatchedEvent]], Optional[bool]],
-]
+ChildrenWatchFunc = (
+    Callable[[list[str]], bool | None]
+    | Callable[[list[str], WatchedEvent | None], bool | None]
+)
 
 
 class ChildrenWatch:

@@ -11,7 +11,8 @@ used for determining members of a party.
 from __future__ import annotations
 
 import uuid
-from typing import Iterator, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from collections.abc import Iterator
 
 from kazoo.exceptions import NodeExistsError, NoNodeError
 

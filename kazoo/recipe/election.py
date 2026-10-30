@@ -7,7 +7,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 from typing_extensions import ParamSpec
 
 from kazoo.exceptions import CancelledError

@@ -6,7 +6,8 @@ import atexit
 import contextlib
 import logging
 
-from typing import cast, Any, Generator, TYPE_CHECKING
+from typing import cast, Any, TYPE_CHECKING
+from collections.abc import Generator
 
 import eventlet
 from eventlet.green import socket as green_socket

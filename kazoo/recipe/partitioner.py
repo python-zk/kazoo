@@ -25,14 +25,9 @@ import logging
 import os
 import socket
 from enum import Enum
-from typing import (
-    Callable,
-    Generic,
-    Iterator,
-    Iterable,
-    TYPE_CHECKING,
-    TypeVar,
-)
+from typing import Generic, TYPE_CHECKING, TypeVar
+from collections.abc import Callable
+from collections.abc import Iterator, Iterable
 
 from kazoo.exceptions import KazooException, LockTimeout
 from kazoo.protocol.states import KazooState
@@ -247,8 +242,7 @@ class SetPartitioner(Generic[PartitionDataT]):
 
     def __iter__(self) -> Iterator[PartitionDataT]:
         """Return the partitions in this partition set"""
-        for partition in self._partition_set:
-            yield partition
+        yield from self._partition_set
 
     @property
     def failed(self) -> bool:

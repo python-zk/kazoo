@@ -8,7 +8,8 @@ import os
 import uuid
 import unittest
 
-from typing import Any, Callable, Literal, cast, TYPE_CHECKING
+from typing import Any, Literal, cast, TYPE_CHECKING
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     import kazoo.interfaces

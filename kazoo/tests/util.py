@@ -17,7 +17,8 @@ from __future__ import annotations
 import logging
 import time
 
-from typing import Any, Callable, Type
+from typing import Any
+from collections.abc import Callable
 
 
 class Handler(logging.Handler):
@@ -89,7 +90,7 @@ class Wait:
         self,
         timeout: int | None = None,
         wait: float | None = None,
-        exception: Type[Exception] = TimeOutWaitingFor,
+        exception: type[Exception] = TimeOutWaitingFor,
         getnow: Callable[[], Callable[[], float]] = (lambda: time.monotonic),
         getsleep: Callable[[], Callable[[float], None]] = (lambda: time.sleep),
     ):

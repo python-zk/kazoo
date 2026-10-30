@@ -1,16 +1,18 @@
 """Zookeeper Serializers, Deserializers, and namedtuple objects
 
-Note: On python3.8, you can't do classvars with NamedTuple.
+FIXME Currently we use namedtuple rather than NamedTuple for the various
+classes in here, because you can't use a ClassVar in a NamedTuple. This means
+the type safety isn't great.
 
-FIXME As soon as we get off python3.8 we should change the namedtuple objects
-to NamedTuple, as it should get better typechecking.
+This does need refactoring, but not sure how yet.
 """
 
 from __future__ import annotations
 
 import struct
 from collections import namedtuple
-from typing import ClassVar, Sequence, Union, TYPE_CHECKING
+from typing import ClassVar, Union, TYPE_CHECKING
+from collections.abc import Sequence
 
 from kazoo.exceptions import EXCEPTIONS, ZookeeperError
 from kazoo.protocol.states import ZnodeStat
@@ -394,7 +396,7 @@ class CheckVersion(namedtuple("CheckVersion", "path version")):
 
 # FIXME Transaction class should move after Create2
 Transaction_Types = Union[Create, "Create2", Delete, SetData, CheckVersion]
-Transaction_Response = Union[str, bool, ZnodeStat, ZookeeperError, None]
+Transaction_Response = str | bool | ZnodeStat | ZookeeperError | None
 
 
 class Transaction(namedtuple("Transaction", "operations")):

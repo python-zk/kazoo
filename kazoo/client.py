@@ -13,16 +13,13 @@ from typing import (
     cast,
     overload,
     Any,
-    Callable,
-    Deque,
-    Iterable,
     Literal,
     Optional,
-    Sequence,
-    Set,
     TypedDict,
     TYPE_CHECKING,
 )
+from collections.abc import Callable
+from collections.abc import Iterable, Sequence
 from typing_extensions import ParamSpec, Unpack, deprecated
 
 from kazoo.exceptions import (
@@ -121,10 +118,10 @@ class LegacyRetryParams(TypedDict, total=False):
 
 
 # Signature for functions called by add_listener
-ListenerFunc = Callable[[KazooState], Optional[bool]]
+ListenerFunc = Callable[[KazooState], bool | None]
 
 # Signatures for get, get_children and exists watches
-WatchFunc = Callable[[WatchedEvent], Optional[bool]]
+WatchFunc = Callable[[WatchedEvent], bool | None]
 
 GenericArgs = ParamSpec("GenericArgs")
 
@@ -369,10 +366,10 @@ class KazooClient:
         self._state: KeeperState = KeeperState.CLOSED
         self.state: KazooState = KazooState.LOST
         self.state_listeners: set[ListenerFunc] = set()
-        self._child_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
+        self._child_watchers: defaultdict[str, set[WatchFunc]] = defaultdict(
             set
         )
-        self._data_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
+        self._data_watchers: defaultdict[str, set[WatchFunc]] = defaultdict(
             set
         )
         self._reset()
@@ -551,8 +548,8 @@ class KazooClient:
 
     def _reset(self) -> None:
         """Resets a variety of client states for a new connection."""
-        self._queue: Deque[tuple[Any, IAsyncResult]] = deque()
-        self._pending: Deque[tuple[Any, IAsyncResult, int]] = deque()
+        self._queue: deque[tuple[Any, IAsyncResult]] = deque()
+        self._pending: deque[tuple[Any, IAsyncResult, int]] = deque()
 
         self._reset_watchers()
         self._reset_session()
@@ -1274,11 +1271,6 @@ class KazooClient:
             result = self._create_async_inner(
                 path,
                 value,
-                # The way acl is constructed ends up confusing mypy, which
-                # thinks that acl can be None here, even though the code
-                # above ensures that if acl is None, it gets set to
-                # OPEN_ACL_UNSAFE, so we ignore the type error here.
-                # behaves differently in python3.8 and python3.14, sigh.
                 acl,
                 flags,
                 trailing=sequence,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 import sys
 
-from typing import Any, Type
+from typing import Any
 import pytest
 
 from kazoo.exceptions import NoNodeError
@@ -26,10 +26,10 @@ class TestGeventHandler(unittest.TestCase):
     def _makeOne(self, *args: Any) -> SequentialGeventHandler:
         return SequentialGeventHandler(*args)
 
-    def _getAsync(self) -> Type[AsyncResult[Any]]:
+    def _getAsync(self) -> type[AsyncResult[Any]]:
         return AsyncResult
 
-    def _getEvent(self) -> Type[Event]:
+    def _getEvent(self) -> type[Event]:
         return Event
 
     def test_proper_threading(self) -> None:
@@ -84,7 +84,7 @@ class TestBasicGeventClient(KazooTestCase):
     def _makeOne(self, *args: Any) -> SequentialGeventHandler:
         return SequentialGeventHandler(*args)
 
-    def _getEvent(self) -> Type[Event]:
+    def _getEvent(self) -> type[Event]:
         return Event
 
     def test_start(self) -> None:
@@ -142,7 +142,7 @@ class TestBasicGeventClient(KazooTestCase):
             self.skipTest("resource module unavailable on this platform")
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
-        except (ValueError, resource.error):
+        except (OSError, ValueError):
             self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []

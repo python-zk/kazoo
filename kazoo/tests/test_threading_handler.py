@@ -4,7 +4,7 @@ import socket
 import threading
 import unittest
 
-from typing import Any, Type
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -17,7 +17,7 @@ class TestThreadingHandler(unittest.TestCase):
     def _makeOne(self, *args: Any) -> SequentialThreadingHandler:
         return SequentialThreadingHandler(*args)
 
-    def _getAsync(self) -> Type[AsyncResult]:
+    def _getAsync(self) -> type[AsyncResult]:
         return AsyncResult
 
     def test_proper_threading(self) -> None:
@@ -53,7 +53,7 @@ class TestThreadingHandler(unittest.TestCase):
             self.skipTest("resource module unavailable on this platform")
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
-        except (ValueError, resource.error):
+        except (OSError, ValueError):
             self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []

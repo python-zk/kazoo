@@ -10,7 +10,8 @@ from unittest.mock import Mock, patch
 import struct
 import sys
 
-from typing import Any, Iterable, Deque, Tuple, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
+from collections.abc import Iterable
 import pytest
 
 from kazoo.exceptions import ConnectionLoss, NotReadOnlyCallError
@@ -409,8 +410,8 @@ class TestUnorderedXids(KazooTestCase):
         assert self._zk_loop_errors[0] == exc_info[1]
 
 
-class _naughty_deque(Deque[Tuple[Any, Any, int]]):
-    def append(self, s: Tuple[Any, Any, int]) -> None:
+class _naughty_deque(deque[tuple[Any, Any, int]]):
+    def append(self, s: tuple[Any, Any, int]) -> None:
         request, async_object, xid = s
         deque.append(self, (request, async_object, xid + 1))  # +1s
 
