@@ -20,12 +20,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from typing import (
-    Iterable,
-    Literal,
-    Pattern,
-    TYPE_CHECKING,
-)
+from typing import Iterable, Literal, Pattern, TYPE_CHECKING
 
 from kazoo.exceptions import (
     CancelledError,
@@ -34,11 +29,7 @@ from kazoo.exceptions import (
     NoNodeError,
 )
 from kazoo.protocol.states import KazooState, WatchedEvent
-from kazoo.retry import (
-    ForceRetryError,
-    KazooRetry,
-    RetryFailedError,
-)
+from kazoo.retry import ForceRetryError, KazooRetry, RetryFailedError
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -48,26 +39,13 @@ if TYPE_CHECKING:
 class _Watch:
     def __init__(self, duration: float | None = None):
         self.duration = duration
-        self.started_at: float | None = None
-
-    def start(self) -> None:
         self.started_at = time.monotonic()
 
     def leftover(self) -> float | None:
         if self.duration is None:
             return None
-        else:
-            # We should probably set started_at to either 0 or
-            # time.monotonic() in __init__ to avoid the type ignore
-            # here, but this is a private class and it's pretty clear
-            # that start() should be called before leftover() so I'm
-            # not sure it's worth it.
-            # FIXME raise an exception if start() hasn't been called yet
-            # i.e. self.started_at is None
-            elapsed = (
-                time.monotonic() - self.started_at  # type: ignore[operator]
-            )
-            return max(0, self.duration - elapsed)
+        elapsed = time.monotonic() - self.started_at
+        return max(0, self.duration - elapsed)
 
 
 class Lock:
@@ -242,10 +220,7 @@ class Lock:
         return True
 
     def _inner_acquire(
-        self,
-        blocking: bool,
-        timeout: float | None,
-        ephemeral: bool = True,
+        self, blocking: bool, timeout: float | None, ephemeral: bool = True
     ) -> bool:
         # wait until it's our chance to get it..
         if self.is_acquired:
@@ -607,9 +582,7 @@ class Semaphore:
         self.wake_event.set()
 
     def acquire(
-        self,
-        blocking: bool = True,
-        timeout: float | None = None,
+        self, blocking: bool = True, timeout: float | None = None
     ) -> bool:
         """Acquire the semaphore. By defaults blocks and waits forever.
 
@@ -649,9 +622,7 @@ class Semaphore:
         return self.is_acquired
 
     def _inner_acquire(
-        self,
-        blocking: bool,
-        timeout: float | None = None,
+        self, blocking: bool, timeout: float | None = None
     ) -> bool:
         """Inner loop that runs from the top anytime a command hits a
         retryable Zookeeper exception."""
@@ -666,7 +637,6 @@ class Semaphore:
             return True
 
         w = _Watch(duration=timeout)
-        w.start()
         # FIXME This is passing bytes data, but self.client.Lock expects a str,
         # which I think is a bug in this code. However, I don't want to
         # change any code at this point, so we just ignore the type error here.
