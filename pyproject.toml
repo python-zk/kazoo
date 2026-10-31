@@ -57,11 +57,14 @@ test-extras = [
     "pyjks==20.0.0",
     "unittest-parametrize==1.8.0",
 ]
+coverage = [
+    "coverage==7.10.7"
+]
 pytest = [
     "pytest==8.4.2",
 ]
 test = [
-    "coverage==7.10.7",
+    {include-group = "coverage"},
     {include-group = "pytest"},
     "pytest-cov==7.1.0",
     "pytest-timeout==2.4.0",

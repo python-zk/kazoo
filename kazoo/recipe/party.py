@@ -23,10 +23,7 @@ class BaseParty:
     """Base implementation of a party."""
 
     def __init__(
-        self,
-        client: KazooClient,
-        path: str,
-        identifier: str | None = None,
+        self, client: KazooClient, path: str, identifier: str | None = None
     ):
         """
         :param client: A :class:`~kazoo.client.KazooClient` instance.
@@ -132,10 +129,7 @@ class ShallowParty(BaseParty):
     """
 
     def __init__(
-        self,
-        client: KazooClient,
-        path: str,
-        identifier: str | None = None,
+        self, client: KazooClient, path: str, identifier: str | None = None
     ):
         BaseParty.__init__(self, client, path, identifier=identifier)
         self.node = "-".join([uuid.uuid4().hex, self.data.decode("utf-8")])

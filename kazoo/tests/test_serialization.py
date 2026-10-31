@@ -209,8 +209,7 @@ class TestSetData(unittest.TestCase):
 
     def test_deserialize(self) -> None:
         result_stat = serialization.SetData.deserialize(
-            _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
-            0,
+            _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), 0
         )
         assert result_stat == _make_stat()
 
@@ -253,8 +252,7 @@ class TestSetACL(unittest.TestCase):
 
     def test_deserialize(self) -> None:
         result_stat = serialization.SetACL.deserialize(
-            _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
-            0,
+            _stat_struct.pack(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), 0
         )
         assert result_stat == _make_stat()
 
@@ -269,8 +267,7 @@ class TestGetChildren(unittest.TestCase):
 
     def test_deserialize(self) -> None:
         children = serialization.GetChildren.deserialize(
-            _int_struct.pack(2) + _write_string("a") + _write_string("b"),
-            0,
+            _int_struct.pack(2) + _write_string("a") + _write_string("b"), 0
         )
         assert children == ["a", "b"]
 

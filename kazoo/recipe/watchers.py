@@ -119,10 +119,7 @@ class DataWatch:
 
     @overload
     def __init__(
-        self,
-        client: KazooClient,
-        path: str,
-        func: DataWatchFunc | None = None,
+        self, client: KazooClient, path: str, func: DataWatchFunc | None = None
     ): ...
 
     @overload

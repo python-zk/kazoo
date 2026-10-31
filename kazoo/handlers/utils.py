@@ -13,7 +13,7 @@ import time
 from typing import Any, Callable, Iterable, TypeVar, TYPE_CHECKING
 from typing_extensions import ParamSpec
 
-from kazoo.interfaces import IAsyncResult, FdLike
+from kazoo.interfaces import IAsyncResult, IHandler, FdLike
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -26,14 +26,7 @@ except ImportError:  # pragma: nocover
     HAS_FNCTL = False
 
 
-# sentinel objects
-# Note: This needs to be a unique object that is not None, as None is used to
-# indicate a successful result in AsyncResult.
-# This should probably be an Enum, it would certainly be cleaner, but don't
-# want to change the code too much.
-_NONE = object()
-
-CallbackFunc = Callable[..., None]
+CallbackFunc = Callable[["AsyncResult"], None]
 
 
 class AsyncResult(IAsyncResult):
@@ -41,12 +34,13 @@ class AsyncResult(IAsyncResult):
 
     def __init__(
         self,
-        handler: Any,
+        handler: IHandler,
         condition_factory: Callable[[], Any],
         timeout_factory: Callable[[], Any],
     ) -> None:
         self._handler = handler
-        self._exception: object | Exception | None = _NONE
+        self._exception: Exception | None = None
+        self._ready = False
         self._condition = condition_factory()
         self._callbacks: list[CallbackFunc] = []
         self._timeout_factory = timeout_factory
@@ -55,32 +49,33 @@ class AsyncResult(IAsyncResult):
     def ready(self) -> bool:
         """Return true if and only if it holds a value or an
         exception"""
-        return self._exception is not _NONE
+        return self._ready
 
     def successful(self) -> bool:
         """Return true if and only if it is ready and holds a value"""
-        return self._exception is None
+        return self._ready and self._exception is None
 
     @property
     def exception(self) -> Exception | None:
-        if self._exception is not _NONE:
-            return self._exception  # type: ignore[return-value]
-        return None
+        return self._exception
 
     def set(self, value: Any = None) -> None:
         """Store the value. Wake up the waiters."""
         with self._condition:
             self.value = value
-            self._exception = None
-            self._do_callbacks()
-            self._condition.notify_all()
+            self._wakeup()
+
+    def _wakeup(self) -> None:
+        """All done, set ready and wake up any waiters"""
+        self._ready = True
+        self._do_callbacks()
+        self._condition.notify_all()
 
     def set_exception(self, exception: Exception) -> None:
         """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
-            self._do_callbacks()
-            self._condition.notify_all()
+            self._wakeup()
 
     def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Return the stored value or raise the exception.
@@ -89,16 +84,16 @@ class AsyncResult(IAsyncResult):
 
         """
         with self._condition:
-            if self._exception is not _NONE:
+            if self._ready:
                 if self._exception is None:
                     return self.value
-                raise self._exception  # type: ignore[misc]
-            elif block:
+                raise self._exception
+            if block:
                 self._condition.wait(timeout)
-                if self._exception is not _NONE:
+                if self.ready():
                     if self._exception is None:
                         return self.value
-                    raise self._exception  # type: ignore[misc]
+                    raise self._exception
 
             # if we get to this point we timeout
             raise self._timeout_factory()
@@ -116,7 +111,7 @@ class AsyncResult(IAsyncResult):
         with self._condition:
             if not self.ready():
                 self._condition.wait(timeout)
-        return self._exception is not _NONE
+        return self._ready
 
     def rawlink(self, callback: CallbackFunc) -> None:
         """Register a callback to call when a value or an exception is
@@ -147,7 +142,7 @@ class AsyncResult(IAsyncResult):
 
         for callback in self._callbacks:
             if self._handler.running:
-                self._handler.completion_queue.put(
+                self._handler.add_to_completion_queue(
                     functools.partial(callback, self)
                 )
             else:
@@ -382,33 +377,6 @@ def wrap(
     return capture
 
 
-def fileobj_to_fd(fileobj: FdLike) -> int:
-    """Return a file descriptor from a file object.
-
-    Parameters:
-    fileobj -- file object or file descriptor
-
-    Returns:
-    corresponding file descriptor
-
-    Raises:
-    TypeError if the object is invalid
-    """
-    if isinstance(fileobj, int):
-        fd = fileobj
-    else:
-        # FIXME given the protocol I don't think the try/catch/int are
-        # required.
-        try:
-            fd = int(fileobj.fileno())
-        except (AttributeError, TypeError, ValueError):
-            raise TypeError("Invalid file object: {!r}".format(fileobj))
-    # FIXME Questionable, just let select deal with it.
-    if fd < 0:
-        raise TypeError("Invalid file descriptor: {}".format(fd))
-    return fd
-
-
 def selector_select(
     rlist: Iterable[FdLike],
     wlist: Iterable[FdLike],
@@ -434,7 +402,7 @@ def selector_select(
 
     for event, fileobjs in events_mapping.items():
         for fileobj in fileobjs:
-            fd = fileobj_to_fd(fileobj)
+            fd = fileobj if isinstance(fileobj, int) else fileobj.fileno()
             fd_events[fd] |= event
             fd_fileobjs[fd].append(fileobj)
 

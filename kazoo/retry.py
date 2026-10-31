@@ -116,10 +116,7 @@ class KazooRetry:
         return obj
 
     def __call__(
-        self,
-        func: Callable[..., RETRY_RETURN],
-        *args: Any,
-        **kwargs: Any,
+        self, func: Callable[..., RETRY_RETURN], *args: Any, **kwargs: Any
     ) -> RETRY_RETURN:
         """Call a function with arguments until it completes without
         throwing a Kazoo exception
