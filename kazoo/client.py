@@ -318,11 +318,7 @@ class KazooClient:
         self.logger = logger or log
 
         # Record the handler strategy used
-        # FIXME we need to work on making SequentialGeventHandler being an
-        # IHandler to make this cleaner but for now this will do.
-        self.handler = cast(
-            "IHandler", handler if handler else SequentialThreadingHandler()
-        )
+        self.handler = handler if handler else SequentialThreadingHandler()
         if inspect.isclass(self.handler):
             raise ConfigurationError(
                 "Handler must be an instance of a class, "

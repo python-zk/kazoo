@@ -401,7 +401,10 @@ class TestUnorderedXids(KazooTestCase):
 
         self.client.handler.sleep_func(0.2)
         assert self.connection_routine is not None
-        assert not self.connection_routine.is_alive()
+        # This vvvv doesn't work for greenlet handlers as the greenlet doesn't
+        # implement is_alive...
+        if (alive := getattr(self.connection_routine, "is_alive")) is not None:
+            assert not alive()
         assert len(self._zk_loop_errors) == 1
         assert self._zk_loop_errors[0] == exc_info[1]
 

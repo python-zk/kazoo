@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 if TYPE_CHECKING:
     import queue
@@ -68,7 +68,7 @@ class Lockable(Protocol):
     very odd typing, I wouldn't put money on it.
     """
 
-    def __enter__(self) -> None: ...
+    def __enter__(self) -> bool: ...
 
     def __exit__(
         self,
@@ -92,7 +92,10 @@ class ReentrantLock(Protocol):
     In python 3.14+, it's the same as Lock, which adds to the fun.
     """
 
-    def __enter__(self) -> None: ...
+    # Note: GreenLet Rlock returns a bool, but the threading.RLock returns
+    # None, unlike threading.Lock. So we have to use a union type here to
+    # satisfy both. This is a hack
+    def __enter__(self) -> bool | None: ...
 
     def __exit__(
         self,
@@ -115,13 +118,24 @@ class Event(Protocol):
 
     def clear(self) -> None: ...
 
+    # This overload is for the case where timeout is None, which means wait
+    # indefinitely. gevent's Event.wait explicitly returns True in this case,
+    # so we reflect that in the type.
+    # The threading.Event.wait actually conforms to this overload as well,
+    # since it returns True if the event is set, and if timeout is None, it
+    # will always return True, but it doesn't explicitly say that in the docs,
+    # so we have to be a bit more conservative with the typing.
+    @overload
+    def wait(self, timeout: None = None) -> bool | Literal[True]: ...
+
+    @overload
+    def wait(self, timeout: float) -> bool: ...
+
     def wait(self, timeout: float | None = None) -> bool: ...
 
 
 class Threadlike(Protocol):
     """Protocol for something like a thread."""
-
-    def is_alive(self) -> bool: ...
 
     def join(self, timeout: float | None = None) -> None: ...
 
@@ -174,6 +188,10 @@ class IHandler(Protocol):
     def stop(self) -> None:
         """Stop the handler. Should block until the handler is safely
         stopped."""
+
+    @property
+    def running(self) -> bool:
+        """Return True if the handler is running, False otherwise."""
 
     def select(
         self,
@@ -232,6 +250,17 @@ class IHandler(Protocol):
         :param callback: A :class:`~kazoo.protocol.states.Callback`
                          object to be called.
 
+        """
+
+    def add_to_completion_queue(self, callback: SpawnedFunc) -> None:
+        """Add a method to callback on completion.
+
+        :param callback: A :class:`~kazoo.protocol.states.Callback`
+                         object to be called.
+
+        The supplied method will be called whn an event completes.
+
+        Note: This seems an odd place to store these.
         """
 
 
@@ -338,6 +367,10 @@ class IAsyncResult(Protocol):
         """
 
     @property
-    def exception(self) -> Exception | None:
+    def exception(self) -> BaseException | None:
         """The exception set by :meth:`set_exception` or `None` if no
-        exception has been set"""
+        exception has been set
+
+        gevent specifies BaseException here so we have to be compatible with
+        that, though it seems a little OTT.
+        """

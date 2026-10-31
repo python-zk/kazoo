@@ -113,7 +113,7 @@ class SequentialThreadingHandler(IHandler):
         self.callback_queue: queue.Queue[Callable[..., None]] = (
             self.queue_impl()
         )
-        self.completion_queue: queue.Queue[Callable[..., None]] = (
+        self._completion_queue: queue.Queue[Callable[..., None]] = (
             self.queue_impl()
         )
         self._running = False
@@ -155,7 +155,7 @@ class SequentialThreadingHandler(IHandler):
             # Spawn our worker threads, we have
             # - A callback worker for watch events to be called
             # - A completion worker for completion events to be called
-            for work_queue in (self.completion_queue, self.callback_queue):
+            for work_queue in (self._completion_queue, self.callback_queue):
                 w = self._create_thread_worker(work_queue)
                 self._workers.append(w)
             self._running = True
@@ -169,7 +169,7 @@ class SequentialThreadingHandler(IHandler):
 
             self._running = False
 
-            for work_queue in (self.completion_queue, self.callback_queue):
+            for work_queue in (self._completion_queue, self.callback_queue):
                 work_queue.put(cast("Callable[..., None]", _STOP))
 
             self._workers.reverse()
@@ -179,7 +179,7 @@ class SequentialThreadingHandler(IHandler):
 
             # Clear the queues
             self.callback_queue = self.queue_impl()
-            self.completion_queue = self.queue_impl()
+            self._completion_queue = self.queue_impl()
             atexit.unregister(self.stop)
 
     def select(
@@ -202,9 +202,7 @@ class SequentialThreadingHandler(IHandler):
 
     def lock_object(self) -> Lockable:
         """Create a lock object"""
-        # Note: This is not ideal, but the ContextManager Protocol seems to
-        # think you should return an object of the same type.
-        return cast("Lockable", threading.Lock())
+        return threading.Lock()
 
     def rlock_object(self) -> ReentrantLock:
         """Create an appropriate RLock object"""
@@ -230,3 +228,15 @@ class SequentialThreadingHandler(IHandler):
 
         """
         self.callback_queue.put(lambda: callback.func(*callback.args))
+
+    def add_to_completion_queue(self, callback: SpawnedFunc) -> None:
+        """Add a method to callback on completion.
+
+        :param callback: A :class:`~kazoo.protocol.states.Callback`
+                         object to be called.
+
+        The supplied method will be called when an event completes.
+
+        Note: This seems an odd place to store these.
+        """
+        self._completion_queue.put(callback)

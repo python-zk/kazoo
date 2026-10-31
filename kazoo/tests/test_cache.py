@@ -124,7 +124,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
         # trigger switching on some coroutine handlers
         self.client.handler.sleep_func(0.1)
 
-        completion_queue = getattr(self.handler, "completion_queue", None)
+        completion_queue = getattr(self.handler, "_completion_queue", None)
         if completion_queue is not None:
             while not completion_queue.empty():
                 self.client.handler.sleep_func(0.1)

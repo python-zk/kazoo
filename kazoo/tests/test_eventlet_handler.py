@@ -9,6 +9,7 @@ import pytest
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import create_tcp_socket
+from kazoo.interfaces import IAsyncResult
 from kazoo.protocol import states as kazoo_states
 
 if TYPE_CHECKING:
@@ -66,10 +67,10 @@ class TestEventletHandler(unittest.TestCase):
         assert len(captures) == 1
 
     def test_async_link(self) -> None:
-        captures: list[SequentialEventletHandler] = []
+        captures: list[IAsyncResult] = []
 
-        def cb(handler: SequentialEventletHandler) -> None:
-            captures.append(handler)
+        def cb(async_result: IAsyncResult) -> None:
+            captures.append(async_result)
 
         with start_stop_one() as handler:
             r = handler.async_result()
@@ -86,14 +87,14 @@ class TestEventletHandler(unittest.TestCase):
             raise handler.timeout_exception("This is a timeout")
 
     def test_async_ok(self) -> None:
-        captures: list[Literal[1] | SequentialEventletHandler] = []
+        captures: list[Literal[1] | IAsyncResult] = []
 
         def delayed() -> Literal[1]:
             captures.append(1)
             return 1
 
-        def after_delayed(handler: SequentialEventletHandler) -> None:
-            captures.append(handler)
+        def after_delayed(async_result: IAsyncResult) -> None:
+            captures.append(async_result)
 
         with start_stop_one() as handler:
             r = handler.async_result()

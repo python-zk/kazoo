@@ -17,12 +17,12 @@ from eventlet.green import time as green_time
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
+from kazoo.interfaces import IHandler, SpawnedFunc
 
 if TYPE_CHECKING:
     from kazoo.interfaces import (
         Event,
         FdLike,
-        IHandler,
         Lockable,
         ReentrantLock,
         Socket,
@@ -65,8 +65,7 @@ class AsyncResult(utils.AsyncResult):
         )
 
 
-# FIXME This should inherit from IHandler
-class SequentialEventletHandler:
+class SequentialEventletHandler(IHandler):
     """Eventlet handler for sequentially executing callbacks.
 
     This handler executes callbacks in a sequential manner. A queue is
@@ -96,25 +95,22 @@ class SequentialEventletHandler:
     """
 
     name = "sequential_eventlet_handler"
-    queue_impl = green_queue.LightQueue
+    queue_impl = green_queue.LightQueue  # type: ignore[assignment]
     queue_empty = green_queue.Empty
+    sleep_func = staticmethod(green_time.sleep)  # type: ignore[assignment, attr-defined]
 
     def __init__(self) -> None:
         """Create a :class:`SequentialEventletHandler` instance"""
-        self.callback_queue = (
+        self._callback_queue = (
             self.queue_impl()  # type: ignore[no-untyped-call]
         )
-        self.completion_queue = (
+        self._completion_queue = (
             self.queue_impl()  # type: ignore[no-untyped-call]
         )
         self._workers: list[
             tuple[eventlet.greenthread.GreenThread, green_queue.LightQueue]
         ] = []
         self._started = False
-
-    @staticmethod
-    def sleep_func(wait: float) -> None:
-        green_time.sleep(wait)  # type: ignore[attr-defined, no-untyped-call]
 
     @property
     def running(self) -> bool:
@@ -124,7 +120,7 @@ class SequentialEventletHandler:
 
     def _process_completion_queue(self) -> None:
         while True:
-            cb = self.completion_queue.get()  # type: ignore[no-untyped-call]
+            cb = self._completion_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -140,7 +136,7 @@ class SequentialEventletHandler:
 
     def _process_callback_queue(self) -> None:
         while True:
-            cb = self.callback_queue.get()  # type: ignore[no-untyped-call]
+            cb = self._callback_queue.get()  # type: ignore[no-untyped-call]
             if cb is _STOP:
                 break
             try:
@@ -162,11 +158,11 @@ class SequentialEventletHandler:
             w = eventlet.spawn(
                 self._process_completion_queue  # type: ignore[no-untyped-call]
             )
-            self._workers.append((w, self.completion_queue))
+            self._workers.append((w, self._completion_queue))
             w = eventlet.spawn(
                 self._process_callback_queue  # type: ignore[no-untyped-call]
             )
-            self._workers.append((w, self.callback_queue))
+            self._workers.append((w, self._callback_queue))
             self._started = True
             atexit.register(self.stop)
 
@@ -220,7 +216,7 @@ class SequentialEventletHandler:
             )
 
     def async_result(self) -> AsyncResult:
-        return AsyncResult(self)  # type: ignore[arg-type]
+        return AsyncResult(self)
 
     def spawn(
         self, func: Any, *args: Any, **kwargs: Any
@@ -233,6 +229,18 @@ class SequentialEventletHandler:
         return t
 
     def dispatch_callback(self, callback: Callback) -> None:
-        self.callback_queue.put(  # type: ignore[no-untyped-call]
+        self._callback_queue.put(  # type: ignore[no-untyped-call]
             lambda: callback.func(*callback.args)
         )
+
+    def add_to_completion_queue(self, callback: SpawnedFunc) -> None:
+        """Add a method to callback on completion.
+
+        :param callback: A :class:`~kazoo.protocol.states.Callback`
+                         object to be called.
+
+        The supplied method will be called whn an event completes.
+
+        Note: This seems an odd place to store these.
+        """
+        self._completion_queue.put(callback)  # type: ignore[no-untyped-call]

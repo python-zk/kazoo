@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from typing_extensions import ParamSpec
 
-from kazoo.interfaces import FdLike, IAsyncResult
+from kazoo.interfaces import FdLike, IAsyncResult, IHandler
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -29,14 +29,7 @@ except ImportError:  # pragma: nocover
     HAS_FNCTL = False
 
 
-# sentinel objects
-# Note: This needs to be a unique object that is not None, as None is used to
-# indicate a successful result in AsyncResult.
-# This should probably be an Enum, it would certainly be cleaner, but don't
-# want to change the code too much.
-_NONE = object()
-
-CallbackFunc = Callable[..., None]
+CallbackFunc = Callable[["AsyncResult"], None]
 
 
 class AsyncResult(IAsyncResult):
@@ -44,12 +37,13 @@ class AsyncResult(IAsyncResult):
 
     def __init__(
         self,
-        handler: Any,
+        handler: IHandler,
         condition_factory: Callable[[], Any],
         timeout_factory: Callable[[], Any],
     ) -> None:
         self._handler = handler
-        self._exception: object | Exception | None = _NONE
+        self._exception: Exception | None = None
+        self._ready = False
         self._condition = condition_factory()
         self._callbacks: list[CallbackFunc] = []
         self._timeout_factory = timeout_factory
@@ -58,32 +52,33 @@ class AsyncResult(IAsyncResult):
     def ready(self) -> bool:
         """Return true if and only if it holds a value or an
         exception"""
-        return self._exception is not _NONE
+        return self._ready
 
     def successful(self) -> bool:
         """Return true if and only if it is ready and holds a value"""
-        return self._exception is None
+        return self._ready and self._exception is None
 
     @property
     def exception(self) -> Exception | None:
-        if self._exception is not _NONE:
-            return self._exception  # type: ignore[return-value]
-        return None
+        return self._exception
 
     def set(self, value: Any = None) -> None:
         """Store the value. Wake up the waiters."""
         with self._condition:
             self.value = value
-            self._exception = None
-            self._do_callbacks()
-            self._condition.notify_all()
+            self._wakeup()
+
+    def _wakeup(self) -> None:
+        """All done, set ready and wake up any waiters"""
+        self._ready = True
+        self._do_callbacks()
+        self._condition.notify_all()
 
     def set_exception(self, exception: Exception) -> None:
         """Store the exception. Wake up the waiters."""
         with self._condition:
             self._exception = exception
-            self._do_callbacks()
-            self._condition.notify_all()
+            self._wakeup()
 
     def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Return the stored value or raise the exception.
@@ -92,16 +87,16 @@ class AsyncResult(IAsyncResult):
 
         """
         with self._condition:
-            if self._exception is not _NONE:
+            if self._ready:
                 if self._exception is None:
                     return self.value
-                raise self._exception  # type: ignore[misc]
-            elif block:
+                raise self._exception
+            if block:
                 self._condition.wait(timeout)
-                if self._exception is not _NONE:
+                if self.ready():
                     if self._exception is None:
                         return self.value
-                    raise self._exception  # type: ignore[misc]
+                    raise self._exception
 
             # if we get to this point we timeout
             raise self._timeout_factory()
@@ -119,7 +114,7 @@ class AsyncResult(IAsyncResult):
         with self._condition:
             if not self.ready():
                 self._condition.wait(timeout)
-        return self._exception is not _NONE
+        return self._ready
 
     def rawlink(self, callback: CallbackFunc) -> None:
         """Register a callback to call when a value or an exception is
@@ -150,7 +145,7 @@ class AsyncResult(IAsyncResult):
 
         for callback in self._callbacks:
             if self._handler.running:
-                self._handler.completion_queue.put(
+                self._handler.add_to_completion_queue(
                     functools.partial(callback, self)
                 )
             else:
