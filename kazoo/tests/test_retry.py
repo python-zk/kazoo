@@ -28,7 +28,7 @@ def _make_try_func(times: int = 1) -> mock.Mock:
     returning None.
     """
     callmock = mock.Mock(
-        side_effect=[kr.ForceRetryError("Failed!")] * times + [None],
+        side_effect=[kr.ForceRetryError("Failed!")] * times + [None]
     )
     return callmock
 

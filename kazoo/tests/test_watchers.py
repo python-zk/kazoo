@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import time
 import threading
+import time
 import uuid
-
-from typing import Any, List, Literal
+from typing import Any, Literal
 
 import pytest
 
 from kazoo.exceptions import KazooException
 from kazoo.protocol.states import EventType, WatchedEvent, ZnodeStat
 from kazoo.recipe.watchers import PatientChildrenWatch
-
 from kazoo.testing import KazooTestCase
 
 
@@ -233,7 +231,7 @@ class KazooDataWatcherTests(KazooTestCase):
         assert children_watch._stopped is True
 
     def test_watcher_evaluating_to_false(self) -> None:
-        class WeirdWatcher(List[Any]):
+        class WeirdWatcher(list[Any]):
             def __call__(self, *args: Any) -> None:
                 self.called = True
 

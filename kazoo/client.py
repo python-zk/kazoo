@@ -2,27 +2,16 @@
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
-from functools import partial
 import inspect
 import logging
-from os.path import split
 import re
 import warnings
-from typing import (
-    cast,
-    overload,
-    Any,
-    Callable,
-    Deque,
-    Iterable,
-    Literal,
-    Optional,
-    Sequence,
-    Set,
-    TypedDict,
-    TYPE_CHECKING,
-)
+from collections import defaultdict, deque
+from collections.abc import Callable, Iterable, Sequence
+from functools import partial
+from os.path import split
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast, overload
+
 from typing_extensions import ParamSpec, Unpack, deprecated
 
 from kazoo.exceptions import (
@@ -31,8 +20,8 @@ from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
     KazooException,
-    NoNodeError,
     NodeExistsError,
+    NoNodeError,
     SessionExpiredError,
     WriterNotClosedException,
 )
@@ -50,12 +39,12 @@ from kazoo.protocol.serialization import (
     Create2,
     Delete,
     Exists,
+    GetACL,
     GetChildren,
     GetChildren2,
-    GetACL,
-    SetACL,
     GetData,
     Reconfig,
+    SetACL,
     SetData,
     Sync,
     Transaction,
@@ -67,25 +56,26 @@ from kazoo.protocol.states import (
     KeeperState,
     WatchedEvent,
 )
-from kazoo.retry import KazooRetry
-from kazoo.security import ACL, OPEN_ACL_UNSAFE
 
 # convenience API
 from kazoo.recipe.barrier import Barrier, DoubleBarrier
 from kazoo.recipe.counter import Counter
 from kazoo.recipe.election import Election
-from kazoo.recipe.lease import NonBlockingLease, MultiNonBlockingLease
-from kazoo.recipe.lock import Lock, ReadLock, WriteLock, Semaphore
+from kazoo.recipe.lease import MultiNonBlockingLease, NonBlockingLease
+from kazoo.recipe.lock import Lock, ReadLock, Semaphore, WriteLock
 from kazoo.recipe.partitioner import SetPartitioner
 from kazoo.recipe.party import Party, ShallowParty
-from kazoo.recipe.queue import Queue, LockingQueue
+from kazoo.recipe.queue import LockingQueue, Queue
 from kazoo.recipe.watchers import ChildrenWatch, DataWatch
+from kazoo.retry import KazooRetry
+from kazoo.security import ACL, OPEN_ACL_UNSAFE
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from kazoo.handlers.gevent import SequentialGeventHandler
     from kazoo.interfaces import Event, IAsyncResult, IHandler
     from kazoo.protocol.states import ZnodeStat
-    from kazoo.handlers.gevent import SequentialGeventHandler
 
 
 CLOSED_STATES = (
@@ -121,10 +111,10 @@ class LegacyRetryParams(TypedDict, total=False):
 
 
 # Signature for functions called by add_listener
-ListenerFunc = Callable[[KazooState], Optional[bool]]
+ListenerFunc = Callable[[KazooState], bool | None]
 
 # Signatures for get, get_children and exists watches
-WatchFunc = Callable[[WatchedEvent], Optional[bool]]
+WatchFunc = Callable[[WatchedEvent], bool | None]
 
 GenericArgs = ParamSpec("GenericArgs")
 
@@ -369,10 +359,10 @@ class KazooClient:
         self._state: KeeperState = KeeperState.CLOSED
         self.state: KazooState = KazooState.LOST
         self.state_listeners: set[ListenerFunc] = set()
-        self._child_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
+        self._child_watchers: defaultdict[str, set[WatchFunc]] = defaultdict(
             set
         )
-        self._data_watchers: defaultdict[str, Set[WatchFunc]] = defaultdict(
+        self._data_watchers: defaultdict[str, set[WatchFunc]] = defaultdict(
             set
         )
         self._reset()
@@ -551,8 +541,8 @@ class KazooClient:
 
     def _reset(self) -> None:
         """Resets a variety of client states for a new connection."""
-        self._queue: Deque[tuple[Any, IAsyncResult]] = deque()
-        self._pending: Deque[tuple[Any, IAsyncResult, int]] = deque()
+        self._queue: deque[tuple[Any, IAsyncResult]] = deque()
+        self._pending: deque[tuple[Any, IAsyncResult, int]] = deque()
 
         self._reset_watchers()
         self._reset_session()
@@ -1274,12 +1264,7 @@ class KazooClient:
             result = self._create_async_inner(
                 path,
                 value,
-                # The way acl is constructed ends up confusing mypy, which
-                # thinks that acl can be None here, even though the code
-                # above ensures that if acl is None, it gets set to
-                # OPEN_ACL_UNSAFE, so we ignore the type error here.
-                # behaves differently in python3.8 and python3.14, sigh.
-                acl,  # type: ignore[arg-type]
+                acl,
                 flags,
                 trailing=sequence,
                 include_data=include_data,

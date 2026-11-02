@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import uuid
 import threading
 import time
+import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from kazoo.exceptions import LockTimeout
-from kazoo.testing import KazooTestCase
 from kazoo.recipe.partitioner import PartitionState, SetPartitioner
-from typing import TYPE_CHECKING
+from kazoo.testing import KazooTestCase
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import Lockable
     from kazoo.client import KazooClient
+    from kazoo.interfaces import Lockable
 
 
 class SlowLockMock:

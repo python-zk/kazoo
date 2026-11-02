@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import errno
-import ssl
 import socket
+import ssl
 import time
-from kazoo.handlers import utils
-from kazoo.handlers.utils import create_tcp_connection
-
 import unittest
 from unittest.mock import patch
 
 import pytest
+
+from kazoo.handlers import utils
+from kazoo.handlers.utils import create_tcp_connection
 
 try:
     from eventlet.green import socket as green_socket

@@ -2,38 +2,31 @@
 
 from __future__ import annotations
 
-from binascii import hexlify
-from contextlib import contextmanager
 import copy
 import logging
 import random
-import select
 import socket
 import ssl
 import time
-from typing import (
-    Callable,
-    ContextManager,
-    Iterator,
-    Literal,
-    TypeVar,
-    TYPE_CHECKING,
-    cast,
-    overload,
-)
+from binascii import hexlify
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
+from typing import TYPE_CHECKING, Literal, TypeVar, cast, overload
+
 from typing_extensions import Buffer
 
 from kazoo.exceptions import (
+    EXCEPTIONS,
     AuthFailedError,
     ConnectionDropped,
-    EXCEPTIONS,
-    SessionExpiredError,
-    SessionClosedRequireSaslError,
     NoNodeError,
     SASLException,
+    SessionClosedRequireSaslError,
+    SessionExpiredError,
 )
 from kazoo.loggingsupport import BLATHER
 from kazoo.protocol.serialization import (
+    SASL,
     Auth,
     Close,
     Connect,
@@ -43,22 +36,17 @@ from kazoo.protocol.serialization import (
     Ping,
     PingInstance,
     ReplyHeader,
-    SASL,
     Transaction,
     Watch,
     int_struct,
 )
 from kazoo.protocol.states import (
+    EVENT_TYPE_MAP,
     Callback,
     KeeperState,
     WatchedEvent,
-    EVENT_TYPE_MAP,
 )
-from kazoo.retry import (
-    ForceRetryError,
-    KazooRetry,
-    RetryFailedError,
-)
+from kazoo.retry import ForceRetryError, KazooRetry, RetryFailedError
 
 if TYPE_CHECKING:
     from kazoo.client import KazooClient, WatchFunc
@@ -67,8 +55,8 @@ if TYPE_CHECKING:
 # FIXME This is NOT pretty, but we don't want to force users to have to
 # install puresasl. Can we avoid some of the type: ignore stuff?
 try:
-    import puresasl  # type: ignore[import-untyped,import-not-found]
-    import puresasl.client  # type: ignore[import-untyped,import-not-found]
+    import puresasl
+    import puresasl.client
 
     PURESASL_AVAILABLE = True
 except ImportError:
@@ -120,7 +108,7 @@ class RWPinger:
         self,
         hosts: list[tuple[str, int]],
         connection_func: Callable[[tuple[str, int]], Socket],
-        socket_handling: Callable[[], ContextManager[None]],
+        socket_handling: Callable[[], AbstractContextManager[None]],
     ):
         self.hosts = hosts
         self.connection = connection_func
@@ -224,7 +212,7 @@ class ConnectionHandler:
     def _socket_error_handling(self) -> Iterator[None]:
         try:
             yield
-        except (socket.error, select.error) as e:
+        except OSError as e:
             err = getattr(e, "strerror", e)
             raise ConnectionDropped("socket connection error: %s" % (err,))
 
@@ -667,17 +655,11 @@ class ConnectionHandler:
                 for rhost in socket.getaddrinfo(
                     host, port, 0, 0, socket.IPPROTO_TCP
                 ):
-                    # FIXME These casts seem to be unnecessary on later
-                    # versions of mypy/python
                     host_ports.append(
                         (
                             host,
-                            cast(  # type: ignore[redundant-cast]
-                                "str", rhost[4][0]
-                            ),
-                            cast(  # type: ignore[redundant-cast]
-                                "int", rhost[4][1]
-                            ),
+                            cast("str", rhost[4][0]),
+                            cast("int", rhost[4][1]),
                         )
                     )
             except socket.gaierror as e:

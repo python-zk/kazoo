@@ -4,30 +4,29 @@ from __future__ import annotations
 
 import atexit
 import logging
-
-from typing import Any, Callable, Iterable, TYPE_CHECKING, cast
-
-
-from kazoo.handlers.utils import selector_select
-from kazoo.handlers import utils
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 # FIXME This is messy.
 # We don't want to force the user to install gevent, so we need to handle the
 # case where it's not available, but there should be a cleaner we of doing this
 # than by importing all of gevent and ignoring all the import errors.
-import gevent  # type: ignore[import]
-from gevent import socket  # type: ignore[import]
-import gevent.event  # type: ignore[import]
-import gevent.queue  # type: ignore[import]
+import gevent
+import gevent.event
+import gevent.queue
+import gevent.selectors
+import gevent.thread
+from gevent import socket
+from gevent.lock import RLock, Semaphore
 
-import gevent.thread  # type: ignore[import]
-import gevent.selectors  # type: ignore[import]
-from gevent.lock import Semaphore, RLock  # type: ignore[import]
+from kazoo.handlers import utils
+from kazoo.handlers.utils import selector_select
 
 if TYPE_CHECKING:
+    from gevent import Greenlet
+
     from kazoo.interfaces import FdLike, Lockable, Socket
     from kazoo.protocol.states import Callback
-    from gevent import Greenlet
 
 _using_libevent = gevent.__version__.startswith("0.")
 

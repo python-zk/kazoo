@@ -4,15 +4,12 @@ import os
 import socket
 import tempfile
 import threading
-import time
-import uuid
 import unittest
-
-from typing import Any, TYPE_CHECKING
-from unittest.mock import Mock, MagicMock, patch
+import uuid
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import (
@@ -23,34 +20,33 @@ from kazoo.exceptions import (
     ConnectionClosedError,
     ConnectionLoss,
     InvalidACLError,
+    KazooException,
     NoAuthError,
     NoChildrenForEphemeralsError,
-    NoNodeError,
     NodeExistsError,
+    NoNodeError,
     RolledBackError,
     SessionExpiredError,
-    KazooException,
 )
-from kazoo.protocol.states import KazooState, KeeperState, WatchedEvent
 from kazoo.handlers.threading import (
-    SequentialThreadingHandler,
     KazooTimeoutError,
+    SequentialThreadingHandler,
 )
 from kazoo.protocol.connection import _CONNECTION_DROP
+from kazoo.protocol.states import KazooState, KeeperState, WatchedEvent
 from kazoo.retry import KazooRetry
 from kazoo.security import (
-    make_digest_acl_credential,
-    CREATOR_ALL_ACL,
-    make_digest_acl,
     ACL,
+    CREATOR_ALL_ACL,
     OPEN_ACL_UNSAFE,
+    make_digest_acl,
+    make_digest_acl_credential,
 )
-
 from kazoo.testing import KazooTestCase
 
 if TYPE_CHECKING:
-    from kazoo.testing.common import ManagedZooKeeper
     from kazoo.interfaces import IAsyncResult
+    from kazoo.testing.common import ManagedZooKeeper
 
 
 class TestClientTransitions(KazooTestCase):

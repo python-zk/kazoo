@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import contextlib
 import unittest
-
-from typing import Generator, Literal, TYPE_CHECKING
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 
-from kazoo.handlers.utils import create_tcp_socket
 from kazoo.handlers import utils
+from kazoo.handlers.utils import create_tcp_socket
 from kazoo.protocol import states as kazoo_states
 
 if TYPE_CHECKING:
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 try:
     from eventlet.green import socket
+
     from kazoo.handlers import eventlet as eventlet_handler
 except ImportError:
     pytestmark = pytest.mark.skip(reason="eventlet not available")
@@ -117,7 +118,7 @@ class TestEventletHandler(unittest.TestCase):
 
     def test_async_exception(self) -> None:
         def broken() -> None:
-            raise IOError("Failed")
+            raise OSError("Failed")
 
         with start_stop_one() as handler:
             r = handler.async_result()
@@ -136,7 +137,7 @@ class TestEventletHandler(unittest.TestCase):
 
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
-        except (ValueError, resource.error):
+        except (OSError, ValueError):
             self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []

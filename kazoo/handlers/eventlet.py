@@ -5,15 +5,15 @@ from __future__ import annotations
 import atexit
 import contextlib
 import logging
-
-from typing import cast, Any, Generator, TYPE_CHECKING
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Any, cast
 
 import eventlet
-from eventlet.green import socket as green_socket
-from eventlet.green import time as green_time
-from eventlet.green import threading as green_threading
-from eventlet.green import selectors as green_selectors
 from eventlet import queue as green_queue
+from eventlet.green import selectors as green_selectors
+from eventlet.green import socket as green_socket
+from eventlet.green import threading as green_threading
+from eventlet.green import time as green_time
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
@@ -107,11 +107,8 @@ class SequentialEventletHandler:
         self.completion_queue = (
             self.queue_impl()  # type: ignore[no-untyped-call]
         )
-        self._workers: list[  # type: ignore[name-defined]
-            tuple[
-                eventlet.GreenThread,
-                green_queue.LightQueue,
-            ]
+        self._workers: list[
+            tuple[eventlet.greenthread.GreenThread, green_queue.LightQueue]
         ] = []
         self._started = False
 
@@ -177,7 +174,7 @@ class SequentialEventletHandler:
         while self._workers:
             w, q = self._workers.pop()
             q.put(_STOP)  # type: ignore[no-untyped-call]
-            w.wait()
+            w.wait()  # type: ignore[no-untyped-call]
         self._started = False
         atexit.unregister(self.stop)
 
