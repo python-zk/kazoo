@@ -11,10 +11,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, overload
 
 if TYPE_CHECKING:
-    import queue
     from types import TracebackType
 
     from kazoo.protocol.states import Callback
@@ -140,6 +139,27 @@ class Threadlike(Protocol):
     def join(self, timeout: float | None = None) -> None: ...
 
 
+QueueType = TypeVar("QueueType")
+
+
+# The type suppression here seems to be an issue with mypy
+class Queuelike(Protocol[QueueType]):
+    """Protocol for something like a Queue.
+
+    This is only used by recipe/cache.py, and it feels a bit leaky.
+    """
+
+    def get(
+        self, block: bool = True, timeout: float | None = None
+    ) -> QueueType: ...
+
+    def put(
+        self, item: QueueType, block: bool = True, timeout: float | None = None
+    ) -> None: ...
+
+    def empty(self) -> bool: ...
+
+
 SpawnedFunc = Callable[..., None]
 
 
@@ -176,11 +196,12 @@ class IHandler(Protocol):
 
     """
 
-    # FIXME These should be methods but I want to avoid changing the API for
-    # now.
-    timeout_exception: type[BaseException] = None  # type: ignore[assignment]
-    sleep_func: staticmethod[[float], None] = None  # type: ignore[assignment]
-    queue_impl: type[queue.Queue[Any]] = None  # type: ignore[assignment]
+    timeout_exception: type[BaseException]
+    # FIXME - this is only used in recipes/cache.py. Is it really a good idea
+    # to expose it?
+    queue_impl: type[Queuelike[Any]]
+    queue_empty: type[BaseException]
+    sleep_func: Callable[[float], None]
 
     def start(self) -> None:
         """Start the handler, used for setting up the handler."""

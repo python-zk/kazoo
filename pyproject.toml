@@ -134,8 +134,7 @@ line-ending = "auto"
 
 [tool.pytest.ini_options]
 addopts = "-ra -v --color=yes"
-# log_cli = true
-log_cli = false
+log_cli = true
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli_format = "%(asctime)s %(levelname)s %(message)s"
 log_cli_level = "INFO"

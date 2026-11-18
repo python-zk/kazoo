@@ -39,8 +39,6 @@ class TestThreadingAsyncResult(AsyncResultCommon, unittest.TestCase):
             SequentialThreadingHandler,
             lambda handler: AsyncResult(handler),
             thread_context_factory=ThreadContext,
-            # threading.Condition,
-            # SequentialThreadingHandler.timeout_exception,
             *args,
             **kwargs,
         )

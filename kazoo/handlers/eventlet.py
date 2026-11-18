@@ -9,11 +9,11 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, cast
 
 import eventlet
+from eventlet import greenthread
 from eventlet import queue as green_queue
 from eventlet.green import selectors as green_selectors
 from eventlet.green import socket as green_socket
 from eventlet.green import threading as green_threading
-from eventlet.green import time as green_time
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
@@ -89,9 +89,10 @@ class SequentialEventletHandler(IHandler):
     """
 
     name = "sequential_eventlet_handler"
-    queue_impl = green_queue.LightQueue  # type: ignore[assignment]
+    timeout_exception = TimeoutError
+    queue_impl = green_queue.LightQueue
     queue_empty = green_queue.Empty
-    sleep_func = staticmethod(green_time.sleep)  # type: ignore[assignment, attr-defined]
+    sleep_func = staticmethod(greenthread.sleep)
 
     def __init__(self) -> None:
         """Create a :class:`SequentialEventletHandler` instance"""
@@ -102,15 +103,13 @@ class SequentialEventletHandler(IHandler):
             self.queue_impl()  # type: ignore[no-untyped-call]
         )
         self._workers: list[
-            tuple[eventlet.greenthread.GreenThread, green_queue.LightQueue]
+            tuple[greenthread.GreenThread, green_queue.LightQueue]
         ] = []
         self._started = False
 
     @property
     def running(self) -> bool:
         return self._started
-
-    timeout_exception = TimeoutError
 
     def _process_completion_queue(self) -> None:
         while True:

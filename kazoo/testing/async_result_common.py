@@ -31,7 +31,7 @@ class ThreadlikeContext(ABC):
 
 # FIXME It's not clear whether this needs all the tests to be run with and
 # without a running handler to test all the paths. The original mocks always
-# returned a truth value for `running``. 
+# returned a truth value for `running`.
 class AsyncResultCommon:
     def __init__(
         self,

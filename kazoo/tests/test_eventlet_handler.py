@@ -51,7 +51,6 @@ def start_stop_one(
         handler.stop()
 
 
-# Doesn't work with eventlet, so commented out for now.
 class TestEventletAsyncResult(AsyncResultCommon, unittest.TestCase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(

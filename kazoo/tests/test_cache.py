@@ -6,7 +6,7 @@ import sys
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock, call, patch
 
 import pytest
@@ -17,8 +17,6 @@ from kazoo.recipe.cache import TreeCache, TreeEvent, TreeNode
 from kazoo.testing import KazooTestHarness
 
 if TYPE_CHECKING:
-    from queue import Queue
-
     from kazoo.handlers.eventlet import SequentialEventletHandler
     from kazoo.handlers.gevent import SequentialGeventHandler
     from kazoo.handlers.threading import SequentialThreadingHandler
@@ -66,7 +64,7 @@ class KazooAdaptiveHandlerTestCase(KazooTestHarness):
 class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self._event_queue: Queue[TreeEvent] = self.client.handler.queue_impl()
+        self._event_queue = self.client.handler.queue_impl()
         self._error_queue = self.client.handler.queue_impl()
         self._path: str | None = None
 
@@ -110,7 +108,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
             if started:
                 if expect is not None:
                     assert event.event_type == expect
-                return event
+                return event if event is None else cast("TreeEvent", event)
             if event.event_type == since:
                 started = True
                 if expect is None:
@@ -126,7 +124,6 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
         completion_queue = getattr(self.handler, "_completion_queue", None)
         if completion_queue is not None:
-            print(completion_queue, file=sys.stderr)
             while not completion_queue.empty():
                 self.client.handler.sleep_func(0.1)
 
