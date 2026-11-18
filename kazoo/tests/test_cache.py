@@ -126,6 +126,7 @@ class KazooTreeCacheTests(KazooAdaptiveHandlerTestCase):
 
         completion_queue = getattr(self.handler, "_completion_queue", None)
         if completion_queue is not None:
+            print(completion_queue, file=sys.stderr)
             while not completion_queue.empty():
                 self.client.handler.sleep_func(0.1)
 

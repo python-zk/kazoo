@@ -178,7 +178,7 @@ class IHandler(Protocol):
 
     # FIXME These should be methods but I want to avoid changing the API for
     # now.
-    timeout_exception: type[Exception] = None  # type: ignore[assignment]
+    timeout_exception: type[BaseException] = None  # type: ignore[assignment]
     sleep_func: staticmethod[[float], None] = None  # type: ignore[assignment]
     queue_impl: type[queue.Queue[Any]] = None  # type: ignore[assignment]
 
@@ -258,9 +258,10 @@ class IHandler(Protocol):
         :param callback: A :class:`~kazoo.protocol.states.Callback`
                          object to be called.
 
-        The supplied method will be called whn an event completes.
+        The supplied method will be called when an event completes.
 
-        Note: This seems an odd place to store these.
+        This is called from utils.ASyncResult, the GeventHandler doesn't
+        support this.
         """
 
 

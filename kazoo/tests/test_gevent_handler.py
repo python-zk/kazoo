@@ -4,6 +4,7 @@ import importlib
 import socket
 import sys
 import unittest
+from typing import Any
 
 import pytest
 
@@ -12,16 +13,46 @@ from kazoo.handlers.utils import create_tcp_socket
 from kazoo.interfaces import IAsyncResult
 from kazoo.protocol.states import Callback, KazooState, ZnodeStat
 from kazoo.testing import KazooTestCase
+from kazoo.testing.async_result_common import (
+    AsyncResultCommon,
+    ThreadlikeContext,
+)
 
 if importlib.util.find_spec("gevent") is None:
     # The double test here stops complaints about imports not being at the top
     # of the file.
     pytest.importorskip("gevent", reason="gevent not available")
 else:
+    import gevent
     from gevent.event import Event
     from gevent.queue import Empty
 
     from kazoo.handlers.gevent import AsyncResult, SequentialGeventHandler
+
+
+class GeventContext(ThreadlikeContext):
+    def __enter__(self) -> None:
+        # Spawn the geventlet and then immediately sleep to hand over control
+        gevent.spawn(self._target)
+        gevent.sleep(0)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
+class TestGeventAsyncResult(AsyncResultCommon, unittest.TestCase):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(
+            SequentialGeventHandler,
+            lambda handler: AsyncResult(),
+            thread_context_factory=GeventContext,
+            *args,
+            **kwargs,
+        )
+
+    # We override this because the wait behaviour for AsyncResult is different
+    # for gevent and everything else even though IASyncResult is meant to be
+    # based on the gevent AsyncResult
+    def test_wait(self, *, is_green: bool = False) -> None:
+        super().test_wait(is_green=True)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="does not run on windows")
@@ -44,12 +75,6 @@ class TestGeventHandler(unittest.TestCase):
         h.start()
         async_handler = self._getAsync()
         assert isinstance(h.async_result(), async_handler)
-
-    def test_exception_raising(self) -> None:
-        h = self._makeOne()
-
-        with pytest.raises(h.timeout_exception):
-            raise h.timeout_exception("This is a timeout")
 
     def test_exception_in_queue(self) -> None:
         h = self._makeOne()

@@ -3,12 +3,47 @@ from __future__ import annotations
 import socket
 import threading
 import unittest
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from kazoo.handlers.threading import AsyncResult, SequentialThreadingHandler
 from kazoo.handlers.utils import create_tcp_socket
+from kazoo.testing.async_result_common import (
+    AsyncResultCommon,
+    ThreadlikeContext,
+)
+
+
+class ThreadContext(ThreadlikeContext):
+    def __init__(self, target: Callable[[], None]):
+        super().__init__(target)
+        self._thread = threading.Thread(target=self._target)
+
+    def __enter__(self) -> None:
+        self._thread.start()
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: object | None,
+    ) -> None:
+        self._thread.join()
+
+
+class TestThreadingAsyncResult(AsyncResultCommon, unittest.TestCase):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(
+            SequentialThreadingHandler,
+            lambda handler: AsyncResult(handler),
+            thread_context_factory=ThreadContext,
+            # threading.Condition,
+            # SequentialThreadingHandler.timeout_exception,
+            *args,
+            **kwargs,
+        )
 
 
 class TestThreadingHandler(unittest.TestCase):

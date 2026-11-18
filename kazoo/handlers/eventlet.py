@@ -20,13 +20,7 @@ from kazoo.handlers.utils import selector_select
 from kazoo.interfaces import IHandler, SpawnedFunc
 
 if TYPE_CHECKING:
-    from kazoo.interfaces import (
-        Event,
-        FdLike,
-        Lockable,
-        ReentrantLock,
-        Socket,
-    )
+    from kazoo.interfaces import Event, FdLike, Lockable, ReentrantLock, Socket
     from kazoo.protocol.states import Callback
 
 
