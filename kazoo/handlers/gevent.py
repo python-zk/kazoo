@@ -70,25 +70,6 @@ class SequentialGeventHandler(IHandler):
     def __init__(self) -> None:
         """Create a :class:`SequentialGeventHandler` instance"""
         self._callback_queue: CallbackQueue = self.queue_impl()
-
-        def FakeQueue() -> CallbackQueue:
-            """Raise NotImplementedError() on put().
-
-            This is here because generally AyncResult is created with an
-            IHandler, but we don't actually return a kazoo AsyncResult, we
-            return a gevent one which behaves a little differently underneath.
-            """
-
-            class _FakeQueue:
-                def put(self, item: Any) -> None:
-                    raise NotImplementedError(
-                        "FakeQueue does not support put()"
-                    )
-
-            return cast(CallbackQueue, _FakeQueue())
-
-        self._completion_queue = FakeQueue()
-
         self._running = False
         self._async = None
         self._state_change = Semaphore()
@@ -98,15 +79,22 @@ class SequentialGeventHandler(IHandler):
     def running(self) -> bool:
         return self._running
 
-    class timeout_exception(gevent.Timeout):
+    class timeout_exception(gevent.Timeout, BaseException):
         """Exception raised when a timeout occurs.
 
         Passing seconds=None to the constructor will create a timeout that
         never expires.
+
+        FIXME:
+        1. AsyncResult get()/get_nowait() will NOT raise this exception if the
+           result is not ready. This could cause confusion when handling
+           timeouts.
+        2. This stringifies as nothing at all but is printed as a string in
+           some places.
         """
 
-        def __init__(self, msg: Any):
-            super().__init__(exception=msg)
+        def __init__(self, msg: str | None = None) -> None:
+            super().__init__()
 
     def _create_greenlet_worker(self, queue: CallbackQueue) -> Worker:
         def greenlet_worker() -> None:

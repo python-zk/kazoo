@@ -70,7 +70,7 @@ class AsyncResult(utils.AsyncResult):
     """A one-time event that stores a value or an exception"""
 
     def __init__(self, handler: Any) -> None:
-        super().__init__(handler, threading.Condition, KazooTimeoutError)
+        super().__init__(handler, threading.Condition)
 
 
 class SequentialThreadingHandler(IHandler):

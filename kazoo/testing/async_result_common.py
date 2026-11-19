@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import contextlib
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Generator
 from types import TracebackType
-from typing import Any, Callable, Generator
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
 
-from kazoo.interfaces import IAsyncResult, IHandler
 from kazoo.handlers.utils import capture_exceptions, wrap
+from kazoo.interfaces import IAsyncResult, IHandler
 
 
 class ThreadlikeContext(ABC):

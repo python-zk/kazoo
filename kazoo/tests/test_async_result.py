@@ -97,9 +97,7 @@ class TestAsyncResult(AsyncResultCommon, unittest.TestCase):
 
         super().__init__(
             handler_factory,
-            lambda handler: AsyncResult(
-                handler, condition_factory, timeout_factory
-            ),
+            lambda handler: AsyncResult(handler, condition_factory),
             thread_context_factory=ThreadContext,
             *args,
             **kwargs,

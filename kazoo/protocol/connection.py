@@ -688,7 +688,6 @@ class ConnectionHandler:
         self, host: str, hostip: str, port: int, retry: KazooRetry
     ) -> object:
         client = self.client
-        KazooTimeoutError = self.handler.timeout_exception
 
         self._socket = None
 
@@ -758,7 +757,7 @@ class ConnectionHandler:
             self.logger.info("Closing connection to %s:%s", host, port)
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
-        except (ConnectionDropped, KazooTimeoutError) as e:
+        except (ConnectionDropped, self.handler.timeout_exception) as e:
             if isinstance(e, ConnectionDropped):
                 self.logger.warning("Connection dropped: %s", e)
             else:

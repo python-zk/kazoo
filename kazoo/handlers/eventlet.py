@@ -55,7 +55,6 @@ class AsyncResult(utils.AsyncResult):
         super().__init__(
             handler,
             green_threading.Condition,  # type: ignore[attr-defined]
-            TimeoutError,
         )
 
 

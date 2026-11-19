@@ -36,17 +36,13 @@ class AsyncResult(IAsyncResult):
     """A one-time event that stores a value or an exception"""
 
     def __init__(
-        self,
-        handler: IHandler,
-        condition_factory: Callable[[], Any],
-        timeout_factory: Callable[[], Any],
+        self, handler: IHandler, condition_factory: Callable[[], Any]
     ) -> None:
         self._handler = handler
         self._exception: Exception | None = None
         self._ready = False
         self._condition = condition_factory()
         self._callbacks: list[CallbackFunc] = []
-        self._timeout_factory = timeout_factory
         self.value: Any = None
 
     def ready(self) -> bool:
@@ -99,7 +95,7 @@ class AsyncResult(IAsyncResult):
                     raise self._exception
 
             # if we get to this point we timeout
-            raise self._timeout_factory()
+            raise self._handler.timeout_exception()
 
     def get_nowait(self) -> Any:
         """Return the value or raise the exception without blocking.
