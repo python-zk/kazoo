@@ -41,6 +41,7 @@ from kazoo.protocol.serialization import (
     int_struct,
 )
 from kazoo.protocol.states import (
+    CLOSED_STATES,
     EVENT_TYPE_MAP,
     Callback,
     KeeperState,
@@ -643,7 +644,8 @@ class ConnectionHandler:
             )
         finally:
             self.connection_stopped.set()
-            self.client._session_callback(KeeperState.CLOSED)
+            if self.client._state not in CLOSED_STATES:
+                self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
@@ -781,6 +783,7 @@ class ConnectionHandler:
         except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionClosedRequireSaslError as err:
@@ -788,6 +791,7 @@ class ConnectionHandler:
             self.logger.warning(
                 "AUTH_FAILED closing (server requires SASL auth): %s", err
             )
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -887,13 +891,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -906,6 +903,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 

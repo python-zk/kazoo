@@ -29,6 +29,7 @@ from kazoo.exceptions import (
     KazooException,
     LockTimeout,
     NoNodeError,
+    SessionExpiredError,
 )
 from kazoo.protocol.states import KazooState, WatchedEvent
 from kazoo.retry import ForceRetryError, KazooRetry, RetryFailedError
@@ -220,13 +221,13 @@ class Lock:
             except KazooException:
                 # if we did ultimately fail, attempt to clean up
                 if not already_acquired:
-                    self._best_effort_cleanup()
+                    self._cleanup()
                     self.cancelled = False
                 raise
             if gotten:
                 self.is_acquired = gotten
             if not gotten and not already_acquired:
-                self._best_effort_cleanup()
+                self._cleanup()
             return gotten
         finally:
             self._acquire_method_lock.release()
@@ -350,13 +351,20 @@ class Lock:
     def _delete_node(self, node: str) -> None:
         self.client.delete(self.path + "/" + node)
 
-    def _best_effort_cleanup(self) -> None:
+    def _cleanup(self) -> None:
+        self._retry(
+            self._inner_cleanup,
+        )
+
+    def _inner_cleanup(self) -> None:
         try:
             node = self.node or self._find_node()
             if node:
                 self._delete_node(node)
-        except KazooException:  # pragma: nocover
+        except (NoNodeError, SessionExpiredError):  # pragma: nocover
             pass
+
+    _best_effort_cleanup = _cleanup
 
     def release(self) -> bool:
         """Release the lock immediately."""
@@ -636,7 +644,7 @@ class Semaphore:
             )
         except KazooException:
             # if we did ultimately fail, attempt to clean up
-            self._best_effort_cleanup()
+            self._cleanup()
             self.cancelled = False
             raise
 
@@ -734,11 +742,17 @@ class Semaphore:
             return True
         return None
 
-    def _best_effort_cleanup(self) -> None:
-        try:
-            self.client.delete(self.create_path)
-        except KazooException:  # pragma: nocover
-            pass
+    def _cleanup(self) -> None:
+        self.client.retry(self._inner_cleanup)
+
+    def _inner_cleanup(self) -> None:
+        if self.create_path:
+            try:
+                self.client.delete(self.create_path)
+            except (NoNodeError, SessionExpiredError):  # pragma: nocover
+                pass
+
+    _best_effort_cleanup = _cleanup
 
     def release(self) -> bool:
         """Release the lease immediately."""
