@@ -52,8 +52,7 @@ that you pass in the appropriate handler, the default handler is
 Asynchronous Callbacks
 ======================
 
-All kazoo `_async` methods except for
-:meth:`~kazoo.client.KazooClient.start_async` return an
+All kazoo `_async` methods return an
 :class:`~kazoo.interfaces.IAsyncResult` instance. These instances allow
 you to see when a result is ready, or chain one or more callback
 functions to the result that will be called when it's ready.
