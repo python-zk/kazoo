@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-
 from typing import Any
 
 from kazoo.security import ACL, Permissions

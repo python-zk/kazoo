@@ -3,12 +3,12 @@ from __future__ import annotations
 import struct
 import unittest
 
+from unittest_parametrize import ParametrizedTestCase, param, parametrize
+
 from kazoo.exceptions import ZookeeperError
 from kazoo.protocol import serialization
 from kazoo.protocol.states import ZnodeStat
 from kazoo.security import ACL, Id
-
-from unittest_parametrize import ParametrizedTestCase, parametrize, param
 
 _int_struct = struct.Struct("!i")
 _int_int_struct = struct.Struct("!ii")

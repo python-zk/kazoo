@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Callable, Type
+from collections.abc import Callable
 
 
 class KazooException(Exception):
@@ -54,19 +54,19 @@ class SASLException(KazooException):
     """
 
 
-def _invalid_error_code() -> Type[ZookeeperError]:
+def _invalid_error_code() -> type[ZookeeperError]:
     raise RuntimeError("Invalid error code")
 
 
-EXCEPTIONS: defaultdict[int, Type[ZookeeperError]] = defaultdict(
+EXCEPTIONS: defaultdict[int, type[ZookeeperError]] = defaultdict(
     _invalid_error_code
 )
 
 
 def _zookeeper_exception(
     code: int,
-) -> Callable[[Type[ZookeeperError]], Type[ZookeeperError]]:
-    def decorator(klass: Type[ZookeeperError]) -> Type[ZookeeperError]:
+) -> Callable[[type[ZookeeperError]], type[ZookeeperError]]:
+    def decorator(klass: type[ZookeeperError]) -> type[ZookeeperError]:
         EXCEPTIONS[code] = klass
         # Unfortunately there is currently no good of doing the assignment here
         # in a way that type checkers would allow. It's a known problem (see

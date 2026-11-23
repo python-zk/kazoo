@@ -6,11 +6,8 @@ import time
 
 import pytest
 
+from kazoo.exceptions import AuthFailedError, NoAuthError
 from kazoo.testing import KazooTestHarness
-from kazoo.exceptions import (
-    AuthFailedError,
-    NoAuthError,
-)
 
 
 class TestLegacySASLDigestAuthentication(KazooTestHarness):
@@ -112,12 +109,13 @@ class TestSASLDigestAuthentication(KazooTestHarness):
 class TestSASLGSSAPIAuthentication(KazooTestHarness):
     def setUp(self) -> None:
         # puresasl isn't available under windows, so we can't do this test.
+        # ruff: noqa: F401
         try:
             import puresasl
         except ImportError:
             pytest.skip("PureSASL not available.")
         try:
-            import kerberos  # type: ignore[import-not-found,import-untyped]
+            import kerberos  # type: ignore[import-not-found]
         except ImportError:
             pytest.skip("Kerberos support not available.")
         if not os.environ.get("KRB5_TEST_ENV"):

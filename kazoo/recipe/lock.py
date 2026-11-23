@@ -20,12 +20,9 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from typing import (
-    Iterable,
-    Literal,
-    Pattern,
-    TYPE_CHECKING,
-)
+from collections.abc import Iterable
+from re import Pattern
+from typing import TYPE_CHECKING, Literal
 
 from kazoo.exceptions import (
     CancelledError,
@@ -34,14 +31,11 @@ from kazoo.exceptions import (
     NoNodeError,
 )
 from kazoo.protocol.states import KazooState, WatchedEvent
-from kazoo.retry import (
-    ForceRetryError,
-    KazooRetry,
-    RetryFailedError,
-)
+from kazoo.retry import ForceRetryError, KazooRetry, RetryFailedError
 
 if TYPE_CHECKING:
     from types import TracebackType
+
     from kazoo.client import KazooClient
 
 

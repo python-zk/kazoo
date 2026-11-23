@@ -10,9 +10,9 @@ from __future__ import annotations
 import os
 import socket
 import uuid
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
-from kazoo.exceptions import KazooException, NoNodeError, NodeExistsError
+from kazoo.exceptions import KazooException, NodeExistsError, NoNodeError
 from kazoo.protocol.states import EventType, WatchedEvent
 
 if TYPE_CHECKING:

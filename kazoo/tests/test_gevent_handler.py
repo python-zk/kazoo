@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import unittest
 import sys
+import unittest
+from typing import Any
 
-from typing import Any, Type
 import pytest
 
 from kazoo.exceptions import NoNodeError
@@ -13,9 +13,10 @@ from kazoo.testing import KazooTestCase
 
 try:
     import gevent  # noqa: F401
+    from gevent import socket
     from gevent.event import Event
     from gevent.queue import Empty
-    from gevent import socket
+
     from kazoo.handlers.gevent import AsyncResult, SequentialGeventHandler
 except ImportError:
     pytestmark = pytest.mark.skip(reason="gevent not available")
@@ -26,10 +27,10 @@ class TestGeventHandler(unittest.TestCase):
     def _makeOne(self, *args: Any) -> SequentialGeventHandler:
         return SequentialGeventHandler(*args)
 
-    def _getAsync(self) -> Type[AsyncResult[Any]]:
+    def _getAsync(self) -> type[AsyncResult[Any]]:
         return AsyncResult
 
-    def _getEvent(self) -> Type[Event]:
+    def _getEvent(self) -> type[Event]:
         return Event
 
     def test_proper_threading(self) -> None:
@@ -84,7 +85,7 @@ class TestBasicGeventClient(KazooTestCase):
     def _makeOne(self, *args: Any) -> SequentialGeventHandler:
         return SequentialGeventHandler(*args)
 
-    def _getEvent(self) -> Type[Event]:
+    def _getEvent(self) -> type[Event]:
         return Event
 
     def test_start(self) -> None:
@@ -142,7 +143,7 @@ class TestBasicGeventClient(KazooTestCase):
             self.skipTest("resource module unavailable on this platform")
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
-        except (ValueError, resource.error):
+        except (OSError, ValueError):
             self.skipTest("couldn't raise fd limit high enough")
         fd = 0
         socks = []

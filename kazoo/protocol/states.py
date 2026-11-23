@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Any, Callable, Iterable, NamedTuple
+from typing import Any, NamedTuple
 
 
 # This is a (str, Enum) for backwards compatibility.

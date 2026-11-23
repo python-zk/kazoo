@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import uuid
 import sys
 import threading
+import uuid
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -11,9 +11,11 @@ from kazoo.testing import KazooTestCase
 from kazoo.tests.util import wait
 
 if TYPE_CHECKING:
-    from kazoo.recipe.election import Election
     from types import TracebackType
+
     from _typeshed import OptExcInfo
+
+    from kazoo.recipe.election import Election
 
 
 class UniqueError(Exception):

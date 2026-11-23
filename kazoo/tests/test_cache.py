@@ -4,20 +4,21 @@ import gc
 import importlib
 import sys
 import uuid
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from unittest.mock import Mock, call, patch
 
-from unittest.mock import patch, call, Mock
 import pytest
 from objgraph import count as count_refs_by_type
 
-from kazoo.testing import KazooTestHarness
 from kazoo.exceptions import KazooException
-from kazoo.recipe.cache import TreeCache, TreeNode, TreeEvent
+from kazoo.recipe.cache import TreeCache, TreeEvent, TreeNode
+from kazoo.testing import KazooTestHarness
 
 if TYPE_CHECKING:
     from queue import Queue
-    from kazoo.handlers.gevent import SequentialGeventHandler
+
     from kazoo.handlers.eventlet import SequentialEventletHandler
+    from kazoo.handlers.gevent import SequentialGeventHandler
     from kazoo.handlers.threading import SequentialThreadingHandler
 
 

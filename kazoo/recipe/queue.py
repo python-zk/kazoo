@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from kazoo.exceptions import NoNodeError, NodeExistsError
+from kazoo.exceptions import NodeExistsError, NoNodeError
 from kazoo.protocol.states import EventType, WatchedEvent
 from kazoo.retry import ForceRetryError
 

@@ -3,17 +3,15 @@ from __future__ import annotations
 import collections
 import threading
 import unittest
-from unittest.mock import MagicMock
 import uuid
-
-from typing import Any, Callable, Deque, TYPE_CHECKING
+from collections.abc import Callable
 from threading import Thread
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 
 import pytest
 
-from kazoo.exceptions import CancelledError
-from kazoo.exceptions import LockTimeout
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import CancelledError, LockTimeout, NoNodeError
 from kazoo.recipe.lock import Lock, Semaphore
 from kazoo.testing import KazooTestCase
 from kazoo.tests import util as test_util
@@ -27,7 +25,7 @@ class SleepBarrier:
 
     def __init__(self, wait_for: int, sleep_func: Callable[..., None]):
         self._wait_for = wait_for
-        self._arrived: Deque[Thread] = collections.deque()
+        self._arrived: collections.deque[Thread] = collections.deque()
         self._sleep_func = sleep_func
 
     def __enter__(self) -> SleepBarrier:
@@ -335,7 +333,7 @@ class KazooLockTests(KazooTestCase):
 
     def test_lock_many_threads_no_block(self) -> None:
         lock = self.client.Lock(self.lockpath, "one")
-        attempts: Deque[int] = collections.deque()
+        attempts: collections.deque[int] = collections.deque()
 
         def _acquire() -> None:
             attempts.append(int(lock.acquire(blocking=False)))
@@ -355,8 +353,8 @@ class KazooLockTests(KazooTestCase):
     def test_lock_many_threads(self) -> None:
         sleep_func = self.client.handler.sleep_func
         lock = self.client.Lock(self.lockpath, "one")
-        acquires: Deque[int] = collections.deque()
-        differences: Deque[int] = collections.deque()
+        acquires: collections.deque[int] = collections.deque()
+        differences: collections.deque[int] = collections.deque()
         barrier = SleepBarrier(self.thread_count, sleep_func)
 
         def _acquire() -> None:

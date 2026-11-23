@@ -10,19 +10,13 @@
 
 from __future__ import annotations
 
-
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Protocol,
-    Union,
-    TYPE_CHECKING,
-)
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from types import TracebackType
     import queue
+    from types import TracebackType
+
     from kazoo.protocol.states import Callback
 
 # public API
@@ -34,7 +28,7 @@ class HasFileNo(Protocol):
     def fileno(self) -> int: ...
 
 
-FdLike = Union[int, HasFileNo]
+FdLike = int | HasFileNo
 
 
 class Socket(HasFileNo, Protocol):
@@ -70,7 +64,7 @@ class Socket(HasFileNo, Protocol):
 class Lockable(Protocol):
     """This is what threading.Lock implements.
 
-    In python 3.9+ it's available natively. Though given it has some
+    In python 3.10+ it's available natively. Though given it has some
     very odd typing, I wouldn't put money on it.
     """
 
