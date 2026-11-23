@@ -1,0 +1,145 @@
+# Feature overlay: capture
+#
+# Layers the network-capture capability onto the ensemble stack whenever the
+# `capture` axis value is active.
+#
+#   * capture sidecars (build ./dockerfiles/capture) -> one tshark process PER
+#     ensemble member (`zoo1-capture`/`zoo2-capture`/`zoo3-capture`), each
+#     joined into its member's network namespace via
+#     `network_mode: service:zooN`. Each captures full-length frames (-s 0) of
+#     all client-port traffic (clear 2181, secure 2281) into a uniquely-named
+#     per-run file under ${KAZOO_TESTING_ZK_WORK_DIR}/captures/; the bind mount survives
+#     `docker compose down --volumes`.
+#
+# ARCHITECTURE NOTE: why the sidecar lives in the member's netns:
+#
+#   * One sidecar per member joins the member's netns and taps the member's
+#     own `eth0` NON-promiscuously (-p), so its capture is exactly the traffic
+#     reaching the ZooKeeper JVM in that namespace — on BOTH Docker Desktop
+#     (macOS/Windows) and native Linux — with no bridge-mirroring dependency.
+#     A host-netns tap would observe traffic for all three members at once
+#     and tie the capture to the host namespace, and a bridge-side promiscuous
+#     tap is unreliable on Docker Desktop's userspace bridge (gvisor-tap),
+#     which never mirrors other containers' unicast frames onto a peer's veth.
+#   * The network-holder split (docker-compose.base.yml header) makes the
+#     deterministic per-member tap possible: each `zooN-capture` joins the
+#     member's netns. Because the holder owns the netns, a member restart
+#     (`docker compose stop zooN-service`) never kills the sidecar's tap: the
+#     capture continues across the member's downtime.
+#   * `-p` (no promiscuous mode) keeps the sidecar's privileges minimal; the
+#     capture filter (client ports only, no quorum ports) keeps the artifact
+#     scoped to client traffic.
+#
+# NOTE: never set SERVER_JVMFLAGS here — compose merges environment maps
+# wholesale per key and would silently override the base interpolation. The
+# -javaagent flag is injected only through the base file's
+# ${KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS} slot.
+#
+# NOTE: volumes/ports are plain lists — docker-compose concatenates them with
+# the base file's lists across files, so no anchor merge is needed.
+#
+# Each capture service's `command:` is a flags-only line whose FIRST token is
+# the member name. The Dockerfile's ENTRYPOINT is the capture-entrypoint.sh
+# wrapper, which consumes that member name for the output filename and appends
+# `-w`; compose appends `command` to the entrypoint, so a `tshark` prefix here
+# would double-execute the binary. Do NOT specify `-w` in command.
+#
+# On the tls flavor this overlay additionally provisions the JSSE keylog
+# agent: the `tls-secrets-agent` sidecar downloads the pinned,
+# checksum-verified `extract-tls-secrets` jar into ${KAZOO_TESTING_ZK_WORK_DIR}/agent and
+# signals readiness with a `.ready` healthcheck. The zoo services depend on
+# that healthcheck and mount the jar read-only at /agent/extract-tls-secrets.jar,
+# which the base file's ${KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS} -javaagent: flag points at.
+# The agent jar is present and healthy before any JVM starts, so a
+# `tls`+`capture` run never launches a JVM with a missing `-javaagent:` jar.
+
+services:
+  # JSSE keylog agent provisioner: downloads the pinned jar at
+  # build time (dockerfiles/tls-secrets-agent) and installs it into the shared
+  # ${KAZOO_TESTING_ZK_WORK_DIR}/agent mount. The zoo services depend on this service's
+  # healthcheck, so the jar always exists before any JVM starts. Harmless on
+  # non-tls runs: ${KAZOO_TESTING_ZK_CAPTURE_JVMFLAGS} is empty there, so the jar is simply
+  # mounted but never attached.
+  tls-secrets-agent:
+    build: ./dockerfiles/tls-secrets-agent
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/agent:/agent
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /agent/.ready"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  zoo1-service:
+    depends_on:
+      tls-secrets-agent:
+        condition: service_healthy
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/agent/extract-tls-secrets.jar:/agent/extract-tls-secrets.jar:ro
+
+  zoo2-service:
+    depends_on:
+      tls-secrets-agent:
+        condition: service_healthy
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/agent/extract-tls-secrets.jar:/agent/extract-tls-secrets.jar:ro
+
+  zoo3-service:
+    depends_on:
+      tls-secrets-agent:
+        condition: service_healthy
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/agent/extract-tls-secrets.jar:/agent/extract-tls-secrets.jar:ro
+
+  zoo1-capture:
+    build: ./dockerfiles/capture
+    # Join member 1's network namespace: taps the interface the ZK JVM listens
+    # on (see ARCHITECTURE NOTE above).
+    network_mode: service:zoo1
+    depends_on:
+      zoo1:
+        condition: service_started
+    # tshark/dumpcap need raw + interface privileges even in the member netns
+    #
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    # Full-length frames (-s 0) of all client-port traffic — clear 2181 and
+    # secure 2281. Quorum ports (2888/3888) are not captured.
+    # First token `zoo1` is the member name for the output filename.
+    command: >
+      zoo1 -i eth0 -p -s 0
+      -f "tcp port 2181 or tcp port 2281"
+    volumes:
+      # Bind mount: survives `docker compose down --volumes`.
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/captures:/captures
+
+  zoo2-capture:
+    build: ./dockerfiles/capture
+    network_mode: service:zoo2
+    depends_on:
+      zoo2:
+        condition: service_started
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    command: >
+      zoo2 -i eth0 -p -s 0
+      -f "tcp port 2181 or tcp port 2281"
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/captures:/captures
+
+  zoo3-capture:
+    build: ./dockerfiles/capture
+    network_mode: service:zoo3
+    depends_on:
+      zoo3:
+        condition: service_started
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    command: >
+      zoo3 -i eth0 -p -s 0
+      -f "tcp port 2181 or tcp port 2281"
+    volumes:
+      - ${KAZOO_TESTING_ZK_WORK_DIR}/captures:/captures

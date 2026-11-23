@@ -41,6 +41,7 @@ from kazoo.protocol.serialization import (
     int_struct,
 )
 from kazoo.protocol.states import (
+    CLOSED_STATES,
     EVENT_TYPE_MAP,
     Callback,
     KeeperState,
@@ -93,71 +94,77 @@ def buffer(obj: Buffer, offset: int = 0) -> memoryview:
 class RWPinger:
     """A Read/Write Server Pinger Iterable
 
-    This object is initialized with the hosts iterator object and the
-    socket creation function. Anytime `next` is called on its iterator
-    it yields either False, or a host, port tuple if it found a r/w
-    capable Zookeeper node.
+    This object is initialized with resolved ``(host, hostip, port)``
+    tuples and a socket creation function. Anytime ``next`` is called on
+    its iterator it yields either ``False``, or a ``(host, hostip, port)``
+    tuple if it found a r/w capable Zookeeper node.
 
     After the first run-through of hosts, an exponential back-off delay
     is added before the next run. This delay is tracked internally and
-    the iterator will yield False if called too soon.
+    the iterator will yield ``False`` if called too soon.
 
     """
 
     def __init__(
         self,
-        hosts: list[tuple[str, int]],
-        connection_func: Callable[[tuple[str, int]], Socket],
+        hosts: list[tuple[str, str, int]],
+        connection_func: Callable[[str, str, int, float | None], Socket],
         socket_handling: Callable[[], AbstractContextManager[None]],
+        timeout: float = 1.0,
+        logger: logging.Logger | None = None,
     ):
         self.hosts = hosts
         self.connection = connection_func
         self.last_attempt: float | None = None
         self.socket_handling = socket_handling
+        self.timeout = timeout
+        self.logger = logger or log
 
-    def __iter__(self) -> Iterator[tuple[str, int] | Literal[False] | None]:
-        if not self.last_attempt:
-            self.last_attempt = time.monotonic()
+    def __iter__(
+        self,
+    ) -> Iterator[tuple[str, str, int] | Literal[False]]:
         delay = 0.5
         while True:
-            yield self._next_server(delay)
+            if self.last_attempt is not None:
+                jitter = random.randint(0, 100) / 100.0
+                while time.monotonic() < self.last_attempt + delay + jitter:
+                    # Skip rw ping checks if its too soon
+                    yield False
+                delay = min(delay * 2, 60.0)
+            for idx, (host, hostip, port) in enumerate(self.hosts):
+                self.logger.debug(
+                    "Pinging server for r/w: %s(%s):%s",
+                    host,
+                    hostip,
+                    port,
+                )
+                self.last_attempt = time.monotonic()
+                rw_host: tuple[str, str, int] | None = None
+                try:
+                    with self.socket_handling():
+                        sock = self.connection(
+                            host, hostip, port, self.timeout
+                        )
+                        try:
+                            sock.settimeout(self.timeout)
+                            sock.sendall(b"isro")
+                            result = sock.recv(8192)
+                        finally:
+                            sock.close()
+                        if result == b"rw":
+                            rw_host = (host, hostip, port)
+                except ConnectionDropped:
+                    pass
 
-    def _next_server(
-        self, delay: float
-    ) -> tuple[str, int] | Literal[False] | None:
-        jitter = random.randint(0, 100) / 100.0
-        while (
-            time.monotonic() < self.last_attempt + delay + jitter  # type: ignore[operator]
-        ):
-            # Skip rw ping checks if its too soon
-            return False
-        for host, port in self.hosts:
-            log.debug("Pinging server for r/w: %s:%s", host, port)
+                if rw_host is not None:
+                    delay = 0.5
+                    yield rw_host
+                elif idx < len(self.hosts) - 1:
+                    # Probe at most one endpoint per heartbeat tick.
+                    yield False
+            # No RW server found in this pass; retry after back-off.
             self.last_attempt = time.monotonic()
-            try:
-                with self.socket_handling():
-                    sock = self.connection((host, port))
-                    sock.sendall(b"isro")
-                    result = sock.recv(8192)
-                    sock.close()
-                    if result == b"rw":
-                        return (host, port)
-                    else:
-                        return False
-            except ConnectionDropped:
-                return False
-
-            # NOTE: This does actually look like it's unreachable but I don't
-            # want to alter the code any more than necessary for the first
-            # pass.
-            # The loop is basically a sleep with jitter that can be
-            # Add some jitter between host pings
-            while (  # type: ignore[unreachable]
-                time.monotonic() < self.last_attempt + jitter
-            ):
-                return False
-        delay *= 2  # And while not unreachable, this is pointless
-        return None
+            yield False
 
 
 class RWServerAvailable(Exception):
@@ -194,9 +201,10 @@ class ConnectionHandler:
 
         self._socket: Socket | None = None
         self._xid: int | None = None
-        self._rw_server: tuple[str, int] | None = None
+        self._host_ports: list[tuple[str, str, int]] = []
+        self._rw_server: tuple[str, str, int] | None = None
         self._ro_mode: (
-            Iterator[Literal[False] | tuple[str, int] | None]
+            Iterator[Literal[False] | tuple[str, str, int]]
             | Literal[False]
             | None
         ) = False
@@ -251,13 +259,36 @@ class ConnectionHandler:
         if rs is not None:
             rs.close()
 
+    def _open_socket(
+        self,
+        host: str,
+        hostip: str,
+        port: int,
+        timeout: float | None,
+    ) -> Socket:
+        client = self.client
+        return self.handler.create_connection(
+            address=(hostip, port),
+            hostname=host,
+            timeout=timeout,
+            use_ssl=client.use_ssl,
+            keyfile=client.keyfile,
+            certfile=client.certfile,
+            ca=client.ca,
+            keyfile_password=client.keyfile_password,
+            verify_certs=client.verify_certs,
+            check_hostname=client.check_hostname,
+        )
+
     def _server_pinger(self) -> RWPinger:
         """Returns a server pinger iterable, that will ping the next
         server in the list, and apply a back-off between attempts."""
         return RWPinger(
-            self.client.hosts,
-            self.handler.create_connection,
+            list(self._host_ports),
+            self._open_socket,
             self._socket_error_handling,
+            timeout=min(self.client._session_timeout / 3000.0, 1.0),
+            logger=self.logger,
         )
 
     def _read_header(
@@ -643,7 +674,8 @@ class ConnectionHandler:
             )
         finally:
             self.connection_stopped.set()
-            self.client._session_callback(KeeperState.CLOSED)
+            if self.client._state not in CLOSED_STATES:
+                self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
@@ -673,7 +705,7 @@ class ConnectionHandler:
     def _connect_loop(self, retry: KazooRetry) -> object:
         # Iterate through the hosts a full cycle before starting over
         status = None
-        host_ports = self._expand_client_hosts()
+        host_ports = self._host_ports = self._expand_client_hosts()
 
         # Check for an empty hostlist, indicating none resolved
         if len(host_ports) == 0:
@@ -706,11 +738,15 @@ class ConnectionHandler:
 
         # Were we given a r/w server? If so, use that instead
         if self._rw_server:
-            self.logger.log(
-                BLATHER, "Found r/w server to use, %s:%s", host, port
-            )
-            host, port = self._rw_server
+            host, hostip, port = self._rw_server
             self._rw_server = None
+            self.logger.log(
+                BLATHER,
+                "Found r/w server to use, %s(%s):%s",
+                host,
+                hostip,
+                port,
+            )
 
         if client._state != KeeperState.CONNECTING:
             client._session_callback(KeeperState.CONNECTING)
@@ -767,7 +803,9 @@ class ConnectionHandler:
                     if time.monotonic() >= deadline:
                         self._send_ping(connect_timeout)
                         last_send = time.monotonic()
-            self.logger.info("Closing connection to %s:%s", host, port)
+            self.logger.info(
+                "Closing connection to %s(%s):%s", host, hostip, port
+            )
             client._session_callback(KeeperState.CLOSED)
             return STOP_CONNECTING
         except (ConnectionDropped, KazooTimeoutError) as e:
@@ -781,6 +819,7 @@ class ConnectionHandler:
         except (AuthFailedError, SASLException) as err:
             retry.reset()
             self.logger.warning("AUTH_FAILED closing: %s", err)
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionClosedRequireSaslError as err:
@@ -788,6 +827,7 @@ class ConnectionHandler:
             self.logger.warning(
                 "AUTH_FAILED closing (server requires SASL auth): %s", err
             )
+            self.client._auth_error = err
             client._session_callback(KeeperState.AUTH_FAILED)
             return STOP_CONNECTING
         except SessionExpiredError:
@@ -832,17 +872,8 @@ class ConnectionHandler:
         )
 
         with self._socket_error_handling():
-            self._socket = self.handler.create_connection(
-                address=(hostip, port),
-                hostname=host,
-                timeout=client._session_timeout / 1000.0,
-                use_ssl=self.client.use_ssl,
-                keyfile=self.client.keyfile,
-                certfile=self.client.certfile,
-                ca=self.client.ca,
-                keyfile_password=self.client.keyfile_password,
-                verify_certs=self.client.verify_certs,
-                check_hostname=self.client.check_hostname,
+            self._socket = self._open_socket(
+                host, hostip, port, client._session_timeout / 1000.0
             )
 
         self._socket.setblocking(0)  # type: ignore[arg-type]
@@ -887,13 +918,6 @@ class ConnectionHandler:
             read_timeout,
         )
 
-        if connect_result.read_only:
-            client._session_callback(KeeperState.CONNECTED_RO)
-            self._ro_mode = iter(self._server_pinger())
-        else:
-            client._session_callback(KeeperState.CONNECTED)
-            self._ro_mode = None
-
         if self.sasl_options is not None:
             self._authenticate_with_sasl(host, connect_timeout / 1000.0)
 
@@ -906,6 +930,13 @@ class ConnectionHandler:
             zxid = self._invoke(connect_timeout / 1000.0, ap, xid=AUTH_XID)
             if zxid:
                 client.last_zxid = zxid
+
+        if connect_result.read_only:
+            client._session_callback(KeeperState.CONNECTED_RO)
+            self._ro_mode = iter(self._server_pinger())
+        else:
+            client._session_callback(KeeperState.CONNECTED)
+            self._ro_mode = None
 
         return read_timeout, connect_timeout
 
