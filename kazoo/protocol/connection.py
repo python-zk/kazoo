@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import logging
 import random
 import socket
@@ -11,7 +12,7 @@ import time
 from binascii import hexlify
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from typing import TYPE_CHECKING, Literal, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast, overload
 
 from typing_extensions import Buffer
 
@@ -52,15 +53,13 @@ if TYPE_CHECKING:
     from kazoo.client import KazooClient, WatchFunc
     from kazoo.interfaces import Socket, Threadlike
 
-# FIXME This is NOT pretty, but we don't want to force users to have to
-# install puresasl. Can we avoid some of the type: ignore stuff?
-try:
+    PURESASL_AVAILABLE: bool = True
+else:
+    PURESASL_AVAILABLE = importlib.util.find_spec("puresasl") is not None
+
+if PURESASL_AVAILABLE:
     import puresasl
     import puresasl.client
-
-    PURESASL_AVAILABLE = True
-except ImportError:
-    PURESASL_AVAILABLE = False
 
 
 log = logging.getLogger(__name__)
@@ -175,7 +174,7 @@ class ConnectionHandler:
         client: KazooClient,
         retry_sleeper: KazooRetry,
         logger: logging.Logger | None = None,
-        sasl_options: dict[str, str] | None = None,
+        sasl_options: dict[str, Any] | None = None,
     ):
         self.client = client
         self.handler = client.handler
@@ -203,7 +202,7 @@ class ConnectionHandler:
 
         self._connection_routine: Threadlike | None = None
 
-        self.sasl_options = sasl_options
+        self._sasl_options = sasl_options
         self.sasl_cli = None
 
     # This is instance specific to avoid odd thread bug issues in Python
@@ -450,7 +449,7 @@ class ConnectionHandler:
         elif watch.type == CHILD_EVENT:
             watchers.extend(client._child_watchers.pop(path, []))
         else:
-            self.logger.warn("Received unknown event %r", watch.type)
+            self.logger.warning("Received unknown event %r", watch.type)
             return
 
         # Strip the chroot if needed
@@ -466,10 +465,7 @@ class ConnectionHandler:
             client.handler.dispatch_callback(Callback("watch", watch1, (ev,)))
 
     def _read_response(
-        self,
-        header: ReplyHeader,
-        buffer: bytes,
-        offset: int,
+        self, header: ReplyHeader, buffer: bytes, offset: int
     ) -> object | None:
         client = self.client
         request, async_object, xid = client._pending.popleft()
@@ -477,9 +473,7 @@ class ConnectionHandler:
             client.last_zxid = header.zxid
         if header.xid != xid:
             exc = RuntimeError(
-                "xids do not match, expected %r received %r",
-                xid,
-                header.xid,
+                "xids do not match, expected %r received %r", xid, header.xid
             )
             async_object.set_exception(exc)
             raise exc
@@ -566,9 +560,7 @@ class ConnectionHandler:
         return None
 
     def _send_request(
-        self,
-        read_timeout: float,
-        connect_timeout: float,
+        self, read_timeout: float, connect_timeout: float
     ) -> None:
         """Called when we have something to send out on the socket"""
         client = self.client
@@ -693,11 +685,7 @@ class ConnectionHandler:
             raise ForceRetryError("Reconnecting")
 
     def _connect_attempt(
-        self,
-        host: str,
-        hostip: str,
-        port: int,
-        retry: KazooRetry,
+        self, host: str, hostip: str, port: int, retry: KazooRetry
     ) -> object:
         client = self.client
         KazooTimeoutError = self.handler.timeout_exception
@@ -810,10 +798,7 @@ class ConnectionHandler:
         return None
 
     def _connect(
-        self,
-        host: str,
-        hostip: str,
-        port: int,
+        self, host: str, hostip: str, port: int
     ) -> tuple[float, float]:
         client = self.client
         self.logger.info(
@@ -894,8 +879,10 @@ class ConnectionHandler:
             client._session_callback(KeeperState.CONNECTED)
             self._ro_mode = None
 
-        if self.sasl_options is not None:
-            self._authenticate_with_sasl(host, connect_timeout / 1000.0)
+        if self._sasl_options is not None:
+            self._authenticate_with_sasl(
+                self._sasl_options, host, connect_timeout / 1000.0
+            )
 
         # Get a copy of the auth data before iterating, in case it is
         # changed.
@@ -909,36 +896,26 @@ class ConnectionHandler:
 
         return read_timeout, connect_timeout
 
-    def _authenticate_with_sasl(self, host: str, timeout: float) -> None:
+    def _authenticate_with_sasl(
+        self, sasl_options: dict[str, str], host: str, timeout: float
+    ) -> None:
         """Establish a SASL authenticated connection to the server."""
         if not PURESASL_AVAILABLE:
             raise SASLException("Missing SASL support")
 
-        # Although this can only be called if sasl_options is not None, we
-        # really should just have make self.sasl_options into an empty dict
-        # in the constructor. However, I want to avoid code changes in as
-        # much as possible.
-        if "service" not in self.sasl_options:  # type: ignore[operator]
-            self.sasl_options["service"] = "zookeeper"  # type: ignore[index]
+        if "service" not in sasl_options:
+            sasl_options["service"] = "zookeeper"
 
         # NOTE: Zookeeper hardcoded the domain for Digest authentication
         # instead of using the hostname. See
         # zookeeper/util/SecurityUtils.java#L74 and Server/Client
         # initializations.
-        if (
-            self.sasl_options["mechanism"]  # type: ignore[index]
-            == "DIGEST-MD5"
-        ):
+        if sasl_options["mechanism"] == "DIGEST-MD5":
             host = "zk-sasl-md5"
 
-        # I don't think the client.sasl_cli attribute is actually used
-        # anywhere else, so not sure why we need to set it on the client,
-        # but again, I want to avoid code changes as much as possible.
-        sasl_cli = self.client.sasl_cli = (  # type: ignore[attr-defined]
-            puresasl.client.SASLClient(  # type: ignore[no-untyped-call]
-                host=host,
-                **self.sasl_options,  # type: ignore[arg-type]
-            )
+        # FIXME puresasl isn't properly type hinted.
+        sasl_cli = puresasl.client.SASLClient(  # type: ignore
+            host=host, **sasl_options
         )
 
         # Initialize the process with an empty challenge token

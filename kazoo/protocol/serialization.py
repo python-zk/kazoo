@@ -12,7 +12,7 @@ from __future__ import annotations
 import struct
 from collections import namedtuple
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, ClassVar, Union
+from typing import TYPE_CHECKING, ClassVar
 
 from kazoo.exceptions import EXCEPTIONS, ZookeeperError
 from kazoo.protocol.states import ZnodeStat
@@ -393,8 +393,36 @@ class CheckVersion(namedtuple("CheckVersion", "path version")):
         return b
 
 
-# FIXME Transaction class should move after Create2
-Transaction_Types = Union[Create, "Create2", Delete, SetData, CheckVersion]
+class Create2(namedtuple("Create2", "path data acl flags")):
+    path: str
+    data: bytes | None
+    acl: Sequence[ACL]
+    flags: int
+
+    type: ClassVar[int] = 15
+
+    def serialize(self) -> bytearray:
+        b = bytearray()
+        b.extend(write_string(self.path))
+        b.extend(write_buffer(self.data))
+        b.extend(int_struct.pack(len(self.acl)))
+        for acl in self.acl:
+            b.extend(
+                int_struct.pack(acl.perms)
+                + write_string(acl.id.scheme)
+                + write_string(acl.id.id)
+            )
+        b.extend(int_struct.pack(self.flags))
+        return b
+
+    @classmethod
+    def deserialize(cls, bytes: bytes, offset: int) -> tuple[str, ZnodeStat]:
+        path, offset = read_string(bytes, offset)
+        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
+        return path, stat
+
+
+Transaction_Types = Create | Create2 | Delete | SetData | CheckVersion
 Transaction_Response = str | bool | ZnodeStat | ZookeeperError | None
 
 
@@ -448,35 +476,6 @@ class Transaction(namedtuple("Transaction", "operations")):
             else:
                 resp.append(result)
         return resp
-
-
-class Create2(namedtuple("Create2", "path data acl flags")):
-    path: str
-    data: bytes | None
-    acl: Sequence[ACL]
-    flags: int
-
-    type: ClassVar[int] = 15
-
-    def serialize(self) -> bytearray:
-        b = bytearray()
-        b.extend(write_string(self.path))
-        b.extend(write_buffer(self.data))
-        b.extend(int_struct.pack(len(self.acl)))
-        for acl in self.acl:
-            b.extend(
-                int_struct.pack(acl.perms)
-                + write_string(acl.id.scheme)
-                + write_string(acl.id.id)
-            )
-        b.extend(int_struct.pack(self.flags))
-        return b
-
-    @classmethod
-    def deserialize(cls, bytes: bytes, offset: int) -> tuple[str, ZnodeStat]:
-        path, offset = read_string(bytes, offset)
-        stat = ZnodeStat(*stat_struct.unpack_from(bytes, offset))
-        return path, stat
 
 
 class Reconfig(
