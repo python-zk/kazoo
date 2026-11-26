@@ -11,7 +11,7 @@ import time
 from binascii import hexlify
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from typing import TYPE_CHECKING, Literal, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast, overload
 
 from typing_extensions import Buffer
 
@@ -175,7 +175,7 @@ class ConnectionHandler:
         client: KazooClient,
         retry_sleeper: KazooRetry,
         logger: logging.Logger | None = None,
-        sasl_options: dict[str, str] | None = None,
+        sasl_options: dict[str, Any] | None = None,
     ):
         self.client = client
         self.handler = client.handler
