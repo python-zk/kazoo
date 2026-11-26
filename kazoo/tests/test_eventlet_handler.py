@@ -1,30 +1,46 @@
 from __future__ import annotations
 
 import contextlib
+import importlib
 import unittest
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import create_tcp_socket
+from kazoo.interfaces import IAsyncResult
 from kazoo.protocol import states as kazoo_states
+from kazoo.testing.async_result_common import (
+    AsyncResultCommon,
+    ThreadlikeContext,
+)
 
 if TYPE_CHECKING:
     from kazoo.handlers.eventlet import SequentialEventletHandler
 
-try:
+if importlib.util.find_spec("eventlet") is None:
+    # The double test here stops complaints about imports not being at the top
+    # of the file.
+    pytest.importorskip("eventlet", reason="eventlet not available")
+else:
+    import eventlet
     from eventlet.green import socket
 
     from kazoo.handlers import eventlet as eventlet_handler
-except ImportError:
-    pytestmark = pytest.mark.skip(reason="eventlet not available")
+
+
+class EventletContext(ThreadlikeContext):
+    def __enter__(self) -> None:
+        # Spawn the eventlet and then immediately sleep to hand over control
+        eventlet.spawn(self._target)  # type:ignore[no-untyped-call]
+        eventlet.sleep(0)  # type:ignore[no-untyped-call]
 
 
 @contextlib.contextmanager
 def start_stop_one(
-    handler: SequentialEventletHandler = None,  # type: ignore[assignment]
+    handler: SequentialEventletHandler | None = None,
 ) -> Generator[SequentialEventletHandler]:
     if not handler:
         handler = eventlet_handler.SequentialEventletHandler()
@@ -33,6 +49,17 @@ def start_stop_one(
         yield handler
     finally:
         handler.stop()
+
+
+class TestEventletAsyncResult(AsyncResultCommon, unittest.TestCase):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(
+            eventlet_handler.SequentialEventletHandler,
+            lambda handler: eventlet_handler.AsyncResult(handler),
+            thread_context_factory=EventletContext,
+            *args,
+            **kwargs,
+        )
 
 
 class TestEventletHandler(unittest.TestCase):
@@ -66,10 +93,10 @@ class TestEventletHandler(unittest.TestCase):
         assert len(captures) == 1
 
     def test_async_link(self) -> None:
-        captures: list[SequentialEventletHandler] = []
+        captures: list[IAsyncResult] = []
 
-        def cb(handler: SequentialEventletHandler) -> None:
-            captures.append(handler)
+        def cb(async_result: IAsyncResult) -> None:
+            captures.append(async_result)
 
         with start_stop_one() as handler:
             r = handler.async_result()
@@ -86,14 +113,14 @@ class TestEventletHandler(unittest.TestCase):
             raise handler.timeout_exception("This is a timeout")
 
     def test_async_ok(self) -> None:
-        captures: list[Literal[1] | SequentialEventletHandler] = []
+        captures: list[Literal[1] | IAsyncResult] = []
 
         def delayed() -> Literal[1]:
             captures.append(1)
             return 1
 
-        def after_delayed(handler: SequentialEventletHandler) -> None:
-            captures.append(handler)
+        def after_delayed(async_result: IAsyncResult) -> None:
+            captures.append(async_result)
 
         with start_stop_one() as handler:
             r = handler.async_result()

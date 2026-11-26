@@ -36,10 +36,7 @@ class Election:
     """
 
     def __init__(
-        self,
-        client: KazooClient,
-        path: str,
-        identifier: str | None = None,
+        self, client: KazooClient, path: str, identifier: str | None = None
     ):
         """Create a Kazoo Leader Election
 

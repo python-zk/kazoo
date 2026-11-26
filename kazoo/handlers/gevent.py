@@ -5,12 +5,8 @@ from __future__ import annotations
 import atexit
 import logging
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
-# FIXME This is messy.
-# We don't want to force the user to install gevent, so we need to handle the
-# case where it's not available, but there should be a cleaner we of doing this
-# than by importing all of gevent and ignoring all the import errors.
 import gevent
 import gevent.event
 import gevent.queue
@@ -21,14 +17,18 @@ from gevent.lock import RLock, Semaphore
 
 from kazoo.handlers import utils
 from kazoo.handlers.utils import selector_select
+from kazoo.interfaces import IAsyncResult, IHandler, SpawnedFunc
 
 if TYPE_CHECKING:
-    from gevent import Greenlet
-
-    from kazoo.interfaces import FdLike, Lockable, Socket
+    from kazoo.interfaces import (
+        Event,
+        FdLike,
+        Lockable,
+        ReentrantLock,
+        Socket,
+        Threadlike,
+    )
     from kazoo.protocol.states import Callback
-
-_using_libevent = gevent.__version__.startswith("0.")
 
 log = logging.getLogger(__name__)
 
@@ -37,14 +37,11 @@ _STOP = object()
 
 AsyncResult = gevent.event.AsyncResult
 
-# The following would be great typenames, but python3.8 complains about type
-# objects not being indexable.
-# GCallback = Callable[..., None]
-# Worker = Greenlet[..., Any]
-# CallbackQueue = gevent.queue.Queue[Callable[..., None]]
+Worker: TypeAlias = "gevent.Greenlet[..., Any]"
+CallbackQueue: TypeAlias = "gevent.queue.Queue[Callable[..., None]]"
 
 
-class SequentialGeventHandler:
+class SequentialGeventHandler(IHandler):
     """Gevent handler for sequentially executing callbacks.
 
     This handler executes callbacks in a sequential manner. A queue is
@@ -72,25 +69,35 @@ class SequentialGeventHandler:
 
     def __init__(self) -> None:
         """Create a :class:`SequentialGeventHandler` instance"""
-        self.callback_queue: gevent.queue.Queue[Callable[..., None]] = (
-            self.queue_impl()
-        )
+        self._callback_queue: CallbackQueue = self.queue_impl()
         self._running = False
         self._async = None
         self._state_change = Semaphore()
-        self._workers: list[Greenlet[..., Any]] = []
+        self._workers: list[Worker] = []
 
     @property
     def running(self) -> bool:
         return self._running
 
     class timeout_exception(gevent.Timeout):
-        def __init__(self, msg: Any):
-            gevent.Timeout.__init__(self, exception=msg)
+        """Exception raised when a timeout occurs.
 
-    def _create_greenlet_worker(
-        self, queue: gevent.queue.Queue[Callable[..., None]]
-    ) -> Greenlet[..., Any]:
+        FIXME:
+        AsyncResult get()/get_nowait() will NOT raise this exception if the
+        result is not ready. They'll raise gevent.Timeout instead. This could
+        cause confusion when handling timeouts.
+        """
+
+        def __init__(self, msg: str | None = None) -> None:
+            self._msg = "Timeout expired" if msg is None else msg
+            # there's no type hints for gevent.Timeout, so although mypy
+            # attempts to deduce them, it gets it wrong.
+            super().__init__(exception=msg)  # type: ignore[arg-type]
+
+        def __str__(self) -> str:
+            return self._msg
+
+    def _create_greenlet_worker(self, queue: CallbackQueue) -> Worker:
         def greenlet_worker() -> None:
             while True:
                 try:
@@ -120,7 +127,7 @@ class SequentialGeventHandler:
             # Spawn our worker greenlets, we have
             # - A callback worker for watch events to be called
             # FIXME Why the loop?
-            for queue in (self.callback_queue,):
+            for queue in (self._callback_queue,):
                 w = self._create_greenlet_worker(queue)
                 self._workers.append(w)
             atexit.register(self.stop)
@@ -133,7 +140,7 @@ class SequentialGeventHandler:
 
             self._running = False
 
-            for queue in (self.callback_queue,):
+            for queue in (self._callback_queue,):
                 queue.put(cast("Callable[..., None]", _STOP))
 
             while self._workers:
@@ -141,7 +148,7 @@ class SequentialGeventHandler:
                 worker.join()
 
             # Clear the queues
-            self.callback_queue = self.queue_impl()  # pragma: nocover
+            self._callback_queue = self.queue_impl()  # pragma: nocover
 
             atexit.unregister(self.stop)
 
@@ -166,7 +173,7 @@ class SequentialGeventHandler:
     def create_socket_pair(self) -> tuple[Socket, Socket]:
         return utils.create_socket_pair(socket)
 
-    def event_object(self) -> gevent.event.Event:
+    def event_object(self) -> Event:
         """Create an appropriate Event object"""
         return gevent.event.Event()
 
@@ -177,11 +184,11 @@ class SequentialGeventHandler:
             gevent.thread.allocate_lock(),  # type: ignore[no-untyped-call]
         )
 
-    def rlock_object(self) -> RLock:
+    def rlock_object(self) -> ReentrantLock:
         """Create an appropriate RLock object"""
         return RLock()
 
-    def async_result(self) -> AsyncResult[Any]:
+    def async_result(self) -> IAsyncResult:
         """Create a :class:`AsyncResult` instance
 
         The :class:`AsyncResult` instance will have its completion
@@ -192,9 +199,7 @@ class SequentialGeventHandler:
         """
         return AsyncResult()
 
-    def spawn(
-        self, func: Any, *args: Any, **kwargs: Any
-    ) -> gevent.Greenlet[..., Any]:
+    def spawn(self, func: Any, *args: Any, **kwargs: Any) -> Threadlike:
         """Spawn a function to run asynchronously"""
         return gevent.spawn(func, *args, **kwargs)
 
@@ -205,4 +210,16 @@ class SequentialGeventHandler:
         type as documented for the :class:`SequentialGeventHandler`.
 
         """
-        self.callback_queue.put(lambda: callback.func(*callback.args))
+        self._callback_queue.put(lambda: callback.func(*callback.args))
+
+    def add_to_completion_queue(self, callback: SpawnedFunc) -> None:
+        """Add a method to callback on completion.
+
+        :param callback: A :class:`~kazoo.protocol.states.Callback`
+                         object to be called.
+
+        The supplied method will be called whn an event completes.
+
+        Note: This seems an odd place to store these.
+        """
+        raise NotImplementedError()
