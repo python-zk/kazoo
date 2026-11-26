@@ -79,22 +79,23 @@ class SequentialGeventHandler(IHandler):
     def running(self) -> bool:
         return self._running
 
-    class timeout_exception(gevent.Timeout, BaseException):
+    class timeout_exception(gevent.Timeout):
         """Exception raised when a timeout occurs.
 
-        Passing seconds=None to the constructor will create a timeout that
-        never expires.
-
         FIXME:
-        1. AsyncResult get()/get_nowait() will NOT raise this exception if the
-           result is not ready. This could cause confusion when handling
-           timeouts.
-        2. This stringifies as nothing at all but is printed as a string in
-           some places.
+        AsyncResult get()/get_nowait() will NOT raise this exception if the
+        result is not ready. They'll raise gevent.Timeout instead. This could
+        cause confusion when handling timeouts.
         """
 
         def __init__(self, msg: str | None = None) -> None:
-            super().__init__()
+            self._msg = "Timeout expired" if msg is None else msg
+            # there's no type hints for gevent.Timeout, so although mypy
+            # attempts to deduce them, it gets it wrong.
+            super().__init__(exception=msg)  # type: ignore[arg-type]
+
+        def __str__(self) -> str:
+            return self._msg
 
     def _create_greenlet_worker(self, queue: CallbackQueue) -> Worker:
         def greenlet_worker() -> None:
