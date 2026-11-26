@@ -684,7 +684,8 @@ class TestClient(KazooTestCase):
         credential = make_digest_acl_credential("username", "password")
         alt_client = KazooClient(
             self.cluster[0].address + self.client.chroot,
-            max_retries=5,
+            connection_retry=KazooRetry(max_tries=5),
+            command_retry=KazooRetry(max_tries=5),
             auth_data=[("digest", credential)],
             handler=self._makeOne(),
         )
