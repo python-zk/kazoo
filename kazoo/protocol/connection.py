@@ -646,26 +646,28 @@ class ConnectionHandler:
             self.client._session_callback(KeeperState.CLOSED)
             self.logger.log(BLATHER, "Connection stopped")
 
+    def _resolve_host(
+        self, host: str, port: int
+    ) -> list[tuple[str, str, int]]:
+        try:
+            host = host.strip()
+            return [
+                (host, cast("str", result[4][0]), cast("int", result[4][1]))
+                for result in socket.getaddrinfo(
+                    host, port, 0, 0, socket.IPPROTO_TCP
+                )
+            ]
+        except socket.gaierror as error:
+            self.logger.warning("Cannot resolve %s: %s", host, error)
+            return []
+
     def _expand_client_hosts(self) -> list[tuple[str, str, int]]:
         # Expand the entire list in advance so we can randomize it if needed
-        host_ports: list[tuple[str, str, int]] = []
-        for host, port in self.client.hosts:
-            try:
-                host = host.strip()
-                for rhost in socket.getaddrinfo(
-                    host, port, 0, 0, socket.IPPROTO_TCP
-                ):
-                    host_ports.append(
-                        (
-                            host,
-                            cast("str", rhost[4][0]),
-                            cast("int", rhost[4][1]),
-                        )
-                    )
-            except socket.gaierror as e:
-                # Skip hosts that don't resolve
-                self.logger.warning("Cannot resolve %s: %s", host, e)
-                pass
+        host_ports = [
+            endpoint
+            for host, port in self.client.hosts
+            for endpoint in self._resolve_host(host, port)
+        ]
         if self.client.randomize_hosts:
             random.shuffle(host_ports)
         return host_ports
@@ -679,10 +681,32 @@ class ConnectionHandler:
         if len(host_ports) == 0:
             raise ForceRetryError("No host resolved. Reconnecting")
 
+        attempted: set[tuple[str, str, int]] = set()
         for host, hostip, port in host_ports:
             if self.client._stopped.is_set():
                 status = STOP_CONNECTING
                 break
+            # Keep the initial ordering and number of attempt slots, but never
+            # connect to an address that DNS has removed since the last try.
+            endpoints = self._resolve_host(host, port)
+            if self.client.randomize_hosts:
+                random.shuffle(endpoints)
+            if (host, hostip, port) not in endpoints or (
+                host,
+                hostip,
+                port,
+            ) in attempted:
+                endpoint = next(
+                    (item for item in endpoints if item not in attempted),
+                    None,
+                )
+                if endpoint is None:
+                    continue
+                host, hostip, port = endpoint
+            if self.client._stopped.is_set():
+                status = STOP_CONNECTING
+                break
+            attempted.add((host, hostip, port))
             status = self._connect_attempt(host, hostip, port, retry)
             if status is STOP_CONNECTING:
                 break
